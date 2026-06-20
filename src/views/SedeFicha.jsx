@@ -206,6 +206,8 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
 }
 
 export default function SedeFicha({ onNavigate }) {
+  const { allowedSedeIds, can } = useAuth()
+  const canManage = can('sedes', 'manage')
   const [sedes, setSedes]         = useState([])
   const [sedeId, setSedeId]       = useState(null)
   const [sede, setSede]           = useState(null)
@@ -221,14 +223,16 @@ export default function SedeFicha({ onNavigate }) {
   const [histSemanal,  setHistSemanal]   = useState([])
 
   const loadSedes = useCallback(() => {
-    return supabase.schema('bitacora').from('sedes')
+    let query = supabase.schema('bitacora').from('sedes')
       .select('id,nombre,tipo,direccion,lat,lng,telefono,contacto_nombre,responsable,descripcion,activa')
       .order('tipo').order('nombre')
+    if (allowedSedeIds?.length) query = query.in('id', allowedSedeIds)
+    return query
       .then(({ data }) => {
         setSedes(data || [])
         return data || []
       })
-  }, [])
+  }, [allowedSedeIds])
 
   useEffect(() => {
     loadSedes().then(data => {
@@ -247,7 +251,7 @@ export default function SedeFicha({ onNavigate }) {
       supabase.schema('bitacora').from('registros').select('id,estado_general', { count:'exact' })
         .eq('sede_id', sedeId)
         .gte('fecha_reporte', new Date(Date.now()-30*86400000).toISOString().split('T')[0]),
-      supabase.schema('mantenimiento').from('mnt_tickets').select('id,estado,prioridad')
+      supabase.from('mnt_tickets').select('id,estado,prioridad')
         .eq('sede_id', sedeId).not('estado','in','(resuelto,rechazado)'),
       supabase.schema('bitacora').from('tareas').select('id,estado')
         .eq('sede_id', sedeId).not('estado','in','(Completada,Cancelada)'),
@@ -258,9 +262,9 @@ export default function SedeFicha({ onNavigate }) {
       supabase.schema('bitacora').from('registros')
         .select('id,fecha_reporte,turno,reportante,estado_general,detalle_a,detalle_b,detalle_c,detalle_d,detalle_e')
         .eq('sede_id', sedeId).order('fecha_reporte', { ascending: false }).limit(6),
-      supabase.schema('mantenimiento').from('mnt_activos').select('id,nombre,tipo,estado')
+      supabase.from('mnt_activos').select('id,nombre,tipo,estado')
         .eq('sede_id', sedeId).order('nombre').limit(8),
-      supabase.schema('mantenimiento').from('mnt_tickets').select('id,numero,descripcion,estado,prioridad,categoria,created_at')
+      supabase.from('mnt_tickets').select('id,numero,descripcion,estado,prioridad,categoria,created_at')
         .eq('sede_id', sedeId).not('estado','in','(resuelto,rechazado)')
         .order('created_at', { ascending: false }).limit(50),
       supabase.schema('bitacora').from('capa')
@@ -323,9 +327,9 @@ export default function SedeFicha({ onNavigate }) {
           <div style={{ color:'#e2e8f0', fontWeight:700, fontSize:'1.125rem', marginTop:2 }}>Dashboard por Sede</div>
         </div>
         <div style={{ flex:1 }}/>
-        <button onClick={()=>setModal('new')} style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.3)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.72rem', padding:'6px 14px', borderRadius:2, cursor:'pointer', fontWeight:700 }}>
+        {canManage && <button onClick={()=>setModal('new')} style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.3)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.72rem', padding:'6px 14px', borderRadius:2, cursor:'pointer', fontWeight:700 }}>
           <Plus size={13}/> Nueva sede
-        </button>
+        </button>}
         <select value={sedeId || ''} onChange={e=>setSedeId(Number(e.target.value))}
           style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.25)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.8rem', padding:'6px 10px', borderRadius:2, maxWidth:260 }}>
           {Object.entries(tiposByGroup).map(([tipo, list]) => (
@@ -359,18 +363,18 @@ export default function SedeFicha({ onNavigate }) {
                 {!sede.direccion && !sede.responsable && !sede.telefono && (
                   <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>
                     Sin datos completados —
-                    <button onClick={()=>setModal('edit')} style={{ background:'transparent', border:'none', color:'rgba(57,255,20,0.5)', cursor:'pointer', fontFamily:'monospace', fontSize:'0.8rem', fontStyle:'normal', marginLeft:4 }}>
+                    {canManage && <button onClick={()=>setModal('edit')} style={{ background:'transparent', border:'none', color:'rgba(57,255,20,0.5)', cursor:'pointer', fontFamily:'monospace', fontSize:'0.8rem', fontStyle:'normal', marginLeft:4 }}>
                       completar ahora
-                    </button>
+                    </button>}
                   </span>
                 )}
                 {sede.descripcion && <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.3)', marginTop:2, width:'100%' }}>{sede.descripcion}</span>}
               </div>
             </div>
             <div style={{ display:'flex', gap:8, flexShrink:0, alignItems:'center' }}>
-              <button onClick={()=>setModal('edit')} title="Editar datos de sede" style={{ display:'flex', alignItems:'center', gap:5, background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.2)', color:'rgba(57,255,20,0.7)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>
+              {canManage && <button onClick={()=>setModal('edit')} title="Editar datos de sede" style={{ display:'flex', alignItems:'center', gap:5, background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.2)', color:'rgba(57,255,20,0.7)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>
                 <Pencil size={11}/> Editar
-              </button>
+              </button>}
               <button onClick={()=>onNavigate && onNavigate('sede')} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'rgba(255,255,255,0.4)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>VER BITACORA</button>
               <button onClick={()=>onNavigate && onNavigate('mntTickets')} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.2)', color:'rgba(57,255,20,0.6)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>TICKETS MNT</button>
             </div>
@@ -600,7 +604,7 @@ export default function SedeFicha({ onNavigate }) {
         </div>
       )}
 
-      {(modal === 'edit' || modal === 'new') && (
+      {canManage && (modal === 'edit' || modal === 'new') && (
         <SedeModal
           sede={modal === 'edit' ? sede : null}
           personal={modal === 'edit' ? personal : []}

@@ -1,41 +1,53 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/auth'
-import MobileApp from './mobile/MobileApp'
 import LoginPage from './components/LoginPage'
 import CambiarContrasena from './components/CambiarContrasena'
 import Sidebar from './components/Sidebar'
-import DashboardGlobal from './views/DashboardGlobal'
-import PorSede from './views/PorSede'
-import Escalamientos from './views/Escalamientos'
-import Calendario from './views/Calendario'
-import NoConformidades from './views/NoConformidades'
-import CAPA from './views/CAPA'
-import Indicadores from './views/Indicadores'
-import Tareas from './views/Tareas'
-import Usuarios from './views/Usuarios'
-import MntDashboard   from './views/mantenimiento/MntDashboard'
-import MntTickets     from './views/mantenimiento/MntTickets'
-import MntActivos     from './views/mantenimiento/MntActivos'
-import MntPlanes      from './views/mantenimiento/MntPlanes'
-import MntProveedores from './views/mantenimiento/MntProveedores'
-import MntMatafuegos  from './views/mantenimiento/MntMatafuegos'
-import MntInsumos     from './views/mantenimiento/MntInsumos'
-import MntKanban      from './views/mantenimiento/MntKanban'
-import MntResponsables from './views/mantenimiento/MntResponsables'
-import MntVehiculos  from './views/mantenimiento/MntVehiculos'
-import MntFlotaGestion from './views/mantenimiento/MntFlotaGestion'
-import SedeResponsables from './views/SedeResponsables'
-import Requerimientos   from './views/Requerimientos'
-import QRActivoView    from './views/mantenimiento/QRActivoView'
-import AuditoriaView  from './views/mantenimiento/AuditoriaView'
-import SedeFicha           from './views/SedeFicha'
-import EquipoView          from './views/EquipoView'
-import SedeEncargadoView   from './views/SedeEncargadoView'
 import AlertaBanner   from './components/AlertaBanner'
 import GlobalSearch   from './components/GlobalSearch'
 import { useEscalamientosAlert } from './hooks/useEscalamientosAlert'
+import { canAccessView, getDefaultView } from './lib/access'
+
+const MobileApp = lazy(() => import('./mobile/MobileApp'))
+const InicioRol = lazy(() => import('./views/InicioRol'))
+const PendientesHub = lazy(() => import('./views/PendientesHub'))
+const SedesHub = lazy(() => import('./views/SedesHub'))
+const MantenimientoHub = lazy(() => import('./views/MantenimientoHub'))
+const CalidadHub = lazy(() => import('./views/CalidadHub'))
+const DashboardGlobal = lazy(() => import('./views/DashboardGlobal'))
+const PorSede = lazy(() => import('./views/PorSede'))
+const Escalamientos = lazy(() => import('./views/Escalamientos'))
+const Calendario = lazy(() => import('./views/Calendario'))
+const NoConformidades = lazy(() => import('./views/NoConformidades'))
+const CAPA = lazy(() => import('./views/CAPA'))
+const Indicadores = lazy(() => import('./views/Indicadores'))
+const Tareas = lazy(() => import('./views/Tareas'))
+const Usuarios = lazy(() => import('./views/Usuarios'))
+const MntDashboard = lazy(() => import('./views/mantenimiento/MntDashboard'))
+const MntTickets = lazy(() => import('./views/mantenimiento/MntTickets'))
+const MntActivos = lazy(() => import('./views/mantenimiento/MntActivos'))
+const MntPlanes = lazy(() => import('./views/mantenimiento/MntPlanes'))
+const MntProveedores = lazy(() => import('./views/mantenimiento/MntProveedores'))
+const MntMatafuegos = lazy(() => import('./views/mantenimiento/MntMatafuegos'))
+const MntInsumos = lazy(() => import('./views/mantenimiento/MntInsumos'))
+const MntKanban = lazy(() => import('./views/mantenimiento/MntKanban'))
+const MntResponsables = lazy(() => import('./views/mantenimiento/MntResponsables'))
+const MntVehiculos = lazy(() => import('./views/mantenimiento/MntVehiculos'))
+const MntFlotaGestion = lazy(() => import('./views/mantenimiento/MntFlotaGestion'))
+const SedeResponsables = lazy(() => import('./views/SedeResponsables'))
+const Requerimientos = lazy(() => import('./views/Requerimientos'))
+const QRActivoView = lazy(() => import('./views/mantenimiento/QRActivoView'))
+const AuditoriaView = lazy(() => import('./views/mantenimiento/AuditoriaView'))
+const SedeFicha = lazy(() => import('./views/SedeFicha'))
+const EquipoView = lazy(() => import('./views/EquipoView'))
+const SedeEncargadoView = lazy(() => import('./views/SedeEncargadoView'))
 
 const ALL_VIEWS = {
+  inicio:          InicioRol,
+  pendientes:     PendientesHub,
+  sedesHub:        SedesHub,
+  mantenimientoHub: MantenimientoHub,
+  calidadHub:      CalidadHub,
   dashboard:       DashboardGlobal,
   sede:            PorSede,
   escalamientos:   Escalamientos,
@@ -65,6 +77,20 @@ const ALL_VIEWS = {
   sedeEncargado:    SedeEncargadoView,
 }
 
+function AccessBlocked({ onSignOut }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background:'var(--abyss)' }}>
+      <div className="glass max-w-md rounded p-6 text-center">
+        <h1 className="font-title font-bold" style={{ color:'var(--alert)' }}>Acceso pendiente de configuración</h1>
+        <p className="text-sm mt-3" style={{ color:'var(--text-dim)', lineHeight:1.6 }}>
+          Tu perfil no tiene una sede o grupo asignado, o está inactivo. Un administrador debe completar la configuración antes de continuar.
+        </p>
+        <button type="button" onClick={onSignOut} className="btn-ghost mt-5">Cerrar sesión</button>
+      </div>
+    </div>
+  )
+}
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   useEffect(() => {
@@ -90,23 +116,31 @@ function LoadingScreen() {
   )
 }
 
+function ViewLoading() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-7 h-7 rounded-full border-2 animate-spin" style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
+    </div>
+  )
+}
+
 function AppInner() {
-  const { user, perfil, rol, isAdmin, allowedSedeIds, loading } = useAuth()
+  const { user, perfil, rol, allowedSedeIds, accessBlocked, loading, signOut } = useAuth()
   const [qrActivoId, setQrActivoId] = useState(() => new URLSearchParams(window.location.search).get('id'))
   const [showSearch, setShowSearch] = useState(false)
   const [activeView, setActiveView] = useState(() => {
     const p = new URLSearchParams(window.location.search)
     if (p.get('scan') === 'activo' && p.get('id')) return 'qrActivo'
     const requestedView = p.get('view')
-    return requestedView && ALL_VIEWS[requestedView] ? requestedView : 'dashboard'
+    return requestedView && ALL_VIEWS[requestedView] ? requestedView : 'inicio'
   })
 
-  // Auto-redirect encargado/sede a su vista dedicada
+  // Bloquear rutas directas que no correspondan al rol actual.
   useEffect(() => {
-    if (!loading && user && ['encargado', 'sede'].includes(rol) && activeView === 'dashboard') {
-      setActiveView('sedeEncargado')
+    if (!loading && user && activeView !== 'qrActivo' && !canAccessView(rol, activeView)) {
+      setActiveView(getDefaultView(rol) || 'inicio')
     }
-  }, [loading, user, rol])
+  }, [loading, user, rol, activeView])
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
@@ -128,22 +162,27 @@ function AppInner() {
   const isMobile = useIsMobile()
 
   // Notificaciones browser para escalamientos Pendientes sin gestionar
-  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !isMobile })
+  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !accessBlocked && !isMobile })
 
   if (loading) return <LoadingScreen />
   if (!user)   return <LoginPage />
+  if (accessBlocked) return <AccessBlocked onSignOut={signOut} />
   if (perfil?.must_change_password) return <CambiarContrasena />
   if (activeView === 'qrActivo' && isMobile) {
-    return <QRActivoView activoId={qrActivoId} onNavigate={setActiveView} />
+    return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} onNavigate={setActiveView} /></Suspense>
   }
-  if (isMobile) return <MobileApp />
+  if (isMobile) return <Suspense fallback={<LoadingScreen />}><MobileApp /></Suspense>
 
   const navigate = (view) => {
-    if (view === 'usuarios' && !isAdmin) return
+    if (!ALL_VIEWS[view] || !canAccessView(rol, view)) return
     setActiveView(view)
+    const url = new URL(window.location.href)
+    url.search = ''
+    url.searchParams.set('view', view)
+    window.history.replaceState({}, '', url)
   }
 
-  const ActiveView = ALL_VIEWS[activeView] || DashboardGlobal
+  const ActiveView = ALL_VIEWS[activeView] || InicioRol
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background:'var(--abyss)' }}>
@@ -154,10 +193,12 @@ function AppInner() {
         {showSearch && (
           <GlobalSearch onNavigate={navigate} onClose={() => setShowSearch(false)} />
         )}
-        {activeView === 'qrActivo'
-          ? <QRActivoView activoId={qrActivoId} onNavigate={navigate} />
-          : <ActiveView onNavigate={navigate} />
-        }
+        <Suspense fallback={<ViewLoading />}>
+          {activeView === 'qrActivo'
+            ? <QRActivoView activoId={qrActivoId} onNavigate={navigate} />
+            : <ActiveView onNavigate={navigate} />
+          }
+        </Suspense>
       </main>
     </div>
   )

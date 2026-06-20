@@ -3,6 +3,7 @@ import { X, ExternalLink, AlertTriangle, Plus, Zap, MessageCircle, Mail, Users }
 import AdjuntosPanel from './AdjuntosPanel'
 import { getCategoriasCONNovedad, getSedeContactos } from '../lib/queries'
 import { fmtFechaHora } from '../lib/dateUtils'
+import { useAuth } from '../lib/auth'
 
 const CATEGORIAS = [
   { key: 'a', label: 'Producción / Servicio del turno' },
@@ -24,6 +25,9 @@ function estadoChip(estado) {
 }
 
 export default function RegistroModal({ registro, onClose, onCreateTarea, onCreateTicket, onCreateNC }) {
+  const { can } = useAuth()
+  const canManage = can('tareas', 'manage')
+  const canAttach = canManage || can('bitacora', 'attach')
   const [showNCHint, setShowNCHint] = useState(false)
   const [responsables, setResponsables] = useState([])
 
@@ -145,7 +149,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
             <p className="font-metric text-xs mb-2 tracking-wider" style={{ color:'var(--phosphor)', opacity:0.7 }}>
               DETALLE POR CATEGORÍA
             </p>
-            {cats.length > 0 && (
+            {canManage && cats.length > 0 && (
               <p className="font-metric text-xs mb-3" style={{ color:'rgba(255,180,0,0.6)' }}>
                 Hacé click en una categoría con novedad para crear una tarea (cat. A–D, F–H) o un ticket de mantenimiento (cat. E).
               </p>
@@ -158,15 +162,15 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                 const tieneNovedad = estado && estado !== 'Sin novedad' && estado !== 'Sin novedades'
                 return (
                   <div key={cat}
-                    onClick={tieneNovedad ? () => handleCatClick(cat, catLabel, detalle) : undefined}
+                    onClick={canManage && tieneNovedad ? () => handleCatClick(cat, catLabel, detalle) : undefined}
                     className="rounded px-4 py-3"
                     style={{
                       border: tieneNovedad ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgba(255,255,255,0.04)',
                       background: tieneNovedad ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
-                      cursor: tieneNovedad ? 'pointer' : 'default',
+                      cursor: canManage && tieneNovedad ? 'pointer' : 'default',
                       transition: 'background 0.15s, border 0.15s',
                     }}
-                    onMouseEnter={e => { if (tieneNovedad) e.currentTarget.style.background = 'rgba(245,158,11,0.12)' }}
+                    onMouseEnter={e => { if (canManage && tieneNovedad) e.currentTarget.style.background = 'rgba(245,158,11,0.12)' }}
                     onMouseLeave={e => { if (tieneNovedad) e.currentTarget.style.background = 'rgba(245,158,11,0.06)' }}
                   >
                     <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -185,7 +189,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                           — {estado}
                         </span>
                       )}
-                      {tieneNovedad && (
+                      {canManage && tieneNovedad && (
                         <span className="ml-auto flex items-center gap-1 font-metric text-xs"
                           style={{ color:'rgba(245,158,11,0.7)', fontSize:'0.6rem' }}>
                           <Zap size={10} /> Crear tarea
@@ -233,7 +237,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
 
           {/* Adjuntos */}
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:10, marginTop:4 }}>
-            <AdjuntosPanel entityType="registro" entityId={registro.id} />
+            <AdjuntosPanel entityType="registro" entityId={registro.id} readOnly={!canAttach} />
           </div>
 
 
@@ -293,7 +297,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
           <div className="flex flex-wrap justify-between gap-3 pt-3"
             style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <div className="flex gap-2">
-              {cats.length > 0 && (
+              {canManage && cats.length > 0 && (
                 <button
                   onClick={() => setShowNCHint(v => !v)}
                   className="btn-ghost text-xs"
@@ -305,9 +309,9 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
             </div>
             <div className="flex gap-2">
               <button onClick={onClose} className="btn-ghost">Cerrar</button>
-              <button onClick={() => { onCreateTarea?.(registro); onClose() }} className="btn-primary">
+              {canManage && <button onClick={() => { onCreateTarea?.(registro); onClose() }} className="btn-primary">
                 + Tarea
-              </button>
+              </button>}
             </div>
           </div>
         </div>

@@ -10,6 +10,8 @@ import {
 // PersonaFicha — vista interna de ficha individual
 // ──────────────────────────────────────────────
 function PersonaFicha({ personaId, onBack }) {
+  const { can } = useAuth()
+  const canManage = can('equipo', 'manage')
   const [persona, setPersona] = useState(null)
   const [evaluaciones, setEvaluaciones] = useState([])
   const [historial, setHistorial] = useState([])
@@ -277,9 +279,9 @@ function PersonaFicha({ personaId, onBack }) {
           <div>
             <div className="flex justify-between items-center mb-4">
               <p className="font-metric text-xs" style={{ color:'var(--text-dim)' }}>{evaluaciones.length} evaluaciones registradas</p>
-              <button onClick={() => setShowEvalForm(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.7rem' }}>
+              {canManage && <button onClick={() => setShowEvalForm(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.7rem' }}>
                 <Plus size={12} /> Nueva evaluación
-              </button>
+              </button>}
             </div>
             {showEvalForm && (
               <div className="glass p-5 mb-4" style={{ border:'1px solid rgba(57,255,20,0.2)' }}>
@@ -418,9 +420,9 @@ function PersonaFicha({ personaId, onBack }) {
           <div>
             <div className="flex justify-between items-center mb-4">
               <p className="font-metric text-xs" style={{ color:'var(--text-dim)' }}>{historial.length} registros</p>
-              <button onClick={() => setShowHistorialForm(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.7rem' }}>
+              {canManage && <button onClick={() => setShowHistorialForm(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.7rem' }}>
                 <Plus size={12} /> Agregar registro
-              </button>
+              </button>}
             </div>
             {showHistorialForm && (
               <div className="glass p-4 mb-4" style={{ border:'1px solid rgba(57,255,20,0.2)' }}>
@@ -617,6 +619,8 @@ function NuevaPersonaModal({ onClose, onSaved }) {
 // EquipoView — vista principal
 // ──────────────────────────────────────────────
 export default function EquipoView() {
+  const { can } = useAuth()
+  const canManage = can('equipo', 'manage')
   const [personas, setPersonas] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -651,7 +655,7 @@ export default function EquipoView() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {showNew && <NuevaPersonaModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />}
+      {canManage && showNew && <NuevaPersonaModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />}
 
       {/* Header */}
       <div className="px-6 pt-5 pb-3 flex items-center gap-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.1)' }}>
@@ -660,9 +664,9 @@ export default function EquipoView() {
           <h1 className="font-title font-bold text-lg" style={{ color:'var(--phosphor)' }}>Equipo</h1>
           <p className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{personas.length} personas activas</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}>
+        {canManage && <button onClick={() => setShowNew(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}>
           <Plus size={12} /> Nueva persona
-        </button>
+        </button>}
       </div>
 
       {/* KPI strip */}

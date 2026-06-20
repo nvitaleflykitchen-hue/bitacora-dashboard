@@ -235,7 +235,7 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
                 ↗ Abrir manual principal
               </a>
             )}
-            <AdjuntosPanel entityType="activo" entityId={activo.id} />
+            <AdjuntosPanel entityType="activo" entityId={activo.id} readOnly={!canEdit} />
           </div>
         )}
 

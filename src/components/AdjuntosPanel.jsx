@@ -73,7 +73,7 @@ function LinkForm({ onAdd, onCancel }) {
   )
 }
 
-export default function AdjuntosPanel({ entityType, entityId, compact = false }) {
+export default function AdjuntosPanel({ entityType, entityId, compact = false, readOnly = false }) {
   const { perfil } = useAuth()
   const [adjuntos, setAdjuntos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -179,7 +179,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false })
             Adjuntos {adjuntos.length > 0 && `(${adjuntos.length})`}
           </span>
         </div>
-        <div style={{ display:'flex', gap:5 }}>
+        {!readOnly && <div style={{ display:'flex', gap:5 }}>
           <button
             onClick={() => setShowLinkForm(v => !v)}
             className="btn-ghost"
@@ -195,18 +195,18 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false })
           </button>
           <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
             style={{ display:'none' }} onChange={e => handleFiles(e.target.files)} />
-        </div>
+        </div>}
       </div>
 
       {/* Link form */}
-      {showLinkForm && (
+      {!readOnly && showLinkForm && (
         <div style={{ marginBottom:8 }}>
           <LinkForm onAdd={handleAddLink} onCancel={() => setShowLinkForm(false)} />
         </div>
       )}
 
       {/* Drop zone (visible solo si no hay adjuntos) */}
-      {adjuntos.length === 0 && !loading && !showLinkForm && (
+      {!readOnly && adjuntos.length === 0 && !loading && !showLinkForm && (
         <div
           onDrop={handleDrop}
           onDragOver={e => e.preventDefault()}
@@ -240,18 +240,18 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false })
                   cursor:'zoom-in', border:'1px solid rgba(255,255,255,0.08)',
                 }}
               />
-              <button
+              {!readOnly && <button
                 onClick={() => handleDelete(img)}
                 style={{
                   position:'absolute', top:2, right:2,
                   background:'rgba(0,0,0,0.7)', border:'none', borderRadius:'50%',
                   width:18, height:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
                   color:'#fff', padding:0,
-                }}><X size={10} /></button>
+                }}><X size={10} /></button>}
             </div>
           ))}
           {/* Drop zone pequeña inline */}
-          <div
+          {!readOnly && <div
             onDrop={handleDrop} onDragOver={e => e.preventDefault()}
             onClick={() => fileRef.current?.click()}
             style={{
@@ -259,7 +259,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false })
               borderRadius:3, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
               color:'var(--text-dim)',
             }}
-          ><Plus size={18} /></div>
+          ><Plus size={18} /></div>}
         </div>
       )}
 
@@ -290,10 +290,10 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false })
                   style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center' }}>
                   <ExternalLink size={11} />
                 </a>
-                <button onClick={() => handleDelete(a)} className="btn-ghost"
+                {!readOnly && <button onClick={() => handleDelete(a)} className="btn-ghost"
                   style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center', color:'var(--alert)' }}>
                   <Trash2 size={11} />
-                </button>
+                </button>}
               </div>
             </div>
           ))}
@@ -320,10 +320,10 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false })
                   <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:1 }}>{l.descripcion}</p>
                 )}
               </div>
-              <button onClick={() => handleDelete(l)} className="btn-ghost"
+              {!readOnly && <button onClick={() => handleDelete(l)} className="btn-ghost"
                 style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center', color:'var(--alert)' }}>
                 <Trash2 size={11} />
-              </button>
+              </button>}
             </div>
           ))}
         </div>

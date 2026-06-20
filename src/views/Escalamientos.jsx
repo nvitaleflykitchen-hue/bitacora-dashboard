@@ -30,7 +30,8 @@ const KANBAN_COLS = [
 ]
 
 export default function Escalamientos() {
-  const { allowedSedeIds } = useAuth()
+  const { allowedSedeIds, can } = useAuth()
+  const canManage = can('escalamientos', 'manage')
   const [items,      setItems]      = useState([])
   const [sedes,      setSedes]      = useState([])
   const [loading,    setLoading]    = useState(true)
@@ -72,6 +73,7 @@ export default function Escalamientos() {
   useEffect(() => { load() }, [load])
 
   const handleEstado = async (id, nuevoEstado) => {
+    if (!canManage) return
     setUpdating(id)
     try {
       await updateEscalamientoItem(id, { estado: nuevoEstado })
@@ -215,9 +217,10 @@ export default function Escalamientos() {
             const colItems = items.filter(e => e.estado === col.estado)
             return (
               <div key={col.estado}
-                onDragOver={(ev) => ev.preventDefault()}
+                onDragOver={(ev) => { if (canManage) ev.preventDefault() }}
                 onDrop={(ev) => {
                   ev.preventDefault()
+                  if (!canManage) return
                   const it = items.find(x => x.id === dragId)
                   if (it && it.estado !== col.estado) handleEstado(dragId, col.estado)
                 }}
@@ -232,11 +235,11 @@ export default function Escalamientos() {
                   {colItems.map(e => {
                     const tipoColor = TIPO_COLOR[e.tipo] || '#9ca3af'
                     return (
-                      <div key={e.id} draggable
+                      <div key={e.id} draggable={canManage}
                         onDragStart={() => setDragId(e.id)}
                         onDragEnd={() => setDragId(null)}
                         className="glass rounded p-2.5"
-                        style={{ borderRadius:'3px', borderLeft:`3px solid ${tipoColor}`, cursor:'grab', opacity: dragId === e.id ? 0.4 : 1 }}>
+                        style={{ borderRadius:'3px', borderLeft:`3px solid ${tipoColor}`, cursor:canManage?'grab':'default', opacity: dragId === e.id ? 0.4 : 1 }}>
                         <div className="flex items-center justify-between gap-2 mb-1.5">
                           <span style={{ background:`${tipoColor}18`, border:`1px solid ${tipoColor}55`, borderRadius:3, padding:'0.12rem 0.4rem', fontSize:'0.6rem', color: tipoColor, fontWeight:700 }}>
                             {e.tipo || 'General'}
@@ -260,7 +263,7 @@ export default function Escalamientos() {
                                 Ver
                               </button>
                             )}
-                            {e.tipo === 'Mantenimiento' && (
+                            {canManage && e.tipo === 'Mantenimiento' && (
                               tickets[e.id] ? (
                                 <span title="Ticket de mantenimiento ya generado"
                                   style={{ color:'var(--phosphor)', fontSize:'0.58rem', fontWeight:700, whiteSpace:'nowrap' }}>
@@ -348,7 +351,7 @@ export default function Escalamientos() {
                               Ver reporte
                             </button>
                           )}
-                          {e.tipo === 'Mantenimiento' && (
+                          {canManage && e.tipo === 'Mantenimiento' && (
                             tickets[e.id] ? (
                               <span title="Ticket de mantenimiento ya generado"
                                 style={{ color:'var(--phosphor)', fontSize:'0.62rem', fontWeight:700, whiteSpace:'nowrap' }}>
@@ -361,7 +364,7 @@ export default function Escalamientos() {
                               </button>
                             )
                           )}
-                          {e.estado === 'Pendiente' && (
+                          {canManage && e.estado === 'Pendiente' && (
                             <button
                               onClick={() => handleEstado(e.id, 'En gestión')}
                               disabled={updating === e.id}
@@ -369,7 +372,7 @@ export default function Escalamientos() {
                               {updating === e.id ? '...' : '→ En gestión'}
                             </button>
                           )}
-                          {e.estado === 'En gestión' && (
+                          {canManage && e.estado === 'En gestión' && (
                             <button
                               onClick={() => handleEstado(e.id, 'Resuelto')}
                               disabled={updating === e.id}

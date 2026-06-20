@@ -449,7 +449,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
 }
 
 // ─── Tarjeta en kanban ─────────────────────────────────────
-function ReqCard({ req, onEdit, onUpdateEstado, onEnviar }) {
+function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
   const urg = URG_COLOR[req.urgencia] || '#aaa'
   const diasEtapa = diasHabilesEntre(inicioEtapa(req))
   const diasCompra = req.enviado_at ? diasHabilesEntre(req.enviado_at, req.cumplido_at ? new Date(req.cumplido_at) : new Date()) : null
@@ -458,7 +458,7 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar }) {
   const observado = req.estado === 'Observado'
   return (
     <div className="rounded p-3 fade-in" style={{ background:observado?'rgba(251,146,60,0.055)':'var(--surface)', border:`1px solid ${observado?'rgba(251,146,60,0.5)':'rgba(255,255,255,0.05)'}`, borderLeft:observado?'3px solid #FB923C':undefined, cursor:'pointer' }}
-      onClick={()=>onEdit(req)}>
+      onClick={()=>{ if (!readOnly) onEdit(req) }}>
       {observado && (
         <div style={{ color:'#FB923C', fontSize:'0.58rem', fontWeight:800, letterSpacing:'0.06em', marginBottom:6 }}>
           OBSERVADO · REQUIERE CORRECCIÓN
@@ -499,7 +499,7 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar }) {
           </a>
         )}
       </div>
-      <div style={{ display:'flex', gap:5 }} onClick={e=>e.stopPropagation()}>
+      {!readOnly && <div style={{ display:'flex', gap:5 }} onClick={e=>e.stopPropagation()}>
         <select value={req.estado}
           onChange={e=>onUpdateEstado(req.id, e.target.value)}
           style={{ flex:1, background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.15)', color:'#e2e8f0', borderRadius:4, padding:'3px 6px', fontSize:'0.65rem', fontFamily:'inherit' }}>
@@ -511,14 +511,16 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar }) {
             <Send size={10}/> Enviar
           </button>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
 
 // ─── Vista principal ───────────────────────────────────────
 export default function Requerimientos() {
-  const { allowedSedeIds, perfil } = useAuth()
+  const { allowedSedeIds, perfil, can } = useAuth()
+  const canManage = can('compras', 'manage')
+  const canRequest = can('compras', 'request') || canManage
   const [reqs, setReqs]       = useState([])
   const [sedes, setSedes]     = useState([])
   const [contactos, setContactos] = useState([])
@@ -549,6 +551,7 @@ export default function Requerimientos() {
   useEffect(()=>{ load() }, [load])
 
   const handleUpdateEstado = async (id, estado) => {
+    if (!canManage) return
     const req = reqs.find(r=>r.id===id)
     if (!req || req.estado === estado) return
     let comentario = ''
@@ -577,6 +580,7 @@ export default function Requerimientos() {
   }
 
   const handleEnviar = async (req) => {
+    if (!canManage) return
     const dest = emailCompras || req.enviado_a || ''
     const subject = encodeURIComponent(`[Requerimiento #${req.numero||req.id}] ${req.descripcion?.substring(0,50)}`)
     const body = buildEmailBody(req, sedes)
@@ -648,10 +652,10 @@ export default function Requerimientos() {
             {showKpis ? 'Ocultar KPIs' : 'Mostrar KPIs'}
           </button>
           <button onClick={load} className="btn-ghost" style={{ padding:'0.4rem 0.5rem' }}><RefreshCw size={12}/></button>
-          <button onClick={()=>{ setEditReq(null); setShowForm(true) }} className="btn-primary"
+          {canRequest && <button onClick={()=>{ setEditReq(null); setShowForm(true) }} className="btn-primary"
             style={{ display:'flex', alignItems:'center', gap:5 }}>
             <Plus size={12}/> Nuevo requerimiento
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -780,7 +784,8 @@ export default function Requerimientos() {
                   <ReqCard key={r.id} req={r}
                     onEdit={r=>{ setEditReq(r); setShowForm(true) }}
                     onUpdateEstado={handleUpdateEstado}
-                    onEnviar={handleEnviar}/>
+                    onEnviar={handleEnviar}
+                    readOnly={!canManage && !(canRequest && ['Pendiente','Observado'].includes(r.estado))}/>
                 ))}
                 {items.length===0 && (
                   <div style={{ textAlign:'center', padding:'1.5rem 0', color:'rgba(107,114,128,0.3)', fontSize:'0.62rem', border:'1px dashed rgba(107,114,128,0.15)', borderRadius:5 }}>

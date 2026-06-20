@@ -19,7 +19,8 @@ function fechaChip(f) {
 }
 
 export default function Tareas() {
-  const { rol, sedeIds, allowedSedeIds, perfil } = useAuth()
+  const { rol, sedeIds, allowedSedeIds, perfil, can } = useAuth()
+  const canManage = can('tareas', 'manage')
   const [tareas, setTareas]   = useState([])
   const [sedes, setSedes]     = useState([])
   const [loading, setLoading] = useState(true)
@@ -127,9 +128,9 @@ export default function Tareas() {
           <button onClick={load} className="btn-ghost" style={{ padding:'0.35rem 0.5rem' }}>
             <RefreshCw size={12} />
           </button>
-          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1.5">
+          {canManage && <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1.5">
             <Plus size={12} /> Nueva tarea
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -185,7 +186,7 @@ export default function Tareas() {
             style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
         </div>
       ) : viewMode === 'kanban' ? (
-        <KanbanBoard tareas={tareas} onRefresh={load} />
+        <KanbanBoard tareas={tareas} onRefresh={load} readOnly={!canManage} />
       ) : (
         <div className="glass rounded overflow-hidden" style={{ borderRadius:'3px' }}>
           <div className="overflow-x-auto">

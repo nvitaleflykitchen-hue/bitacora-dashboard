@@ -3,11 +3,11 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import PushNotificationControl from './PushNotificationControl'
 import NotificationCenter from './NotificationCenter'
+import { getNavSection, getPrimaryNav } from '../lib/access'
 import {
-  LayoutDashboard, Building2, AlertTriangle, CheckSquare,
-  Calendar, ShieldAlert, Wrench, BarChart3, Users, Menu, X, LogOut, KeyRound,
-  Hammer, Truck, FlameKindling, Package, ClipboardList, Kanban, Users2,
-  ShoppingCart, MapPin, Shield, Layers, Car, FileWarning,
+  LayoutDashboard, Building2, AlertTriangle,
+  Wrench, Users, Menu, X, LogOut, KeyRound,
+  Users2, ShoppingCart, Shield, ClipboardCheck,
 } from 'lucide-react'
 
 function SectionLabel({ children }) {
@@ -114,6 +114,17 @@ export default function Sidebar({ activeView, onNavigate }) {
   const [showPwModal, setShowPwModal] = useState(false)
 
   const nav = (id) => { onNavigate(id); setMobileOpen(false) }
+  const iconByName = {
+    home: LayoutDashboard,
+    pending: ClipboardCheck,
+    sites: Building2,
+    purchases: ShoppingCart,
+    maintenance: Wrench,
+    quality: Shield,
+    team: Users2,
+  }
+  const primaryNav = getPrimaryNav(rol)
+  const activeSection = getNavSection(activeView)
 
   const sidebarContent = (
     <div className="flex flex-col h-full" style={{ background:'var(--surface)' }}>
@@ -130,40 +141,17 @@ export default function Sidebar({ activeView, onNavigate }) {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
 
-        <SectionLabel>OPERACIONES</SectionLabel>
-        <NavItem id="dashboard"     label="Dashboard"      icon={LayoutDashboard} active={activeView==='dashboard'}     onClick={nav} />
-        <NavItem id="sede"          label="Por Sede"        icon={Building2}       active={activeView==='sede'}          onClick={nav} />
-        <NavItem id="sedeFicha"     label="Ficha de Unidad" icon={Layers}          active={activeView==='sedeFicha'}     onClick={nav} />
-        <NavItem id="escalamientos" label="Escalamientos"   icon={AlertTriangle}   active={activeView==='escalamientos'} onClick={nav} />
-        <NavItem id="calendario"    label="Calendario"      icon={Calendar}        active={activeView==='calendario'}    onClick={nav} />
-
-        <SectionLabel>CALIDAD (ISO 9001)</SectionLabel>
-        <NavItem id="noConformidades" label="No Conformidades" icon={ShieldAlert} active={activeView==='noConformidades'} onClick={nav} />
-        <NavItem id="capa"            label="CAPA"             icon={Wrench}      active={activeView==='capa'}            onClick={nav} />
-        <NavItem id="indicadores"     label="Indicadores"      icon={BarChart3}   active={activeView==='indicadores'}     onClick={nav} />
-
-        <SectionLabel>GESTIÓN</SectionLabel>
-        <NavItem id="tareas"          label="Tareas"            icon={CheckSquare}  active={activeView==='tareas'}           onClick={nav} />
-        <NavItem id="requerimientos"  label="Requerimientos"    icon={ShoppingCart} active={activeView==='requerimientos'}   onClick={nav} />
-        <NavItem id="sedeResponsables" label="Responsables Sede" icon={MapPin}      active={activeView==='sedeResponsables'} onClick={nav} />
-
-        <SectionLabel>MANTENIMIENTO</SectionLabel>
-        <NavItem id="mntDashboard"   label="Resumen Mnt."    icon={Hammer}        active={activeView==='mntDashboard'}   onClick={nav} />
-        <NavItem id="mntTickets"     label="Tickets"         icon={ClipboardList} active={activeView==='mntTickets'}     onClick={nav} />
-        <NavItem id="mntActivos"     label="Activos"         icon={Wrench}        active={activeView==='mntActivos'}     onClick={nav} />
-        <NavItem id="mntPlanes"      label="Planes Prev."    icon={Calendar}      active={activeView==='mntPlanes'}      onClick={nav} />
-        <NavItem id="mntProveedores" label="Proveedores"     icon={Truck}         active={activeView==='mntProveedores'} onClick={nav} />
-        <NavItem id="mntMatafuegos"  label="Matafuegos"      icon={FlameKindling} active={activeView==='mntMatafuegos'}  onClick={nav} />
-        <NavItem id="mntInsumos"     label="Insumos"         icon={Package}       active={activeView==='mntInsumos'}     onClick={nav} />
-        <NavItem id="mntKanban"      label="Tablero Gestión" icon={Kanban}        active={activeView==='mntKanban'}      onClick={nav} />
-        <NavItem id="mntResponsables" label="Responsables"   icon={Users2}        active={activeView==='mntResponsables'} onClick={nav} />
-
-        <SectionLabel>FLOTA</SectionLabel>
-        <NavItem id="flotaGestion"  label="Gestión Flota" icon={FileWarning} active={activeView==='flotaGestion'} onClick={nav} />
-        <NavItem id="mntVehiculos"  label="Tickets Flota" icon={Car}         active={activeView==='mntVehiculos'} onClick={nav} />
-
-        <SectionLabel>EQUIPO</SectionLabel>
-        <NavItem id="equipo" label="Equipo" icon={Users2} active={activeView==='equipo'} onClick={nav} />
+        <SectionLabel>MI TRABAJO</SectionLabel>
+        {primaryNav.map(item => (
+          <NavItem
+            key={item.id}
+            id={item.id}
+            label={item.label}
+            icon={iconByName[item.icon] || AlertTriangle}
+            active={activeSection === item.id}
+            onClick={nav}
+          />
+        ))}
 
         {isAdmin && (
           <>

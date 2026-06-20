@@ -22,7 +22,8 @@ const TIPO_COLOR = {
 const ESTADOS = ['Pendiente', 'En gestión', 'Resuelto']
 
 export default function MobileEscalamientos() {
-  const { allowedSedeIds } = useAuth()
+  const { allowedSedeIds, can } = useAuth()
+  const canManage = can('escalamientos', 'manage')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('Pendiente')
@@ -43,6 +44,7 @@ export default function MobileEscalamientos() {
     : items.filter(e => e.estado === filtro)
 
   const handleEstado = async (id, nuevoEstado) => {
+    if (!canManage) return
     setUpdating(id)
     try {
       await updateEscalamientoItem(id, { estado: nuevoEstado })
@@ -146,7 +148,7 @@ export default function MobileEscalamientos() {
               </div>
 
               {/* Cambio de estado */}
-              {e.estado !== 'Resuelto' && (
+              {canManage && e.estado !== 'Resuelto' && (
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   {ESTADOS.filter(s => s !== e.estado).map(s => (
                     <button key={s} onClick={() => handleEstado(e.id, s)}

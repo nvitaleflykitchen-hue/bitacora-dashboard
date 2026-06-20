@@ -260,7 +260,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose }) {
           )}
 
           <div className="pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-            <AdjuntosPanel entityType="capa" entityId={c.id} />
+            <AdjuntosPanel entityType="capa" entityId={c.id} readOnly={!canWrite} />
           </div>
         </div>
       </div>

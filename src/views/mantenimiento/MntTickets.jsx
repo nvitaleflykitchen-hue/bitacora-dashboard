@@ -392,7 +392,7 @@ function toDateInput(val) {
   return new Date(val).toISOString().split('T')[0]
 }
 
-export function TicketModal({ ticket, activos, proveedores, responsables, sedes, onClose, onSaved }) {
+export function TicketModal({ ticket, activos, proveedores, responsables, sedes, onClose, onSaved, readOnly = false }) {
   const { perfil } = useAuth()
   const isNew = !ticket?.id
   const [form, setForm] = useState(() => ({
@@ -415,6 +415,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
   const tipoColor   = ACTIVO_TIPO_COLOR[activoTipo] || 'rgba(255,255,255,0.3)'
 
   const handleSave = async () => {
+    if (readOnly) return
     if (!form.descripcion) { setErr('La descripción es obligatoria'); return }
     setSaving(true); setErr(null)
     try {
@@ -488,13 +489,13 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
           <div style={{ display:'flex', gap:4, marginBottom:'1.25rem', borderBottom:'1px solid rgba(57,255,20,0.05)', paddingBottom:'0.5rem' }}>
             <button style={TAB(tab==='datos')}    onClick={()=>setTab('datos')}>Datos</button>
             <button style={TAB(tab==='historial')} onClick={()=>setTab('historial')}>Historial</button>
-            <button style={TAB(tab==='costos')} onClick={()=>setTab('costos')}>Costos / OC</button>
+            {!readOnly && <button style={TAB(tab==='costos')} onClick={()=>setTab('costos')}>Costos / OC</button>}
             <button style={TAB(tab==='adjuntos')} onClick={()=>setTab('adjuntos')}>Adjuntos</button>
           </div>
         )}
 
         {tab === 'datos' && (
-          <>
+          <fieldset disabled={readOnly} style={{ border:0, margin:0, padding:0, minWidth:0 }}>
             {/* Tipo + Prioridad */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW}>
@@ -617,13 +618,13 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                 </select>
               </div>
             )}
-          </>
+          </fieldset>
         )}
 
         {tab === 'historial' && <HistorialTab ticketId={ticket?.id} />}
         {tab === 'costos' && <CostosTab ticket={ticket} form={form} set={set} />}
         {tab === 'adjuntos' && ticket?.id && (
-          <AdjuntosPanel entityType="ticket" entityId={ticket.id} />
+          <AdjuntosPanel entityType="ticket" entityId={ticket.id} readOnly={readOnly} />
         )}
         {tab === 'adjuntos' && !ticket?.id && (
           <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', padding:'1rem 0' }}>Guardá el ticket primero para adjuntar archivos.</p>
@@ -634,12 +635,12 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
         {(tab === 'datos' || tab === 'costos') && (
           <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', marginTop:'0.5rem' }}>
             <button onClick={onClose} style={{ padding:'0.65rem 1.2rem', borderRadius:2, background:'rgba(57,255,20,0.05)', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>
-              Cancelar
+              {readOnly ? 'Cerrar' : 'Cancelar'}
             </button>
-            <button onClick={handleSave} disabled={saving}
+            {!readOnly && <button onClick={handleSave} disabled={saving}
               style={{ padding:'0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color:'#0A0A0E', border:'none', cursor: saving ? 'not-allowed' : 'pointer', fontWeight:700 }}>
               {saving ? 'Guardando...' : (isNew ? 'Crear Ticket' : 'Guardar')}
-            </button>
+            </button>}
           </div>
         )}
       </div>
@@ -658,7 +659,9 @@ export default function MntTickets() {
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [filtroTipo, setFiltroTipo]     = useState('todos')
   const [filtroSLA, setFiltroSLA]       = useState(false)
-  const { rol, sedeIds, allowedSedeIds } = useAuth()
+  const { rol, sedeIds, allowedSedeIds, can } = useAuth()
+  const canManage = can('mantenimiento', 'manage')
+  const canReport = canManage || can('mantenimiento', 'report')
   const [sedeId, setSedeId]             = useState('')
   const [sedes, setSedes]               = useState([])
 
@@ -738,10 +741,10 @@ export default function MntTickets() {
             style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.3)', borderRadius:3, padding:'0.5rem 0.65rem', cursor:'pointer', color:'var(--phosphor)', display:'flex', alignItems:'center', gap:4 }}>
             <Download size={14} />
           </button>
-          <button onClick={() => setModalTicket({})}
+          {canReport && <button onClick={() => setModalTicket({})}
             style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
             + Nuevo Ticket
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -818,6 +821,7 @@ export default function MntTickets() {
           proveedores={proveedores}
           responsables={responsables}
           sedes={sedes}
+          readOnly={Boolean(modalTicket?.id) && !canManage}
           onClose={() => setModalTicket(null)}
           onSaved={() => { setModalTicket(null); load() }}
         />

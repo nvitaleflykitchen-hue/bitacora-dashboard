@@ -41,7 +41,7 @@ export default function MobileHome({ onNuevoReporte }) {
       </div>
 
       {/* Boton principal */}
-      <button onClick={onNuevoReporte}
+      {onNuevoReporte && <button onClick={onNuevoReporte}
         style={{
           width: '100%', padding: '1rem', borderRadius: 8,
           background: 'var(--phosphor)', color: '#0A0A0E',
@@ -50,7 +50,7 @@ export default function MobileHome({ onNuevoReporte }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
         }}>
         + Cargar Reporte de Hoy
-      </button>
+      </button>}
 
       {/* Mis reportes de hoy */}
       <section style={{ marginBottom: '1.5rem' }}>

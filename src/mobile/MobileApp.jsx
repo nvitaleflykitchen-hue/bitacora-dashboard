@@ -20,7 +20,9 @@ const NAV = [
 ]
 
 export default function MobileApp() {
-  const { perfil } = useAuth()
+  const { perfil, rol, can } = useAuth()
+  const canReport = can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol)
+  const canUseChecklist = rol !== 'consultor'
   const [tab, setTab] = useState('home')
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
 
@@ -44,7 +46,7 @@ export default function MobileApp() {
         />
       )
     }
-    if (tab === 'home')          return <MobileHome onNuevoReporte={() => setScreen('reporte')} />
+    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} />
     if (tab === 'tareas')        return <MobileTareas />
     if (tab === 'sedes')         return <MobileSedes />
     if (tab === 'escalamientos') return <MobileEscalamientos />
@@ -82,7 +84,7 @@ export default function MobileApp() {
             {perfil?.rol?.toUpperCase() || 'FK'}
           </span>
           {/* Boton reporte rapido en header */}
-          {screen === 'main' && (
+          {screen === 'main' && canReport && (
             <button onClick={() => setScreen('reporte')}
               style={{
                 background: 'var(--phosphor)', color: '#0A0A0E',
@@ -108,7 +110,7 @@ export default function MobileApp() {
           display: 'flex',
           padding: '0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom))',
         }}>
-          {NAV.map(n => (
+          {NAV.filter(n => canUseChecklist || n.key !== 'checklist').map(n => (
             <button key={n.key} onClick={() => setTab(n.key)}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',

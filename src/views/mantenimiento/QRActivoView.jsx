@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getActivoById, getTickets, createTicket, getSedes, TICKET_TIPOS_VALIDOS } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
+import { useAuth } from '../../lib/auth'
 
 const ESTADO_COLOR  = { operativo:'#39FF14', en_reparacion:'#F59E0B', baja:'#FF2A2A' }
 const TICKET_COLOR  = { abierto:'#F97316', en_progreso:'#3B82F6', aprobado:'#F59E0B', resuelto:'#39FF14', rechazado:'#6B7280' }
@@ -20,6 +21,9 @@ function fmtHora(iso) {
 }
 
 export default function QRActivoView({ activoId, onNavigate }) {
+  const { can } = useAuth()
+  const canManage = can('mantenimiento', 'manage')
+  const canReport = canManage || can('mantenimiento', 'report')
   const [activo, setActivo]   = useState(null)
   const [tickets, setTickets] = useState([])
   const [visitas, setVisitas] = useState([])
@@ -55,6 +59,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
   }, [activoId])
 
   const handleCrearTicket = async () => {
+    if (!canReport) return
     if (!form.descripcion.trim()) return
     setSaving(true)
     try {
@@ -72,6 +77,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
   }
 
   const handleRegistrarVisita = async () => {
+    if (!canManage) return
     setVisitando(true)
     try {
       const { data, error: err } = await supabase
@@ -171,14 +177,14 @@ export default function QRActivoView({ activoId, onNavigate }) {
       {!showForm && !showVisitaForm && (
         <div style={{ margin:'0 1rem 1rem', display:'flex', flexDirection:'column', gap:'0.6rem' }}>
           <div style={{ display:'flex', gap:'0.6rem' }}>
-            <button onClick={()=>{ setShowVisitaForm(true); setSaved(false); setVisitaOk(false) }}
+            {canManage && <button onClick={()=>{ setShowVisitaForm(true); setSaved(false); setVisitaOk(false) }}
               style={{ flex:1, background:'#3B82F6', color:'#fff', border:'none', borderRadius:3, padding:'0.85rem', fontWeight:800, fontSize:'0.9rem', cursor:'pointer', fontFamily:'monospace' }}>
               📋 Registrar Visita
-            </button>
-            <button onClick={()=>{ setShowForm(true); setSaved(false) }}
+            </button>}
+            {canReport && <button onClick={()=>{ setShowForm(true); setSaved(false) }}
               style={{ flex:1, background:'#39FF14', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.85rem', fontWeight:800, fontSize:'0.9rem', cursor:'pointer', fontFamily:'monospace' }}>
               + Nuevo Ticket
-            </button>
+            </button>}
           </div>
           <button onClick={()=>onNavigate('mntTickets')}
             style={{ background:'#151520', color:'#e2e8f0', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:'0.75rem', fontWeight:600, fontSize:'0.85rem', cursor:'pointer', fontFamily:'monospace' }}>
@@ -196,11 +202,11 @@ export default function QRActivoView({ activoId, onNavigate }) {
             ↗ Abrir manual principal
           </a>
         )}
-        <AdjuntosPanel entityType="activo" entityId={activo.id} compact />
+        <AdjuntosPanel entityType="activo" entityId={activo.id} compact readOnly={!canManage} />
       </div>
 
       {/* Formulario registrar visita */}
-      {showVisitaForm && (
+      {canManage && showVisitaForm && (
         <div style={{ margin:'0 1rem 1rem', background:'#151520', borderRadius:3, border:'1px solid rgba(59,130,246,0.2)', padding:'1.25rem' }}>
           <p style={{ color:'#3B82F6', fontWeight:700, marginBottom:'1rem', fontSize:'0.9rem' }}>📋 Registrar Visita — {activo.nombre}</p>
           <div style={{ marginBottom:'0.85rem' }}>
@@ -234,7 +240,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
       )}
 
       {/* Formulario nuevo ticket */}
-      {showForm && (
+      {canReport && showForm && (
         <div style={{ margin:'0 1rem 1rem', background:'#151520', borderRadius:3, border:'1px solid rgba(57,255,20,0.06)', padding:'1.25rem' }}>
           <p style={{ color:'#e2e8f0', fontWeight:700, marginBottom:'1rem' }}>Nuevo Ticket — {activo.nombre}</p>
           <div style={{ marginBottom:'0.85rem' }}>

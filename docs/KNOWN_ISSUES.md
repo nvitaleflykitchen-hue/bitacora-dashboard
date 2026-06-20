@@ -135,11 +135,11 @@ Como contraste, `checklists`/`checklist_items` sí están bien resueltas (polít
 
 **Recomendación:** mismo patrón que §2.3 — definir qué rol/condición debería aplicar a cada tabla (probablemente `staff` para escritura, lectura amplia para autenticados) y reemplazar las políticas `true` por esas condiciones.
 
-### 2.5 `SedeFicha.jsx`: bug de esquema rompe KPIs de tickets/activos en la ficha de sede
+### 2.5 `SedeFicha.jsx`: bug de esquema rompe KPIs de tickets/activos en la ficha de sede — ✅ corregido localmente (2026-06-20)
 
 Ya documentado en API.md §3.2 y BUSINESS_RULES.md §5 — se repite aquí por severidad. El componente llama `supabase.schema('mantenimiento').from('mnt_tickets')` y `.from('mnt_activos')`, pero esos nombres son vistas que existen únicamente en `public`, no en `mantenimiento`. La consulta apunta a una relación inexistente en ese esquema, por lo que el KPI de "tickets críticos" y los datos de activos en esa pantalla probablemente no muestren datos reales hoy.
 
-**Recomendación:** cambiar esas dos llamadas a `supabase.from('mnt_tickets')`/`.from('mnt_activos')` (sin `.schema('mantenimiento')`), igual que se hace en el resto del código para esas vistas.
+**Corrección aplicada:** las consultas ahora usan `supabase.from('mnt_tickets')`/`.from('mnt_activos')` (sin `.schema('mantenimiento')`). Pendiente de deploy y verificación en producción.
 
 ### 2.6 Dos bugs "fail-open" en el cálculo de permisos por sede (`src/lib/auth.jsx`)
 

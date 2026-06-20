@@ -26,7 +26,7 @@ function fechaChip(fechaLimite) {
   return <span className="chip chip-gray">{label}</span>
 }
 
-function Subtareas({ tareaId, subtareas = [], onUpdate }) {
+function Subtareas({ tareaId, subtareas = [], onUpdate, readOnly }) {
   const [adding, setAdding] = useState(false)
   const [nuevoTexto, setNuevoTexto] = useState('')
   const [saving, setSaving] = useState(false)
@@ -81,12 +81,12 @@ function Subtareas({ tareaId, subtareas = [], onUpdate }) {
             </span>
           )}
         </div>
-        <button
+        {!readOnly && <button
           onClick={() => setAdding(v => !v)}
           style={{ color:'rgba(57,255,20,0.5)', cursor:'pointer', background:'none', border:'none', padding:0, lineHeight:1 }}
           title="Agregar subtarea">
           <Plus size={11} />
-        </button>
+        </button>}
       </div>
 
       {/* Lista */}
@@ -94,7 +94,7 @@ function Subtareas({ tareaId, subtareas = [], onUpdate }) {
         <div key={sub.id} className="flex items-start gap-1.5 mb-1 group">
           <button
             onClick={() => toggle(sub.id)}
-            disabled={saving}
+            disabled={saving || readOnly}
             style={{
               width:14, height:14, borderRadius:3, flexShrink:0, marginTop:1, cursor:'pointer',
               border: sub.completada ? 'none' : '1px solid rgba(255,255,255,0.2)',
@@ -111,17 +111,17 @@ function Subtareas({ tareaId, subtareas = [], onUpdate }) {
           }}>
             {sub.texto}
           </span>
-          <button
+          {!readOnly && <button
             onClick={() => remove(sub.id)}
             className="opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ color:'rgba(255,80,80,0.5)', cursor:'pointer', background:'none', border:'none', padding:0, flexShrink:0 }}>
             <X size={10} />
-          </button>
+          </button>}
         </div>
       ))}
 
       {/* Add form */}
-      {adding && (
+      {!readOnly && adding && (
         <div className="flex gap-1 mt-1.5">
           <input
             autoFocus
@@ -140,14 +140,14 @@ function Subtareas({ tareaId, subtareas = [], onUpdate }) {
       {/* Empty state hint */}
       {list.length === 0 && !adding && (
         <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>
-          Sin subtareas — click + para agregar
+          {readOnly ? 'Sin subtareas' : 'Sin subtareas — click + para agregar'}
         </p>
       )}
     </div>
   )
 }
 
-function Intervinientes({ tareaId, intervinientes = [], onUpdate }) {
+function Intervinientes({ tareaId, intervinientes = [], onUpdate, readOnly }) {
   const [adding, setAdding] = useState(false)
   const [nombre, setNombre] = useState('')
   const [saving, setSaving] = useState(false)
@@ -179,12 +179,12 @@ function Intervinientes({ tareaId, intervinientes = [], onUpdate }) {
         <span className="font-metric" style={{ color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.08em' }}>
           INTERVINIENTES
         </span>
-        <button
+        {!readOnly && <button
           onClick={() => setAdding(v => !v)}
           style={{ color:'rgba(57,255,20,0.5)', cursor:'pointer', background:'none', border:'none', padding:0, lineHeight:1 }}
           title="Agregar interviniente">
           <Plus size={11} />
-        </button>
+        </button>}
       </div>
 
       {list.length > 0 && (
@@ -195,16 +195,16 @@ function Intervinientes({ tareaId, intervinientes = [], onUpdate }) {
               borderRadius:3, padding:'2px 6px',
             }}>
               <User size={9} style={{ color:'var(--text-dim)' }} />{p.nombre}
-              <button onClick={() => remove(p.id)} disabled={saving}
+              {!readOnly && <button onClick={() => remove(p.id)} disabled={saving}
                 style={{ color:'rgba(255,80,80,0.5)', cursor:'pointer', background:'none', border:'none', padding:0, marginLeft:2, display:'flex' }}>
                 <X size={9} />
-              </button>
+              </button>}
             </span>
           ))}
         </div>
       )}
 
-      {adding && (
+      {!readOnly && adding && (
         <div className="flex gap-1 mt-1">
           <input
             autoFocus
@@ -222,14 +222,14 @@ function Intervinientes({ tareaId, intervinientes = [], onUpdate }) {
 
       {list.length === 0 && !adding && (
         <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>
-          Sin otros intervinientes — click + para agregar
+          {readOnly ? 'Sin otros intervinientes' : 'Sin otros intervinientes — click + para agregar'}
         </p>
       )}
     </div>
   )
 }
 
-function TareaCard({ tarea, onUpdate }) {
+function TareaCard({ tarea, onUpdate, readOnly }) {
   const [expanded, setExpanded] = useState(false)
   const [notas, setNotas]       = useState(tarea.notas_resolucion || '')
   const [saving, setSaving]     = useState(false)
@@ -308,6 +308,7 @@ function TareaCard({ tarea, onUpdate }) {
       <select
         value={tarea.estado}
         onChange={e => changeEstado(e.target.value)}
+        disabled={readOnly}
         className="input-dark w-full"
         style={{ fontSize:'0.7rem', padding:'0.3rem 0.5rem' }}>
         {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
@@ -318,6 +319,7 @@ function TareaCard({ tarea, onUpdate }) {
         tareaId={tarea.id}
         subtareas={tarea.subtareas}
         onUpdate={onUpdate}
+        readOnly={readOnly}
       />
 
       {/* Detalle expandible */}
@@ -334,17 +336,17 @@ function TareaCard({ tarea, onUpdate }) {
               {tarea.descripcion}
             </p>
           )}
-          <Intervinientes tareaId={tarea.id} intervinientes={tarea.intervinientes} onUpdate={onUpdate} />
+          <Intervinientes tareaId={tarea.id} intervinientes={tarea.intervinientes} onUpdate={onUpdate} readOnly={readOnly} />
           <div>
             <span className="font-metric" style={{ color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.08em' }}>
               NOTAS DE RESOLUCIÓN
             </span>
-            <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={3}
+            <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={3} disabled={readOnly}
               className="input-dark w-full mt-1" style={{ fontSize:'0.75rem', resize:'vertical' }}
               placeholder="Notas de resolución..." />
-            <button onClick={saveNotas} disabled={saving} className="btn-primary mt-1.5" style={{ fontSize:'0.65rem', padding:'0.25rem 0.6rem' }}>
+            {!readOnly && <button onClick={saveNotas} disabled={saving} className="btn-primary mt-1.5" style={{ fontSize:'0.65rem', padding:'0.25rem 0.6rem' }}>
               {saving ? 'Guardando...' : 'Guardar notas'}
-            </button>
+            </button>}
           </div>
         </div>
       )}
@@ -352,7 +354,7 @@ function TareaCard({ tarea, onUpdate }) {
   )
 }
 
-export default function KanbanBoard({ tareas, onRefresh }) {
+export default function KanbanBoard({ tareas, onRefresh, readOnly = false }) {
   const byEstado = ESTADOS.reduce((acc, e) => {
     acc[e] = tareas.filter(t => t.estado === e)
     return acc
@@ -371,7 +373,7 @@ export default function KanbanBoard({ tareas, onRefresh }) {
             </div>
             <div className="flex flex-col gap-2">
               {byEstado[estado].map(t => (
-                <TareaCard key={t.id} tarea={t} onUpdate={async (id, payload) => {
+                <TareaCard key={t.id} tarea={t} readOnly={readOnly} onUpdate={async (id, payload) => {
                   await updateTarea(id, payload)
                   onRefresh?.()
                 }} />

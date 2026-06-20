@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, db } from './supabase'
+import { canWrite } from './access'
 
 const AuthContext = createContext(null)
 
@@ -8,9 +9,10 @@ export function AuthProvider({ children }) {
   const [perfil, setPerfil]           = useState(null)
   const [allowedSedeIds, setAllowedSedeIds] = useState(null) // null = sin restricción (admin)
   const [loading, setLoading]         = useState(true)
+  const [accessBlocked, setAccessBlocked] = useState(false)
 
   const loadPerfil = async (authUser) => {
-    if (!authUser) { setPerfil(null); setAllowedSedeIds(null); return null }
+    if (!authUser) { setPerfil(null); setAllowedSedeIds(null); setAccessBlocked(false); return null }
     let { data, error } = await db()
       .from('perfiles')
       .select('*')
@@ -32,10 +34,17 @@ export function AuthProvider({ children }) {
     }
     setPerfil(data)
 
+    if (!data?.activo) {
+      setAllowedSedeIds([])
+      setAccessBlocked(true)
+      return data
+    }
+
     // Calcular allowedSedeIds según rol
     const rol = data?.rol || 'consultor'
     if (['admin', 'editor', 'consultor'].includes(rol)) {
       setAllowedSedeIds(null) // sin restricción
+      setAccessBlocked(false)
     } else if (rol === 'grupo' && data?.grupo_id) {
       // Traer todas las sedes activas de ese grupo
       const { data: sedes } = await db()
@@ -44,10 +53,14 @@ export function AuthProvider({ children }) {
         .eq('grupo_id', data.grupo_id)
         .eq('activa', true)
       setAllowedSedeIds((sedes || []).map(s => s.id))
+      setAccessBlocked(!(sedes || []).length)
     } else if ((rol === 'encargado' || rol === 'sede') && data?.sede_ids?.length) {
       setAllowedSedeIds(data.sede_ids)
+      setAccessBlocked(false)
     } else {
-      setAllowedSedeIds(null)
+      // Fail closed: un rol territorial mal configurado no puede ver todas las sedes.
+      setAllowedSedeIds([])
+      setAccessBlocked(true)
     }
 
     return data
@@ -79,15 +92,17 @@ export function AuthProvider({ children }) {
     setUser(null)
     setPerfil(null)
     setAllowedSedeIds(null)
+    setAccessBlocked(false)
   }
 
   const rol       = perfil?.rol || 'consultor'
   const sedeIds   = perfil?.sede_ids || []
   const grupoId   = perfil?.grupo_id || null
   const isAdmin   = rol === 'admin'
+  const can = (domain, action) => canWrite(rol, domain, action)
 
   return (
-    <AuthContext.Provider value={{ user, perfil, rol, sedeIds, grupoId, allowedSedeIds, isAdmin, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, perfil, rol, sedeIds, grupoId, allowedSedeIds, accessBlocked, isAdmin, can, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   )

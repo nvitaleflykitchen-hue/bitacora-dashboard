@@ -11,7 +11,8 @@ const ESTADOS_TAREA = ['pendiente', 'en_curso', 'resuelto']
 const ESTADO_LABEL  = { pendiente: 'Pendiente', en_curso: 'En curso', resuelto: 'Resuelto' }
 
 export default function MobileTareas() {
-  const { perfil } = useAuth()
+  const { perfil, can } = useAuth()
+  const canManage = can('tareas', 'manage')
   const [tareas, setTareas] = useState([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
@@ -80,7 +81,7 @@ export default function MobileTareas() {
           </p>
 
           {/* Avanzar estado */}
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
+          {canManage && <div style={{ display: 'flex', gap: '0.4rem' }}>
             {ESTADOS_TAREA.filter(s => s !== 'resuelto').map(s => (
               <button key={s} onClick={() => t.estado !== s && avanzarEstado(t)}
                 disabled={updating === t.id}
@@ -105,7 +106,7 @@ export default function MobileTareas() {
               }}>
               Resolver
             </button>
-          </div>
+          </div>}
         </div>
       ))}
     </div>
