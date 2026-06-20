@@ -1,0 +1,10 @@
+node_modules
+dist
+.env.local
+.env.*.local
+.vercel
+dist2
+dist_v2
+bitacora-dashboard
+vite.config.js.timestamp-*.mjs
+checkjsx_tmp.js
