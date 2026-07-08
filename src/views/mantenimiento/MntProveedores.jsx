@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getProveedores, upsertProveedor } from '../../lib/queries'
+import { getProveedores, upsertProveedor, getSedes } from '../../lib/queries'
+import { useAuth } from '../../lib/auth'
+import PageHeader from '../../components/PageHeader'
 
 const ESTADO_COLOR = { activo: '#39FF14', inactivo: '#6B7280', bloqueado: '#FF2A2A' }
 const STARS = (n) => '★'.repeat(n) + '☆'.repeat(5-n)
 
-function ProveedorModal({ proveedor, onClose, onSaved }) {
+function ProveedorModal({ proveedor, sedes, onClose, onSaved }) {
   const isNew = !proveedor?.id
-  const [form, setForm] = useState(proveedor || { estado: 'activo', rating: 0, nombre: '' })
+  const [form, setForm] = useState(proveedor || { estado: 'activo', rating: 0, nombre: '', sede_ids: [] })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -41,6 +43,14 @@ function ProveedorModal({ proveedor, onClose, onSaved }) {
         </div>
         <div style={{ marginBottom: '1rem' }}><label style={LABEL}>Dirección</label><input value={form.direccion||''} onChange={e => set('direccion', e.target.value)} style={INPUT} placeholder="Ej: Av. Colón 1234, Córdoba" /></div>
         <div style={{ marginBottom: '1rem' }}>
+          <label style={LABEL}>Sede(s) — vacío = proveedor general (visible para todas)</label>
+          <select multiple value={(form.sede_ids||[]).map(String)} size={4}
+            onChange={e => set('sede_ids', Array.from(e.target.selectedOptions).map(o => Number(o.value)))}
+            style={{ ...INPUT, height:'auto' }}>
+            {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
           <label style={LABEL}>Rating</label>
           <div style={{ display: 'flex', gap: '0.3rem' }}>
             {[1,2,3,4,5].map(n => (
@@ -61,25 +71,35 @@ function ProveedorModal({ proveedor, onClose, onSaved }) {
   )
 }
 
-export default function MntProveedores() {
+export default function MntProveedores({ focusId }) {
+  const { allowedSedeIds } = useAuth()
   const [proveedores, setProveedores] = useState([])
+  const [sedes, setSedes]     = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(null)
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = proveedores.find(item => String(item.id) === String(focusId))
+    if (target) setModal(target)
+  }, [focusId, loading, proveedores])
+
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
 
   const load = useCallback(() => {
     setLoading(true)
-    getProveedores().then(setProveedores).finally(() => setLoading(false))
-  }, [])
+    getProveedores(allowedSedeIds).then(setProveedores).finally(() => setLoading(false))
+  }, [allowedSedeIds])
   useEffect(() => { load() }, [load])
+
+  const sedeLabel = (p) => !p.sede_ids?.length ? 'General' : p.sede_ids.map(id => sedes.find(s => s.id === id)?.nombre || id).join(', ')
 
   return (
     <div style={{ padding: '1.5rem 2rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Proveedores</h1>
+      <PageHeader title="Proveedores">
         <button onClick={() => setModal({})} style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
           + Nuevo
         </button>
-      </div>
+      </PageHeader>
 
       <div style={{ flex: 1, overflowY: 'auto', background: 'var(--surface)', borderRadius:3 }}>
         {loading ? (
@@ -96,7 +116,7 @@ export default function MntProveedores() {
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
             <div>
               <p style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.9rem' }}>{p.nombre}</p>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>{p.categoria || '—'} {p.telefono ? `· ${p.telefono}` : ''} {p.email ? `· ${p.email}` : ''}</p>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>{p.categoria || '—'} {p.telefono ? `· ${p.telefono}` : ''} {p.email ? `· ${p.email}` : ''} · {sedeLabel(p)}</p>
             </div>
             <p style={{ color: '#F59E0B', fontSize: '0.75rem' }}>{STARS(p.rating||0)}</p>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>{p.categoria || '—'}</p>
@@ -108,7 +128,7 @@ export default function MntProveedores() {
       </div>
 
       {modal !== null && (
-        <ProveedorModal proveedor={modal?.id ? modal : null} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />
+        <ProveedorModal proveedor={modal?.id ? modal : null} sedes={sedes} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />
       )}
     </div>
   )

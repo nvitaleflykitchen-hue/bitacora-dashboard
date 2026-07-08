@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { X, MessageCircle, Mail, UserCheck } from 'lucide-react'
-import { createTarea, getSedes, getPerfiles, getContactos } from '../lib/queries'
+import { createTarea, updateTarea, getSedes, getPerfilesConDirectorio, getContactos } from '../lib/queries'
+import { uploadAdjunto } from '../lib/adjuntos'
 import { isoToDisplay } from '../lib/dateUtils'
+import { TASK_STATES } from '../lib/operationalDomains'
+import { useAuth } from '../lib/auth'
+import { isQualityOnlyProfile } from '../lib/access'
 
 export const CATEGORIAS = [
   { key: 'A', label: 'Producción / Servicio del turno' },
@@ -94,33 +98,43 @@ export function ShareButtons({ tarea, responsable, compact = false }) {
   )
 }
 
-export default function TareaForm({ onClose, onCreated, registroOrigen, sedePreseleccionada, initialValues }) {
+export default function TareaForm({ onClose, onCreated, onUpdated, registroOrigen, sedePreseleccionada, initialValues, tareaEditar }) {
+  const { allowedSedeIds, perfil } = useAuth()
+  const isQualityOnly = isQualityOnlyProfile(perfil)
   const [sedes, setSedes]       = useState([])
   const [perfiles, setPerfiles] = useState([])
   const [contactos, setContactos] = useState([])
   const [loading, setLoading]   = useState(false)
   const [shared, setShared]     = useState(false)
+  const [archivos, setArchivos] = useState([])
   const [form, setForm] = useState({
-    titulo:       initialValues?.titulo      || '',
-    descripcion:  initialValues?.descripcion || '',
-    sede_id:      sedePreseleccionada?.id    || registroOrigen?.sede_id || '',
-    registro_id:  registroOrigen?.id         || '',
-    categoria:    initialValues?.categoria   || '',
-    responsable:  '',
-    responsable_id: '',
-    contacto_id:  '',
-    prioridad:    'Media',
-    fecha_limite: '',
-    estado:       'Pendiente',
-    intervinientes: [],
+    titulo:       tareaEditar?.titulo       ?? initialValues?.titulo      ?? '',
+    descripcion:  tareaEditar?.descripcion  ?? initialValues?.descripcion ?? '',
+    sede_id:      tareaEditar?.sede_id      ?? sedePreseleccionada?.id    ?? registroOrigen?.sede_id ?? '',
+    registro_id:  tareaEditar?.registro_id  ?? registroOrigen?.id         ?? '',
+    categoria:    tareaEditar?.categoria    ?? initialValues?.categoria   ?? (isQualityOnly ? 'F' : ''),
+    responsable:  tareaEditar?.responsable  ?? '',
+    responsable_id: tareaEditar?.responsable_id ?? '',
+    contacto_id:  tareaEditar?.contacto_id  ?? '',
+    prioridad:    tareaEditar?.prioridad    ?? 'Media',
+    fecha_limite: tareaEditar?.fecha_limite ? String(tareaEditar.fecha_limite).slice(0, 10) : '',
+    estado:       tareaEditar?.estado       ?? TASK_STATES[0],
+    intervinientes: Array.isArray(tareaEditar?.intervinientes) ? tareaEditar.intervinientes : [],
   })
   const [nuevoInterviniente, setNuevoInterviniente] = useState('')
 
   useEffect(() => {
-    Promise.all([getSedes(), getPerfiles(), getContactos()])
+    Promise.all([getSedes(), getPerfilesConDirectorio(), getContactos()])
       .then(([s, p, c]) => { setSedes(s); setPerfiles(p.filter(x => x.activo !== false)); setContactos(c) })
       .catch(console.error)
   }, [])
+
+  // Si no vino una sede preasignada y el usuario tiene una sola sede (ej: encargado), se preselecciona
+  useEffect(() => {
+    if (!tareaEditar && !sedePreseleccionada && !registroOrigen?.sede_id && allowedSedeIds?.length === 1) {
+      setForm(f => f.sede_id ? f : { ...f, sede_id: allowedSedeIds[0] })
+    }
+  }, [allowedSedeIds])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -153,23 +167,31 @@ export default function TareaForm({ onClose, onCreated, registroOrigen, sedePres
     e.preventDefault()
     setLoading(true)
     try {
-      const tarea = await createTarea({
+      const payload = {
         titulo:        form.titulo,
         descripcion:   form.descripcion,
         sede_id:       form.sede_id    || null,
         registro_id:   form.registro_id || null,
         fecha_limite:  form.fecha_limite || null,
-        categoria:     form.categoria   || null,
+        categoria:     isQualityOnly && !tareaEditar ? 'F' : (form.categoria || null),
         responsable:   form.responsable || null,
         responsable_id: form.responsable_id || null,
         contacto_id:   form.contacto_id || null,
         prioridad:     form.prioridad,
-        estado:        form.estado,
         intervinientes: form.intervinientes,
-      })
-      onCreated?.(tarea)
+      }
+      if (tareaEditar) {
+        const tarea = await updateTarea(tareaEditar.id, payload)
+        onUpdated?.(tarea)
+      } else {
+        const tarea = await createTarea({ ...payload, estado: form.estado })
+        if (archivos.length > 0) {
+          await Promise.all(archivos.map(f => uploadAdjunto('tarea', tarea.id, f)))
+        }
+        onCreated?.(tarea)
+      }
     } catch (err) {
-      alert('Error al crear tarea: ' + err.message)
+      alert(`Error al ${tareaEditar ? 'guardar' : 'crear'} tarea: ` + err.message)
     } finally {
       setLoading(false)
     }
@@ -180,7 +202,7 @@ export default function TareaForm({ onClose, onCreated, registroOrigen, sedePres
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px' }}>
         <div className="flex items-center justify-between px-6 py-4"
           style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
-          <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Nueva Tarea</h2>
+          <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>{tareaEditar ? 'Editar tarea' : 'Nueva Tarea'}</h2>
           <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}>
             <X size={15} />
           </button>
@@ -216,7 +238,7 @@ export default function TareaForm({ onClose, onCreated, registroOrigen, sedePres
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Categoría</label>
               <select className="input-dark" value={form.categoria} onChange={e => set('categoria', e.target.value)}>
                 <option value="">—</option>
-                {CATEGORIAS.map(c => (
+                {(isQualityOnly && !tareaEditar ? CATEGORIAS.filter(c => c.key === 'F') : CATEGORIAS).map(c => (
                   <option key={c.key} value={c.key}>{c.key} — {c.label}</option>
                 ))}
               </select>
@@ -316,10 +338,17 @@ export default function TareaForm({ onClose, onCreated, registroOrigen, sedePres
             </div>
           )}
 
+          {!tareaEditar && (
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Evidencias (Fotos/Archivos)</label>
+              <input type="file" multiple className="input-dark" style={{ padding:'0.4rem' }} onChange={e => setArchivos(Array.from(e.target.files || []))} />
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
             <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Guardando...' : 'Crear tarea'}
+              {loading ? 'Guardando...' : (tareaEditar ? 'Guardar cambios' : 'Crear tarea')}
             </button>
           </div>
         </form>

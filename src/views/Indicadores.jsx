@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getIndicadoresPorSede, getMapaCalorGestion } from '../lib/queries'
 import { useAuth } from '../lib/auth'
+import PageHeader from '../components/PageHeader'
 import { RefreshCw } from 'lucide-react'
 
 const PERIODOS = [
@@ -189,11 +190,7 @@ export default function Indicadores({ onNavigate }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>Indicadores</h1>
-          <p className="font-metric text-xs mt-0.5" style={{ color:'var(--text-dim)' }}>KPIs operativos por sede · ISO 9001</p>
-        </div>
+      <PageHeader title="Indicadores" subtitle="KPIs operativos por sede · ISO 9001">
         <div className="flex items-center gap-2">
           {/* Selector de periodo */}
           <div className="flex rounded overflow-hidden" style={{ border:'1px solid rgba(57,255,20,0.15)' }}>
@@ -214,7 +211,7 @@ export default function Indicadores({ onNavigate }) {
             <RefreshCw size={11} /> Actualizar
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* KPIs globales */}
       {!loading && (

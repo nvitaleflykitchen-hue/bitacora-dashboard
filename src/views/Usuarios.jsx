@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getPerfiles, upsertPerfil } from '../lib/queries'
+import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes } from '../lib/queries'
 import { supabase } from '../lib/supabase'
 import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import PageHeader from '../components/PageHeader'
 
-const ROLES = ['admin','editor','encargado','consultor','grupo','sede']
-const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede' }
+const ROLES = ['admin','editor','encargado','consultor','grupo','sede','operario','flota','mnt_editor']
+const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede', operario: 'Operario', flota: 'Flota', mnt_editor: 'Gestión Mantenimiento' }
 
 function rolChip(rol) {
   const label = ROL_LABEL[rol] || rol
@@ -16,13 +17,28 @@ function rolChip(rol) {
 }
 
 function NuevoUsuarioModal({ onClose, onCreated }) {
-  const [modo, setModo] = useState('invitar')
-  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', password: '', rol: 'editor', activo: true })
+  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', rol: 'editor' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [ok, setOk] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const verifyPerfilCreado = async (email) => {
+    const normalized = String(email || '').trim().toLowerCase()
+    for (let i = 0; i < 3; i++) {
+      const { data, error } = await supabase
+        .schema('bitacora')
+        .from('perfiles')
+        .select('id,email,rol,activo')
+        .ilike('email', normalized)
+        .maybeSingle()
+      if (data?.id) return data
+      if (error && error.code !== 'PGRST116') throw error
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    return null
+  }
 
   const handleInvitar = async (e) => {
     e.preventDefault()
@@ -31,7 +47,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-user`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user-direct`,
         {
           method: 'POST',
           headers: {
@@ -41,44 +57,48 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
           body: JSON.stringify({ email: form.email, nombre: form.nombre, rol: form.rol, telefono: form.telefono })
         }
       )
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Error al enviar invitacion')
+      const raw = await res.text()
+      let json = {}
+      try { json = raw ? JSON.parse(raw) : {} } catch { /* respuesta no JSON */ }
+      if (!res.ok) {
+        let detail = json.error || json.message || raw || `Error HTTP ${res.status}`
+        if (typeof detail === 'string' && detail.includes('already been registered')) {
+          detail = 'Este email ya pertenece a un usuario registrado. Buscalo en la lista y editá su perfil en lugar de crear uno nuevo.'
+        }
+        throw new Error(detail)
+      }
+      let perfilCreado = await verifyPerfilCreado(form.email)
+      if (!perfilCreado) {
+        // Fallback: Si la edge function falló en crear el perfil (ej. por problema de esquema o RLS),
+        // intentamos crearlo desde el frontend si nos devolvió el ID del usuario de Auth.
+        const userId = json?.data?.user?.id || json?.user?.id || json?.id;
+        if (userId) {
+          const { data: newPerfil, error: insertError } = await supabase
+            .schema('bitacora')
+            .from('perfiles')
+            .insert({
+              id: userId,
+              email: form.email,
+              nombre: form.nombre,
+              rol: form.rol,
+              telefono: form.telefono || null,
+              activo: true
+            })
+            .select()
+            .maybeSingle()
+            
+          if (newPerfil) perfilCreado = newPerfil
+          else console.error("Error fallback insert perfil:", insertError)
+        }
+      }
+      
+      if (!perfilCreado) {
+        throw new Error(`La invitacion fue aceptada, pero no se creo el perfil. Edge fn response: ${JSON.stringify(json).substring(0, 100)}...`)
+      }
       setOk(true)
-      setTimeout(() => { onCreated(); onClose() }, 1800)
+      onCreated() // Refresca la tabla por detrás, pero deja el modal abierto
     } catch (err) {
       setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleManual = async (e) => {
-    e.preventDefault()
-    if (!form.nombre || !form.email || !form.password) {
-      setError('Nombre, email y contrasena son obligatorios.')
-      return
-    }
-    setLoading(true); setError(null)
-    try {
-      const { data, error: authErr } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: { data: { nombre: form.nombre } }
-      })
-      if (authErr) throw authErr
-      const userId = data?.user?.id
-      if (!userId) throw new Error('No se pudo obtener el ID del usuario creado.')
-      await upsertPerfil({
-        id: userId,
-        email: form.email,
-        nombre: form.nombre,
-        telefono: form.telefono || null,
-        rol: form.rol,
-        activo: form.activo,
-      })
-      onCreated(); onClose()
-    } catch (err) {
-      setError(err.message || 'Error al crear usuario.')
     } finally {
       setLoading(false)
     }
@@ -98,32 +118,50 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
           </button>
         </div>
 
-        <div className="flex gap-1 mb-4 p-1 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}>
-          {[['invitar','Invitar por email'],['manual','Crear con contrasena']].map(([m, label]) => (
-            <button key={m} type="button" onClick={() => { setModo(m); setError(null); setOk(false) }}
-              className="flex-1 font-metric text-xs py-1.5 rounded transition-all"
-              style={{
-                fontSize: '0.7rem',
-                background: modo === m ? 'var(--phosphor)' : 'transparent',
-                color: modo === m ? '#0A0A0E' : 'var(--text-dim)',
-                fontWeight: modo === m ? 700 : 400,
-              }}>
-              {label}
-            </button>
-          ))}
+        <div className="mb-4 p-3 rounded" style={{ background: 'rgba(57,255,20,0.05)', border: '1px solid rgba(57,255,20,0.12)' }}>
+          <p className="font-metric" style={{ color: 'var(--text)', fontSize: '0.7rem' }}>Alta directa (sin envio de email)</p>
+          <p className="font-metric mt-1" style={{ color: 'var(--text-dim)', fontSize: '0.63rem', lineHeight: 1.5 }}>
+            El usuario ingresa con la contrasena temporal 123456 y el sistema le obligara a cambiarla al instante.
+          </p>
         </div>
 
         {ok ? (
           <div className="text-center py-4">
             <p className="font-metric" style={{ color: 'var(--phosphor)', fontSize: '0.8rem' }}>
-              Invitacion enviada a {form.email}
+              Usuario creado exitosamente: {form.email}
             </p>
-            <p className="font-metric mt-1" style={{ color: 'var(--text-dim)', fontSize: '0.65rem' }}>
-              El usuario recibira un link para crear su contrasena.
+            <p className="font-metric mt-1 mb-5" style={{ color: 'var(--text-dim)', fontSize: '0.65rem' }}>
+              Informale al usuario que su contrasena temporal es 123456.
             </p>
+            
+            <div className="flex flex-col gap-3 justify-center items-center">
+              <button 
+                type="button" 
+                className="btn-primary w-full flex items-center justify-center gap-2" 
+                onClick={() => {
+                  const text = `Hola ${form.nombre}! Ya tenés acceso a la app de Fly Kitchen.\n\nLink: https://bitacora-dashboard.vercel.app\nUsuario: ${form.email}\nContraseña temporal: 123456\n\nEl sistema te pedirá cambiar tu contraseña la primera vez que ingreses.`;
+                  navigator.clipboard.writeText(text);
+                  alert('¡Datos copiados al portapapeles!');
+                }}
+              >
+                Copiar accesos al portapapeles
+              </button>
+              
+              <a 
+                href={`https://wa.me/?text=${encodeURIComponent(`Hola ${form.nombre}! Ya tenés acceso a la app de Fly Kitchen.\n\nLink: https://bitacora-dashboard.vercel.app\nUsuario: ${form.email}\nContraseña temporal: 123456\n\nEl sistema te pedirá cambiar tu contraseña la primera vez que ingreses.`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-primary w-full flex items-center justify-center gap-2" 
+                style={{ background: '#25D366', borderColor: '#25D366', color: '#000' }}
+              >
+                Enviar por WhatsApp
+              </a>
+
+              <button type="button" onClick={onClose} className="btn-ghost w-full mt-2">Cerrar</button>
+            </div>
           </div>
         ) : (
-          <form onSubmit={modo === 'invitar' ? handleInvitar : handleManual} className="space-y-3">
+          <form onSubmit={handleInvitar} className="space-y-3">
             <div>
               <label className="font-metric text-xs mb-1 block" style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>NOMBRE COMPLETO *</label>
               <input className="input-dark w-full" placeholder="Ej: Benjamin Torres" required
@@ -139,13 +177,6 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
               <input className="input-dark w-full" type="tel" placeholder="Ej: 5491112345678"
                 value={form.telefono} onChange={e => set('telefono', e.target.value)} />
             </div>
-            {modo === 'manual' && (
-              <div>
-                <label className="font-metric text-xs mb-1 block" style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>CONTRASENA TEMPORAL *</label>
-                <input className="input-dark w-full" type="password" placeholder="Minimo 6 caracteres" required
-                  value={form.password} onChange={e => set('password', e.target.value)} />
-              </div>
-            )}
             <div>
               <label className="font-metric text-xs mb-1 block" style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>ROL</label>
               <select className="input-dark w-full" value={form.rol} onChange={e => set('rol', e.target.value)}>
@@ -157,15 +188,13 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
               <p className="font-metric text-xs" style={{ color: 'var(--alert)', fontSize: '0.7rem' }}>{error}</p>
             )}
 
-            {modo === 'invitar' && (
-              <p className="font-metric" style={{ color: 'var(--text-dim)', fontSize: '0.63rem', lineHeight: 1.5 }}>
-                Se enviara un email con un link. El usuario elige su propia contrasena y entra directo a la app.
-              </p>
-            )}
+            <p className="font-metric" style={{ color: 'var(--text-dim)', fontSize: '0.63rem', lineHeight: 1.5 }}>
+              El usuario podra ingresar con 123456 y debera elegir una contrasena nueva inmediatamente.
+            </p>
 
             <div className="flex gap-2 pt-1">
               <button type="submit" disabled={loading} className="btn-primary flex-1">
-                {loading ? '...' : modo === 'invitar' ? 'Enviar invitacion' : 'Crear usuario'}
+                {loading ? 'Creando...' : 'Crear usuario'}
               </button>
               <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
             </div>
@@ -179,6 +208,8 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
 export default function Usuarios() {
   const { perfil: perfilActual } = useAuth()
   const [perfiles, setPerfiles] = useState([])
+  const [grupos, setGrupos]     = useState([])
+  const [sedes, setSedes]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [editData, setEditData]   = useState({})
@@ -187,7 +218,12 @@ export default function Usuarios() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    try { setPerfiles(await getPerfiles()) }
+    try {
+      const [perfilesData, gruposData, sedesData] = await Promise.all([
+        getPerfilesConDirectorio(), getGrupos(), getSedes(),
+      ])
+      setPerfiles(perfilesData); setGrupos(gruposData); setSedes(sedesData)
+    }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [])
@@ -196,7 +232,15 @@ export default function Usuarios() {
 
   const startEdit = (p) => {
     setEditingId(p.id)
-    setEditData({ rol: p.rol, activo: p.activo, telefono: p.telefono || '' })
+    setEditData({ email: p.email || '', rol: p.rol, activo: p.activo, telefono: p.telefono || '', grupo_id: p.grupo_id || '', sede_ids: p.sede_ids || [] })
+  }
+
+  const handleGrupoChange = (grupoId) => {
+    setEditData(d => {
+      if (!grupoId) return { ...d, grupo_id: '' }
+      const sedesDelGrupo = sedes.filter(s => String(s.grupo_id) === String(grupoId)).map(s => s.id)
+      return { ...d, grupo_id: grupoId, sede_ids: sedesDelGrupo }
+    })
   }
 
   const cancelEdit = () => { setEditingId(null); setEditData({}) }
@@ -204,7 +248,36 @@ export default function Usuarios() {
   const saveEdit = async (p) => {
     setSaving(true)
     try {
-      await upsertPerfil({ ...p, ...editData, telefono: editData.telefono || null })
+      const nuevoEmail = (editData.email || '').trim()
+      const cambiaEmail = nuevoEmail && nuevoEmail !== p.email
+      if (cambiaEmail) {
+        // El email de login (auth.users) vive en Supabase Auth, separado del
+        // perfil. Hay que cambiarlo primero vía la edge function (admin API);
+        // si esto falla, no tocamos el perfil para no dejarlos desincronizados.
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-user-actions`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ action: 'update_email', userId: p.id, newEmail: nuevoEmail }),
+          }
+        )
+        const raw = await res.text()
+        let json = {}
+        try { json = raw ? JSON.parse(raw) : {} } catch { /* ignore */ }
+        if (!res.ok) throw new Error(json.error || json.message || raw || `Error HTTP ${res.status}`)
+      }
+      await upsertPerfil({
+        id: p.id,
+        email: cambiaEmail ? nuevoEmail : p.email,
+        nombre: p.nombre,
+        rol: editData.rol,
+        activo: editData.activo,
+        telefono: editData.telefono || null,
+        grupo_id: editData.grupo_id || null,
+        sede_ids: editData.sede_ids || [],
+      })
       setEditingId(null)
       load()
     } catch (e) { alert(e.message) }
@@ -231,9 +304,28 @@ export default function Usuarios() {
           body: JSON.stringify({ action, userId: p.id, email: p.email }),
         }
       )
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error + (json.debug ? ' | debug: ' + JSON.stringify(json.debug) : ''))
-      alert(json.message || 'Listo')
+      const raw = await res.text()
+      let json = {}
+      try { json = raw ? JSON.parse(raw) : {} } catch { /* ignore */ }
+      if (!res.ok) {
+        let errStr = json.error || json.message || raw || `Error HTTP ${res.status}`
+        if (typeof errStr === 'string' && errStr.includes('already been registered')) {
+          errStr = 'El usuario ya está registrado/activo. Para darle acceso, enviá un link de recuperación de contraseña (ícono de llave) en lugar de reenviar la invitación.'
+        }
+        throw new Error(errStr + (json.debug ? ' | debug: ' + JSON.stringify(json.debug) : ''))
+      }
+
+      if (action === 'reset_password') {
+        // La API de Supabase devuelve un action_link al usar generateLink para recovery.
+        const link = json.link || (json.data && (json.data.action_link || json.data.properties?.action_link)) || (typeof json.data === 'string' ? json.data : null)
+        if (link) {
+          prompt('Link de recuperación generado. Cópielo y envíeselo al usuario:', link)
+        } else {
+          alert(json.message || 'Se generó la solicitud de recuperación.')
+        }
+      } else {
+        alert(json.message || 'Listo')
+      }
       if (action === 'delete_user') load()
     } catch (e) { alert('Error: ' + e.message) }
     finally { setActionLoading(null) }
@@ -248,13 +340,7 @@ export default function Usuarios() {
         <NuevoUsuarioModal onClose={() => setShowModal(false)} onCreated={load} />
       )}
 
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>Usuarios</h1>
-          <p className="font-metric text-xs mt-0.5" style={{ color:'var(--text-dim)' }}>
-            Gestion de perfiles y roles
-          </p>
-        </div>
+      <PageHeader title="Usuarios" subtitle="Gestión de perfiles y roles">
         <div className="flex gap-2">
           <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-1.5"
             style={{ padding:'0.35rem 0.75rem', fontSize:'0.72rem' }}>
@@ -265,7 +351,7 @@ export default function Usuarios() {
             <RefreshCw size={11} />
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {!loading && (
         <div className="grid grid-cols-3 gap-3">
@@ -293,6 +379,7 @@ export default function Usuarios() {
                   <th>Email</th>
                   <th>Telefono</th>
                   <th>Rol</th>
+                  <th>Grupo / Sedes</th>
                   <th>Estado</th>
                   <th></th>
                 </tr>
@@ -302,21 +389,46 @@ export default function Usuarios() {
                   const isEditing = editingId === p.id
                   const esMiPerfil = p.id === perfilActual?.id
                   return (
-                    <tr key={p.id} style={{ opacity: p.activo ? 1 : 0.5 }}>
+                    <tr key={p.id} style={{
+                      opacity: p.activo ? 1 : 0.5,
+                      background: p.posible_duplicado ? 'rgba(245,158,11,0.035)' : undefined,
+                    }}>
                       <td>
                         <p style={{ color:'var(--text)', fontWeight:500, fontSize:'0.82rem' }}>{p.nombre || '—'}</p>
+                        {p.posible_duplicado && (
+                          <span className="chip chip-yellow" title="Mismo nombre en más de una cuenta. Revisar antes de desactivar o eliminar."
+                            style={{ fontSize:'0.52rem', marginTop:3 }}>
+                            Posible duplicado · {p.duplicados_nombre} cuentas
+                          </span>
+                        )}
                         {esMiPerfil && (
                           <span className="chip chip-green" style={{ fontSize:'0.55rem', marginTop:2 }}>Yo</span>
                         )}
                       </td>
-                      <td style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{p.email}</td>
+                      <td>
+                        {isEditing ? (
+                          <input className="input-dark" style={{ maxWidth:190, fontSize:'0.72rem', padding:'0.25rem 0.4rem' }}
+                            placeholder="email@flykitchen.com.ar" value={editData.email}
+                            title="Cambiar esto cambia también el email de login del usuario"
+                            onChange={e => setEditData(d => ({ ...d, email: e.target.value }))} />
+                        ) : (
+                          <span style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{p.email}</span>
+                        )}
+                      </td>
                       <td>
                         {isEditing ? (
                           <input className="input-dark" style={{ maxWidth:140, fontSize:'0.72rem', padding:'0.25rem 0.4rem' }}
                             placeholder="Ej: 5491112345678" value={editData.telefono}
                             onChange={e => setEditData(d => ({ ...d, telefono: e.target.value }))} />
                         ) : (
-                          <span style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{p.telefono || '—'}</span>
+                          <span style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>
+                            {p.telefono || '—'}
+                            {p.telefono_origen && p.telefono_origen !== 'perfil' && (
+                              <small style={{ display:'block', color:'rgba(57,255,20,0.5)', fontSize:'0.52rem', marginTop:2 }}>
+                                desde {p.telefono_origen === 'equipo' ? 'Equipo' : 'Contactos'}
+                              </small>
+                            )}
+                          </span>
                         )}
                       </td>
                       <td>
@@ -326,6 +438,36 @@ export default function Usuarios() {
                             {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                           </select>
                         ) : rolChip(p.rol)}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <div style={{ display:'flex', flexDirection:'column', gap:4, minWidth:160 }}>
+                            <select className="input-dark" style={{ fontSize:'0.7rem', padding:'0.2rem 0.35rem' }}
+                              value={editData.grupo_id} onChange={e => handleGrupoChange(e.target.value)}>
+                              <option value="">— Sin grupo —</option>
+                              {grupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+                            </select>
+                            <select multiple className="input-dark" size={3}
+                              style={{ fontSize:'0.65rem', padding:'0.15rem 0.3rem' }}
+                              value={(editData.sede_ids || []).map(String)}
+                              onChange={e => setEditData(d => ({
+                                ...d,
+                                sede_ids: Array.from(e.target.selectedOptions).map(o => Number(o.value)),
+                              }))}>
+                              {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                            </select>
+                          </div>
+                        ) : (
+                          p.grupo_id
+                            ? <span className="chip chip-gray" style={{ fontSize:'0.62rem' }}>
+                                {grupos.find(g => g.id === p.grupo_id)?.nombre || `Grupo #${p.grupo_id}`} · {(p.sede_ids||[]).length} sede{(p.sede_ids||[]).length!==1?'s':''}
+                              </span>
+                            : (p.sede_ids?.length
+                                ? <span style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>
+                                    {p.sede_ids.length} sede{p.sede_ids.length!==1?'s':''}
+                                  </span>
+                                : <span style={{ color:'var(--text-dim)' }}>—</span>)
+                        )}
                       </td>
                       <td>
                         {isEditing ? (

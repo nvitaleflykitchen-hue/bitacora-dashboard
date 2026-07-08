@@ -76,6 +76,30 @@ function utcParts(d) {
   }
 }
 
+function buenosAiresParts(d) {
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d).reduce((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value
+    return acc
+  }, {})
+
+  return {
+    dd: parts.day,
+    mm: parts.month,
+    yyyy: parts.year,
+    aa: String(parts.year).slice(-2),
+    hh: parts.hour,
+    min: parts.minute,
+  }
+}
+
 /** dd/mm/aa  →  "11/06/26" */
 export function fmtFecha(value) {
   const d = toDate(value)
@@ -110,6 +134,36 @@ export function fmtHora(value) {
   const d = toDate(value)
   if (!d) return '—'
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+}
+
+/**
+ * Fecha de reporte operativo en zona Argentina.
+ *
+ * Los reportes reales se guardan como timestamp UTC. La fecha operativa que ve
+ * el usuario debe ser la local de Argentina: 2026-07-08T00:32Z corresponde a
+ * 07/07/26 21:32, no a 08/07/26.
+ */
+export function fmtFechaReporte(value) {
+  const d = toDate(value)
+  if (!d) return '—'
+  const { dd, mm, aa } = buenosAiresParts(d)
+  return `${dd}/${mm}/${aa}`
+}
+
+/** Solo hora de reporte en zona Argentina HH:mm */
+export function fmtHoraReporte(value) {
+  const d = toDate(value)
+  if (!d) return '—'
+  const { hh, min } = buenosAiresParts(d)
+  return `${hh}:${min}`
+}
+
+/** dd/mm/aa HH:mm de reporte en zona Argentina */
+export function fmtFechaHoraReporte(value) {
+  const d = toDate(value)
+  if (!d) return '—'
+  const { dd, mm, aa, hh, min } = buenosAiresParts(d)
+  return `${dd}/${mm}/${aa} ${hh}:${min}`
 }
 
 /**

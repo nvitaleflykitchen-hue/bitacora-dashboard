@@ -4,6 +4,7 @@ import { fmtFecha } from '../../lib/dateUtils'
 import { updateTicket, getAuditoriaTicket, getActivos, getProveedores, getSedes, getTickets } from '../../lib/queries'
 import { AlertTriangle, User, Filter, RefreshCw, X, Clock, Tag, MapPin, Wrench, ChevronDown, MessageSquare, History } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
+import PageHeader from '../../components/PageHeader'
 import { TicketModal as FullTicketModal } from './MntTickets'
 
 const COLS = [
@@ -506,7 +507,7 @@ export default function MntKanban() {
     setLoading(true)
     const [t,r,a,p,s] = await Promise.all([
       getTickets({ sedeIds: allowedSedeIds || undefined }),
-      supabase.from('mnt_responsables').select('id,nombre,rol,nivel_escalacion').eq('activo',true).order('nombre'),
+      supabase.from('mnt_responsables').select('id,nombre,rol,nivel_escalacion,telefono,email').eq('activo',true).order('nombre'),
       getActivos({ sedeIds: allowedSedeIds || undefined }),
       getProveedores(),
       getSedes(allowedSedeIds),
@@ -514,6 +515,9 @@ export default function MntKanban() {
     setTickets(t); setResponsables(r.data||[]); setActivos(a); setProveedores(p); setSedesCatalogo(s); setLoading(false)
   }
   useEffect(()=>{ load() },[])
+
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (sedesCatalogo.length === 1) setFilterSede(sedesCatalogo[0].nombre) }, [sedesCatalogo])
 
   const moveTicket = async (ticketId, newEstado) => {
     setTickets(prev => prev.map(t => t.id===ticketId ? {...t,estado:newEstado} : t))
@@ -555,11 +559,7 @@ export default function MntKanban() {
       )}
 
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
-        <div>
-          <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Tablero de Gestión</h1>
-          <p style={{ fontSize:'0.62rem', color:'rgba(57,255,20,0.5)', letterSpacing:'0.1em', fontFamily:'monospace' }}>KANBAN · MANTENIMIENTO · ISO 9001 CL. 9.1</p>
-        </div>
+      <PageHeader title="Tablero de Gestión" subtitle="Kanban · mantenimiento · ISO 9001 cl. 9.1">
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           {vencidos>0 && (
             <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,80,80,0.1)', border:'1px solid rgba(255,80,80,0.3)', borderRadius:2, padding:'5px 12px' }}>
@@ -574,7 +574,7 @@ export default function MntKanban() {
             </div>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Filtros */}
       <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>

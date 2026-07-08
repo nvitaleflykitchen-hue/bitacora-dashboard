@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { es } from 'date-fns/locale'
 import { getSedes, getRegistrosBySede, getCategoriasCONNovedad } from '../lib/queries'
 import RegistroModal from '../components/RegistroModal'
-import { fmtFecha, fmtHora } from '../lib/dateUtils'
+import PageHeader from '../components/PageHeader'
+import { fmtFechaReporte, fmtHoraReporte } from '../lib/dateUtils'
 import TareaForm from '../components/TareaForm'
 import TicketRapidoModal from '../components/TicketRapidoModal'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
@@ -15,8 +16,8 @@ function estadoChip(estado) {
   return <span className="chip chip-gray">{estado || '—'}</span>
 }
 
-export default function PorSede() {
-  const { rol, sedeIds, allowedSedeIds } = useAuth()
+export default function PorSede({ focusId, focusSedeId }) {
+  const { allowedSedeIds } = useAuth()
   const [sedes, setSedes]     = useState([])
   const [sedeId, setSedeId]   = useState('')
   const [dias, setDias]         = useState(30)
@@ -29,24 +30,60 @@ export default function PorSede() {
 
   useEffect(() => {
     getSedes().then(all => {
-      // Encargado solo ve sus sedes asignadas
-      const s = (rol === 'encargado' && sedeIds.length > 0)
-        ? all.filter(sede => sedeIds.includes(sede.id))
-        : all
+      // Roles territoriales (grupo/encargado/sede) solo ven sus sedes asignadas
+      const s = allowedSedeIds === null
+        ? all
+        : all.filter(sede => allowedSedeIds.includes(sede.id))
       setSedes(s)
-      if (s.length > 0) setSedeId(String(s[0].id))
+      if (focusSedeId && s.some(sede => String(sede.id) === String(focusSedeId))) {
+        setSedeId(String(focusSedeId))
+      } else if (s.length > 0) {
+        setSedeId(String(s[0].id))
+      }
     })
-  }, [rol, sedeIds])
+  }, [allowedSedeIds, focusSedeId])
 
   const load = useCallback(async () => {
     if (!sedeId) return
     setLoading(true)
-    try { setRegistros(await getRegistrosBySede(sedeId)) }
+    try { setRegistros(await getRegistrosBySede(sedeId, dias)) }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [sedeId, dias])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = registros.find(registro => String(registro.id) === String(focusId))
+    if (target) setSelRegistro(target)
+  }, [focusId, loading, registros])
+
+  // Deep-link desde notificación de comentario en un reporte
+  useEffect(() => {
+    const handler = (e) => {
+      const { tipo, id } = e.detail || {}
+      if (tipo !== 'registro' || !id) return
+      const target = registros.find(r => String(r.id) === String(id))
+      if (target) {
+        setSelRegistro(target)
+        delete window.__pendingDeepLink
+      }
+    }
+    window.addEventListener('bitacora:deeplink', handler)
+    return () => window.removeEventListener('bitacora:deeplink', handler)
+  }, [registros])
+
+  // Consumir deep-link pendiente después de cargar registros
+  useEffect(() => {
+    const dl = window.__pendingDeepLink
+    if (dl?.tipo === 'registro' && dl?.id && registros.length > 0) {
+      const target = registros.find(r => String(r.id) === String(dl.id))
+      if (target) {
+        setSelRegistro(target)
+        delete window.__pendingDeepLink
+      }
+    }
+  }, [registros])
 
   const sedeSel   = sedes.find(s => String(s.id) === String(sedeId))
   const sinNov    = registros.filter(r => r.estado_general === 'Sin novedades').length
@@ -56,15 +93,11 @@ export default function PorSede() {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>Por Sede</h1>
-          <p className="font-metric text-xs mt-0.5" style={{ color:'var(--text-dim)' }}>{`Últimos ${dias} días${sedeId ? '' : ' — todas las sedes'}`}</p>
-        </div>
+      <PageHeader title="Por Sede" subtitle={`Últimos ${dias} días${sedeId ? '' : ' — todas las sedes'}`}>
         <button onClick={load} className="btn-ghost flex items-center gap-1.5" style={{ padding:'0.35rem 0.75rem' }}>
           <RefreshCw size={11} /> Actualizar
         </button>
-      </div>
+      </PageHeader>
 
       {/* Selector */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -132,10 +165,10 @@ export default function PorSede() {
                       style={{ background: r.requiere_escalamiento ? 'rgba(255,42,42,0.04)' : undefined }}>
                       <td>
                         <p className="font-medium" style={{ color:'var(--text)' }}>
-                          {fmtFecha(r.fecha_reporte)}
+                          {fmtFechaReporte(r.fecha_reporte)}
                         </p>
                         <p className="font-metric" style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>
-                          {fmtHora(r.fecha_reporte)}
+                          {fmtHoraReporte(r.fecha_reporte)}
                         </p>
                       </td>
                       <td className="hidden sm:table-cell" style={{ color:'var(--text-dim)' }}>{r.turno || '—'}</td>

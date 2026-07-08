@@ -3,7 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
 import { notifyHighPriority } from '../../lib/pushNotifications'
+import { isQualityOnlyProfile } from '../../lib/access'
 import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, History, LayoutGrid, List } from 'lucide-react'
+import PageHeader from '../../components/PageHeader'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
@@ -413,9 +415,9 @@ function HistorialPorUnidad({ tickets }) {
   )
 }
 
-export default function MntVehiculos() {
-  const { rol } = useAuth()
-  const canWrite = rol === 'admin' || rol === 'editor' || rol === 'encargado'
+export default function MntVehiculos({ focusId }) {
+  const { rol, perfil } = useAuth()
+  const canWrite = (rol === 'admin' || rol === 'editor' || rol === 'encargado' || rol === 'flota') && !isQualityOnlyProfile(perfil)
 
   const [tickets, setTickets]   = useState([])
   const [loading, setLoading]   = useState(true)
@@ -424,6 +426,11 @@ export default function MntVehiculos() {
   const [filterTipo, setFilterTipo]   = useState('')
   const [filterSLA, setFilterSLA]     = useState(false)
   const [modalTicket, setModalTicket] = useState(null) // null | ticket obj | 'new'
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = tickets.find(item => String(item.id) === String(focusId))
+    if (target) setModalTicket(target)
+  }, [focusId, loading, tickets])
   const [viewMode, setViewMode]   = useState('kanban')
 
   const load = useCallback(async () => {
@@ -470,13 +477,7 @@ export default function MntVehiculos() {
       )}
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
-        <div>
-          <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Mantenimiento de Vehículos</h1>
-          <p style={{ fontSize:'0.62rem', color:'rgba(57,255,20,0.5)', letterSpacing:'0.1em', fontFamily:'monospace' }}>
-            FLOTA · {patentes.length} VEHÍCULOS · {abiertos} TICKETS ACTIVOS
-          </p>
-        </div>
+      <PageHeader title="Mantenimiento de Vehículos" subtitle={`Flota · ${patentes.length} vehículos · ${abiertos} tickets activos`}>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           {vencidos > 0 && (
             <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(255,80,80,0.1)', border:'1px solid rgba(255,80,80,0.3)', borderRadius:2, padding:'5px 12px' }}>
@@ -508,7 +509,7 @@ export default function MntVehiculos() {
             </button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* ── FILTROS ─────────────────────────────────────────────────────────── */}
       <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>

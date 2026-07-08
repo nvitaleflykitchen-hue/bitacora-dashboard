@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AlertTriangle, X, RefreshCw, Bell, ChevronRight } from 'lucide-react'
 import { getAlertas, autoEscalarTickets } from '../lib/queries'
+import { useAuth } from '../lib/auth'
+import { canAccessView, isQualityOnlyProfile } from '../lib/access'
 
 const NIVEL_STYLE = {
   critico:     { bg: 'rgba(255,42,42,0.08)',  border: 'rgba(255,42,42,0.35)',  color: '#ff5050', dot: '#ff2a2a' },
@@ -11,6 +13,8 @@ const NIVEL_STYLE = {
 const REFRESH_MS = 5 * 60 * 1000 // 5 minutos
 
 export default function AlertaBanner({ onNavigate }) {
+  const { rol, perfil } = useAuth()
+  const isQualityOnly = isQualityOnlyProfile(perfil)
   const [alertas, setAlertas]           = useState([])
   const [loading, setLoading]           = useState(true)
   const [dismissed, setDismissed]       = useState([])  // ids descartados en esta sesión
@@ -24,8 +28,8 @@ export default function AlertaBanner({ onNavigate }) {
     setLastRefresh(new Date())
     setLoading(false)
     // Auto-escalate critical unassigned tickets on first load
-    autoEscalarTickets().catch(() => {})
-  }, [])
+    if (!isQualityOnly) autoEscalarTickets().catch(() => {})
+  }, [isQualityOnly])
 
   useEffect(() => {
     cargar()
@@ -33,7 +37,7 @@ export default function AlertaBanner({ onNavigate }) {
     return () => clearInterval(t)
   }, [cargar])
 
-  const visibles = alertas.filter(a => !dismissed.includes(a.id))
+  const visibles = alertas.filter(a => !dismissed.includes(a.id) && canAccessView(rol, a.navegarA, perfil))
   const criticas = visibles.filter(a => a.nivel === 'critico')
 
   // Si no hay nada que mostrar, no renderizar

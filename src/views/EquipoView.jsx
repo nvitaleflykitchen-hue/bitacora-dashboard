@@ -1,15 +1,24 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import {
-  Users, Search, Plus, Trophy, Star, ChevronRight, Phone,
-  X, Save, Building2, Award, AlertTriangle, Loader2
+  Users, Search, Plus, Trophy, Star, ChevronRight, Phone, Mail,
+  X, Save, Building2, Award, AlertTriangle, Loader2, Pencil, ClipboardList, MessageCircle, Copy
 } from 'lucide-react'
+import OrganigramaView from './OrganigramaView'
+import AdjuntosPanel from '../components/AdjuntosPanel'
+import ContactosTab from '../components/ContactosTab'
+import DocumentacionChecklist from '../components/DocumentacionChecklist'
+import PersonaFormularios from '../components/PersonaFormularios'
+import { PERSONA_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
+import ReclutamientoBoard from './equipo/ReclutamientoBoard'
+import { isQualityOnlyProfile, isQualityTeamPerson } from '../lib/access'
+import { fmtFechaLarga } from '../lib/dateUtils'
 
 // ──────────────────────────────────────────────
 // PersonaFicha — vista interna de ficha individual
 // ──────────────────────────────────────────────
-function PersonaFicha({ personaId, onBack }) {
+function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   const { can } = useAuth()
   const canManage = can('equipo', 'manage')
   const [persona, setPersona] = useState(null)
@@ -21,6 +30,7 @@ function PersonaFicha({ personaId, onBack }) {
   const [tab, setTab] = useState('info')
   const [showEvalForm, setShowEvalForm] = useState(false)
   const [showHistorialForm, setShowHistorialForm] = useState(false)
+  const [showEditPersona, setShowEditPersona] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const EVAL_INICIAL = {
@@ -74,12 +84,34 @@ function PersonaFicha({ personaId, onBack }) {
 
   const RESULTADO_COLOR = { Bajo:'#ff4444', Aceptable:'#f59e0b', Alto:'#3b82f6', Excelente:'#39FF14' }
 
+  const handleEditEval = (ev) => {
+    const mapped = { ...EVAL_INICIAL, id: ev.id }
+    for (const k in EVAL_INICIAL) {
+      if (ev[k] !== undefined && ev[k] !== null) mapped[k] = ev[k]
+    }
+    setEvalForm(mapped)
+    setShowEvalForm(true)
+  }
+
+  const handleEditHist = (h) => {
+    setHistForm({
+      id: h.id,
+      tipo: h.tipo,
+      fecha: h.fecha ? h.fecha.split('T')[0] : new Date().toISOString().split('T')[0],
+      descripcion: h.descripcion || '',
+      dias_suspension: h.dias_suspension || '',
+      registrado_por: h.registrado_por || ''
+    })
+    setShowHistorialForm(true)
+  }
+
   const saveEval = async () => {
     setSaving(true)
     const puntaje = calcPuntaje(evalForm)
     const resultado = getResultado(puntaje)
     const toNum = v => v === '' || v === null ? null : Number(v)
-    const { error } = await supabase.schema('equipo').from('evaluaciones').insert({
+    
+    const payload = {
       persona_id: personaId,
       evaluador_nombre: evalForm.evaluador_nombre || null,
       evaluador_cargo: evalForm.evaluador_cargo || null,
@@ -101,9 +133,17 @@ function PersonaFicha({ personaId, onBack }) {
       supero_prueba: evalForm.supero_prueba,
       observaciones_rrhh: evalForm.observaciones_rrhh || null,
       sugerencias_evaluador: evalForm.sugerencias_evaluador || null,
-    })
+    }
+
+    let res
+    if (evalForm.id) {
+      res = await supabase.schema('equipo').from('evaluaciones').update(payload).eq('id', evalForm.id)
+    } else {
+      res = await supabase.schema('equipo').from('evaluaciones').insert(payload)
+    }
+
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (res.error) { alert('Error: ' + res.error.message); return }
     setShowEvalForm(false)
     setEvalForm(EVAL_INICIAL)
     load()
@@ -111,16 +151,24 @@ function PersonaFicha({ personaId, onBack }) {
 
   const saveHistorial = async () => {
     setSaving(true)
-    const { error } = await supabase.schema('equipo').from('historial_personal').insert({
+    const payload = {
       persona_id: personaId,
       tipo: histForm.tipo,
       fecha: histForm.fecha,
       descripcion: histForm.descripcion,
       dias_suspension: histForm.tipo === 'suspension' && histForm.dias_suspension ? Number(histForm.dias_suspension) : null,
       registrado_por: histForm.registrado_por || null,
-    })
+    }
+
+    let res
+    if (histForm.id) {
+      res = await supabase.schema('equipo').from('historial_personal').update(payload).eq('id', histForm.id)
+    } else {
+      res = await supabase.schema('equipo').from('historial_personal').insert(payload)
+    }
+
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (res.error) { alert('Error: ' + res.error.message); return }
     setShowHistorialForm(false)
     setHistForm({ tipo: 'apercibimiento', fecha: new Date().toISOString().split('T')[0], descripcion: '', dias_suspension: '', registrado_por: '' })
     load()
@@ -152,22 +200,36 @@ function PersonaFicha({ personaId, onBack }) {
   )
   if (!persona) return <div style={{ color:'var(--text-dim)', padding:'2rem' }}>Persona no encontrada.</div>
 
-  const waLink = persona.telefono
-    ? `https://wa.me/549${persona.telefono.replace(/\D/g,'').replace(/^0/,'')}`
-    : null
+  const phoneDigits = persona.telefono?.replace(/\D/g, '').replace(/^0+/, '') || ''
+  const whatsappNumber = phoneDigits.startsWith('549')
+    ? phoneDigits
+    : phoneDigits.startsWith('54')
+      ? `549${phoneDigits.slice(2).replace(/^9/, '')}`
+      : phoneDigits
+        ? `549${phoneDigits.replace(/^9/, '')}`
+        : ''
+  const waLink = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null
+  const mailLink = persona.email ? `mailto:${persona.email.trim()}` : null
 
-  const puntaje = persona.puntaje_promedio || 0
+  const puntaje = Math.min(5, persona.puntaje_promedio || 0)
   const resultadoLabel = puntaje > 0 ? getResultado(puntaje) : '—'
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {canManage && showEditPersona && <PersonaModal persona={persona} sedes={sedes} grupos={grupos} onClose={() => setShowEditPersona(false)} onSaved={() => { setShowEditPersona(false); load() }} />}
+
       {/* Header */}
       <div className="px-6 pt-5 pb-4 flex items-start gap-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.1)' }}>
         <button onClick={onBack} className="btn-ghost mt-0.5" style={{ fontSize:'0.7rem' }}>← Volver</button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="font-title font-bold text-xl" style={{ color:'var(--phosphor)' }}>
+            <h1 className="font-title font-bold text-xl flex items-center gap-2" style={{ color:'var(--phosphor)' }}>
               {persona.nombre} {persona.apellido || ''}
+              {canManage && (
+                <button onClick={() => setShowEditPersona(true)} className="btn-ghost p-1" title="Editar info y puesto">
+                  <Pencil size={14} />
+                </button>
+              )}
             </h1>
             {persona.puntos_total > 0 && (
               <span className="font-metric text-xs px-2 py-0.5 rounded" style={{ background:'rgba(57,255,20,0.1)', color:'var(--phosphor)' }}>
@@ -180,10 +242,22 @@ function PersonaFicha({ personaId, onBack }) {
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
+          {persona.telefono && (
+            <a href={`tel:${phoneDigits}`}
+              className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.7rem', textDecoration:'none' }}>
+              <Phone size={12} /> Llamar
+            </a>
+          )}
           {waLink && (
             <a href={waLink} target="_blank" rel="noreferrer"
               className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.7rem', textDecoration:'none' }}>
               <Phone size={12} /> WhatsApp
+            </a>
+          )}
+          {mailLink && (
+            <a href={mailLink}
+              className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.7rem', textDecoration:'none' }}>
+              <Mail size={12} /> Email
             </a>
           )}
         </div>
@@ -206,7 +280,14 @@ function PersonaFicha({ personaId, onBack }) {
 
       {/* Tabs */}
       <div className="flex gap-0 px-6 pt-3" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
-        {[['info','INFO & PUESTO'],['evaluaciones','EVALUACIONES'],['historial','HISTORIAL'],['logros','LOGROS']].map(([id, label]) => (
+        {[
+          ['info','INFO & PUESTO'],
+          ['documentacion','DOCUMENTACIÓN'],
+          ['evaluaciones','EVALUACIONES'],
+          ['historial','HISTORIAL'],
+          ['logros','LOGROS'],
+          ...(canManage ? [['formularios','FORMULARIOS']] : []),
+        ].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className="font-metric px-4 py-1.5 mr-1 rounded-t"
             style={{ fontSize:'0.6rem', letterSpacing:'0.08em',
@@ -228,10 +309,11 @@ function PersonaFicha({ personaId, onBack }) {
               <div className="glass p-4 space-y-3">
                 <p className="font-metric text-xs" style={{ color:'var(--phosphor)', letterSpacing:'0.08em' }}>DATOS PERSONALES</p>
                 {[
+                  ['N.º de legajo', persona.legajo],
                   ['DNI', persona.dni],
                   ['Teléfono', persona.telefono],
                   ['Email', persona.email],
-                  ['Fecha ingreso', persona.fecha_ingreso ? new Date(persona.fecha_ingreso).toLocaleDateString('es-AR') : null],
+                  ['Fecha ingreso', persona.fecha_ingreso ? fmtFechaLarga(persona.fecha_ingreso) : null],
                 ].map(([l, v]) => v ? (
                   <div key={l}>
                     <p style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{l}</p>
@@ -250,6 +332,21 @@ function PersonaFicha({ personaId, onBack }) {
                     <p style={{ fontSize:'0.8rem', color:'var(--text)' }}>{v || '—'}</p>
                   </div>
                 ))}
+                <div>
+                  <p style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>Escala / Unidad Productiva</p>
+                  <p style={{ fontSize:'0.8rem', color:'var(--text)' }}>
+                    {persona.sede_ids?.length 
+                      ? (() => {
+                          const g = grupos.find(gr => {
+                            const groupSedes = sedes.filter(s => s.grupo_id === gr.id).map(s => s.id)
+                            return groupSedes.length > 0 && groupSedes.every(id => persona.sede_ids.includes(id))
+                          })
+                          if (g) return `Grupo: ${g.nombre}`
+                          return persona.sede_ids.map(id => sedes.find(s => s.id === id)?.nombre).filter(Boolean).join(' • ')
+                        })()
+                      : 'Sin escala asignada'}
+                  </p>
+                </div>
               </div>
             </div>
             {persona.descripcion_puesto && (
@@ -272,6 +369,28 @@ function PersonaFicha({ personaId, onBack }) {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── DOCUMENTACIÓN ── */}
+        {tab === 'documentacion' && (
+          <DocumentacionChecklist
+            entityType="persona"
+            entityId={persona.id}
+            template={PERSONA_DOCUMENTACION_TEMPLATE}
+            canEdit={canManage}
+            title="Documentación del puesto"
+          />
+        )}
+
+        {/* ── FORMULARIOS ── */}
+        {tab === 'formularios' && canManage && (
+          <PersonaFormularios
+            persona={persona}
+            onRegistered={() => {
+              load()
+              setTab('historial')
+            }}
+          />
         )}
 
         {/* ── EVALUACIONES ── */}
@@ -381,16 +500,23 @@ function PersonaFicha({ personaId, onBack }) {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="font-metric text-xs" style={{ color:'var(--text-dim)' }}>
-                        {ev.periodo || 'Sin período'} · {new Date(ev.fecha_evaluacion).toLocaleDateString('es-AR')}
+                        {ev.periodo || 'Sin período'} · {fmtFechaLarga(ev.fecha_evaluacion)}
                       </p>
                       <p style={{ fontSize:'0.75rem', color:'var(--text)' }}>{ev.evaluador_nombre || 'Evaluador no especificado'}</p>
                     </div>
-                    {ev.puntaje_calculado && (
-                      <div className="text-right">
-                        <p className="font-title font-bold text-2xl" style={{ color: RESULTADO_COLOR[ev.resultado_global] || 'var(--phosphor)' }}>{ev.puntaje_calculado}</p>
-                        <p className="font-metric" style={{ fontSize:'0.6rem', color: RESULTADO_COLOR[ev.resultado_global] }}>{ev.resultado_global}</p>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {ev.puntaje_calculado && (
+                        <div className="text-right">
+                          <p className="font-title font-bold text-2xl" style={{ color: RESULTADO_COLOR[ev.resultado_global] || 'var(--phosphor)' }}>{ev.puntaje_calculado}</p>
+                          <p className="font-metric" style={{ fontSize:'0.6rem', color: RESULTADO_COLOR[ev.resultado_global] }}>{ev.resultado_global}</p>
+                        </div>
+                      )}
+                      {canManage && (
+                        <button onClick={() => handleEditEval(ev)} className="btn-ghost p-1.5" title="Editar evaluación">
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
@@ -409,6 +535,9 @@ function PersonaFicha({ personaId, onBack }) {
                     })}
                   </div>
                   {ev.observaciones_rrhh && <p style={{ fontSize:'0.7rem', color:'var(--text-dim)', marginTop:'0.5rem' }}>📝 {ev.observaciones_rrhh}</p>}
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(57,255,20,0.1)' }}>
+                    <AdjuntosPanel entityType="evaluacion" entityId={ev.id} readOnly={!canManage} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -475,13 +604,28 @@ function PersonaFicha({ personaId, onBack }) {
                 <div key={h.id} className="glass p-3 flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: TIPO_COLOR[h.tipo] || 'var(--phosphor)' }} />
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-metric" style={{ fontSize:'0.6rem', color: TIPO_COLOR[h.tipo], textTransform:'uppercase' }}>{h.tipo.replace('_',' ')}</span>
-                      <span style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{new Date(h.fecha).toLocaleDateString('es-AR')}</span>
-                      {h.dias_suspension && <span style={{ fontSize:'0.6rem', color:'#ef4444' }}>({h.dias_suspension} días)</span>}
+                    <div className="flex items-start justify-between mb-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-metric" style={{ fontSize:'0.6rem', color: TIPO_COLOR[h.tipo], textTransform:'uppercase' }}>{h.tipo.replace('_',' ')}</span>
+                        <span style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{fmtFechaLarga(h.fecha)}</span>
+                        {h.dias_suspension && <span style={{ fontSize:'0.6rem', color:'#ef4444' }}>({h.dias_suspension} días)</span>}
+                      </div>
+                      {canManage && (
+                        <button onClick={() => handleEditHist(h)} className="btn-ghost p-1" title="Editar registro">
+                          <Pencil size={12} />
+                        </button>
+                      )}
                     </div>
                     <p style={{ fontSize:'0.78rem', color:'var(--text)' }}>{h.descripcion}</p>
                     {h.registrado_por && <p style={{ fontSize:'0.6rem', color:'var(--text-dim)', marginTop:2 }}>Por: {h.registrado_por}</p>}
+                    <div className="mt-2">
+                      <AdjuntosPanel
+                        entityType="historial_personal"
+                        entityId={h.id}
+                        readOnly={!canManage}
+                        label={h.tipo === 'apercibimiento' ? 'Apercibimiento firmado' : 'Adjuntos'}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -502,7 +646,7 @@ function PersonaFicha({ personaId, onBack }) {
                       <span style={{ fontSize:'1.4rem' }}>{l.icono || '🏆'}</span>
                       <div>
                         <p style={{ fontSize:'0.78rem', color:'var(--text)' }}>{l.nombre}</p>
-                        <p style={{ fontSize:'0.6rem', color:'var(--phosphor)' }}>+{l.puntos} pts · {new Date(l.fecha).toLocaleDateString('es-AR')}</p>
+                        <p style={{ fontSize:'0.6rem', color:'var(--phosphor)' }}>+{l.puntos} pts · {fmtFechaLarga(l.fecha)}</p>
                       </div>
                     </div>
                   ))}
@@ -537,24 +681,58 @@ function PersonaFicha({ personaId, onBack }) {
 }
 
 // ──────────────────────────────────────────────
-// Modal Nueva Persona
+// Modal Nueva/Editar Persona
 // ──────────────────────────────────────────────
-function NuevaPersonaModal({ onClose, onSaved }) {
+function PersonaModal({ persona, sedes = [], grupos = [], onClose, onSaved }) {
   const [form, setForm] = useState({
-    nombre:'', apellido:'', dni:'', puesto:'', area:'', telefono:'', email:'',
-    fecha_ingreso:'', descripcion_puesto:'', procesos_raw:''
+    nombre: persona?.nombre || '',
+    apellido: persona?.apellido || '',
+    legajo: persona?.legajo || '',
+    dni: persona?.dni || '',
+    puesto: persona?.puesto || '',
+    area: persona?.area || '',
+    telefono: persona?.telefono || '',
+    email: persona?.email || '',
+    fecha_ingreso: persona?.fecha_ingreso || '',
+    descripcion_puesto: persona?.descripcion_puesto || '',
+    procesos_raw: persona?.procesos ? persona.procesos.join('\n') : '',
+    sede_ids: persona?.sede_ids || []
   })
   const [saving, setSaving] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
+  const handleDelete = async () => {
+    if (!persona?.id) return
+    if (!confirm('¿Estás seguro que querés eliminar a esta persona? Esta acción ocultará su perfil.')) return
+    setSaving(true)
+    const res = await supabase.schema('equipo').from('personas').update({ activo: false }).eq('id', persona.id)
+    setSaving(false)
+    if (res.error) { alert('Error al eliminar: ' + res.error.message); return }
+    onSaved()
+  }
+
+  const handleSelectSede = (e) => {
+    const val = e.target.value
+    if (!val) {
+      set('sede_ids', [])
+    } else if (val.startsWith('G_')) {
+      const gId = Number(val.split('_')[1])
+      const sIds = sedes.filter(s => s.grupo_id === gId).map(s => s.id)
+      set('sede_ids', sIds)
+    } else {
+      set('sede_ids', [Number(val)])
+    }
+  }
+
   const save = async () => {
     if (!form.nombre.trim()) return alert('El nombre es requerido.')
     setSaving(true)
     const procesos = form.procesos_raw.split('\n').map(s=>s.trim()).filter(Boolean)
-    const { error } = await supabase.schema('equipo').from('personas').insert({
+    const payload = {
       nombre: form.nombre.trim(),
       apellido: form.apellido.trim() || null,
+      legajo: form.legajo.trim() || null,
       dni: form.dni.trim() || null,
       puesto: form.puesto.trim() || null,
       area: form.area.trim() || null,
@@ -563,9 +741,18 @@ function NuevaPersonaModal({ onClose, onSaved }) {
       fecha_ingreso: form.fecha_ingreso || null,
       descripcion_puesto: form.descripcion_puesto.trim() || null,
       procesos: procesos.length ? procesos : null,
-    })
+      sede_ids: form.sede_ids.length ? form.sede_ids : null
+    }
+
+    let res
+    if (persona) {
+      res = await supabase.schema('equipo').from('personas').update(payload).eq('id', persona.id)
+    } else {
+      res = await supabase.schema('equipo').from('personas').insert(payload)
+    }
+
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (res.error) { alert('Error: ' + res.error.message); return }
     onSaved()
   }
 
@@ -573,13 +760,14 @@ function NuevaPersonaModal({ onClose, onSaved }) {
     <div className="modal-overlay" style={{ zIndex:60 }}>
       <div className="glass fade-in w-full max-w-2xl" style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:4, padding:'1.5rem', maxHeight:'90vh', overflow:'auto' }}>
         <div className="flex items-center justify-between mb-4">
-          <p className="font-metric text-xs" style={{ color:'var(--phosphor)', letterSpacing:'0.1em' }}>NUEVA PERSONA</p>
+          <p className="font-metric text-xs" style={{ color:'var(--phosphor)', letterSpacing:'0.1em' }}>{persona ? 'EDITAR PERSONA' : 'NUEVA PERSONA'}</p>
           <button onClick={onClose} className="btn-ghost"><X size={13} /></button>
         </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           {[
             ['nombre','Nombre *','Ej: Juan'],
             ['apellido','Apellido','Ej: Pérez'],
+            ['legajo','N.º de legajo','Ej: FK-00125'],
             ['dni','DNI','Ej: 34567890'],
             ['puesto','Puesto','Ej: Cocinero'],
             ['area','Área','Ej: Cocina'],
@@ -595,6 +783,30 @@ function NuevaPersonaModal({ onClose, onSaved }) {
           ))}
         </div>
         <div className="mb-3">
+          <label className="font-metric block mb-1" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>UNIDAD PRODUCTIVA O GRUPO</label>
+          <select className="input-dark w-full" value={
+            form.sede_ids?.length > 1 
+              ? (() => {
+                  const g = grupos.find(g => {
+                    const groupSedes = sedes.filter(s => s.grupo_id === g.id).map(s => s.id)
+                    return groupSedes.length > 0 && groupSedes.every(id => form.sede_ids.includes(id))
+                  })
+                  return g ? `G_${g.id}` : ''
+                })()
+              : (form.sede_ids?.[0] || '')
+          } onChange={handleSelectSede} style={{ fontSize:'0.75rem', height:34 }}>
+            <option value="">Sin sede/grupo asignado</option>
+            {grupos.length > 0 && (
+              <optgroup label="Grupos">
+                {grupos.map(g => <option key={`G_${g.id}`} value={`G_${g.id}`}>Grupo: {g.nombre}</option>)}
+              </optgroup>
+            )}
+            <optgroup label="Sedes individuales">
+              {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </optgroup>
+          </select>
+        </div>
+        <div className="mb-3">
           <label className="font-metric block mb-1" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>DESCRIPCIÓN DEL PUESTO</label>
           <textarea className="input-dark w-full" rows={3} placeholder="Ej: Responsable de preparación de platos fríos y armado de pedidos" value={form.descripcion_puesto}
             onChange={e => set('descripcion_puesto', e.target.value)} style={{ fontSize:'0.75rem', resize:'vertical' }} />
@@ -604,67 +816,340 @@ function NuevaPersonaModal({ onClose, onSaved }) {
           <textarea className="input-dark w-full" rows={4} placeholder="Proceso 1&#10;Proceso 2&#10;..."
             value={form.procesos_raw} onChange={e => set('procesos_raw', e.target.value)} style={{ fontSize:'0.75rem', resize:'vertical' }} />
         </div>
-        <div className="flex gap-2">
-          <button onClick={save} disabled={saving} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}>
-            <Save size={12} /> {saving ? 'Guardando...' : 'Guardar persona'}
-          </button>
-          <button onClick={onClose} className="btn-ghost" style={{ fontSize:'0.72rem' }}>Cancelar</button>
+        <div className="flex gap-2 mt-4 justify-between">
+          <div className="flex gap-2">
+            <button onClick={save} disabled={saving} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}>
+              <Save size={12} /> {saving ? 'Guardando...' : 'Guardar persona'}
+            </button>
+            <button onClick={onClose} className="btn-ghost" style={{ fontSize:'0.72rem' }}>Cancelar</button>
+          </div>
+          {persona?.id && (
+            <button onClick={handleDelete} disabled={saving} className="btn-ghost text-red-500 hover:bg-red-500/10" style={{ fontSize:'0.72rem' }}>
+              Eliminar
+            </button>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
+
 // ──────────────────────────────────────────────
 // EquipoView — vista principal
 // ──────────────────────────────────────────────
-export default function EquipoView() {
-  const { can } = useAuth()
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="font-metric block mb-1" style={{ fontSize:'0.6rem', color:'var(--text-dim)', letterSpacing:'0.06em' }}>{label.toUpperCase()}</label>
+      {children}
+    </div>
+  )
+}
+
+function SolicitudPersonalModal({ sedes = [], personas = [], onClose }) {
+  const today = new Date().toISOString().split('T')[0]
+  const [form, setForm] = useState({
+    puesto: '',
+    sede_id: '',
+    horario: '',
+    fecha_apertura: today,
+    urgencia: 'Media',
+    periodo_necesidad: 'Permanente',
+    motivo: '',
+    cantidad: '1',
+    modalidad: '',
+    tareas: '',
+    requisitos: '',
+    experiencia: '',
+    documentacion: '',
+    responsable: '',
+    contacto: '',
+    observaciones: ''
+  })
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const selectedSede = sedes.find(s => String(s.id) === String(form.sede_id))
+
+  const formatDate = (value) => {
+    if (!value) return '[Completar]'
+    const [y, m, d] = value.split('-')
+    return y && m && d ? `${d}/${m}/${y}` : value
+  }
+
+  const bulletLines = (raw) => {
+    const lines = raw.split('\n').map(x => x.trim()).filter(Boolean)
+    return lines.length ? lines.map(x => `* ${x}`).join('\n') : '* [Completar]\n* [Completar]\n* [Completar]'
+  }
+
+  const text = `SOLICITUD DE PERSONAL
+
+📌 Puesto:
+${form.puesto || '[Completar]'}
+
+📍 Lugar de trabajo / Sede:
+${selectedSede?.nombre || '[Completar]'}
+
+🕒 Horario de trabajo:
+${form.horario || '[Completar]'}
+
+📅 Fecha de apertura de la búsqueda:
+${formatDate(form.fecha_apertura)}
+
+⚠️ Urgencia / Prioridad:
+${form.urgencia || '[Completar]'}
+
+📆 Período de necesidad:
+${form.periodo_necesidad || '[Eventual / Permanente / Cobertura de vacaciones / Reemplazo / Refuerzo operativo]'}
+
+🎯 Motivo de la solicitud:
+${form.motivo || '[Completar]'}
+
+👤 Cantidad de personas solicitadas:
+${form.cantidad || '[Completar]'}
+
+🧾 Modalidad de contratación:
+${form.modalidad || '[Completar]'}
+
+📋 Tareas principales del puesto:
+${bulletLines(form.tareas)}
+
+✅ Requisitos del puesto:
+${bulletLines(form.requisitos)}
+
+🎓 Experiencia requerida:
+${form.experiencia || '[Completar]'}
+
+📄 Documentación / credenciales necesarias:
+${form.documentacion || '[Completar]'}
+
+🧑‍💼 Responsable solicitante:
+${form.responsable || '[Completar]'}
+
+📞 Contacto para coordinación:
+${form.contacto || '[Completar]'}
+
+📝 Observaciones:
+${form.observaciones || '[Completar]'}`
+
+  const subject = `Solicitud de personal${form.puesto ? ` - ${form.puesto}` : ''}${selectedSede?.nombre ? ` - ${selectedSede.nombre}` : ''}`
+  const mailHref = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(text)}`
+
+  const copyText = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      alert('Solicitud copiada al portapapeles.')
+    } catch {
+      alert('No se pudo copiar automáticamente. Podés seleccionar el texto de la vista previa.')
+    }
+  }
+
+  return (
+    <div className="modal-overlay" style={{ zIndex:65 }}>
+      <div className="glass fade-in w-full max-w-5xl" style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:4, maxHeight:'92vh', overflow:'auto' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.1)' }}>
+          <div>
+            <h2 className="font-title font-bold" style={{ color:'var(--text)', fontSize:'1rem' }}>Solicitud de personal</h2>
+            <p className="font-metric" style={{ color:'var(--text-dim)', fontSize:'0.62rem' }}>Formulario interno para RRHH / coordinación operativa</p>
+          </div>
+          <button onClick={onClose} className="btn-ghost"><X size={14} /></button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-5 p-5">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Puesto *">
+                <input className="input-dark w-full" value={form.puesto} onChange={e=>set('puesto', e.target.value)} placeholder="Ej: Responsable de cocina" style={{ fontSize:'0.75rem' }} />
+              </Field>
+              <Field label="Sede / lugar *">
+                <select className="input-dark w-full" value={form.sede_id} onChange={e=>set('sede_id', e.target.value)} style={{ fontSize:'0.75rem', height:34 }}>
+                  <option value="">Seleccionar sede</option>
+                  {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                </select>
+              </Field>
+              <Field label="Horario de trabajo">
+                <input className="input-dark w-full" value={form.horario} onChange={e=>set('horario', e.target.value)} placeholder="Ej: Lunes a viernes 06:00 a 14:00" style={{ fontSize:'0.75rem' }} />
+              </Field>
+              <Field label="Fecha apertura">
+                <input type="date" className="input-dark w-full" value={form.fecha_apertura} onChange={e=>set('fecha_apertura', e.target.value)} style={{ fontSize:'0.75rem' }} />
+              </Field>
+              <Field label="Urgencia / prioridad">
+                <select className="input-dark w-full" value={form.urgencia} onChange={e=>set('urgencia', e.target.value)} style={{ fontSize:'0.75rem', height:34 }}>
+                  <option>Alta</option>
+                  <option>Media</option>
+                  <option>Baja</option>
+                </select>
+              </Field>
+              <Field label="Período de necesidad">
+                <select className="input-dark w-full" value={form.periodo_necesidad} onChange={e=>set('periodo_necesidad', e.target.value)} style={{ fontSize:'0.75rem', height:34 }}>
+                  <option>Eventual</option>
+                  <option>Permanente</option>
+                  <option>Cobertura de vacaciones</option>
+                  <option>Reemplazo</option>
+                  <option>Refuerzo operativo</option>
+                </select>
+              </Field>
+              <Field label="Cantidad">
+                <input type="number" min="1" className="input-dark w-full" value={form.cantidad} onChange={e=>set('cantidad', e.target.value)} placeholder="Ej: 1" style={{ fontSize:'0.75rem' }} />
+              </Field>
+              <Field label="Modalidad contratación">
+                <input className="input-dark w-full" value={form.modalidad} onChange={e=>set('modalidad', e.target.value)} placeholder="Ej: Relación de dependencia / eventual" style={{ fontSize:'0.75rem' }} />
+              </Field>
+            </div>
+
+            <Field label="Motivo de la solicitud">
+              <textarea className="input-dark w-full" rows={2} value={form.motivo} onChange={e=>set('motivo', e.target.value)} placeholder="Ej: Reemplazo por licencia / aumento de demanda / nueva operación" style={{ fontSize:'0.75rem', resize:'vertical' }} />
+            </Field>
+            <Field label="Tareas principales del puesto — una por línea">
+              <textarea className="input-dark w-full" rows={3} value={form.tareas} onChange={e=>set('tareas', e.target.value)} placeholder="Preparación de producción diaria&#10;Control de stock&#10;Limpieza del sector" style={{ fontSize:'0.75rem', resize:'vertical' }} />
+            </Field>
+            <Field label="Requisitos del puesto — uno por línea">
+              <textarea className="input-dark w-full" rows={3} value={form.requisitos} onChange={e=>set('requisitos', e.target.value)} placeholder="Disponibilidad horaria&#10;Carnet de manipulación vigente&#10;Experiencia en cocina industrial" style={{ fontSize:'0.75rem', resize:'vertical' }} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Experiencia requerida">
+                <textarea className="input-dark w-full" rows={2} value={form.experiencia} onChange={e=>set('experiencia', e.target.value)} placeholder="Ej: 1 año en comedores o cocina industrial" style={{ fontSize:'0.75rem', resize:'vertical' }} />
+              </Field>
+              <Field label="Documentación / credenciales">
+                <textarea className="input-dark w-full" rows={2} value={form.documentacion} onChange={e=>set('documentacion', e.target.value)} placeholder="Ej: DNI, CUIL, carnet manipulador, apto médico" style={{ fontSize:'0.75rem', resize:'vertical' }} />
+              </Field>
+              <Field label="Responsable solicitante">
+                <input className="input-dark w-full" list="responsables-equipo" value={form.responsable} onChange={e=>set('responsable', e.target.value)} placeholder="Ej: Nicolás Vitale" style={{ fontSize:'0.75rem' }} />
+                <datalist id="responsables-equipo">
+                  {personas.map(p => <option key={p.id} value={`${p.nombre} ${p.apellido || ''}`.trim()} />)}
+                </datalist>
+              </Field>
+              <Field label="Contacto coordinación">
+                <input className="input-dark w-full" value={form.contacto} onChange={e=>set('contacto', e.target.value)} placeholder="Ej: +54 9 351..." style={{ fontSize:'0.75rem' }} />
+              </Field>
+            </div>
+            <Field label="Observaciones">
+              <textarea className="input-dark w-full" rows={2} value={form.observaciones} onChange={e=>set('observaciones', e.target.value)} placeholder="Notas adicionales, restricciones, fecha ideal de ingreso..." style={{ fontSize:'0.75rem', resize:'vertical' }} />
+            </Field>
+          </div>
+
+          <div className="flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'0.68rem', letterSpacing:'0.08em' }}>VISTA PREVIA</p>
+              <div className="flex gap-2">
+                <button onClick={copyText} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.68rem' }}><Copy size={11}/> Copiar</button>
+                <a href={mailHref} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.68rem', textDecoration:'none' }}><Mail size={11}/> Mail</a>
+                <a href={whatsappHref} target="_blank" rel="noreferrer" className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.68rem', textDecoration:'none' }}><MessageCircle size={11}/> WhatsApp</a>
+              </div>
+            </div>
+            <pre className="input-dark flex-1 whitespace-pre-wrap" style={{ minHeight:520, fontSize:'0.72rem', lineHeight:1.55, overflow:'auto', padding:'1rem' }}>{text}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function EquipoView({ onNavigate, focusId, focusType }) {
+  const { can, allowedSedeIds, perfil } = useAuth()
+  const isQualityOnly = isQualityOnlyProfile(perfil)
   const canManage = can('equipo', 'manage')
   const [personas, setPersonas] = useState([])
+  const [sedes, setSedes] = useState([])
+  const [grupos, setGrupos] = useState([])
   const [loading, setLoading] = useState(true)
+  const hasLoadedOnce = useRef(false)
   const [search, setSearch] = useState('')
+  const [sedeFilter, setSedeFilter] = useState('')
   const [tab, setTab] = useState('lista')
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(
+    !focusType || focusType === 'persona' ? (focusId || null) : null
+  )
   const [showNew, setShowNew] = useState(false)
+  const [showSolicitud, setShowSolicitud] = useState(false)
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase.from('v_personas').select('*').order('nombre')
-    setPersonas(data || [])
+    const [pRes, sRes, gRes] = await Promise.all([
+      supabase.from('v_personas').select('*').order('nombre'),
+      supabase.schema('bitacora').from('sedes').select('id, nombre, grupo_id').eq('activa', true).order('nombre'),
+      supabase.schema('bitacora').from('grupos').select('id, nombre').eq('activo', true).order('nombre')
+    ])
+    const todasSedes = sRes.data || []
+    // Roles territoriales (grupo/encargado/sede) solo ven y gestionan su(s) sede(s) asignada(s)
+    const sedesPermitidas = allowedSedeIds === null
+      ? todasSedes
+      : todasSedes.filter(s => allowedSedeIds.includes(s.id))
+    const gruposPermitidos = allowedSedeIds === null
+      ? (gRes.data || [])
+      : (gRes.data || []).filter(g => {
+          const sedesDelGrupo = todasSedes.filter(s => s.grupo_id === g.id).map(s => s.id)
+          return sedesDelGrupo.length > 0 && sedesDelGrupo.every(id => allowedSedeIds.includes(id))
+        })
+    const personasTerritoriales = allowedSedeIds === null
+      ? (pRes.data || [])
+      : (pRes.data || []).filter(p => p.sede_ids?.some(id => allowedSedeIds.includes(id)))
+    const personasPermitidas = isQualityOnly
+      ? personasTerritoriales.filter(p => isQualityTeamPerson(p, perfil))
+      : personasTerritoriales
+    setPersonas(personasPermitidas)
+    setSedes(sedesPermitidas)
+    setGrupos(gruposPermitidos)
     setLoading(false)
+    hasLoadedOnce.current = true
   }
 
-  useEffect(() => { load() }, [])
+  // Only re-fetch when auth-relevant fields change, not on every perfil object reference change
+  const perfilRol = perfil?.rol
+  const perfilGrupoId = perfil?.grupo_id
+  const perfilSedeIds = JSON.stringify(perfil?.sede_ids)
+  useEffect(() => { load() }, [allowedSedeIds, isQualityOnly, perfilRol, perfilGrupoId, perfilSedeIds])
+  useEffect(() => {
+    if (focusType === 'candidato' || focusType === 'reclutamiento') {
+      setSelectedId(null)
+      setTab('reclutamiento')
+    } else if (focusId) {
+      setSelectedId(focusId)
+    }
+  }, [focusId, focusType])
+  useEffect(() => {
+    if (isQualityOnly && selectedId && !loading && !personas.some(p => String(p.id) === String(selectedId))) {
+      setSelectedId(null)
+    }
+  }, [isQualityOnly, selectedId, loading, personas])
+  useEffect(() => {
+    if (isQualityOnly && !['lista', 'ranking'].includes(tab)) setTab('lista')
+  }, [isQualityOnly, tab])
 
   const filtered = personas.filter(p => {
+    if (sedeFilter && (!p.sede_ids || !p.sede_ids.includes(Number(sedeFilter)))) return false
     if (!search) return true
     const q = search.toLowerCase()
-    return (p.nombre+' '+(p.apellido||'')+' '+(p.puesto||'')+' '+(p.area||'')).toLowerCase().includes(q)
+    return (p.nombre+' '+(p.apellido||'')+' '+(p.legajo||'')+' '+(p.puesto||'')+' '+(p.area||'')).toLowerCase().includes(q)
   })
 
   const ranking = [...personas].sort((a,b) => (b.puntos_total||0) - (a.puntos_total||0))
 
   const RESULTADO_COLOR = { Bajo:'#ff4444', Aceptable:'#f59e0b', Alto:'#3b82f6', Excelente:'#39FF14' }
 
-  if (selectedId) return (
+  if (selectedId && (!isQualityOnly || personas.some(p => String(p.id) === String(selectedId)))) return (
     <div className="h-full flex flex-col overflow-hidden">
-      <PersonaFicha personaId={selectedId} onBack={() => { setSelectedId(null); load() }} />
+      <PersonaFicha personaId={selectedId} sedes={sedes} grupos={grupos} onBack={() => { setSelectedId(null); load() }} />
     </div>
   )
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {canManage && showNew && <NuevaPersonaModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />}
+      {canManage && showNew && <PersonaModal sedes={sedes} grupos={grupos} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />}
+      {showSolicitud && <SolicitudPersonalModal sedes={sedes} personas={personas} onClose={() => setShowSolicitud(false)} />}
 
       {/* Header */}
       <div className="px-6 pt-5 pb-3 flex items-center gap-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.1)' }}>
         <Users size={16} style={{ color:'var(--phosphor)', flexShrink:0 }} />
         <div className="flex-1">
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--phosphor)' }}>Equipo</h1>
+          <h1 className="font-title font-bold text-lg" style={{ color:'var(--phosphor)' }}>{isQualityOnly ? 'Equipo Calidad' : 'Equipo'}</h1>
           <p className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{personas.length} personas activas</p>
         </div>
-        {canManage && <button onClick={() => setShowNew(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}>
+        {!isQualityOnly && <button onClick={() => setTab('reclutamiento')} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}>
+          <ClipboardList size={12} /> Tablero selección
+        </button>}
+        {canManage && !isQualityOnly && <button onClick={() => setShowNew(true)} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}>
           <Plus size={12} /> Nueva persona
         </button>}
       </div>
@@ -673,7 +1158,7 @@ export default function EquipoView() {
       <div className="grid grid-cols-4 gap-0" style={{ borderBottom:'1px solid rgba(57,255,20,0.06)' }}>
         {[
           { label:'PERSONAS', value: personas.length },
-          { label:'PUNTAJE PROM.', value: personas.length ? (personas.reduce((s,p)=>s+(p.puntaje_promedio||0),0)/personas.length).toFixed(1) : '—' },
+          { label:'PUNTAJE PROM.', value: personas.length ? (personas.reduce((s,p)=>s+Math.min(5, p.puntaje_promedio||0),0)/personas.length).toFixed(1) : '—' },
           { label:'LOGROS TOTALES', value: personas.reduce((s,p)=>s+(p.logros_count||0),0) },
           { label:'CON INCIDENTES', value: personas.filter(p=>(p.incidentes||0)>0).length },
         ].map(k => (
@@ -687,74 +1172,135 @@ export default function EquipoView() {
       {/* Tabs + Search */}
       <div className="px-6 py-2 flex items-center gap-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.06)' }}>
         <div className="flex gap-0">
-          {[['lista','LISTA'],['ranking','RANKING']].map(([id,label]) => (
-            <button key={id} onClick={() => setTab(id)}
+          {[['lista','LISTA'],['ranking','RANKING'],['organigrama','ORGANIGRAMA'],['reclutamiento','SELECCIÓN'],['contactos','CONTACTOS']].map(([id,label]) => (
+            <button key={id} onClick={() => { if (isQualityOnly && !['lista','ranking'].includes(id)) return; setTab(id) }}
               className="font-metric px-4 py-1.5"
               style={{ fontSize:'0.6rem', letterSpacing:'0.08em',
                 background: tab===id ? 'rgba(57,255,20,0.1)' : 'transparent',
                 color: tab===id ? 'var(--phosphor)' : 'var(--text-dim)',
+                opacity: isQualityOnly && !['lista','ranking'].includes(id) ? 0.35 : 1,
                 borderBottom: tab===id ? '2px solid var(--phosphor)' : '2px solid transparent' }}>
               {label}
             </button>
           ))}
         </div>
         {tab === 'lista' && (
-          <div className="flex-1 max-w-xs relative">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color:'var(--text-dim)' }} />
-            <input className="input-dark w-full pl-7" placeholder="Buscar..." value={search}
-              onChange={e => setSearch(e.target.value)} style={{ fontSize:'0.75rem', height:30 }} />
+          <div className="flex-1 flex justify-end gap-3">
+            <select className="input-dark px-2" value={sedeFilter} onChange={e => setSedeFilter(e.target.value)} style={{ fontSize:'0.75rem', height:30, width:180 }}>
+              <option value="">Todas las escalas</option>
+              {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+            <div className="relative" style={{ width: 180 }}>
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color:'var(--text-dim)' }} />
+              <input className="input-dark w-full pl-7" placeholder="Buscar..." value={search}
+                onChange={e => setSearch(e.target.value)} style={{ fontSize:'0.75rem', height:30 }} />
+            </div>
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        {loading ? (
+        {tab === 'contactos' ? (
+          <ContactosTab modulo="rrhh" />
+        ) : tab === 'reclutamiento' ? (
+          <ReclutamientoBoard
+            sedes={sedes}
+            canManage={canManage}
+            allowedSedeIds={allowedSedeIds}
+            focusCandidateId={focusType === 'candidato' ? focusId : null}
+            onBack={() => setTab('lista')}
+          />
+        ) : tab === 'organigrama' ? (
+          <OrganigramaView onNavigate={onNavigate} />
+        ) : (loading && !hasLoadedOnce.current) ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 size={20} className="animate-spin" style={{ color:'var(--phosphor)' }} />
           </div>
         ) : tab === 'lista' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filtered.length === 0 && <p style={{ fontSize:'0.78rem', color:'var(--text-dim)' }}>Sin resultados.</p>}
-            {filtered.map(p => {
-              const puntaje = p.puntaje_promedio || 0
-              const res = puntaje > 0 ? (puntaje < 2 ? 'Bajo' : puntaje < 3 ? 'Aceptable' : puntaje < 4.5 ? 'Alto' : 'Excelente') : null
-              return (
-                <button key={p.id} onClick={() => setSelectedId(p.id)}
-                  className="glass p-4 text-left hover:border-phosphor/30 transition-all w-full"
-                  style={{ border:'1px solid rgba(57,255,20,0.08)', borderRadius:4 }}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-medium" style={{ color:'var(--text)', fontSize:'0.85rem' }}>
-                        {p.nombre} {p.apellido || ''}
-                      </p>
-                      <p style={{ fontSize:'0.68rem', color:'var(--text-dim)' }}>{p.puesto || '—'}</p>
+          <div className="flex gap-4 h-full overflow-x-auto pb-4" style={{ alignItems: 'flex-start' }}>
+            {/* Columnas por Sede */}
+            {[{id: 'unassigned', nombre: 'Sin Escala Asignada'}, ...sedes]
+              .filter(s => sedeFilter ? s.id === Number(sedeFilter) || (sedeFilter === 'unassigned' && s.id === 'unassigned') : true)
+              .map(sede => {
+                const isUnassigned = sede.id === 'unassigned'
+                const personasSede = filtered.filter(p => isUnassigned ? (!p.sede_ids || p.sede_ids.length === 0) : p.sede_ids?.includes(sede.id))
+                
+                if (personasSede.length === 0 && isUnassigned) return null // Hide unassigned if empty
+                if (personasSede.length === 0 && sedeFilter !== String(sede.id) && sedeFilter !== '') return null // Hide empty ones when filtered
+
+                const avgSede = personasSede.reduce((acc, p) => acc + Math.min(5, p.puntaje_promedio||0), 0) / (personasSede.length || 1)
+                const incSede = personasSede.filter(p => (p.incidentes||0) > 0).length
+
+                return (
+                  <div key={sede.id} className="flex-shrink-0 flex flex-col gap-3" style={{ width: 320, background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+                    {/* Header Columna */}
+                    <div className="flex items-center justify-between mb-1" style={{ borderBottom: '1px solid rgba(57,255,20,0.1)', paddingBottom: '8px' }}>
+                      <h3 className="font-title font-bold text-sm" style={{ color: 'var(--phosphor)' }}>{sede.nombre}</h3>
+                      <span className="font-metric" style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{personasSede.length} pers.</span>
                     </div>
-                    <ChevronRight size={13} style={{ color:'rgba(57,255,20,0.4)', flexShrink:0 }} />
+                    {/* KPIs Columna */}
+                    {!isUnassigned && personasSede.length > 0 && (
+                      <div className="flex justify-between mb-2 px-1">
+                        <div className="text-center">
+                          <p className="font-title font-bold" style={{ fontSize: '0.85rem', color: 'var(--phosphor)' }}>{avgSede.toFixed(1)}</p>
+                          <p className="font-metric" style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>PROM.</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-title font-bold" style={{ fontSize: '0.85rem', color: 'var(--phosphor)' }}>{incSede}</p>
+                          <p className="font-metric" style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>CON INC.</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Tarjetas */}
+                    <div className="flex flex-col gap-3 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+                      {personasSede.map(p => {
+                        const score = Math.min(5, p.puntaje_promedio || 0)
+                        const evalColor = score ? RESULTADO_COLOR[p.resultado_global] || 'var(--text)' : 'var(--text-dim)'
+                        return (
+                          <div key={p.id} onClick={() => setSelectedId(p.id)}
+                            className="glass p-4 rounded cursor-pointer transition-colors relative group hover:border-phosphor/30"
+                            style={{ borderLeft: p.incidentes > 0 ? '2px solid #ff4444' : '2px solid transparent' }}>
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h3 className="font-title font-bold text-base group-hover:text-[var(--phosphor)] transition-colors" style={{ color:'var(--text)' }}>
+                                  {p.nombre} {p.apellido}
+                                </h3>
+                                <p style={{ fontSize:'0.75rem', color:'var(--text-dim)' }}>{p.puesto || 'Sin puesto'}</p>
+                              </div>
+                              <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color:'var(--phosphor)' }} />
+                            </div>
+                            <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                              {score ? (
+                                <div>
+                                  <span className="font-title font-bold text-lg" style={{ color: evalColor }}>{score.toFixed(1)}</span>
+                                  <span className="ml-2 font-metric" style={{ fontSize:'0.65rem', color: evalColor }}>{p.resultado_global}</span>
+                                </div>
+                              ) : (
+                                <span className="font-metric" style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>Sin evaluaciones</span>
+                              )}
+                              {(p.incidentes > 0) && (
+                                <span className="px-2 py-0.5 rounded font-metric" style={{ fontSize:'0.6rem', background:'rgba(255,68,68,0.1)', color:'#ff4444' }}>
+                                  {p.incidentes} incidentes
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {personasSede.length === 0 && (
+                        <p className="text-center font-metric mt-4" style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Sin personas</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-3">
-                    {p.puntos_total > 0 && (
-                      <span className="font-metric" style={{ fontSize:'0.62rem', color:'var(--phosphor)' }}>⭐ {p.puntos_total}pts</span>
-                    )}
-                    {res && (
-                      <span className="font-metric" style={{ fontSize:'0.62rem', color: RESULTADO_COLOR[res] }}>{res}</span>
-                    )}
-                    {(p.logros_count||0) > 0 && (
-                      <span style={{ fontSize:'0.62rem', color:'var(--text-dim)' }}>🏆 {p.logros_count}</span>
-                    )}
-                    {(p.incidentes||0) > 0 && (
-                      <span style={{ fontSize:'0.62rem', color:'#f59e0b' }}>⚠ {p.incidentes}</span>
-                    )}
-                  </div>
-                </button>
-              )
+                )
             })}
           </div>
         ) : (
           // Ranking tab
           <div className="max-w-2xl space-y-2">
             {ranking.map((p, i) => {
-              const puntaje = p.puntaje_promedio || 0
+              const puntaje = Math.min(5, p.puntaje_promedio || 0)
               const res = puntaje > 0 ? (puntaje < 2 ? 'Bajo' : puntaje < 3 ? 'Aceptable' : puntaje < 4.5 ? 'Alto' : 'Excelente') : null
               const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`
               return (

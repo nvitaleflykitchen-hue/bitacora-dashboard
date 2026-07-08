@@ -22,13 +22,46 @@ export default function NotificationCenter({ onNavigate }) {
   }, [load])
 
   const unread = items.filter(item=>!item.leida_at).length
+  const ENTITY_VIEW = {
+    no_conformidad: 'calidadHub',
+    ticket:         'mantenimientoHub',
+    requerimiento:  'requerimientos',
+    capa:           'calidadHub',
+    registro:       'sedesHub',
+  }
+
   const openItem = async item => {
     if (!item.leida_at) {
       const now = new Date().toISOString()
       await db().from('notificaciones').update({ leida_at:now }).eq('id', item.id)
       setItems(prev=>prev.map(n=>n.id===item.id?{...n,leida_at:now}:n))
     }
-    const view = item.url ? new URL(item.url, window.location.origin).searchParams.get('view') : null
+
+    let tipo = item.entidad_tipo
+    let id   = item.entidad_id
+
+    // Si es un comentario, resolver la entidad padre para navegar al origen real
+    if (tipo === 'comentario' && id) {
+      try {
+        const { data } = await db()
+          .from('comentarios')
+          .select('entidad_tipo, entidad_id')
+          .eq('id', id)
+          .maybeSingle()
+        if (data?.entidad_tipo) { tipo = data.entidad_tipo; id = data.entidad_id }
+      } catch (_) { /* si falla, seguimos con lo que hay */ }
+    }
+
+    // Guardar deep-link para que la vista lo consuma al montar (o en tiempo real si ya está montada)
+    if (tipo && id) {
+      window.__pendingDeepLink = { tipo, id }
+      window.dispatchEvent(new CustomEvent('bitacora:deeplink', { detail: { tipo, id } }))
+    }
+
+    // Vista destino: mapeo por tipo resuelto (más preciso que la URL hardcodeada)
+    const view = (tipo && ENTITY_VIEW[tipo]) ||
+      (item.url ? new URL(item.url, window.location.origin).searchParams.get('view') : null)
+
     if (view && onNavigate) onNavigate(view)
     else if (item.url) window.location.assign(item.url)
     setOpen(false)

@@ -186,7 +186,7 @@ export default function MobileChecklist({ onBack }) {
       )}
 
       {/* Body */}
-      <div style={{ flex:1, overflowY:'auto', padding:'0.75rem 1rem' }}>
+      <div className="mobile-scroll" style={{ flex:1, padding:'0.75rem 1rem' }}>
         {loadingItems ? (
           <div style={{ display:'flex', justifyContent:'center', paddingTop:'3rem' }}>
             <div style={{ width:24, height:24, borderRadius:'50%', border:'2px solid var(--phosphor)', borderTopColor:'transparent', animation:'spin 0.8s linear infinite' }} />

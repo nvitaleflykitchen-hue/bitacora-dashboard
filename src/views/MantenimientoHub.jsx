@@ -10,7 +10,8 @@ import MntMatafuegos from './mantenimiento/MntMatafuegos'
 import MntInsumos from './mantenimiento/MntInsumos'
 import MntKanban from './mantenimiento/MntKanban'
 import MntResponsables from './mantenimiento/MntResponsables'
-import MntFlotaGestion from './mantenimiento/MntFlotaGestion'
+import ContactosTab from '../components/ContactosTab'
+import ContactosQuickBtn from '../components/ContactosQuickBtn'
 
 const VIEWS = {
   resumen:MntDashboard,
@@ -22,7 +23,7 @@ const VIEWS = {
   insumos:MntInsumos,
   matafuegos:MntMatafuegos,
   responsables:MntResponsables,
-  flota:MntFlotaGestion,
+  contactos: () => <ContactosTab modulo="mantenimiento" />,
 }
 
 const TABS = [
@@ -35,7 +36,7 @@ const TABS = [
   { id:'insumos', label:'Insumos', hideFor:['sede','consultor'] },
   { id:'matafuegos', label:'Matafuegos', hideFor:['sede','consultor'] },
   { id:'responsables', label:'Responsables', hideFor:['sede','consultor'] },
-  { id:'flota', label:'Flota', hideFor:['sede','consultor'] },
+  { id:'contactos', label:'Contactos' },
 ]
 
 export default function MantenimientoHub({ onNavigate }) {
@@ -45,7 +46,7 @@ export default function MantenimientoHub({ onNavigate }) {
   const ActiveView = VIEWS[activeTab] || MntDashboard
 
   return (
-    <WorkspaceTabs title="Mantenimiento" subtitle="Todo el ciclo técnico, sin cambiar de módulo" tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+    <WorkspaceTabs title="Mantenimiento" subtitle="Todo el ciclo técnico, sin cambiar de módulo" tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} rightSlot={<ContactosQuickBtn modulo="mantenimiento" />}>
       <ActiveView onNavigate={onNavigate} />
     </WorkspaceTabs>
   )

@@ -34,6 +34,9 @@ Deno.serve(async req => {
     for (const profile of admins || []) recipientIds.add(profile.id)
 
     if (event.responsableUserId) recipientIds.add(event.responsableUserId)
+    for (const profileId of event.responsableUserIds || []) {
+      if (profileId) recipientIds.add(profileId)
+    }
     if (event.responsableEmail) {
       const { data:profile } = await admin.schema('bitacora').from('perfiles')
         .select('id').eq('activo', true).ilike('email', event.responsableEmail).maybeSingle()
@@ -43,7 +46,17 @@ Deno.serve(async req => {
       const { data:sedeProfiles } = await admin.schema('bitacora').from('perfiles')
         .select('id').eq('activo', true).in('rol', ['encargado','sede']).contains('sede_ids', [event.sedeId])
       for (const profile of sedeProfiles || []) recipientIds.add(profile.id)
+
+      const { data:sede } = await admin.schema('bitacora').from('sedes')
+        .select('grupo_id').eq('id', event.sedeId).maybeSingle()
+      if (sede?.grupo_id) {
+        const { data:groupSupervisors } = await admin.schema('bitacora').from('perfiles')
+          .select('id').eq('activo', true).eq('rol', 'grupo').eq('grupo_id', sede.grupo_id)
+        for (const profile of groupSupervisors || []) recipientIds.add(profile.id)
+      }
     }
+
+    if (event.excludeUserId) recipientIds.delete(event.excludeUserId)
 
     const ids = [...recipientIds]
     if (!ids.length) return json({ sent:0, recipients:0 })
@@ -105,9 +118,10 @@ async function resolveVerifiedEvent(admin:any, input:EventInput) {
   if (!id) return null
   if (module === 'compras') {
     const { data:r } = await admin.schema('bitacora').from('requerimientos')
-      .select('id,numero,descripcion,urgencia,sede_id').eq('id', id).single()
+      .select('id,numero,descripcion,urgencia,sede_id,comprador_id,supervisor_compras_id').eq('id', id).single()
     if (!r || r.urgencia !== 'alta') return null
     return { module, entityType:'requerimiento', entityId:r.id, priority:'alta', sedeId:r.sede_id,
+      responsableUserIds:[r.comprador_id, r.supervisor_compras_id].filter(Boolean),
       title:`Compra urgente #${r.numero || r.id}`, body:r.descripcion, url:'/?view=requerimientos' }
   }
   if (module === 'tareas') {
@@ -137,6 +151,55 @@ async function resolveVerifiedEvent(admin:any, input:EventInput) {
     if (!e) return null
     return { module, entityType:'escalamiento', entityId:e.id, priority:'alta', sedeId:e.sede_id,
       responsableUserId:e.responsable_id, title:'Nuevo escalamiento', body:`${e.tipo}: ${e.descripcion}`, url:'/?view=escalamientos' }
+  }
+  if (module === 'comentario') {
+    const { data:c } = await admin.schema('bitacora').from('comentarios')
+      .select('id,entidad_tipo,entidad_id,autor_id,autor_nombre,texto,eliminado_at').eq('id', id).maybeSingle()
+    if (!c || c.eliminado_at) return null
+    const parent = await resolveComentarioParent(admin, c.entidad_tipo, c.entidad_id)
+    if (!parent) return null
+    return { module, entityType:'comentario', entityId:c.id, priority:'media', sedeId:parent.sedeId,
+      responsableUserId:parent.responsableUserId, responsableEmail:parent.responsableEmail,
+      excludeUserId:c.autor_id,
+      title:`Nuevo comentario de ${c.autor_nombre}`,
+      body:c.texto.length > 140 ? `${c.texto.slice(0,140)}...` : c.texto,
+      url:parent.url }
+  }
+  return null
+}
+
+async function resolveComentarioParent(admin:any, entidadTipo:string, entidadId:string) {
+  // Nota: bitacora.escalamientos no tiene columna responsable_id (ver branch 'escalamientos'
+  // arriba, que ya referencia ese campo inexistente). Para comentarios en escalamientos
+  // dependemos del fallback por sede (admins + encargados/sede de esa sede), sin responsable puntual.
+  if (entidadTipo === 'ticket') {
+    const { data:t } = await admin.from('mnt_tickets')
+      .select('id,sede_id,responsable_id').eq('id', entidadId).maybeSingle()
+    if (!t) return null
+    let responsableEmail = null
+    if (t.responsable_id) {
+      const { data:r } = await admin.from('mnt_responsables').select('email').eq('id', t.responsable_id).maybeSingle()
+      responsableEmail = r?.email || null
+    }
+    return { sedeId:t.sede_id, responsableEmail, url:'/?view=mntTickets' }
+  }
+  if (entidadTipo === 'tarea') {
+    const { data:t } = await admin.schema('bitacora').from('tareas')
+      .select('id,sede_id,responsable_id').eq('id', entidadId).maybeSingle()
+    if (!t) return null
+    return { sedeId:t.sede_id, responsableUserId:t.responsable_id, url:'/?view=tareas' }
+  }
+  if (entidadTipo === 'escalamiento') {
+    const { data:e } = await admin.schema('bitacora').from('escalamientos')
+      .select('id,sede_id').eq('id', entidadId).maybeSingle()
+    if (!e) return null
+    return { sedeId:e.sede_id, url:'/?view=escalamientos' }
+  }
+  if (entidadTipo === 'no_conformidad') {
+    const { data:n } = await admin.schema('bitacora').from('no_conformidades')
+      .select('id,sede_id,created_by').eq('id', entidadId).maybeSingle()
+    if (!n) return null
+    return { sedeId:n.sede_id, responsableUserId:n.created_by, url:'/?view=capa' }
   }
   return null
 }

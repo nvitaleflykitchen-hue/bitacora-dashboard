@@ -4,7 +4,9 @@ import { es } from 'date-fns/locale'
 import { getKPIsHoy, getEstadoTendencia } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import RegistroModal from '../components/RegistroModal'
+import PageHeader from '../components/PageHeader'
 import TareaForm from '../components/TareaForm'
+import TicketRapidoModal from '../components/TicketRapidoModal'
 import { RefreshCw, ClipboardList, Building2, AlertTriangle, CheckSquare, Wrench, Flame } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
@@ -38,6 +40,8 @@ export default function DashboardGlobal({ onNavigate }) {
   const [error, setError]  = useState(null)
   const [selRegistro, setSelRegistro] = useState(null)
   const [tareaOrigen, setTareaOrigen] = useState(null)
+  const [tareaInitial, setTareaInitial] = useState(null)
+  const [ticketOrigen, setTicketOrigen] = useState(null)
   const [mntStats, setMntStats]       = useState(null)
   const [tendencia, setTendencia]     = useState([])
 
@@ -65,7 +69,7 @@ export default function DashboardGlobal({ onNavigate }) {
     }
     catch (e) { setError(e.message) }
     finally { setLoading(false) }
-  }, [])
+  }, [allowedSedeIds])
 
   useEffect(() => { load() }, [load])
 
@@ -100,18 +104,14 @@ export default function DashboardGlobal({ onNavigate }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>Dashboard Global</h1>
-          <p className="font-metric text-xs capitalize mt-0.5" style={{ color:'var(--text-dim)' }}>{hoy}</p>
-        </div>
+      <PageHeader title="Dashboard Global" subtitle={hoy}>
         <div className="flex items-center gap-3">
           <Clock />
           <button onClick={load} className="btn-ghost flex items-center gap-1.5" style={{ padding:'0.35rem 0.75rem' }}>
             <RefreshCw size={11} /> Actualizar
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -288,11 +288,31 @@ export default function DashboardGlobal({ onNavigate }) {
 
       {selRegistro && (
         <RegistroModal registro={selRegistro} onClose={() => setSelRegistro(null)}
-          onCreateTarea={r => { setTareaOrigen(r); setSelRegistro(null) }} />
+          onCreateTarea={(r, extra) => {
+            setTareaOrigen(r)
+            setTareaInitial(extra || null)
+            setSelRegistro(null)
+          }}
+          onCreateTicket={(r, extra) => {
+            setTicketOrigen({ registro:r, ...extra })
+            setSelRegistro(null)
+          }}
+        />
       )}
       {tareaOrigen && (
-        <TareaForm registroOrigen={tareaOrigen} onClose={() => setTareaOrigen(null)}
-          onCreated={() => { setTareaOrigen(null); load() }} />
+        <TareaForm
+          registroOrigen={tareaOrigen}
+          initialValues={tareaInitial}
+          onClose={() => { setTareaOrigen(null); setTareaInitial(null) }}
+          onCreated={() => { setTareaOrigen(null); setTareaInitial(null); load() }}
+        />
+      )}
+      {ticketOrigen && (
+        <TicketRapidoModal
+          origen={ticketOrigen}
+          onClose={() => setTicketOrigen(null)}
+          onCreated={() => { setTicketOrigen(null); load() }}
+        />
       )}
     </div>
   )

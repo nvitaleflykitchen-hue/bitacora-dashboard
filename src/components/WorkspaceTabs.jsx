@@ -1,4 +1,4 @@
-export default function WorkspaceTabs({ title, subtitle, tabs, activeTab, onTabChange, children }) {
+export default function WorkspaceTabs({ title, subtitle, tabs, activeTab, onTabChange, children, rightSlot }) {
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
       <header className="px-4 md:px-6 pt-4 md:pt-5" style={{ background:'var(--abyss)' }}>
@@ -7,6 +7,7 @@ export default function WorkspaceTabs({ title, subtitle, tabs, activeTab, onTabC
             <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>{title}</h1>
             {subtitle && <p className="font-metric text-xs mt-1" style={{ color:'var(--text-dim)' }}>{subtitle}</p>}
           </div>
+          {rightSlot && <div style={{ flexShrink:0 }}>{rightSlot}</div>}
         </div>
         <nav aria-label={`Secciones de ${title}`} className="flex gap-1 mt-4 overflow-x-auto pb-2">
           {tabs.map(tab => (

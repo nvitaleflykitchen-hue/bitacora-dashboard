@@ -32,6 +32,40 @@ $$;
 revoke all on function bitacora_private.is_bitacora_admin() from public, anon;
 grant execute on function bitacora_private.is_bitacora_admin() to authenticated;
 
+-- Los grupos se consultan al editar sedes, pero solo un administrador puede
+-- crearlos o modificarlos. No se concede DELETE desde la aplicacion.
+alter table bitacora.grupos enable row level security;
+
+revoke all on table bitacora.grupos from anon;
+revoke all on table bitacora.grupos from authenticated;
+grant select, insert, update on table bitacora.grupos to authenticated;
+
+revoke all on sequence bitacora.grupos_id_seq from anon;
+grant usage on sequence bitacora.grupos_id_seq to authenticated;
+
+drop policy if exists grupos_select_authenticated on bitacora.grupos;
+drop policy if exists grupos_insert_admin on bitacora.grupos;
+drop policy if exists grupos_update_admin on bitacora.grupos;
+
+create policy grupos_select_authenticated
+on bitacora.grupos
+for select
+to authenticated
+using (auth.uid() is not null);
+
+create policy grupos_insert_admin
+on bitacora.grupos
+for insert
+to authenticated
+with check (bitacora_private.is_bitacora_admin());
+
+create policy grupos_update_admin
+on bitacora.grupos
+for update
+to authenticated
+using (bitacora_private.is_bitacora_admin())
+with check (bitacora_private.is_bitacora_admin());
+
 create or replace function bitacora_private.protect_profile_security_fields()
 returns trigger
 language plpgsql
@@ -70,6 +104,10 @@ for each row execute function bitacora_private.protect_profile_security_fields()
 drop policy if exists read_perfiles on bitacora.perfiles;
 drop policy if exists insert_perfiles on bitacora.perfiles;
 drop policy if exists update_perfiles on bitacora.perfiles;
+drop policy if exists perfiles_select_self_or_admin on bitacora.perfiles;
+drop policy if exists perfiles_insert_self_as_consultor on bitacora.perfiles;
+drop policy if exists perfiles_update_self on bitacora.perfiles;
+drop policy if exists perfiles_update_admin on bitacora.perfiles;
 
 create policy perfiles_select_self_or_admin
 on bitacora.perfiles

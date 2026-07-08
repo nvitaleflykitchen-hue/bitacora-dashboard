@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { ROLES, canAccessView, canWrite, getPrimaryNav } from './access'
+import { ROLES, canAccessView, canSeeQualityTask, canWrite, getPrimaryNav, isQualityTeamPerson } from './access'
 
 describe('matriz de acceso', () => {
-  it.each(ROLES)('limita el menú principal de %s a siete accesos', rol => {
-    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(7)
+  // Tope real hoy: admin/editor/consultor/grupo/encargado ven 9 accesos
+  // (6 operacionales + flotaHub + calidadHub + equipo). Antes de agregar
+  // flotaHub ya eran 8, por lo que el límite histórico de "siete" estaba
+  // desactualizado independientemente de este cambio.
+  it.each(ROLES)('limita el menú principal de %s a nueve accesos', rol => {
+    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(9)
   })
 
   it('deja al consultor en modo lectura', () => {
@@ -21,5 +25,51 @@ describe('matriz de acceso', () => {
   it('reserva administración para admin', () => {
     expect(canAccessView('admin', 'usuarios')).toBe(true)
     expect(canAccessView('editor', 'usuarios')).toBe(false)
+  })
+
+  it('acota a operario a bitácora (reportar), sin tickets/compras/escritorio', () => {
+    expect(canWrite('operario', 'bitacora', 'report')).toBe(true)
+    expect(canWrite('operario', 'bitacora', 'attach')).toBe(true)
+    expect(canWrite('operario', 'compras', 'request')).toBe(false)
+    expect(canWrite('operario', 'mantenimiento', 'report')).toBe(false)
+    expect(canAccessView('operario', 'inicio')).toBe(false)
+    expect(getPrimaryNav('operario').length).toBe(0)
+  })
+
+  it('da a flota su propio módulo, sin Mantenimiento ni Calidad', () => {
+    expect(canAccessView('flota', 'flotaHub')).toBe(true)
+    expect(canAccessView('flota', 'mantenimientoHub')).toBe(false)
+    expect(canAccessView('flota', 'calidadHub')).toBe(false)
+    expect(canWrite('flota', 'flota', 'manage')).toBe(true)
+    expect(canWrite('flota', 'mantenimiento', 'manage')).toBe(false)
+  })
+  it('permite a grupo generar no conformidades dentro de Calidad', () => {
+    expect(canAccessView('grupo', 'calidadHub')).toBe(true)
+    expect(canAccessView('grupo', 'noConformidades')).toBe(true)
+    expect(canWrite('grupo', 'calidad', 'manage')).toBe(true)
+    expect(canWrite('grupo', 'noConformidades', 'manage')).toBe(true)
+  })
+
+  it('acota el usuario de Calidad a pendientes, tareas, calidad y equipo propio', () => {
+    const perfil = { id:'u1', nombre:'Tecnica Flykitchen', email:'tecnica@flykitchen.com.ar' }
+    expect(getPrimaryNav('editor', perfil).map(item => item.id)).toEqual(['pendientes', 'requerimientos', 'mantenimientoHub', 'flotaHub', 'calidadHub', 'equipo'])
+    expect(canAccessView('editor', 'tareas', perfil)).toBe(true)
+    expect(canAccessView('editor', 'requerimientos', perfil)).toBe(true)
+    expect(canAccessView('editor', 'mantenimientoHub', perfil)).toBe(true)
+    expect(canAccessView('editor', 'flotaHub', perfil)).toBe(true)
+    expect(canWrite('editor', 'tareas', 'manage', perfil)).toBe(true)
+    expect(canWrite('editor', 'compras', 'manage', perfil)).toBe(false)
+    expect(canWrite('editor', 'mantenimiento', 'manage', perfil)).toBe(false)
+    expect(canWrite('editor', 'flota', 'manage', perfil)).toBe(false)
+    expect(canWrite('editor', 'equipo', 'manage', perfil)).toBe(false)
+  })
+
+  it('reconoce tareas propias o de calidad y personas del equipo calidad', () => {
+    const perfil = { id:'u1', nombre:'Tecnica Flykitchen', email:'tecnica@flykitchen.com.ar' }
+    expect(canSeeQualityTask({ responsable_id:'u1' }, perfil)).toBe(true)
+    expect(canSeeQualityTask({ categoria:'F', titulo:'Limpieza BPM' }, perfil)).toBe(true)
+    expect(canSeeQualityTask({ titulo:'Comprar vasos', categoria:'C' }, perfil)).toBe(false)
+    expect(isQualityTeamPerson({ area:'Calidad', puesto:'Tecnica' }, perfil)).toBe(true)
+    expect(isQualityTeamPerson({ area:'Cocina', puesto:'Cocinero' }, perfil)).toBe(false)
   })
 })

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getMatafuegos, upsertMatafuego, getSedes } from '../../lib/queries'
+import { useAuth } from '../../lib/auth'
+import PageHeader from '../../components/PageHeader'
 
 const ESTADO_COLOR = { operativo:'#39FF14', vencido:'#FF2A2A', baja:'#6B7280' }
 const INPUT_S = { width:'100%', padding:'0.7rem 0.9rem', borderRadius:2, background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.08)', color:'#e2e8f0', fontSize:'0.88rem', fontFamily:'inherit', boxSizing:'border-box' }
@@ -77,21 +79,30 @@ function MatafuegoModal({ item, sedes, onClose, onSaved }) {
   )
 }
 
-export default function MntMatafuegos() {
+export default function MntMatafuegos({ focusId }) {
+  const { allowedSedeIds } = useAuth()
   const [items, setItems]   = useState([])
   const [sedes, setSedes]   = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal]   = useState(null)
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = items.find(item => String(item.id) === String(focusId))
+    if (target) setModal(target)
+  }, [focusId, loading, items])
   const [sedeId, setSedeId] = useState('')
 
-  useEffect(() => { getSedes().then(setSedes) }, [])
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
+
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
 
   const load = useCallback(() => {
     setLoading(true)
-    const filtros = {}
+    const filtros = { sedeIds: allowedSedeIds || undefined }
     if (sedeId) filtros.sede_id = Number(sedeId)
     getMatafuegos(filtros).then(setItems).finally(() => setLoading(false))
-  }, [sedeId])
+  }, [sedeId, allowedSedeIds])
   useEffect(() => { load() }, [load])
 
   const hoy     = new Date().toISOString().split('T')[0]
@@ -107,8 +118,7 @@ export default function MntMatafuegos() {
   return (
     <div style={{ padding:'1.5rem 2rem', height:'100%', display:'flex', flexDirection:'column' }}>
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
-        <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Matafuegos</h1>
+      <PageHeader title="Matafuegos">
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)} style={SEL_S}>
             <option value=''>Todas las sedes</option>
@@ -119,7 +129,7 @@ export default function MntMatafuegos() {
             + Nuevo
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* KPIs */}
       <div style={{ display:'flex', gap:'0.6rem', marginBottom:'1rem' }}>

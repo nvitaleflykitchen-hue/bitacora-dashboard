@@ -6,13 +6,17 @@ import Sidebar from './components/Sidebar'
 import AlertaBanner   from './components/AlertaBanner'
 import GlobalSearch   from './components/GlobalSearch'
 import { useEscalamientosAlert } from './hooks/useEscalamientosAlert'
-import { canAccessView, getDefaultView } from './lib/access'
+import { canAccessView, getDefaultView, isQualityOnlyProfile } from './lib/access'
+import HelpPanel from './components/HelpPanel'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
+const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
 const InicioRol = lazy(() => import('./views/InicioRol'))
+const Tablon = lazy(() => import('./views/Tablon'))
 const PendientesHub = lazy(() => import('./views/PendientesHub'))
 const SedesHub = lazy(() => import('./views/SedesHub'))
 const MantenimientoHub = lazy(() => import('./views/MantenimientoHub'))
+const FlotaHub = lazy(() => import('./views/FlotaHub'))
 const CalidadHub = lazy(() => import('./views/CalidadHub'))
 const DashboardGlobal = lazy(() => import('./views/DashboardGlobal'))
 const PorSede = lazy(() => import('./views/PorSede'))
@@ -39,14 +43,17 @@ const Requerimientos = lazy(() => import('./views/Requerimientos'))
 const QRActivoView = lazy(() => import('./views/mantenimiento/QRActivoView'))
 const AuditoriaView = lazy(() => import('./views/mantenimiento/AuditoriaView'))
 const SedeFicha = lazy(() => import('./views/SedeFicha'))
+const VuelosPlantilla = lazy(() => import('./views/VuelosPlantilla'))
 const EquipoView = lazy(() => import('./views/EquipoView'))
 const SedeEncargadoView = lazy(() => import('./views/SedeEncargadoView'))
 
 const ALL_VIEWS = {
   inicio:          InicioRol,
+  tablon:          Tablon,
   pendientes:     PendientesHub,
   sedesHub:        SedesHub,
   mantenimientoHub: MantenimientoHub,
+  flotaHub:        FlotaHub,
   calidadHub:      CalidadHub,
   dashboard:       DashboardGlobal,
   sede:            PorSede,
@@ -72,6 +79,7 @@ const ALL_VIEWS = {
   requerimientos:   Requerimientos,
   qrActivo:         QRActivoView,
   sedeFicha:        SedeFicha,
+  vuelosPlantilla:  VuelosPlantilla,
   equipo:           EquipoView,
   auditoria:        AuditoriaView,
   sedeEncargado:    SedeEncargadoView,
@@ -86,6 +94,28 @@ function AccessBlocked({ onSignOut }) {
           Tu perfil no tiene una sede o grupo asignado, o está inactivo. Un administrador debe completar la configuración antes de continuar.
         </p>
         <button type="button" onClick={onSignOut} className="btn-ghost mt-5">Cerrar sesión</button>
+      </div>
+    </div>
+  )
+}
+
+function AuthStartupError({ message, onRetry, onSignOut }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background:'var(--abyss)' }}>
+      <div className="glass max-w-md rounded p-6 text-center">
+        <h1 className="font-title font-bold" style={{ color:'var(--warn)' }}>No se pudo iniciar la app</h1>
+        <p className="text-sm mt-3" style={{ color:'var(--text-dim)', lineHeight:1.6 }}>
+          La sesión o el perfil tardaron demasiado en responder. Esto suele pasar por conexión inestable, caché de la PWA o una llamada de Supabase colgada.
+        </p>
+        {message && (
+          <p className="font-metric text-xs mt-3" style={{ color:'var(--text-dim)', wordBreak:'break-word' }}>
+            {message}
+          </p>
+        )}
+        <div className="flex items-center justify-center gap-2 mt-5">
+          <button type="button" onClick={onRetry} className="btn-primary">Reintentar</button>
+          <button type="button" onClick={onSignOut} className="btn-ghost">Cerrar sesión</button>
+        </div>
       </div>
     </div>
   )
@@ -125,9 +155,20 @@ function ViewLoading() {
 }
 
 function AppInner() {
-  const { user, perfil, rol, allowedSedeIds, accessBlocked, loading, signOut } = useAuth()
+  const { user, perfil, rol, allowedSedeIds, accessBlocked, authError, loading, signOut, can } = useAuth()
+  const isQualityOnly = isQualityOnlyProfile(perfil)
+  // 'operario': rol mobile-only, sin acceso a escritorio sin importar el ancho de pantalla.
+  const forceMobile = rol === 'operario'
   const [qrActivoId, setQrActivoId] = useState(() => new URLSearchParams(window.location.search).get('id'))
   const [showSearch, setShowSearch] = useState(false)
+  const [showReporte, setShowReporte] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
+  const [navigationTarget, setNavigationTarget] = useState(() => {
+    const p = new URLSearchParams(window.location.search)
+    return p.get('targetType') || p.get('targetId')
+      ? { type:p.get('targetType'), id:p.get('targetId'), sedeId:p.get('targetSedeId') }
+      : null
+  })
   const [activeView, setActiveView] = useState(() => {
     const p = new URLSearchParams(window.location.search)
     if (p.get('scan') === 'activo' && p.get('id')) return 'qrActivo'
@@ -137,10 +178,10 @@ function AppInner() {
 
   // Bloquear rutas directas que no correspondan al rol actual.
   useEffect(() => {
-    if (!loading && user && activeView !== 'qrActivo' && !canAccessView(rol, activeView)) {
-      setActiveView(getDefaultView(rol) || 'inicio')
+    if (!loading && user && activeView !== 'qrActivo' && !canAccessView(rol, activeView, perfil)) {
+      setActiveView(getDefaultView(rol, perfil) || 'inicio')
     }
-  }, [loading, user, rol, activeView])
+  }, [loading, user, rol, perfil, activeView])
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
@@ -151,55 +192,124 @@ function AppInner() {
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
+        if (isQualityOnly) return
         setShowSearch(s => !s)
       }
       if (e.key === 'Escape') setShowSearch(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [isQualityOnly])
 
   const isMobile = useIsMobile()
 
   // Notificaciones browser para escalamientos Pendientes sin gestionar
-  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !accessBlocked && !isMobile })
+  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !accessBlocked && !isMobile && !isQualityOnly })
 
   if (loading) return <LoadingScreen />
+  if (authError) return <AuthStartupError message={authError} onRetry={() => window.location.reload()} onSignOut={signOut} />
   if (!user)   return <LoginPage />
   if (accessBlocked) return <AccessBlocked onSignOut={signOut} />
   if (perfil?.must_change_password) return <CambiarContrasena />
   if (activeView === 'qrActivo' && isMobile) {
     return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} onNavigate={setActiveView} /></Suspense>
   }
-  if (isMobile) return <Suspense fallback={<LoadingScreen />}><MobileApp /></Suspense>
+  if (isMobile || forceMobile) return <Suspense fallback={<LoadingScreen />}><MobileApp /></Suspense>
 
-  const navigate = (view) => {
-    if (!ALL_VIEWS[view] || !canAccessView(rol, view)) return
+  const navigate = (view, target = null) => {
+    if (!ALL_VIEWS[view] || !canAccessView(rol, view, perfil)) return
     setActiveView(view)
+    setNavigationTarget(target)
     const url = new URL(window.location.href)
     url.search = ''
     url.searchParams.set('view', view)
+    if (target?.type) {
+      url.searchParams.set('targetType', target.type || '')
+    }
+    if (target?.id) {
+      url.searchParams.set('targetId', target.id)
+      if (target.sedeId) url.searchParams.set('targetSedeId', target.sedeId)
+    }
     window.history.replaceState({}, '', url)
   }
 
   const ActiveView = ALL_VIEWS[activeView] || InicioRol
+  const canReport = !isQualityOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background:'var(--abyss)' }}>
       <div className="scanline" />
-      <Sidebar activeView={activeView} onNavigate={navigate} />
+      <Sidebar activeView={activeView} onNavigate={navigate} onNuevoReporte={canReport ? () => setShowReporte(true) : null} />
       <main className="flex-1 flex flex-col overflow-hidden pt-12 md:pt-0">
         <AlertaBanner onNavigate={navigate} />
-        {showSearch && (
+        {showSearch && !isQualityOnly && (
           <GlobalSearch onNavigate={navigate} onClose={() => setShowSearch(false)} />
         )}
         <Suspense fallback={<ViewLoading />}>
           {activeView === 'qrActivo'
             ? <QRActivoView activoId={qrActivoId} onNavigate={navigate} />
-            : <ActiveView onNavigate={navigate} />
+            : <ActiveView
+                onNavigate={navigate}
+                onOpenSearch={() => setShowSearch(true)}
+                focusId={navigationTarget?.id || null}
+                focusType={navigationTarget?.type || null}
+                focusSedeId={navigationTarget?.sedeId || null}
+              />
           }
         </Suspense>
       </main>
+
+      {/* Botón flotante de ayuda */}
+      <button
+        onClick={() => setShowHelp(h => !h)}
+        title="Manual de uso / Central de ayuda"
+        style={{
+          position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 75,
+          width: 40, height: 40, borderRadius: '50%',
+          background: showHelp ? 'var(--phosphor)' : 'var(--surface)',
+          border: '1px solid rgba(57,255,20,0.35)',
+          color: showHelp ? '#0A0A0E' : 'var(--phosphor)',
+          fontWeight: 800, fontSize: '1rem', cursor: 'pointer',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background 0.15s, color 0.15s',
+        }}
+      >
+        ?
+      </button>
+
+      {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
+
+      {/* Modal "Nuevo Reporte" desde escritorio — reusa el mismo form que la vista mobile,
+          montado en un contenedor angosto para no romper su estilado pensado para celular. */}
+      {showReporte && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 70,
+            background: 'rgba(0,0,0,0.84)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '2rem',
+          }}
+          onClick={() => setShowReporte(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: 'min(480px, 100%)', height: 'min(880px, 100%)',
+              background: 'var(--abyss)', borderRadius: 12, overflow: 'hidden',
+              border: '1px solid rgba(57,255,20,0.28)',
+              boxShadow: '0 28px 90px rgba(0,0,0,0.9)',
+            }}
+          >
+            <Suspense fallback={<ViewLoading />}>
+              <MobileReporte
+                onBack={() => setShowReporte(false)}
+                onSuccess={() => setShowReporte(false)}
+              />
+            </Suspense>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

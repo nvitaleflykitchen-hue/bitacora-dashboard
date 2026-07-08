@@ -3,11 +3,11 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import PushNotificationControl from './PushNotificationControl'
 import NotificationCenter from './NotificationCenter'
-import { getNavSection, getPrimaryNav } from '../lib/access'
+import { getNavSection, getPrimaryNav, isQualityOnlyProfile } from '../lib/access'
 import {
   LayoutDashboard, Building2, AlertTriangle,
   Wrench, Users, Menu, X, LogOut, KeyRound,
-  Users2, ShoppingCart, Shield, ClipboardCheck,
+  Users2, ShoppingCart, Shield, ClipboardCheck, Megaphone, Plus, Truck,
 } from 'lucide-react'
 
 function SectionLabel({ children }) {
@@ -108,22 +108,26 @@ function ChangePasswordModal({ onClose }) {
   )
 }
 
-export default function Sidebar({ activeView, onNavigate }) {
+export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
   const { perfil, rol, isAdmin, signOut } = useAuth()
+  const isQualityOnly = isQualityOnlyProfile(perfil)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [showPwModal, setShowPwModal] = useState(false)
 
   const nav = (id) => { onNavigate(id); setMobileOpen(false) }
+  const abrirReporte = () => { onNuevoReporte(); setMobileOpen(false) }
   const iconByName = {
     home: LayoutDashboard,
+    announcement: Megaphone,
     pending: ClipboardCheck,
     sites: Building2,
     purchases: ShoppingCart,
     maintenance: Wrench,
+    fleet: Truck,
     quality: Shield,
     team: Users2,
   }
-  const primaryNav = getPrimaryNav(rol)
+  const primaryNav = getPrimaryNav(rol, perfil)
   const activeSection = getNavSection(activeView)
 
   const sidebarContent = (
@@ -137,6 +141,19 @@ export default function Sidebar({ activeView, onNavigate }) {
           IN SITU · FK
         </p>
       </div>
+
+      {/* Nuevo Reporte — acceso directo de escritorio (antes solo disponible angostando la ventana) */}
+      {onNuevoReporte && (
+        <div className="px-2 pt-3">
+          <button onClick={abrirReporte} className="w-full" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+            background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius: 6,
+            padding: '0.55rem 0', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer',
+          }}>
+            <Plus size={14} /> Nuevo Reporte
+          </button>
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
@@ -178,8 +195,8 @@ export default function Sidebar({ activeView, onNavigate }) {
             </p>
           </button>
           <div className="flex items-center gap-1 ml-2">
-            <NotificationCenter onNavigate={onNavigate}/>
-            <PushNotificationControl compact />
+            {!isQualityOnly && <NotificationCenter onNavigate={onNavigate}/>}
+            {!isQualityOnly && <PushNotificationControl compact />}
             <button onClick={() => setShowPwModal(true)} title="Cambiar contraseña"
               className="btn-ghost" style={{ padding:'0.3rem' }}>
               <KeyRound size={12} />

@@ -8,3 +8,7 @@ dist_v2
 bitacora-dashboard
 vite.config.js.timestamp-*.mjs
 checkjsx_tmp.js
+tmp
+supabase/.temp
+vitest.config.js.timestamp-*.mjs
+BITACORA.MD.docx

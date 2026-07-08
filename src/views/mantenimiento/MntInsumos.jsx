@@ -1,27 +1,51 @@
 import { supabase } from '../../lib/supabase'
 import { useState, useEffect, useCallback } from 'react'
-import { getInsumos, registrarMovimiento } from '../../lib/queries'
+import { getInsumos, getSedes, registrarMovimiento } from '../../lib/queries'
+import { useAuth } from '../../lib/auth'
+import PageHeader from '../../components/PageHeader'
 
-export default function MntInsumos() {
+export default function MntInsumos({ focusId }) {
+  const { allowedSedeIds } = useAuth()
   const [insumos, setInsumos] = useState([])
+  const [sedes, setSedes] = useState([])
+  const [sedeId, setSedeId] = useState('')
   const [loading, setLoading] = useState(true)
   const [modalMov, setModalMov] = useState(null) // insumo para registrar movimiento
   const [nuevoModal, setNuevoModal] = useState(false)
 
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [])
+
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
+
   const load = useCallback(() => {
     setLoading(true)
-    getInsumos().then(setInsumos).finally(() => setLoading(false))
-  }, [])
+    const filtros = { sedeIds: allowedSedeIds || undefined }
+    if (sedeId) filtros.sede_id = Number(sedeId)
+    getInsumos(filtros).then(setInsumos).finally(() => setLoading(false))
+  }, [sedeId])
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!focusId || loading) return
+    document.getElementById(`insumo-${focusId}`)?.scrollIntoView({ behavior:'smooth', block:'center' })
+  }, [focusId, loading, insumos])
 
+  const nombreSede = (id) => sedes.find(s => s.id === id)?.nombre || '—'
   const bajoPorcentaje = (i) => i.stock_minimo > 0 ? (i.stock_actual / i.stock_minimo) : 999
+
+  const SEL_S = { background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.15)', color:'#e2e8f0', borderRadius:2, padding:'0.35rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
 
   return (
     <div style={{ padding: '1.5rem 2rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>📦 Insumos</h1>
-        <button onClick={() => setNuevoModal(true)} style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>+ Insumo</button>
-      </div>
+      <PageHeader title="Insumos">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select value={sedeId} onChange={e => setSedeId(e.target.value)} style={SEL_S}>
+            <option value=''>Todas las sedes</option>
+            {sedes.map(s => <option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
+          </select>
+          <button onClick={() => setNuevoModal(true)} style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>+ Insumo</button>
+        </div>
+      </PageHeader>
 
       <div style={{ flex: 1, overflowY: 'auto', background: 'var(--surface)', borderRadius:3 }}>
         {loading ? (
@@ -29,19 +53,22 @@ export default function MntInsumos() {
             <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
           </div>
         ) : insumos.length === 0 ? (
-          <p style={{ padding: '2rem', color: 'var(--text-dim)', textAlign: 'center' }}>Sin insumos cargados</p>
+          <p style={{ padding: '2rem', color: 'var(--text-dim)', textAlign: 'center' }}>Sin insumos cargados{sedeId ? ' para esta sede' : ''}</p>
         ) : insumos.map((ins, i) => {
           const pct = bajoPorcentaje(ins)
           const bajo = pct < 1
           return (
-            <div key={ins.id} style={{ display: 'grid', gridTemplateColumns: '1fr 200px 60px', alignItems: 'center', gap: '1rem', padding: '0.85rem 1.1rem',
-              borderBottom: i < insumos.length-1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+            <div id={`insumo-${ins.id}`} key={ins.id} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 200px 60px', alignItems: 'center', gap: '1rem', padding: '0.85rem 1.1rem',
+              border: String(ins.id) === String(focusId) ? '1px solid var(--phosphor)' : 'none',
+              boxShadow: String(ins.id) === String(focusId) ? 'inset 0 0 0 2px rgba(57,255,20,0.1)' : 'none',
+              borderBottom: String(ins.id) === String(focusId) ? '1px solid var(--phosphor)' : (i < insumos.length-1 ? '1px solid rgba(255,255,255,0.03)' : 'none') }}>
               <div>
                 <p style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.9rem' }}>{ins.nombre}
                   {bajo && <span style={{ color: '#FF2A2A', fontSize: '0.6rem', marginLeft: 6 }}>⚠ Stock bajo</span>}
                 </p>
                 <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>{ins.categoria || '—'} · mín {ins.stock_minimo} {ins.unidad || ''}</p>
               </div>
+              <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>{nombreSede(ins.sede_id)}</div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ color: bajo ? '#FF2A2A' : 'var(--phosphor)', fontWeight: 700, fontSize: '0.9rem' }}>{ins.stock_actual}</span>
@@ -64,7 +91,7 @@ export default function MntInsumos() {
         <MovimientoModal insumo={modalMov} onClose={() => setModalMov(null)} onSaved={() => { setModalMov(null); load() }} />
       )}
       {nuevoModal && (
-        <NuevoInsumoModal onClose={() => setNuevoModal(false)} onSaved={() => { setNuevoModal(false); load() }} />
+        <NuevoInsumoModal sedes={sedes} sedeIdDefault={sedeId} onClose={() => setNuevoModal(false)} onSaved={() => { setNuevoModal(false); load() }} />
       )}
     </div>
   )
@@ -123,18 +150,18 @@ function MovimientoModal({ insumo, onClose, onSaved }) {
   )
 }
 
-function NuevoInsumoModal({ onClose, onSaved }) {
-  const [form, setForm] = useState({ nombre: '', unidad: '', stock_minimo: 0 })
+function NuevoInsumoModal({ sedes, sedeIdDefault, onClose, onSaved }) {
+  const [form, setForm] = useState({ nombre: '', unidad: '', stock_minimo: 0, sede_id: sedeIdDefault ? Number(sedeIdDefault) : '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSave = async () => {
     if (!form.nombre) { setErr('Nombre requerido'); return }
+    if (!form.sede_id) { setErr('Sede requerida'); return }
     setSaving(true); setErr(null)
     try {
-      
-      const { error } = await supabase.schema('mantenimiento').from('insumos').insert(form)
+      const { error } = await supabase.schema('mantenimiento').from('insumos').insert({ ...form, sede_id: Number(form.sede_id) })
       if (error) throw error
       onSaved()
     } catch(e) { setErr(e.message) } finally { setSaving(false) }
@@ -151,6 +178,13 @@ function NuevoInsumoModal({ onClose, onSaved }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
         </div>
         <div style={{ marginBottom: '1rem' }}><label style={LABEL}>Nombre *</label><input value={form.nombre} onChange={e => set('nombre', e.target.value)} style={INPUT} placeholder="Ej: Detergente industrial" required /></div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={LABEL}>Sede *</label>
+          <select value={form.sede_id} onChange={e => set('sede_id', e.target.value)} style={INPUT} required>
+            <option value="">Seleccionar sede...</option>
+            {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
           <div style={{ marginBottom: '1rem' }}><label style={LABEL}>Unidad</label><input value={form.unidad} onChange={e => set('unidad', e.target.value)} style={INPUT} placeholder="kg, litros, u..." /></div>
           <div style={{ marginBottom: '1rem' }}><label style={LABEL}>Stock mínimo</label><input type="number" value={form.stock_minimo} onChange={e => set('stock_minimo', +e.target.value)} style={INPUT} placeholder="Ej: 5" /></div>

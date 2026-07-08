@@ -1,4 +1,5 @@
 import { getEscalamientosItems, getRequerimientos, getTareas, getTickets } from './queries'
+import { canSeeQualityTask, isQualityOnlyProfile } from './access'
 
 const CACHE_TTL_MS = 30_000
 const cache = new Map()
@@ -43,6 +44,13 @@ export async function getWorkQueue({ sedeIds, perfil, rol, force = false } = {})
     getTickets({ sedeIds:scope }),
     getRequerimientos({ sedeIds:scope }),
   ])
+  if (isQualityOnlyProfile(perfil)) {
+    const scopedTareas = (tareas || []).filter(tarea => canSeeQualityTask(tarea, perfil))
+    const data = normalizeWorkItems({ tareas: scopedTareas })
+    cache.set(cacheKey, { createdAt:Date.now(), data })
+    return data
+  }
+
   const all = normalizeWorkItems({ tareas, escalamientos, tickets, compras })
   const data = rol === 'consultor' || !perfil?.nombre
     ? all

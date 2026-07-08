@@ -4,7 +4,9 @@ import { useAuth } from '../lib/auth'
 import { fmtFecha } from '../lib/dateUtils'
 import RegistroModal from '../components/RegistroModal'
 import TicketRapidoModal from '../components/TicketRapidoModal'
-import { RefreshCw, CheckCircle, LayoutGrid, List as ListIcon, Wrench } from 'lucide-react'
+import ComentariosHilo from '../components/ComentariosHilo'
+import PageHeader from '../components/PageHeader'
+import { RefreshCw, CheckCircle, LayoutGrid, List as ListIcon, Wrench, MessageSquare, X } from 'lucide-react'
 
 const TIPO_COLOR = {
   'Compras':       '#50b4ff',
@@ -29,7 +31,7 @@ const KANBAN_COLS = [
   { estado: 'Resuelto',   color: 'var(--phosphor)', bg: 'rgba(57,255,20,0.05)',  border: 'rgba(57,255,20,0.2)'   },
 ]
 
-export default function Escalamientos() {
+export default function Escalamientos({ focusId }) {
   const { allowedSedeIds, can } = useAuth()
   const canManage = can('escalamientos', 'manage')
   const [items,      setItems]      = useState([])
@@ -37,6 +39,7 @@ export default function Escalamientos() {
   const [loading,    setLoading]    = useState(true)
   const [updating,   setUpdating]   = useState(null)
   const [selRegId,   setSelRegId]   = useState(null)
+  const [selComentarioId, setSelComentarioId] = useState(null)
   const [tickets,     setTickets]     = useState({}) // escalamiento_id -> ticket
   const [ticketOrigen, setTicketOrigen] = useState(null) // escalamiento para el cual se está generando ticket
   const [filtroSede,   setFiltroSede]   = useState('')
@@ -71,6 +74,15 @@ export default function Escalamientos() {
   }, [allowedSedeIds, filtroSede, filtroEstado, filtroTipo, filtroDesde, filtroHasta])
 
   useEffect(() => { load() }, [load])
+
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setFiltroSede(String(allowedSedeIds[0])) }, [allowedSedeIds])
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = items.find(item => String(item.id) === String(focusId))
+    if (target?.registro_id) setSelRegId(target.registro_id)
+    else if (target) setSelComentarioId(target.id)
+  }, [focusId, loading, items])
 
   const handleEstado = async (id, nuevoEstado) => {
     if (!canManage) return
@@ -122,13 +134,7 @@ export default function Escalamientos() {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>Escalamientos</h1>
-          <p className="font-metric text-xs mt-0.5" style={{ color:'var(--text-dim)' }}>
-            Items individuales — gestioná el estado de cada uno
-          </p>
-        </div>
+      <PageHeader title="Escalamientos" subtitle="Items individuales — gestioná el estado de cada uno">
         <div className="flex items-center gap-2">
           <div className="flex items-center" style={{ border:'1px solid rgba(255,255,255,0.1)', borderRadius:3, overflow:'hidden' }}>
             <button onClick={() => setVista('tabla')} className="flex items-center gap-1.5"
@@ -144,7 +150,7 @@ export default function Escalamientos() {
             <RefreshCw size={11} /> Actualizar
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* KPIs */}
       {!loading && (
@@ -263,6 +269,10 @@ export default function Escalamientos() {
                                 Ver
                               </button>
                             )}
+                            <button onClick={() => setSelComentarioId(e.id)}
+                              className="btn-ghost flex items-center gap-1" style={{ padding:'0.15rem 0.4rem', fontSize:'0.58rem' }}>
+                              <MessageSquare size={9} />
+                            </button>
                             {canManage && e.tipo === 'Mantenimiento' && (
                               tickets[e.id] ? (
                                 <span title="Ticket de mantenimiento ya generado"
@@ -351,6 +361,10 @@ export default function Escalamientos() {
                               Ver reporte
                             </button>
                           )}
+                          <button onClick={() => setSelComentarioId(e.id)}
+                            className="btn-ghost flex items-center gap-1" style={{ padding:'0.2rem 0.5rem', fontSize:'0.62rem' }}>
+                            <MessageSquare size={10} /> Comentarios
+                          </button>
                           {canManage && e.tipo === 'Mantenimiento' && (
                             tickets[e.id] ? (
                               <span title="Ticket de mantenimiento ya generado"
@@ -413,6 +427,20 @@ export default function Escalamientos() {
           onClose={() => setTicketOrigen(null)}
           onCreated={handleTicketCreado}
         />
+      )}
+
+      {selComentarioId && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setSelComentarioId(null)}>
+          <div className="glass hud-corner fade-in w-full max-w-md rounded" style={{ borderRadius:'3px', maxHeight:'85vh', overflowY:'auto' }}>
+            <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
+              <h2 className="font-title font-bold text-sm" style={{ color:'var(--text)' }}>Comentarios del escalamiento</h2>
+              <button onClick={() => setSelComentarioId(null)} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
+            </div>
+            <div className="px-5 py-4">
+              <ComentariosHilo entidadTipo="escalamiento" entidadId={selComentarioId} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

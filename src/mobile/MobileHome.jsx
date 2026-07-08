@@ -1,8 +1,74 @@
 import { useState, useEffect } from 'react'
-import { getMisRegistrosHoy, getMisTareas } from '../lib/queries'
+import { getMisRegistrosHoy, getMisTareas, getDirectorio } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { Search } from 'lucide-react'
+
+const MODULO_ORDER = ['rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
+const MODULO_LABEL = { rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
+
+function ContactoChip({ c }) {
+  return (
+    <div style={{ background:'var(--surface)', borderRadius:8, padding:'0.65rem 0.75rem', border:'1px solid rgba(57,255,20,0.07)', display:'flex', alignItems:'center', gap:8 }}>
+      <span style={{ fontSize:'1.1rem', flexShrink:0 }}>{c.icono}</span>
+      <div style={{ flex:1, minWidth:0 }}>
+        <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.78rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.nombre}</p>
+        <p style={{ color:'var(--phosphor)', fontSize:'0.65rem', fontFamily:'monospace', opacity:0.75 }}>{c.telefono}</p>
+      </div>
+      <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+        <a href={`tel:+${c.tel}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.2)', color:'var(--phosphor)', borderRadius:5, textDecoration:'none', fontSize:'0.85rem' }}>📞</a>
+        {c.wa && <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener noreferrer" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.22)', color:'#25d366', borderRadius:5, textDecoration:'none', fontSize:'0.85rem' }}>💬</a>}
+      </div>
+    </div>
+  )
+}
+
+function ContactosRapidos() {
+  const [contactos, setContactos] = useState([])
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    getDirectorio().then(data => setContactos(data || [])).catch(() => {})
+  }, [])
+
+  const byModulo = {}
+  for (const c of contactos) {
+    if (!byModulo[c.modulo]) byModulo[c.modulo] = []
+    byModulo[c.modulo].push(c)
+  }
+  const sections = MODULO_ORDER.filter(k => byModulo[k]?.length > 0)
+  if (sections.length === 0) return null
+
+  return (
+    <section style={{ marginBottom:'1rem' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', background:'none', border:'none', cursor:'pointer', padding:'0.4rem 0', marginBottom: open ? '0.75rem' : 0 }}
+      >
+        <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', textTransform:'uppercase', letterSpacing:'0.1em', fontFamily:'var(--font-metric)', margin:0 }}>
+          📞 Contactos rápidos
+        </p>
+        <span style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'0.85rem' }}>
+          {sections.map(key => (
+            <div key={key}>
+              <p style={{ color:'rgba(57,255,20,0.45)', fontSize:'0.58rem', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'0.4rem', fontFamily:'var(--font-metric)' }}>
+                {MODULO_LABEL[key]}
+              </p>
+              <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                {byModulo[key].map(c => <ContactoChip key={c.id} c={c} />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
 
 const ESTADO_STYLE = {
   'Sin novedades':          { bg: 'rgba(57,255,20,0.12)', color: '#39FF14', label: 'Sin Novedades' },
@@ -10,7 +76,7 @@ const ESTADO_STYLE = {
   'Operación condicionada': { bg: 'rgba(255,42,42,0.12)',  color: '#FF2A2A', label: 'Op. Condicionada' },
 }
 
-export default function MobileHome({ onNuevoReporte }) {
+export default function MobileHome({ onNuevoReporte, onOpenSearch }) {
   const { perfil } = useAuth()
   const [registros, setRegistros] = useState([])
   const [tareas, setTareas] = useState([])
@@ -29,7 +95,7 @@ export default function MobileHome({ onNuevoReporte }) {
   const nombre = perfil?.nombre?.split(' ')[0] || 'Usuario'
 
   return (
-    <div style={{ padding: '1.25rem 1rem 0', overflowY: 'auto', height: '100%' }}>
+    <div className="mobile-scroll" style={{ padding: '1.25rem 1rem 1rem', height: '100%' }}>
       {/* Header */}
       <div style={{ marginBottom: '1.5rem' }}>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-metric)' }}>
@@ -39,6 +105,21 @@ export default function MobileHome({ onNuevoReporte }) {
           Hola, {nombre}
         </h1>
       </div>
+
+      {onOpenSearch && (
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="input-dark"
+          style={{
+            width:'100%', minHeight:44, marginBottom:'1rem', display:'flex',
+            alignItems:'center', gap:8, color:'var(--text-dim)', textAlign:'left',
+          }}
+        >
+          <Search size={15} style={{ color:'var(--phosphor)', flexShrink:0 }} />
+          Buscar en toda la aplicación...
+        </button>
+      )}
 
       {/* Boton principal */}
       {onNuevoReporte && <button onClick={onNuevoReporte}
@@ -115,6 +196,8 @@ export default function MobileHome({ onNuevoReporte }) {
           </p>
         )}
       </section>
+
+      <ContactosRapidos />
     </div>
   )
 }

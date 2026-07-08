@@ -1,0 +1,28 @@
+
+[functions.cron-preventivos]
+enabled = true
+verify_jwt = false
+import_map = "./functions/cron-preventivos/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/cron-preventivos/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/cron-preventivos/*.html" ]
+
+[functions.create-user-direct]
+enabled = true
+verify_jwt = false
+import_map = "./functions/create-user-direct/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/create-user-direct/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/create-user-direct/*.html" ]
+
+[functions.send-quality-email]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-quality-email/deno.json"
+entrypoint = "./functions/send-quality-email/index.ts"

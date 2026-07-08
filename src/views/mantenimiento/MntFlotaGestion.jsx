@@ -4,6 +4,10 @@ import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { getActivos, upsertActivo, getSedes } from '../../lib/queries'
 import { Plus, RefreshCw, Filter } from 'lucide-react'
+import PageHeader from '../../components/PageHeader'
+import DocumentacionChecklist from '../../components/DocumentacionChecklist'
+import { VEHICULO_DOCUMENTACION_TEMPLATE } from '../../lib/documentacion'
+import { isQualityOnlyProfile } from '../../lib/access'
 
 const ESTADO_COLOR = { operativo:'#39FF14', en_reparacion:'#F59E0B', baja:'#FF2A2A' }
 const INPUT_S = { width:'100%', padding:'0.4rem 0.75rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(107,114,128,0.3)', color:'var(--text)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', boxSizing:'border-box', outline:'none' }
@@ -24,8 +28,8 @@ const docColor = f => estaVencido(f) ? '#FF2A2A' : proximoVencer(f) ? '#F59E0B' 
 
 function VehiculoModal({ vehiculo, sedes, onClose, onSaved }) {
   const isNew = !vehiculo?.id
-  const { rol } = useAuth()
-  const canEdit = ['admin','encargado','editor'].includes(rol)
+  const { rol, perfil } = useAuth()
+  const canEdit = ['admin','encargado','editor','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [editing, setEditing] = useState(isNew)
   const [form, setForm] = useState(vehiculo || { tipo:'VEHICULO', estado:'operativo', nombre:'' })
   const [saving, setSaving] = useState(false)
@@ -47,6 +51,9 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved }) {
     setSaving(true); setErr(null)
     try {
       let payload = { ...form, tipo:'VEHICULO' }
+      // 'dominio' no existe como columna en mantenimiento.activos — eliminarlo del payload
+      // para evitar el error "Could not find the 'dominio' column of 'mnt_activos'"
+      delete payload.dominio
       if (payload.sede_id) {
         const sede = sedes.find(s => s.id === Number(payload.sede_id))
         if (sede) payload.sede_nombre = sede.nombre
@@ -108,6 +115,16 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved }) {
             <p style={{ color:'var(--phosphor)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', margin:'0.5rem 0 0.75rem', borderTop:'1px solid rgba(57,255,20,0.08)', paddingTop:'0.75rem', fontFamily:"'Roboto Mono',monospace" }}>Documentación</p>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1.5rem' }}>
               {DOCS.map(d => <VencChip key={d.key} label={`Venc. ${d.label}`} fecha={vehiculo[d.key]} />)}
+            </div>
+
+            <div style={{ marginTop:'1rem' }}>
+              <DocumentacionChecklist
+                entityType="vehiculo"
+                entityId={vehiculo.id}
+                template={VEHICULO_DOCUMENTACION_TEMPLATE}
+                canEdit={canEdit}
+                title="Documentación auditoría / flota"
+              />
             </div>
 
             <p style={{ color:'var(--phosphor)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', margin:'0.5rem 0 0.75rem', borderTop:'1px solid rgba(57,255,20,0.08)', paddingTop:'0.75rem', fontFamily:"'Roboto Mono',monospace" }}>Mantenimiento Preventivo</p>
@@ -208,9 +225,9 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved }) {
   )
 }
 
-export default function MntFlotaGestion() {
-  const { allowedSedeIds, rol } = useAuth()
-  const canWrite = ['admin','editor','encargado'].includes(rol)
+export default function MntFlotaGestion({ focusId }) {
+  const { allowedSedeIds, rol, perfil } = useAuth()
+  const canWrite = ['admin','editor','encargado','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [vehiculos, setVehiculos] = useState([])
   const [sedes, setSedes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -221,6 +238,9 @@ export default function MntFlotaGestion() {
 
   useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [])
 
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
+
   const load = useCallback(() => {
     setLoading(true)
     const filtros = { tipo: 'VEHICULO', sedeIds: allowedSedeIds || undefined }
@@ -228,6 +248,11 @@ export default function MntFlotaGestion() {
     getActivos(filtros).then(setVehiculos).finally(() => setLoading(false))
   }, [sedeId])
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = vehiculos.find(item => String(item.id) === String(focusId))
+    if (target) setModal(target)
+  }, [focusId, loading, vehiculos])
 
   const conVencido = v => DOCS.some(d => estaVencido(v[d.key]))
   const conProximo = v => DOCS.some(d => proximoVencer(v[d.key])) && !conVencido(v)
@@ -243,11 +268,7 @@ export default function MntFlotaGestion() {
 
   return (
     <div style={{ padding:'1.5rem 2rem', height:'100%', display:'flex', flexDirection:'column' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
-        <div>
-          <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Gestión Flota</h1>
-          <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', marginTop:2 }}>Documentación y vencimientos por vehículo</p>
-        </div>
+      <PageHeader title="Gestión Flota" subtitle="Documentación y vencimientos por vehículo">
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)} style={SEL_S}>
             <option value=''>Todas las sedes</option>
@@ -260,7 +281,7 @@ export default function MntFlotaGestion() {
             </button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* KPIs */}
       <div style={{ display:'flex', gap:'0.6rem', marginBottom:'1rem', flexWrap:'wrap' }}>

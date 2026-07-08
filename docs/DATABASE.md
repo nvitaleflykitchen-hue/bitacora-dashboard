@@ -275,7 +275,7 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | requiere_escalamiento | boolean | NO | `false` |
 | motivo_escalamiento / escalado_a | text | YES | — |
 | link_evidencia | text | YES | — |
-| op1_producidos / op1_servidos / vegetariano_producidos / vegetariano_servidos / ensalada_producidos / postre_producidos | integer | YES | — (conteo de producción de comedor) |
+| op1_producidos / op1_servidos / op1_sobrante / op2_producidos / op2_servidos / op2_sobrante / vegetariano_producidos / vegetariano_servidos / vegetariano_sobrante / ensalada_producidos / ensalada_sobrante / postre_producidos / postre_sobrante | integer | YES | — (conteo de producción, servicio y sobrante de comedor) |
 | created_at | timestamptz | NO | `now()` |
 | tipo | text | YES | — |
 
@@ -710,7 +710,7 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | 🔑 id | uuid | NO | `gen_random_uuid()` |
 | 🔗 perfil_id | uuid | YES | → `auth.users.id` |
 | nombre | text | NO | — |
-| apellido / dni / puesto / area | text | YES | — |
+| apellido / dni / legajo / puesto / area | text | YES | — |
 | sede_ids | integer[] | YES | `'{}'` |
 | telefono / email | text | YES | — |
 | fecha_ingreso / fecha_baja | date | YES | — |
@@ -809,7 +809,7 @@ Las 20 vistas están definidas como `SECURITY DEFINER` (confirmado en ARCHITECTU
 | `v_historial_personal` | `equipo.historial_personal` | + `personas` | `ORDER BY fecha DESC` |
 | `v_logros_config` | `equipo.logros_config` | — | `WHERE activo = true` |
 | `v_logros_obtenidos` | `equipo.logros_obtenidos` | + `logros_config`, + `personas` | Ninguno |
-| `v_personas` | `equipo.personas` | subconsultas agregadas: promedio de evaluaciones, conteo de incidentes, conteo y puntos de logros | `WHERE activo = true` |
+| `v_personas` | `equipo.personas` | expone `legajo`; subconsultas agregadas: promedio de evaluaciones, conteo de incidentes, conteo y puntos de logros | `WHERE activo = true` |
 | `v_sedes` | `bitacora.sedes` | — | `WHERE activa = true`, `ORDER BY tipo, nombre` |
 
 Notas relevantes:

@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Download } from 'lucide-react'
+import { Download, MessageCircle, Mail } from 'lucide-react'
 import { getTickets, createTicket, updateTicket, getActivos, getProveedores, getSedes, TICKET_TIPOS_VALIDOS } from '../../lib/queries'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { fmtFecha, fmtFechaHora } from '../../lib/dateUtils'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
+import PageHeader from '../../components/PageHeader'
+import { uploadAdjunto } from '../../lib/adjuntos'
+import ComentariosHilo from '../../components/ComentariosHilo'
 
 const PRIORIDAD_COLOR = { critica: '#FF2A2A', alta: '#F97316', media: '#F59E0B', baja: '#39FF14' }
 const ESTADO_COLOR    = { abierto: '#F97316', aprobado: '#F59E0B', en_progreso: '#3B82F6', resuelto: '#39FF14', rechazado: '#6B7280' }
@@ -387,6 +390,37 @@ function CostosTab({ ticket, form, set }) {
 const TIPO_LABEL      = { correctivo:'Correctivo', preventivo:'Preventivo' }
 const ACTIVO_TIPO_COLOR = { VEHICULO:'#50b4ff', EQUIPO:'#ffb400', INSTALACION:'#c084fc' }
 
+// Comparte el ticket con el responsable asignado por WhatsApp o Email,
+// igual que "Compartir requerimiento" en Compras (Requerimientos.jsx).
+function shareTicket(ticket, responsable, channel) {
+  const numero = ticket.numero || ticket.id || 'nuevo'
+  const sede = ticket.sede || ticket.sede_nombre || 'Sin sede'
+  const cuerpo = [
+    `Hola ${responsable.nombre || ''},`,
+    '',
+    `Se te asignó el Ticket de Mantenimiento #${numero}:`,
+    '',
+    `Descripción: ${ticket.descripcion || '—'}`,
+    ticket.activo_nombre ? `Activo: ${ticket.activo_nombre}` : null,
+    `Sede: ${sede}`,
+    `Tipo: ${TIPO_LABEL[ticket.tipo] || ticket.tipo || '—'}`,
+    `Prioridad: ${(ticket.prioridad || '—').toUpperCase()}`,
+    ticket.fecha_limite ? `Fecha límite: ${fmtFecha(ticket.fecha_limite)}` : null,
+    '',
+    'Fly Kitchen — Kitchen-OS',
+  ].filter(Boolean).join('\n')
+
+  if (channel === 'whatsapp') {
+    if (!responsable.telefono) { alert('El responsable no tiene teléfono registrado.'); return }
+    const phone = responsable.telefono.replace(/\D/g, '')
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(cuerpo)}`, '_blank', 'noopener,noreferrer')
+    return
+  }
+  if (!responsable.email) { alert('El responsable no tiene email registrado.'); return }
+  const subject = encodeURIComponent(`[Ticket #${numero}] ${(ticket.descripcion || '').substring(0, 50)}`)
+  window.open(`mailto:${responsable.email}?subject=${subject}&body=${encodeURIComponent(cuerpo)}`, '_blank')
+}
+
 function toDateInput(val) {
   if (!val) return ''
   return new Date(val).toISOString().split('T')[0]
@@ -404,8 +438,17 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
   }))
   const [tab, setTab]       = useState('datos')
   const [saving, setSaving] = useState(false)
+  const [archivos, setArchivos] = useState([])
   const [err, setErr]       = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Si el usuario solo tiene una sede asignada (ej: encargado), el ticket nuevo
+  // queda con esa sede preseleccionada en vez de "Sin sede".
+  useEffect(() => {
+    if (isNew && !form.sede_id && sedes?.length === 1) {
+      setForm(f => ({ ...f, sede_id: sedes[0].id, sede: sedes[0].nombre }))
+    }
+  }, [sedes])
 
   const activoObj   = activos.find(a => a.id === form.activo_id)
   const activoTipo  = activoObj?.tipo?.toUpperCase() || null
@@ -413,6 +456,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
   const tiposDisp   = TICKET_TIPOS_VALIDOS
   const tipoValido  = tiposDisp.includes(form.tipo)
   const tipoColor   = ACTIVO_TIPO_COLOR[activoTipo] || 'rgba(255,255,255,0.3)'
+  const selectedResponsable = (responsables||[]).find(r => r.id === form.responsable_id) || null
 
   const handleSave = async () => {
     if (readOnly) return
@@ -433,7 +477,10 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
       delete payload.fecha_apertura
 
       if (isNew) {
-        await createTicket(payload)
+        const created = await createTicket(payload)
+        if (archivos.length > 0) {
+          await Promise.all(archivos.map(f => uploadAdjunto('ticket', created.id, f)))
+        }
       } else {
         const cambios = []
         for (const campo of ['estado','prioridad','responsable_id','diagnostico','costo','presupuesto_estado','oc_estado','costo_real','costo_estimado']) {
@@ -491,6 +538,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
             <button style={TAB(tab==='historial')} onClick={()=>setTab('historial')}>Historial</button>
             {!readOnly && <button style={TAB(tab==='costos')} onClick={()=>setTab('costos')}>Costos / OC</button>}
             <button style={TAB(tab==='adjuntos')} onClick={()=>setTab('adjuntos')}>Adjuntos</button>
+            <button style={TAB(tab==='comentarios')} onClick={()=>setTab('comentarios')}>Comentarios</button>
           </div>
         )}
 
@@ -559,6 +607,20 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                   <option value="">Sin asignar</option>
                   {(responsables||[]).map(r=><option key={r.id} value={r.id}>{r.nombre}{r.rol?` — ${r.rol}`:''}</option>)}
                 </select>
+                {selectedResponsable && (
+                  <div style={{ display:'flex', gap:6, marginTop:6 }}>
+                    <button type="button" title="Compartir por WhatsApp"
+                      onClick={() => shareTicket({ ...ticket, ...form }, selectedResponsable, 'whatsapp')}
+                      style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(37,211,102,0.12)', border:'1px solid rgba(37,211,102,0.3)', color:'#25D366', borderRadius:3, padding:'0.3rem 0.6rem', fontSize:'0.65rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                      <MessageCircle size={12} /> WhatsApp
+                    </button>
+                    <button type="button" title="Compartir por Email"
+                      onClick={() => shareTicket({ ...ticket, ...form }, selectedResponsable, 'email')}
+                      style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(99,179,237,0.1)', border:'1px solid rgba(99,179,237,0.25)', color:'#63B3ED', borderRadius:3, padding:'0.3rem 0.6rem', fontSize:'0.65rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                      <Mail size={12} /> Email
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -618,6 +680,15 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                 </select>
               </div>
             )}
+
+            {/* Evidencias — solo al crear */}
+            {isNew && (
+              <div style={ROW}>
+                <label style={LABEL}>Evidencias (Fotos/Archivos)</label>
+                <input type="file" multiple className="input-dark" style={{ padding:'0.4rem' }}
+                  onChange={e => setArchivos(Array.from(e.target.files || []))} />
+              </div>
+            )}
           </fieldset>
         )}
 
@@ -628,6 +699,12 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
         )}
         {tab === 'adjuntos' && !ticket?.id && (
           <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', padding:'1rem 0' }}>Guardá el ticket primero para adjuntar archivos.</p>
+        )}
+        {tab === 'comentarios' && ticket?.id && (
+          <ComentariosHilo entidadTipo="ticket" entidadId={ticket.id} />
+        )}
+        {tab === 'comentarios' && !ticket?.id && (
+          <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', padding:'1rem 0' }}>Guardá el ticket primero para comentar.</p>
         )}
 
         {err && <p style={{ color:'var(--alert)', fontSize:'0.8rem', marginBottom:'1rem' }}>{err}</p>}
@@ -649,7 +726,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
 }
 
 // ─── Vista principal ──────────────────────────────────────────────────────────
-export default function MntTickets() {
+export default function MntTickets({ focusId }) {
   const [tickets, setTickets]           = useState([])
   const [activos, setActivos]           = useState([])
   const [proveedores, setProveedores]   = useState([])
@@ -659,7 +736,7 @@ export default function MntTickets() {
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [filtroTipo, setFiltroTipo]     = useState('todos')
   const [filtroSLA, setFiltroSLA]       = useState(false)
-  const { rol, sedeIds, allowedSedeIds, can } = useAuth()
+  const { allowedSedeIds, can } = useAuth()
   const canManage = can('mantenimiento', 'manage')
   const canReport = canManage || can('mantenimiento', 'report')
   const [sedeId, setSedeId]             = useState('')
@@ -670,30 +747,59 @@ export default function MntTickets() {
     const tfiltros = sedeId ? { sede_id: Number(sedeId) } : {}
     Promise.all([
       getTickets({ ...tfiltros, sedeIds: allowedSedeIds || undefined }), getActivos(sedeId ? { sede_id: Number(sedeId) } : {}), getProveedores(),
-      supabase.from('mnt_responsables').select('id,nombre,rol').eq('activo',true).order('nombre')
+      supabase.from('mnt_responsables').select('id,nombre,rol,telefono,email').eq('activo',true).order('nombre')
     ])
       .then(([t, a, p, r]) => {
-      const tFilt = (rol === 'encargado' && sedeIds.length > 0 && !sedeId)
-        ? t.filter(tk => sedeIds.includes(tk.sede_id))
+      const tFilt = (allowedSedeIds !== null && !sedeId)
+        ? t.filter(tk => allowedSedeIds.includes(tk.sede_id))
         : t
       const tNoVeh = tFilt.filter(tk => tk.categoria !== 'Vehiculos')
       setTickets(tNoVeh); setActivos(a); setProveedores(p); setResponsables(r.data||[])
+
+      // Deep-link desde notificación
+      const dl = window.__pendingDeepLink
+      if (dl?.tipo === 'ticket' && dl?.id) {
+        const target = tNoVeh.find(tk => String(tk.id) === String(dl.id))
+        if (target) setModalTicket(target)
+        delete window.__pendingDeepLink
+      }
     })
       .finally(() => setLoading(false))
-  }, [sedeId])
+  }, [sedeId, allowedSedeIds])
 
   useEffect(() => { load() }, [load])
+
+  // Escucha deep-links en tiempo real (cuando el componente ya está montado)
+  useEffect(() => {
+    const handleDeepLink = (e) => {
+      const { tipo, id } = e.detail || {}
+      if (tipo !== 'ticket' || !id) return
+      const target = tickets.find(tk => String(tk.id) === String(id))
+      if (target) {
+        setModalTicket(target)
+        delete window.__pendingDeepLink
+      }
+    }
+    window.addEventListener('bitacora:deeplink', handleDeepLink)
+    return () => window.removeEventListener('bitacora:deeplink', handleDeepLink)
+  }, [tickets])
+
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = tickets.find(ticket => String(ticket.id) === String(focusId))
+    if (target) setModalTicket(target)
+  }, [focusId, loading, tickets])
   useEffect(() => {
     getSedes(allowedSedeIds).then(all => {
-      const filtered = (rol === 'encargado' && sedeIds.length > 0)
-        ? all.filter(s => sedeIds.includes(s.id))
-        : all
+      const filtered = allowedSedeIds === null
+        ? all
+        : all.filter(s => allowedSedeIds.includes(s.id))
       setSedes(filtered)
-      // Encargado arranca con su primera sede seleccionada
-      if (rol === 'encargado' && filtered.length > 0 && !sedeId)
+      // Roles territoriales arrancan con su primera sede asignada
+      if (allowedSedeIds !== null && filtered.length > 0 && !sedeId)
         setSedeId(String(filtered[0].id))
     })
-  }, [rol, sedeIds])
+  }, [allowedSedeIds])
 
   let filtrados = tickets
     .filter(t => filtroEstado === 'todos' || t.estado === filtroEstado)
@@ -714,11 +820,7 @@ export default function MntTickets() {
     <div style={{ padding: '1.5rem 2rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <div>
-          <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Tickets de Mantenimiento</h1>
-          <p style={{ fontSize: '0.62rem', color: 'rgba(57,255,20,0.5)', letterSpacing: '0.1em', fontFamily: 'monospace' }}>ISO 9001 CL. 10.2 · GESTIÓN DE NO CONFORMIDADES</p>
-        </div>
+      <PageHeader title="Tickets de Mantenimiento" subtitle="ISO 9001 cl. 10.2 · gestión de no conformidades">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {vencidos > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius:2, padding: '4px 10px' }}>
@@ -746,7 +848,7 @@ export default function MntTickets() {
             + Nuevo Ticket
           </button>}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>

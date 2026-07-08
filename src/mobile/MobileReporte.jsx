@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react'
-import { getSedes, createRegistro, createEscalamientoItem, createRequerimiento } from '../lib/queries'
+import {
+  getSedes, createRegistro, createRequerimiento,
+  getActivos, getPersonasBySede, createVehiculoNovedadConTicket, createPersonaNovedad,
+  createModuloNovedadConEscalamiento,
+  CATEGORIAS_NOVEDAD_PERSONA,
+  getVuelosDelDia, createVueloNovedad, TIPOS_NOVEDAD_VUELO,
+} from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { db } from '../lib/supabase'
-import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, Plus, X } from 'lucide-react'
+import { getOperationalOrigin, REPORT_ACTIVITY_LEVELS, REPORT_TURNS } from '../lib/operationalDomains'
+import { uploadAdjunto } from '../lib/adjuntos'
+import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, Plus, X, Paperclip, FileText, Clock, Truck, User, Plane } from 'lucide-react'
+import { format } from 'date-fns'
 
-const TURNOS = ['Mañana', 'Tarde', 'Noche']
-const NIVELES = ['Bajo', 'Normal', 'Alto', 'Muy alto']
 const ESTADOS_GENERALES = [
   { val: 'Sin novedades',        color: '#39FF14', bg: 'rgba(57,255,20,0.12)',  label: 'Sin novedades' },
   { val: 'Hay novedades',        color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', label: 'Hay novedades' },
@@ -36,6 +43,12 @@ const TIPOS_ESCALAMIENTO = [
   { val: 'Otro',          color: '#9ca3af' },
 ]
 
+const TIPOS_NOVEDAD_VEHICULO = ['Avería', 'Accidente/Choque', 'Documentación', 'Otro']
+const COLOR_VEHICULO = '#22d3ee'
+const COLOR_PERSONA  = '#a78bfa'
+const COLOR_VUELO    = '#fbbf24'
+const ESTADO_VUELO_DEFAULT = { tipo: '', descripcion: '' }
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function Chip({ label, active, color, bg, onClick }) {
@@ -62,12 +75,151 @@ function SectionLabel({ children }) {
   )
 }
 
-// ── Módulo card ───────────────────────────────────────────────────────────────
+function RacionCard({ title, fields }) {
+  return (
+    <div style={{
+      padding: '0.75rem', borderRadius: 10,
+      background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)',
+    }}>
+      <p style={{
+        color: 'var(--text)', fontSize: '0.72rem', fontWeight: 700,
+        marginBottom: '0.6rem', letterSpacing: '0.03em',
+      }}>
+        {title}
+      </p>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${fields.length}, minmax(0, 1fr))`,
+        gap: '0.45rem',
+      }}>
+        {fields.map(({ label, val, set }) => (
+          <label key={label} style={{ minWidth: 0 }}>
+            <span style={{
+              display: 'block', fontSize: '0.55rem', color: 'var(--text-dim)',
+              marginBottom: '0.3rem', textTransform: 'uppercase',
+              letterSpacing: '0.04em', textAlign: 'center',
+            }}>
+              {label}
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              value={val}
+              onChange={e => set(e.target.value)}
+              placeholder="0"
+              style={{
+                width: '100%', padding: '0.65rem 0.3rem', borderRadius: 8,
+                boxSizing: 'border-box', background: 'var(--bg)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'var(--text)', fontSize: '1rem', textAlign: 'center',
+              }}
+            />
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-function ModuloCard({ mod, estado, detalle, onEstado, onDetalle, ejemplo }) {
+// ── Módulo card ───────────────────────────────────────────────────────────────
+// Cada módulo (a-h) puede tener varias novedades (items). Cada item tiene su
+// propia severidad, opción de "privada" y un botón "Escalar" que revela los
+// chips de TIPOS_ESCALAMIENTO — esto reemplaza la vieja sección única de
+// "Escalamientos" al final del formulario.
+
+function ModuloNovedadCard({ item, index, ejemplo, onChange, onRemove }) {
+  const color = MOD_COLORS[item.severidad] || MOD_COLORS['Hay novedades']
+  const tipoSel = TIPOS_ESCALAMIENTO.find(t => t.val === item.tipo_escalamiento)
+  const colorEscalar = tipoSel?.color || '#FF2A2A'
+
+  return (
+    <div style={{
+      borderRadius: 8, marginBottom: '0.6rem',
+      background: `${color}0c`,
+      border: `1.5px solid ${color}44`,
+      padding: '0.85rem 0.9rem',
+    }}>
+      {/* Header con número y remove */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+        <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Novedad #{index + 1}
+        </span>
+        <button onClick={onRemove} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--text-dim)', padding: '0.1rem', display: 'flex',
+        }}>
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Severidad */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
+        {MOD_ESTADOS.filter(e => e !== 'Sin novedad').map(e => (
+          <Chip key={e} label={e} active={item.severidad === e}
+            color={MOD_COLORS[e]} bg={`${MOD_COLORS[e]}22`}
+            onClick={() => onChange({ ...item, severidad: e })} />
+        ))}
+      </div>
+
+      {/* Descripción */}
+      <textarea
+        value={item.descripcion}
+        onChange={e => onChange({ ...item, descripcion: e.target.value })}
+        rows={2}
+        placeholder={ejemplo || 'Describí la novedad...'}
+        style={{
+          width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, resize: 'none',
+          background: 'var(--surface)', border: `1px solid ${color}33`,
+          color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'inherit', boxSizing: 'border-box',
+          marginBottom: '0.55rem',
+        }}
+      />
+
+      {/* Privada */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.6rem', cursor: 'pointer' }}>
+        <input type="checkbox" checked={!!item.privada} onChange={e => onChange({ ...item, privada: e.target.checked })}
+          style={{ accentColor: '#F59E0B' }} />
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Marcar como privada (oculta para el próximo turno)</span>
+      </label>
+
+      {/* Escalar */}
+      <button onClick={() => onChange({ ...item, escalar: !item.escalar })} style={{
+        display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.8rem', borderRadius: 6, cursor: 'pointer',
+        background: item.escalar ? 'rgba(255,42,42,0.12)' : 'var(--surface)',
+        border: item.escalar ? '1.5px solid #FF2A2A' : '1.5px solid rgba(255,255,255,0.08)',
+        color: item.escalar ? '#FF2A2A' : 'var(--text-dim)', fontSize: '0.72rem', fontWeight: 700,
+      }}>
+        🚩 {item.escalar ? 'Escalado' : 'Escalar'}
+      </button>
+
+      {item.escalar && (
+        <div style={{ marginTop: '0.6rem' }}>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginBottom: '0.4rem' }}>
+            ¿A qué área corresponde?
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+            {TIPOS_ESCALAMIENTO.map(t => (
+              <button key={t.val} onClick={() => onChange({ ...item, tipo_escalamiento: t.val })} style={{
+                padding: '0.35rem 0.7rem', borderRadius: 20, fontSize: '0.72rem',
+                fontWeight: item.tipo_escalamiento === t.val ? 700 : 400, cursor: 'pointer',
+                background: item.tipo_escalamiento === t.val ? `${t.color}22` : 'var(--surface)',
+                border: item.tipo_escalamiento === t.val ? `1.5px solid ${t.color}` : '1.5px solid rgba(255,255,255,0.08)',
+                color: item.tipo_escalamiento === t.val ? t.color : 'var(--text-dim)', transition: 'all 0.12s',
+              }}>{t.val}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ModuloCard({ mod, items, ejemplo, onAgregar, onActualizar, onQuitar }) {
   const [open, setOpen] = useState(false)
-  const color = MOD_COLORS[estado] || 'var(--text-dim)'
-  const tieneNovedad = estado && estado !== 'Sin novedad'
+  const tieneNovedad = items.length > 0
+  const peorSeveridad = items.some(it => it.severidad === 'Crítico') ? 'Crítico' : (tieneNovedad ? 'Hay novedades' : 'Sin novedad')
+  const color = MOD_COLORS[peorSeveridad] || 'var(--text-dim)'
 
   return (
     <div style={{
@@ -90,10 +242,12 @@ function ModuloCard({ mod, estado, detalle, onEstado, onDetalle, ejemplo }) {
           <span style={{ color: 'var(--text)', fontSize: '0.85rem', textAlign: 'left' }}>{mod.label}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-          {estado && (
+          {tieneNovedad ? (
             <span style={{ fontSize: '0.6rem', color, fontWeight: 700 }}>
-              {estado === 'Sin novedad' ? 'OK' : estado === 'Crítico' ? '⚠' : '!'}
+              {items.length} {peorSeveridad === 'Crítico' ? '⚠' : '!'}
             </span>
+          ) : (
+            <span style={{ fontSize: '0.6rem', color, fontWeight: 700 }}>OK</span>
           )}
           {open ? <ChevronUp size={14} color="var(--text-dim)" /> : <ChevronDown size={14} color="var(--text-dim)" />}
         </div>
@@ -101,47 +255,47 @@ function ModuloCard({ mod, estado, detalle, onEstado, onDetalle, ejemplo }) {
 
       {open && (
         <div style={{ padding: '0 1rem 0.9rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
-            {MOD_ESTADOS.map(e => (
-              <Chip key={e} label={e} active={estado === e}
-                color={MOD_COLORS[e]} bg={`${MOD_COLORS[e]}22`}
-                onClick={() => { onEstado(e); if (e === 'Sin novedad') onDetalle('') }} />
-            ))}
-          </div>
-          {tieneNovedad && (
-            <textarea
-              value={detalle} onChange={ev => onDetalle(ev.target.value)}
-              rows={3} placeholder={ejemplo || 'Describí la novedad...'}
-              style={{
-                width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, resize: 'none',
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'inherit', boxSizing: 'border-box',
-              }}
-            />
+          {items.length === 0 ? (
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: '0.65rem' }}>
+              Sin novedades en este módulo.
+            </p>
+          ) : (
+            items.map((item, i) => (
+              <ModuloNovedadCard key={i} item={item} index={i} ejemplo={ejemplo}
+                onChange={val => onActualizar(i, val)}
+                onRemove={() => onQuitar(i)} />
+            ))
           )}
+          <button onClick={onAgregar} style={{
+            display: 'flex', alignItems: 'center', gap: '0.3rem',
+            padding: '0.4rem 0.8rem', borderRadius: 6, cursor: 'pointer',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+            color: 'var(--text-dim)', fontSize: '0.72rem', fontWeight: 700,
+          }}>
+            <Plus size={12} /> Agregar novedad
+          </button>
         </div>
       )}
     </div>
   )
 }
 
-// ── Escalamiento item card ────────────────────────────────────────────────────
+// ── Vehículo novedad card ─────────────────────────────────────────────────────
 
-function EscalamientoCard({ item, index, onChange, onRemove }) {
-  const tipoSel = TIPOS_ESCALAMIENTO.find(t => t.val === item.tipo)
-  const color = tipoSel?.color || '#FF2A2A'
-
+function VehiculoNovedadCard({ item, index, vehiculos, onChange, onRemove, hideCrearTicket }) {
+  const color = COLOR_VEHICULO
+  const tipoSel = TIPOS_ESCALAMIENTO.find(t => t.val === item.tipo_escalamiento)
+  const colorEscalar = tipoSel?.color || '#FF2A2A'
   return (
     <div style={{
       borderRadius: 8, marginBottom: '0.6rem',
-      background: 'rgba(255,42,42,0.05)',
+      background: 'rgba(34,211,238,0.05)',
       border: `1.5px solid ${color}44`,
       padding: '0.85rem 0.9rem',
     }}>
-      {/* Header con número y remove */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
         <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Escalamiento #{index + 1}
+          Vehículo #{index + 1}
         </span>
         <button onClick={onRemove} style={{
           background: 'none', border: 'none', cursor: 'pointer',
@@ -151,28 +305,155 @@ function EscalamientoCard({ item, index, onChange, onRemove }) {
         </button>
       </div>
 
-      {/* Selector de tipo */}
-      <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginBottom: '0.4rem' }}>
-        ¿A qué área corresponde? (opcional, ayuda a derivarlo más rápido)
-      </p>
+      <select
+        value={item.activo_id}
+        onChange={e => {
+          const v = vehiculos.find(x => String(x.id) === e.target.value)
+          onChange({ ...item, activo_id: e.target.value, activo_nombre: v?.nombre || '' })
+        }}
+        style={{
+          width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, marginBottom: '0.6rem', boxSizing: 'border-box',
+          background: 'var(--surface)', border: `1px solid ${color}33`,
+          color: 'var(--text)', fontSize: '0.85rem', appearance: 'none',
+        }}>
+        <option value="">— Elegí el vehículo —</option>
+        {vehiculos.map(v => (
+          <option key={v.id} value={v.id}>{v.nombre}{v.dominio ? ` (${v.dominio})` : ''}</option>
+        ))}
+      </select>
+      {vehiculos.length === 0 && (
+        <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '-0.4rem', marginBottom: '0.6rem' }}>
+          No hay vehículos asignados a esta sede.
+        </p>
+      )}
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
-        {TIPOS_ESCALAMIENTO.map(t => (
-          <button key={t.val} onClick={() => onChange({ ...item, tipo: t.val })} style={{
+        {TIPOS_NOVEDAD_VEHICULO.map(t => (
+          <button key={t} onClick={() => onChange({ ...item, tipo: t })} style={{
             padding: '0.35rem 0.7rem', borderRadius: 20, fontSize: '0.72rem',
-            fontWeight: item.tipo === t.val ? 700 : 400, cursor: 'pointer',
-            background: item.tipo === t.val ? `${t.color}22` : 'var(--surface)',
-            border: item.tipo === t.val ? `1.5px solid ${t.color}` : '1.5px solid rgba(255,255,255,0.08)',
-            color: item.tipo === t.val ? t.color : 'var(--text-dim)', transition: 'all 0.12s',
-          }}>{t.val}</button>
+            fontWeight: item.tipo === t ? 700 : 400, cursor: 'pointer',
+            background: item.tipo === t ? `${color}22` : 'var(--surface)',
+            border: item.tipo === t ? `1.5px solid ${color}` : '1.5px solid rgba(255,255,255,0.08)',
+            color: item.tipo === t ? color : 'var(--text-dim)', transition: 'all 0.12s',
+          }}>{t}</button>
         ))}
       </div>
 
-      {/* Descripción */}
       <textarea
         value={item.descripcion}
         onChange={e => onChange({ ...item, descripcion: e.target.value })}
         rows={2}
-        placeholder="Describí el escalamiento..."
+        placeholder="Describí la novedad del vehículo..."
+        style={{
+          width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, resize: 'none',
+          background: 'var(--surface)', border: `1px solid ${color}33`,
+          color: 'var(--text)', fontSize: '0.82rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.55rem',
+        }}
+      />
+
+      {!hideCrearTicket && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.6rem', cursor: 'pointer' }}>
+          <input type="checkbox" checked={item.crearTicket}
+            onChange={e => onChange({ ...item, crearTicket: e.target.checked })}
+            style={{ accentColor: color }} />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Crear ticket automático en Mantenimiento de Flota</span>
+        </label>
+      )}
+
+      {/* Escalar */}
+      <button onClick={() => onChange({ ...item, escalar: !item.escalar })} style={{
+        display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.8rem', borderRadius: 6, cursor: 'pointer',
+        background: item.escalar ? 'rgba(255,42,42,0.12)' : 'var(--surface)',
+        border: item.escalar ? '1.5px solid #FF2A2A' : '1.5px solid rgba(255,255,255,0.08)',
+        color: item.escalar ? '#FF2A2A' : 'var(--text-dim)', fontSize: '0.72rem', fontWeight: 700,
+      }}>
+        🚩 {item.escalar ? 'Escalado' : 'Escalar'}
+      </button>
+
+      {item.escalar && (
+        <div style={{ marginTop: '0.6rem' }}>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginBottom: '0.4rem' }}>
+            ¿A qué área corresponde?
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+            {TIPOS_ESCALAMIENTO.map(t => (
+              <button key={t.val} onClick={() => onChange({ ...item, tipo_escalamiento: t.val })} style={{
+                padding: '0.35rem 0.7rem', borderRadius: 20, fontSize: '0.72rem',
+                fontWeight: item.tipo_escalamiento === t.val ? 700 : 400, cursor: 'pointer',
+                background: item.tipo_escalamiento === t.val ? `${t.color}22` : 'var(--surface)',
+                border: item.tipo_escalamiento === t.val ? `1.5px solid ${t.color}` : '1.5px solid rgba(255,255,255,0.08)',
+                color: item.tipo_escalamiento === t.val ? t.color : 'var(--text-dim)', transition: 'all 0.12s',
+              }}>{t.val}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Persona novedad card ──────────────────────────────────────────────────────
+
+function PersonaNovedadCard({ item, index, personas, onChange, onRemove }) {
+  const color = COLOR_PERSONA
+  return (
+    <div style={{
+      borderRadius: 8, marginBottom: '0.6rem',
+      background: 'rgba(167,139,250,0.05)',
+      border: `1.5px solid ${color}44`,
+      padding: '0.85rem 0.9rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+        <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Persona #{index + 1}
+        </span>
+        <button onClick={onRemove} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--text-dim)', padding: '0.1rem', display: 'flex',
+        }}>
+          <X size={14} />
+        </button>
+      </div>
+
+      <select
+        value={item.persona_id}
+        onChange={e => {
+          const p = personas.find(x => String(x.id) === e.target.value)
+          onChange({ ...item, persona_id: e.target.value, persona_nombre: p ? `${p.nombre} ${p.apellido || ''}`.trim() : '' })
+        }}
+        style={{
+          width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, marginBottom: '0.6rem', boxSizing: 'border-box',
+          background: 'var(--surface)', border: `1px solid ${color}33`,
+          color: 'var(--text)', fontSize: '0.85rem', appearance: 'none',
+        }}>
+        <option value="">— Elegí la persona —</option>
+        {personas.map(p => (
+          <option key={p.id} value={p.id}>{p.nombre} {p.apellido || ''}{p.puesto ? ` — ${p.puesto}` : ''}</option>
+        ))}
+      </select>
+      {personas.length === 0 && (
+        <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '-0.4rem', marginBottom: '0.6rem' }}>
+          No hay personal activo asignado a esta sede.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
+        {CATEGORIAS_NOVEDAD_PERSONA.map(c => (
+          <button key={c} onClick={() => onChange({ ...item, categoria: c })} style={{
+            padding: '0.35rem 0.7rem', borderRadius: 20, fontSize: '0.72rem',
+            fontWeight: item.categoria === c ? 700 : 400, cursor: 'pointer',
+            background: item.categoria === c ? `${color}22` : 'var(--surface)',
+            border: item.categoria === c ? `1.5px solid ${color}` : '1.5px solid rgba(255,255,255,0.08)',
+            color: item.categoria === c ? color : 'var(--text-dim)', transition: 'all 0.12s',
+          }}>{c}</button>
+        ))}
+      </div>
+
+      <textarea
+        value={item.descripcion}
+        onChange={e => onChange({ ...item, descripcion: e.target.value })}
+        rows={2}
+        placeholder="Describí la novedad de personal..."
         style={{
           width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, resize: 'none',
           background: 'var(--surface)', border: `1px solid ${color}33`,
@@ -183,37 +464,243 @@ function EscalamientoCard({ item, index, onChange, onRemove }) {
   )
 }
 
+// ── Vuelo del día (plantilla) — chip de estado + descripción opcional ────────
+
+function VueloDelDiaCard({ vuelo, estado, onChange }) {
+  const color = COLOR_VUELO
+  const esOk = estado.tipo === 'OK'
+  const esNovedadReal = !!estado.tipo && !esOk
+  return (
+    <div style={{
+      borderRadius: 8, marginBottom: '0.6rem',
+      background: esNovedadReal ? 'rgba(251,191,36,0.06)' : esOk ? 'rgba(57,255,20,0.05)' : 'var(--surface)',
+      border: esNovedadReal ? `1.5px solid ${color}55` : esOk ? '1.5px solid rgba(57,255,20,0.35)' : '1px solid rgba(255,255,255,0.08)',
+      padding: '0.7rem 0.9rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.25rem' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>
+          {vuelo.vuelo_codigo}{vuelo.destino ? ` → ${vuelo.destino}` : ''}
+        </span>
+        {vuelo.aerolinea && <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>{vuelo.aerolinea}</span>}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: esNovedadReal ? '0.6rem' : 0 }}>
+        {TIPOS_NOVEDAD_VUELO.map(t => (
+          <button key={t} onClick={() => onChange({ tipo: t, descripcion: t === 'OK' ? '' : estado.descripcion })} style={{
+            padding: '0.3rem 0.65rem', borderRadius: 20, fontSize: '0.7rem',
+            fontWeight: estado.tipo === t ? 700 : 400, cursor: 'pointer',
+            background: estado.tipo === t ? (t === 'OK' ? 'rgba(57,255,20,0.15)' : `${color}22`) : 'var(--surface)',
+            border: estado.tipo === t ? `1.5px solid ${t === 'OK' ? '#39FF14' : color}` : '1.5px solid rgba(255,255,255,0.08)',
+            color: estado.tipo === t ? (t === 'OK' ? '#39FF14' : color) : 'var(--text-dim)', transition: 'all 0.12s',
+          }}>{t}</button>
+        ))}
+      </div>
+
+      {esNovedadReal && (
+        <textarea
+          value={estado.descripcion}
+          onChange={e => onChange({ ...estado, descripcion: e.target.value })}
+          rows={2}
+          placeholder={`Describí la novedad del vuelo ${vuelo.vuelo_codigo}...`}
+          style={{
+            width: '100%', padding: '0.6rem 0.7rem', borderRadius: 6, resize: 'none',
+            background: 'var(--surface)', border: `1px solid ${color}33`,
+            color: 'var(--text)', fontSize: '0.82rem', fontFamily: 'inherit', boxSizing: 'border-box',
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Vuelo no listado (ad-hoc, no estaba en la plantilla del día) ─────────────
+
+function VueloAdHocCard({ item, index, onChange, onRemove }) {
+  const color = COLOR_VUELO
+  return (
+    <div style={{
+      borderRadius: 8, marginBottom: '0.6rem',
+      background: 'rgba(251,191,36,0.05)',
+      border: `1.5px solid ${color}44`,
+      padding: '0.85rem 0.9rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+        <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Vuelo no listado #{index + 1}
+        </span>
+        <button onClick={onRemove} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--text-dim)', padding: '0.1rem', display: 'flex',
+        }}>
+          <X size={14} />
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.6rem' }}>
+        <input
+          value={item.vuelo_codigo}
+          onChange={e => onChange({ ...item, vuelo_codigo: e.target.value.toUpperCase() })}
+          placeholder="Código (ej: AR1234)"
+          style={{
+            padding: '0.6rem 0.7rem', borderRadius: 6, boxSizing: 'border-box',
+            background: 'var(--surface)', border: `1px solid ${color}33`,
+            color: 'var(--text)', fontSize: '0.82rem',
+          }}
+        />
+        <input
+          value={item.destino}
+          onChange={e => onChange({ ...item, destino: e.target.value.toUpperCase() })}
+          placeholder="Destino"
+          style={{
+            padding: '0.6rem 0.7rem', borderRadius: 6, boxSizing: 'border-box',
+            background: 'var(--surface)', border: `1px solid ${color}33`,
+            color: 'var(--text)', fontSize: '0.82rem',
+          }}
+        />
+      </div>
+
+      <input
+        value={item.aerolinea}
+        onChange={e => onChange({ ...item, aerolinea: e.target.value })}
+        placeholder="Aerolínea (opcional)"
+        style={{
+          width: '100%', padding: '0.6rem 0.7rem', borderRadius: 6, marginBottom: '0.6rem', boxSizing: 'border-box',
+          background: 'var(--surface)', border: `1px solid ${color}33`,
+          color: 'var(--text)', fontSize: '0.82rem',
+        }}
+      />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
+        {TIPOS_NOVEDAD_VUELO.map(t => (
+          <button key={t} onClick={() => onChange({ ...item, tipo: t })} style={{
+            padding: '0.35rem 0.7rem', borderRadius: 20, fontSize: '0.72rem',
+            fontWeight: item.tipo === t ? 700 : 400, cursor: 'pointer',
+            background: item.tipo === t ? `${color}22` : 'var(--surface)',
+            border: item.tipo === t ? `1.5px solid ${color}` : '1.5px solid rgba(255,255,255,0.08)',
+            color: item.tipo === t ? color : 'var(--text-dim)', transition: 'all 0.12s',
+          }}>{t}</button>
+        ))}
+      </div>
+
+      <textarea
+        value={item.descripcion}
+        onChange={e => onChange({ ...item, descripcion: e.target.value })}
+        rows={2}
+        placeholder="Describí la novedad del vuelo..."
+        style={{
+          width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, resize: 'none',
+          background: 'var(--surface)', border: `1px solid ${color}33`,
+          color: 'var(--text)', fontSize: '0.82rem', fontFamily: 'inherit', boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  )
+}
+
+// ── Archivo adjunto (staged, antes de enviar) ─────────────────────────────────
+
+function ArchivoStagedItem({ item, onRemove }) {
+  const isImage = item.file.type.startsWith('image/')
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.6rem',
+      borderRadius: 8, background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)',
+      marginBottom: '0.4rem',
+    }}>
+      {isImage ? (
+        <img src={item.preview} alt={item.file.name}
+          style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+      ) : (
+        <div style={{
+          width: 38, height: 38, borderRadius: 5, background: 'rgba(167,139,250,0.12)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <FileText size={16} style={{ color: '#A78BFA' }} />
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          color: 'var(--text)', fontSize: '0.78rem', margin: 0,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{item.file.name}</p>
+        <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', margin: 0 }}>
+          {(item.file.size / 1024).toFixed(0)} KB
+        </p>
+      </div>
+      <button onClick={onRemove} style={{
+        background: 'none', border: 'none', color: 'rgba(255,80,80,0.7)',
+        padding: '0.2rem', flexShrink: 0, cursor: 'pointer', display: 'flex',
+      }}>
+        <X size={16} />
+      </button>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MobileReporte({ onBack, onSuccess }) {
-  const { perfil, allowedSedeIds } = useAuth()
+  const { perfil, rol, allowedSedeIds } = useAuth()
+  const esOperario = rol === 'operario' // acotado a bitácora + checklist: sin tickets ni compras
   const [sedes,    setSedes]    = useState([])
   const [sedeId,   setSedeId]   = useState(null)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState(null)
   const [enviado,      setEnviado]      = useState(false)
+  const [creadoId,     setCreadoId]     = useState(null)
   const [escCompras,   setEscCompras]   = useState([])   // escalamientos de tipo Compras post-submit
   const [reqForm,      setReqForm]      = useState(null) // null | { descripcion, sede_id, sede_nombre }
   const [reqLoading,   setReqLoading]   = useState(false)
   const [reqOk,        setReqOk]        = useState(false)
+  const [novedadesAnteriores, setNovedadesAnteriores] = useState(null)
+  const [vuelosAnteriores, setVuelosAnteriores] = useState([])
 
   // Campos
   const [turno,          setTurno]          = useState('')
   const [nivelActividad, setNivelActividad] = useState('Normal')
   const [estadoGeneral,  setEstadoGeneral]  = useState('Sin novedades')
-  const [modulos,        setModulos]        = useState(() =>
-    Object.fromEntries(MODULOS.map(m => [m.key, { estado: 'Sin novedad', detalle: '' }]))
+  // Cada módulo (a-h) tiene una lista de novedades ("items"), cada una con su
+  // propia severidad, opción de privacidad y de escalamiento — reemplaza el
+  // viejo modelo de un único estado/detalle por módulo + sección de
+  // Escalamientos aparte.
+  const [modulos, setModulos] = useState(() =>
+    Object.fromEntries(MODULOS.map(m => [m.key, { items: [] }]))
   )
-  // Escalamientos: array de { tipo, descripcion }
-  const [escalamientos, setEscalamientos] = useState([])
+  const [escalamientosCreados, setEscalamientosCreados] = useState(0)
+
+  // Vehículos asignados a la sede + novedades cargadas: array de { activo_id, activo_nombre, tipo, descripcion, crearTicket }
+  const [vehiculosSede,     setVehiculosSede]     = useState([])
+  const [vehiculoNovedades, setVehiculoNovedades] = useState([])
+  const [ticketsFlotaCreados, setTicketsFlotaCreados] = useState(0)
+
+  // Personal asignado a la sede + novedades cargadas: array de { persona_id, persona_nombre, categoria, descripcion }
+  const [personasSede,     setPersonasSede]     = useState([])
+  const [personaNovedades, setPersonaNovedades] = useState([])
+
+  // Vuelos del día (solo sedes tipo Aeropuerto): plantilla del día de hoy + estado por vuelo,
+  // más vuelos no listados que se agregan a mano (ad-hoc).
+  const [vuelosDelDia, setVuelosDelDia] = useState([])
+  const [vueloEstados, setVueloEstados] = useState({}) // { [vuelo_programado_id]: { tipo, descripcion } }
+  const [vuelosAdHoc,  setVuelosAdHoc]  = useState([])
 
   // Raciones (solo Comedores)
   const [op1Prod,      setOp1Prod]      = useState('')
   const [op1Serv,      setOp1Serv]      = useState('')
+  const [op1Sobrante,  setOp1Sobrante]  = useState('')
+  const [op2Prod,      setOp2Prod]      = useState('')
+  const [op2Serv,      setOp2Serv]      = useState('')
+  const [op2Sobrante,  setOp2Sobrante]  = useState('')
   const [vegProd,      setVegProd]      = useState('')
   const [vegServ,      setVegServ]      = useState('')
-  const [ensaladaProd, setEnsaladaProd] = useState('')
-  const [postreProd,   setPostreProd]   = useState('')
+  const [vegSobrante,  setVegSobrante]  = useState('')
+  const [ensaladaProd,     setEnsaladaProd]     = useState('')
+  const [ensaladaSobrante, setEnsaladaSobrante] = useState('')
+  const [postreProd,       setPostreProd]       = useState('')
+  const [postreSobrante,   setPostreSobrante]   = useState('')
+
+  // Adjuntos (fotos/documentos) — se cargan en el form y se suben recién al enviar
+  const [archivos, setArchivos] = useState([]) // [{ id, file, preview }]
+  const [adjuntosErrores, setAdjuntosErrores] = useState(0)
 
   // Cargar sedes
   useEffect(() => {
@@ -224,22 +711,120 @@ export default function MobileReporte({ onBack, onSuccess }) {
     }).catch(console.error)
   }, [allowedSedeIds])
 
+  // Cargar novedades del turno anterior (módulos + vuelos del último reporte de la sede)
+  useEffect(() => {
+    if (!sedeId) { setVuelosAnteriores([]); return }
+    db().from('registros').select('*').eq('sede_id', sedeId).order('fecha_reporte', { ascending: false }).limit(1).maybeSingle().then(({ data }) => {
+      if (data) {
+        setNovedadesAnteriores(data)
+        db().from('vuelo_novedades').select('*').eq('registro_id', data.id).order('id').then(({ data: vuelos }) => {
+          setVuelosAnteriores(vuelos || [])
+        })
+      } else {
+        setNovedadesAnteriores(null)
+        setVuelosAnteriores([])
+      }
+    })
+  }, [sedeId])
+
+  // Cargar vehículos y personal asignados a la sede elegida
+  useEffect(() => {
+    if (!sedeId) { setVehiculosSede([]); setPersonasSede([]); return }
+    getActivos({ tipo: 'VEHICULO', sede_id: sedeId }).then(setVehiculosSede).catch(console.error)
+    getPersonasBySede(sedeId).then(setPersonasSede).catch(console.error)
+  }, [sedeId])
+
   const sedeSel = sedes.find(s => s.id === sedeId)
 
-  const setMod = (key, field, val) =>
-    setModulos(prev => ({ ...prev, [key]: { ...prev[key], [field]: val } }))
+  // Cargar vuelos del día (calendario real, con fallback a plantilla semanal) —
+  // solo escalas tipo Aeropuerto.
+  useEffect(() => {
+    if (!sedeId || sedeSel?.tipo !== 'Aeropuerto') { setVuelosDelDia([]); setVueloEstados({}); return }
+    const fechaHoy = new Date().toISOString().slice(0, 10)
+    getVuelosDelDia(sedeId, fechaHoy).then(list => {
+      setVuelosDelDia(list)
+      setVueloEstados(Object.fromEntries(list.map(v => [v.id, { ...ESTADO_VUELO_DEFAULT }])))
+    }).catch(console.error)
+  }, [sedeId, sedeSel?.tipo])
 
-  const agregarEscalamiento = () =>
-    setEscalamientos(prev => [...prev, { tipo: '', descripcion: '' }])
+  const agregarItemModulo = (key) =>
+    setModulos(prev => ({
+      ...prev,
+      [key]: { items: [...prev[key].items, { severidad: 'Hay novedades', descripcion: '', privada: false, escalar: false, tipo_escalamiento: '' }] },
+    }))
 
-  const actualizarEscalamiento = (i, val) =>
-    setEscalamientos(prev => prev.map((e, idx) => idx === i ? val : e))
+  const actualizarItemModulo = (key, i, val) =>
+    setModulos(prev => ({
+      ...prev,
+      [key]: { items: prev[key].items.map((it, idx) => idx === i ? val : it) },
+    }))
 
-  const quitarEscalamiento = (i) =>
-    setEscalamientos(prev => prev.filter((_, idx) => idx !== i))
+  const quitarItemModulo = (key, i) =>
+    setModulos(prev => ({
+      ...prev,
+      [key]: { items: prev[key].items.filter((_, idx) => idx !== i) },
+    }))
 
+  const agregarVehiculoNovedad = () =>
+    setVehiculoNovedades(prev => [...prev, { activo_id: '', activo_nombre: '', tipo: 'Avería', descripcion: '', crearTicket: !esOperario, escalar: false, tipo_escalamiento: '' }])
+
+  const actualizarVehiculoNovedad = (i, val) =>
+    setVehiculoNovedades(prev => prev.map((v, idx) => idx === i ? val : v))
+
+  const quitarVehiculoNovedad = (i) =>
+    setVehiculoNovedades(prev => prev.filter((_, idx) => idx !== i))
+
+  const agregarPersonaNovedad = () =>
+    setPersonaNovedades(prev => [...prev, { persona_id: '', persona_nombre: '', categoria: 'Otro', descripcion: '' }])
+
+  const actualizarPersonaNovedad = (i, val) =>
+    setPersonaNovedades(prev => prev.map((p, idx) => idx === i ? val : p))
+
+  const quitarPersonaNovedad = (i) =>
+    setPersonaNovedades(prev => prev.filter((_, idx) => idx !== i))
+
+  const actualizarVueloEstado = (id, val) =>
+    setVueloEstados(prev => ({ ...prev, [id]: val }))
+
+  const agregarVueloAdHoc = () =>
+    setVuelosAdHoc(prev => [...prev, { vuelo_codigo: '', destino: '', aerolinea: '', tipo: 'Demora', descripcion: '' }])
+
+  const actualizarVueloAdHoc = (i, val) =>
+    setVuelosAdHoc(prev => prev.map((v, idx) => idx === i ? val : v))
+
+  const quitarVueloAdHoc = (i) =>
+    setVuelosAdHoc(prev => prev.filter((_, idx) => idx !== i))
+
+  const agregarArchivos = (files) => {
+    const MAX_MB = 50
+    const nuevos = []
+    for (const file of Array.from(files || [])) {
+      if (file.size > MAX_MB * 1024 * 1024) {
+        setError(`"${file.name}" supera el máximo de ${MAX_MB} MB`)
+        continue
+      }
+      nuevos.push({
+        id: Date.now().toString() + Math.random().toString(36).slice(2),
+        file,
+        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      })
+    }
+    if (nuevos.length) setArchivos(prev => [...prev, ...nuevos])
+  }
+
+  const quitarArchivo = (id) => {
+    setArchivos(prev => {
+      const item = prev.find(a => a.id === id)
+      if (item?.preview) URL.revokeObjectURL(item.preview)
+      return prev.filter(a => a.id !== id)
+    })
+  }
+
+  // Devuelve el id del registro existente para esta sede+turno+día, o null.
+  // (antes devolvía un booleano; ahora hace falta el id para poder reusarlo
+  // cuando el usuario elige "Agregar al reporte existente").
   const checkDuplicado = async () => {
-    if (!sedeId || !turno) return false
+    if (!sedeId || !turno) return null
     const hoy = new Date().toISOString().slice(0, 10)
     const { data } = await db()
       .from('registros')
@@ -249,26 +834,71 @@ export default function MobileReporte({ onBack, onSuccess }) {
       .gte('fecha_reporte', `${hoy}T00:00:00-03:00`)
       .lte('fecha_reporte', `${hoy}T23:59:59-03:00`)
       .limit(1)
-    return (data?.length ?? 0) > 0
+    return data?.[0]?.id ?? null
   }
 
   const handleSubmit = async (forzar = false) => {
     if (!sedeId)  { setError('Seleccioná una sede'); return }
     if (!turno)   { setError('Seleccioná el turno'); return }
-    // Validar escalamientos
-    for (const e of escalamientos) {
-      if (!e.descripcion.trim()) { setError('Completá la descripción de cada escalamiento'); return }
+    // Validar novedades de módulo
+    for (const m of MODULOS) {
+      for (const it of modulos[m.key].items) {
+        if (!it.descripcion.trim()) { setError(`Completá la descripción de cada novedad en "${m.label}"`); return }
+      }
+    }
+    // Validar novedades de vehículo
+    for (const v of vehiculoNovedades) {
+      if (!v.activo_id) { setError('Seleccioná el vehículo en cada novedad de vehículo'); return }
+      if (!v.descripcion.trim()) { setError('Completá la descripción de cada novedad de vehículo'); return }
+    }
+    // Validar novedades de persona
+    for (const p of personaNovedades) {
+      if (!p.persona_id) { setError('Seleccioná la persona en cada novedad de personal'); return }
+      if (!p.descripcion.trim()) { setError('Completá la descripción de cada novedad de personal'); return }
+    }
+    // Validar novedades de vuelo
+    for (const v of vuelosDelDia) {
+      const est = vueloEstados[v.id]
+      if (est?.tipo && est.tipo !== 'OK' && !est.descripcion.trim()) {
+        setError(`Completá la descripción de la novedad del vuelo ${v.vuelo_codigo}`); return
+      }
+    }
+    for (const v of vuelosAdHoc) {
+      if (!v.vuelo_codigo.trim()) { setError('Completá el código de cada vuelo no listado'); return }
+      if (!v.descripcion.trim()) { setError('Completá la descripción de cada vuelo no listado'); return }
     }
     setLoading(true); setError(null)
     try {
-      if (!forzar) {
-        const esDup = await checkDuplicado()
-        if (esDup) {
-          setError('DUPLICADO')
-          setLoading(false)
-          return
-        }
+      const dupId = await checkDuplicado()
+      if (dupId && !forzar) {
+        setError('DUPLICADO')
+        setLoading(false)
+        return
       }
+      // "Enviar igual": ya existe un reporte para esta sede+turno+día (la DB
+      // lo bloquea con un índice único, no hay forma de insertar un 2do).
+      // En vez de duplicarlo, reusamos ese registro: no se crea uno nuevo ni
+      // se pisa su checklist, solo se agregan las novedades cargadas ahora.
+      const reutilizandoReporte = !!dupId && forzar
+
+      // Lista plana de todas las novedades de módulo, con su módulo de origen
+      const todosLosItems = MODULOS.flatMap(m =>
+        modulos[m.key].items.map(it => ({ ...it, modulo_key: m.key, modulo_label: m.label }))
+      )
+      const itemsEscalados = todosLosItems.filter(it => it.escalar)
+      const vuelosConNovedad = vuelosDelDia.some(v => {
+        const tipo = vueloEstados[v.id]?.tipo
+        return tipo && tipo !== 'OK'
+      }) || vuelosAdHoc.length > 0
+      const tieneNovedadesOperativas = todosLosItems.length > 0
+        || vehiculoNovedades.length > 0
+        || personaNovedades.length > 0
+        || vuelosConNovedad
+      const estadoGeneralEfectivo = estadoGeneral === 'Sin novedades' && tieneNovedadesOperativas
+        ? 'Hay novedades'
+        : estadoGeneral
+      if (estadoGeneralEfectivo !== estadoGeneral) setEstadoGeneral(estadoGeneralEfectivo)
+
       const payload = {
         sede_id:              sedeId,
         sede_nombre:          sedeSel?.nombre || '',
@@ -276,50 +906,171 @@ export default function MobileReporte({ onBack, onSuccess }) {
         email_reportante:     perfil?.email   || '',
         turno,
         nivel_actividad:      nivelActividad,
-        estado_general:       estadoGeneral,
-        requiere_escalamiento: escalamientos.length > 0 || estadoGeneral === 'Operación condicionada',
-        motivo_escalamiento:  escalamientos.length > 0 ? escalamientos.map(e => `[${e.tipo || 'General'}] ${e.descripcion}`).join(' | ') : null,
-        escalado_a:           escalamientos.length > 0 ? [...new Set(escalamientos.map(e => e.tipo).filter(Boolean))].join(', ') : null,
-        origen_form:          'app',
+        estado_general:       estadoGeneralEfectivo,
+        requiere_escalamiento: itemsEscalados.length > 0 || estadoGeneralEfectivo === 'Operación condicionada',
+        motivo_escalamiento:  itemsEscalados.length > 0 ? itemsEscalados.map(it => `[${it.tipo_escalamiento || 'Otro'}] ${it.descripcion}`).join(' | ') : null,
+        escalado_a:           itemsEscalados.length > 0 ? [...new Set(itemsEscalados.map(it => it.tipo_escalamiento).filter(Boolean))].join(', ') : null,
+        origen_form:          getOperationalOrigin(sedeSel),
         tipo:                 sedeSel?.tipo || null,
         fecha_reporte:        new Date().toISOString(),
       }
-      // Módulos A-H
+      // Módulos A-H: resumen legacy (estado_X/detalle_X) derivado de los items
       for (const m of MODULOS) {
-        payload[`estado_${m.key}`]  = modulos[m.key].estado  || 'Sin novedad'
-        payload[`detalle_${m.key}`] = modulos[m.key].detalle || null
+        const items = modulos[m.key].items
+        payload[`estado_${m.key}`]  = items.length === 0 ? 'Sin novedad' : (items.some(it => it.severidad === 'Crítico') ? 'Crítico' : 'Hay novedades')
+        payload[`detalle_${m.key}`] = items.length === 0 ? null : items.map(it => (it.privada ? '[PRIVADA] ' : '') + it.descripcion).join(' | ')
       }
       // Raciones (solo Comedores)
       if (sedeSel?.tipo === 'Comedor') {
         payload.op1_producidos          = op1Prod      ? parseInt(op1Prod)      : null
         payload.op1_servidos            = op1Serv      ? parseInt(op1Serv)      : null
+        payload.op1_sobrante            = op1Sobrante      ? parseInt(op1Sobrante)      : null
+        payload.op2_producidos          = op2Prod      ? parseInt(op2Prod)      : null
+        payload.op2_servidos            = op2Serv      ? parseInt(op2Serv)      : null
+        payload.op2_sobrante            = op2Sobrante  ? parseInt(op2Sobrante) : null
         payload.vegetariano_producidos  = vegProd      ? parseInt(vegProd)      : null
         payload.vegetariano_servidos    = vegServ      ? parseInt(vegServ)      : null
+        payload.vegetariano_sobrante    = vegSobrante      ? parseInt(vegSobrante)      : null
         payload.ensalada_producidos     = ensaladaProd ? parseInt(ensaladaProd) : null
+        payload.ensalada_sobrante       = ensaladaSobrante ? parseInt(ensaladaSobrante) : null
         payload.postre_producidos       = postreProd   ? parseInt(postreProd)   : null
+        payload.postre_sobrante         = postreSobrante   ? parseInt(postreSobrante)   : null
       }
-      const registro = await createRegistro(payload)
-      const registroId = registro?.id ?? registro?.[0]?.id ?? null
+      let registroId
+      if (reutilizandoReporte) {
+        registroId = dupId
+      } else {
+        const registro = await createRegistro(payload)
+        registroId = registro?.id ?? registro?.[0]?.id ?? null
+      }
+      setCreadoId(registroId)
 
-      // Insertar escalamientos individuales
-      if (escalamientos.length > 0 && registroId) {
+      // Subir adjuntos staged (recién ahora existe un registro.id real)
+      let fallosAdjuntos = 0
+      if (registroId && archivos.length > 0) {
+        for (const item of archivos) {
+          try {
+            await uploadAdjunto('registro', registroId, item.file, perfil?.nombre || 'reportante')
+          } catch (e) {
+            console.error('Error subiendo adjunto:', e)
+            fallosAdjuntos++
+          }
+        }
+      }
+      setAdjuntosErrores(fallosAdjuntos)
+
+      // Insertar novedades de módulo (+ escalamiento vinculado cuando se marcó "Escalar")
+      let resultadosModulos = []
+      if (todosLosItems.length > 0 && registroId) {
         const fechaHoy = new Date().toISOString().slice(0, 10)
-        await Promise.all(escalamientos.map(e =>
-          createEscalamientoItem({
-            registro_id:  registroId,
-            tipo:         e.tipo || 'Otro',
-            descripcion:  e.descripcion,
-            sede_id:      sedeId,
-            sede_nombre:  sedeSel?.nombre || '',
-            reportante:   perfil?.nombre  || '',
+        resultadosModulos = await Promise.all(todosLosItems.map(it =>
+          createModuloNovedadConEscalamiento({
+            registro_id:        registroId,
+            sede_id:            sedeId,
+            sede_nombre:        sedeSel?.nombre || '',
+            modulo_key:         it.modulo_key,
+            modulo_label:       it.modulo_label,
+            severidad:          it.severidad || 'Hay novedades',
+            descripcion:        it.descripcion,
+            privada:            !!it.privada,
+            reportante:         perfil?.nombre || '',
+            fecha_reporte:      fechaHoy,
+            estado:             'Pendiente',
+            escalar:            !!it.escalar,
+            tipo_escalamiento:  it.escalar ? (it.tipo_escalamiento || 'Otro') : null,
+          })
+        ))
+      }
+      setEscalamientosCreados(resultadosModulos.filter(r => r.escalamiento).length)
+
+      // Insertar novedades de vehículo (+ ticket de Flota cuando se pidió)
+      let ticketsCreados = 0
+      if (vehiculoNovedades.length > 0 && registroId) {
+        const fechaHoy = new Date().toISOString().slice(0, 10)
+        const resultados = await Promise.all(vehiculoNovedades.map(v =>
+          createVehiculoNovedadConTicket({
+            registro_id:   registroId,
+            sede_id:       sedeId,
+            sede_nombre:   sedeSel?.nombre || '',
+            activo_id:     v.activo_id,
+            activo_nombre: v.activo_nombre,
+            tipo:          v.tipo || 'Avería',
+            descripcion:   v.descripcion,
+            reportante:    perfil?.nombre || '',
             fecha_reporte: fechaHoy,
-            estado:       'Pendiente',
+            estado:        'Pendiente',
+            crearTicket:   esOperario ? false : v.crearTicket,
+            escalar:           v.escalar,
+            tipo_escalamiento: v.escalar ? (v.tipo_escalamiento || 'Otro') : null,
+          })
+        ))
+        ticketsCreados = resultados.filter(r => r.ticket).length
+        setEscalamientosCreados(prev => prev + resultados.filter(r => r.escalamiento).length)
+      }
+      setTicketsFlotaCreados(ticketsCreados)
+
+      // Insertar novedades de personal
+      if (personaNovedades.length > 0 && registroId) {
+        const fechaHoy = new Date().toISOString().slice(0, 10)
+        await Promise.all(personaNovedades.map(p =>
+          createPersonaNovedad({
+            registro_id:    registroId,
+            sede_id:        sedeId,
+            sede_nombre:    sedeSel?.nombre || '',
+            persona_id:     p.persona_id,
+            persona_nombre: p.persona_nombre,
+            categoria:      p.categoria || 'Otro',
+            descripcion:    p.descripcion,
+            reportante:     perfil?.nombre || '',
+            fecha_reporte:  fechaHoy,
+            estado:         'Pendiente',
           })
         ))
       }
 
+      // Insertar novedades de vuelo (plantilla del día con novedad reportada + ad-hoc no listados)
+      if (registroId && (vuelosDelDia.length > 0 || vuelosAdHoc.length > 0)) {
+        const fechaHoy = new Date().toISOString().slice(0, 10)
+        const novedadesVuelo = [
+          ...vuelosDelDia
+            .filter(v => vueloEstados[v.id]?.tipo)
+            .map(v => ({
+              registro_id:         registroId,
+              sede_id:             sedeId,
+              sede_nombre:         sedeSel?.nombre || '',
+              vuelo_programado_id: v._origen === 'plantilla' ? v.id : null,
+              vuelo_calendario_id: v._origen === 'calendario' ? v.id : null,
+              vuelo_codigo:        v.vuelo_codigo,
+              destino:             v.destino,
+              aerolinea:           v.aerolinea,
+              tipo:                vueloEstados[v.id].tipo,
+              descripcion:         vueloEstados[v.id].descripcion.trim() || (vueloEstados[v.id].tipo === 'OK' ? 'Vuelo operado sin novedades.' : ''),
+              reportante:          perfil?.nombre || '',
+              fecha_reporte:       fechaHoy,
+              estado:              vueloEstados[v.id].tipo === 'OK' ? 'Resuelto' : 'Pendiente',
+            })),
+          ...vuelosAdHoc.map(v => ({
+            registro_id:   registroId,
+            sede_id:       sedeId,
+            sede_nombre:   sedeSel?.nombre || '',
+            vuelo_codigo:  v.vuelo_codigo,
+            destino:       v.destino,
+            aerolinea:     v.aerolinea,
+            tipo:          v.tipo || 'Otro',
+            descripcion:   v.descripcion,
+            reportante:    perfil?.nombre || '',
+            fecha_reporte: fechaHoy,
+            estado:        'Pendiente',
+          })),
+        ]
+        if (novedadesVuelo.length > 0) {
+          await Promise.all(novedadesVuelo.map(createVueloNovedad))
+        }
+      }
+
       // Detectar escalamientos de Compras para ofrecer requerimiento
-      const compras = escalamientos.filter(e => e.tipo === 'Compras')
+      // (operario no tiene acceso a Compras: se omite la oferta de crear requerimiento)
+      const compras = esOperario ? [] : resultadosModulos.map(r => r.escalamiento).filter(e => e?.tipo === 'Compras')
       if (compras.length > 0) {
         setEscCompras(compras)
         setReqForm({
@@ -348,7 +1099,7 @@ export default function MobileReporte({ onBack, onSuccess }) {
     const fecha    = new Date()
     const fechaStr = fecha.toLocaleDateString('es-AR', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
     const horaStr  = fecha.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
-    const modulosConNovedad = MODULOS.filter(m => modulos[m.key].estado && modulos[m.key].estado !== 'Sin novedad')
+    const todosLosItemsPDF = MODULOS.flatMap(m => modulos[m.key].items.map(it => ({ ...it, moduloLabel: m.label })))
     const estadoClass = estadoGeneral === 'Sin novedades' ? 'ok' : estadoGeneral === 'Hay novedades' ? 'warn' : 'crit'
 
     const html = `<!DOCTYPE html>
@@ -380,16 +1131,19 @@ export default function MobileReporte({ onBack, onSuccess }) {
   <tr><th>Reportante</th><th>Nivel de actividad</th></tr>
   <tr><td>${perfil?.nombre || '—'}</td><td>${nivelActividad}</td></tr>
 </table>
-${modulosConNovedad.length > 0 ? `
+${todosLosItemsPDF.length > 0 ? `
 <h3 style="font-size:0.9rem;margin:18px 0 6px">Módulos con novedades</h3>
 <table>
-  <tr><th>Módulo</th><th>Estado</th><th>Detalle</th></tr>
-  ${modulosConNovedad.map(m => `
-  <tr><td>${m.label}</td><td>${modulos[m.key].estado}</td><td>${modulos[m.key].detalle || '—'}</td></tr>`).join('')}
+  <tr><th>Módulo</th><th>Severidad</th><th>Detalle</th></tr>
+  ${todosLosItemsPDF.map(it => `
+  <tr><td>${it.moduloLabel}</td><td>${it.severidad}${it.escalar ? ' · Escalado' : ''}</td><td>${(it.privada ? '[PRIVADA] ' : '') + it.descripcion}${it.escalar ? ` <em>(→ ${it.tipo_escalamiento || 'Otro'})</em>` : ''}</td></tr>`).join('')}
 </table>` : '<p style="color:#2a7a2a;font-size:0.85rem;margin:12px 0">✓ Todos los módulos sin novedades</p>'}
-${escalamientos.length > 0 ? `
-<h3 style="font-size:0.9rem;margin:18px 0 6px">Escalamientos</h3>
-${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'General'}]</strong> — ${e.descripcion}</div>`).join('')}` : ''}
+${vehiculoNovedades.length > 0 ? `
+<h3 style="font-size:0.9rem;margin:18px 0 6px">Novedades de Vehículo</h3>
+${vehiculoNovedades.map((v, i) => `<div class="esc"><strong>${i+1}. [${v.tipo || 'Avería'}] ${v.activo_nombre || 'Vehículo sin nombre'}</strong> — ${v.descripcion}</div>`).join('')}` : ''}
+${personaNovedades.length > 0 ? `
+<h3 style="font-size:0.9rem;margin:18px 0 6px">Novedades de Personal</h3>
+${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categoria || 'Otro'}] ${p.persona_nombre || 'Sin nombre'}</strong> — ${p.descripcion}</div>`).join('')}` : ''}
 <div class="footer">Fly Kitchen Operations · ${fecha.toISOString()} · origen: app</div>
 </body>
 </html>`
@@ -415,6 +1169,7 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
           descripcion: reqForm.descripcion,
           urgencia:    'alta',
           estado:      'Pendiente',
+          origen_registro_id: creadoId,
         })
         setReqOk(true)
         setTimeout(() => onSuccess(), 1500)
@@ -430,6 +1185,26 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
         <div style={{ fontSize: '3rem' }}>✓</div>
         <p style={{ color: 'var(--phosphor)', fontWeight: 700, fontSize: '1.1rem' }}>Reporte enviado</p>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Gracias {perfil?.nombre?.split(' ')[0]}</p>
+
+        {ticketsFlotaCreados > 0 && (
+          <p style={{ color: COLOR_VEHICULO, fontSize: '0.78rem', textAlign: 'center' }}>
+            🚚 {ticketsFlotaCreados} ticket{ticketsFlotaCreados > 1 ? 's' : ''} de Flota creado{ticketsFlotaCreados > 1 ? 's' : ''} automáticamente
+          </p>
+        )}
+
+        {escalamientosCreados > 0 && (
+          <p style={{ color: '#FF2A2A', fontSize: '0.78rem', textAlign: 'center' }}>
+            🚩 {escalamientosCreados} escalamiento{escalamientosCreados > 1 ? 's' : ''} creado{escalamientosCreados > 1 ? 's' : ''} y notificado{escalamientosCreados > 1 ? 's' : ''}
+          </p>
+        )}
+
+        {adjuntosErrores > 0 && (
+          <p style={{ color: '#F59E0B', fontSize: '0.75rem', textAlign: 'center', lineHeight: 1.4 }}>
+            ⚠ {adjuntosErrores} archivo{adjuntosErrores > 1 ? 's' : ''} no se {adjuntosErrores > 1 ? 'pudieron' : 'pudo'} subir.
+            El reporte quedó guardado igual — pedile a un encargado que los suba desde la PC en el detalle del reporte.
+          </p>
+        )}
+
         <button onClick={generarPDF} style={{
           marginTop: '0.25rem', padding: '0.6rem 1.4rem', borderRadius: 8, cursor: 'pointer',
           background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
@@ -481,11 +1256,12 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--abyss)' }}>
       {/* Header */}
       <div style={{
         padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-        borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
+        background: 'var(--surface)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0,
       }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '0.2rem' }}>
           <ChevronLeft size={22} />
@@ -499,7 +1275,63 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
       </div>
 
       {/* Body scrollable */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.1rem 1rem' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+        
+        {/* Novedades del turno anterior */}
+        {novedadesAnteriores && (
+          <div style={{ background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:8, padding:'1rem', marginBottom:'1.5rem' }}>
+            <h3 style={{ fontSize:'0.75rem', color:'#3B82F6', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+              <Clock size={14} /> Novedades del Turno Anterior
+            </h3>
+            <p style={{ fontSize:'0.7rem', color:'var(--text-dim)', marginBottom:'0.8rem' }}>
+              Reportado el {format(new Date(novedadesAnteriores.fecha_reporte), 'dd/MM/yyyy HH:mm')}
+            </p>
+            <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
+              {(() => {
+                const puedeVerPrivadas = ['admin', 'editor', 'encargado'].includes(perfil?.rol)
+                const bloques = MODULOS.map(m => {
+                  const est = novedadesAnteriores[`estado_${m.key}`]
+                  const detRaw = novedadesAnteriores[`detalle_${m.key}`] || ''
+                  if (!est || est === 'Sin novedad' || !detRaw) return null
+                  // detalle_X puede traer varias novedades concatenadas con ' | ',
+                  // cada una con su propio prefijo "[PRIVADA] " opcional
+                  const segmentos = detRaw.split(' | ').map(seg => {
+                    const privada = seg.startsWith('[PRIVADA] ')
+                    return { texto: privada ? seg.replace('[PRIVADA] ', '') : seg, privada }
+                  }).filter(seg => puedeVerPrivadas || !seg.privada)
+                  if (segmentos.length === 0) return null
+                  return { key: m.key, label: m.label, segmentos }
+                }).filter(Boolean)
+
+                if (vuelosAnteriores.length > 0) {
+                  bloques.push({
+                    key: 'vuelos',
+                    label: 'Vuelos del día',
+                    segmentos: vuelosAnteriores.map(v => ({
+                      texto: `${v.vuelo_codigo}${v.destino ? ` → ${v.destino}` : ''}: ${v.tipo}${v.tipo !== 'OK' && v.descripcion ? ` — ${v.descripcion}` : ''}`,
+                      privada: false,
+                      ok: v.tipo === 'OK',
+                    })),
+                  })
+                }
+
+                if (bloques.length === 0) {
+                  return <p style={{ fontSize:'0.75rem', color:'var(--text-dim)', margin:0 }}>No hubo novedades registradas en el turno anterior.</p>
+                }
+                return bloques.map(({ key, label, segmentos }) => (
+                  <div key={key} style={{ background:'rgba(0,0,0,0.2)', padding:'0.6rem', borderRadius:6 }}>
+                    <div style={{ fontSize:'0.65rem', color:'var(--text-dim)', marginBottom:'0.3rem', textTransform:'uppercase' }}>{label}</div>
+                    {segmentos.map((seg, i) => (
+                      <div key={i} style={{ fontSize:'0.8rem', color: seg.ok ? '#39FF14' : 'var(--text)', marginTop: i > 0 ? '0.3rem' : 0 }}>
+                        • {seg.texto} {seg.privada && <span style={{ color:'#F59E0B', marginLeft:4, fontSize:'0.65rem' }}>(Privada)</span>}
+                      </div>
+                    ))}
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Sede */}
         <div style={{ marginBottom: '1.1rem' }}>
@@ -526,7 +1358,7 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
         <div style={{ marginBottom: '1.1rem' }}>
           <SectionLabel>Turno *</SectionLabel>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {TURNOS.map(t => (
+            {REPORT_TURNS.map(t => (
               <button key={t} onClick={() => setTurno(t)} style={{
                 flex: 1, padding: '0.75rem 0', borderRadius: 8, cursor: 'pointer',
                 fontWeight: turno === t ? 700 : 400, fontSize: '0.85rem',
@@ -542,7 +1374,7 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
         <div style={{ marginBottom: '1.1rem' }}>
           <SectionLabel>Nivel de actividad</SectionLabel>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-            {NIVELES.map(n => (
+            {REPORT_ACTIVITY_LEVELS.map(n => (
               <Chip key={n} label={n} active={nivelActividad === n}
                 color="#50b4ff" bg="rgba(80,180,255,0.12)"
                 onClick={() => setNivelActividad(n)} />
@@ -558,12 +1390,7 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {ESTADOS_GENERALES.map(e => (
-              <button key={e.val} onClick={() => {
-                setEstadoGeneral(e.val)
-                if (e.val === 'Operación condicionada' && escalamientos.length === 0) {
-                  setEscalamientos([{ tipo: '', descripcion: '' }])
-                }
-              }} style={{
+              <button key={e.val} onClick={() => setEstadoGeneral(e.val)} style={{
                 padding: '0.8rem 1rem', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
                 background: estadoGeneral === e.val ? e.bg : 'var(--surface)',
                 border: estadoGeneral === e.val ? `1.5px solid ${e.color}` : '1.5px solid rgba(255,255,255,0.06)',
@@ -572,82 +1399,207 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
               }}>{e.label}</button>
             ))}
           </div>
+          {estadoGeneral === 'Operación condicionada' && (
+            <p style={{ fontSize: '0.7rem', color: '#FF2A2A', marginTop: '0.5rem', lineHeight: 1.4 }}>
+              Abrí el módulo afectado más abajo, agregá la novedad como "Crítico" y escalala desde ahí mismo.
+            </p>
+          )}
         </div>
 
         {/* Raciones — solo Comedores */}
         {sedeSel?.tipo === 'Comedor' && (
           <div style={{ marginBottom: '1.25rem' }}>
             <SectionLabel>Raciones del turno (opcional)</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              {[
-                { label: 'Op.1 producidas', val: op1Prod,      set: setOp1Prod },
-                { label: 'Op.1 servidas',   val: op1Serv,      set: setOp1Serv },
-                { label: 'Veg. producidas', val: vegProd,      set: setVegProd },
-                { label: 'Veg. servidas',   val: vegServ,      set: setVegServ },
-                { label: 'Ensalada prod.',  val: ensaladaProd, set: setEnsaladaProd },
-                { label: 'Postre prod.',    val: postreProd,   set: setPostreProd },
-              ].map(({ label, val, set }) => (
-                <div key={label}>
-                  <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
-                  <input
-                    type="number" inputMode="numeric" value={val}
-                    onChange={e => set(e.target.value)} placeholder="0"
-                    style={{
-                      width: '100%', padding: '0.65rem 0.75rem', borderRadius: 8, boxSizing: 'border-box',
-                      background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'var(--text)', fontSize: '1rem', textAlign: 'center',
-                    }}
-                  />
-                </div>
-              ))}
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem', lineHeight: 1.4, marginTop: '-0.3rem', marginBottom: '0.6rem' }}>
+              Cada menú está agrupado por opción. Sobrante son las porciones que quedaron sin servir al final del turno.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+              <RacionCard title="Opción 1" fields={[
+                { label: 'Producidas', val: op1Prod, set: setOp1Prod },
+                { label: 'Servidas', val: op1Serv, set: setOp1Serv },
+                { label: 'Sobrante', val: op1Sobrante, set: setOp1Sobrante },
+              ]} />
+              <RacionCard title="Opción 2" fields={[
+                { label: 'Producidas', val: op2Prod, set: setOp2Prod },
+                { label: 'Servidas', val: op2Serv, set: setOp2Serv },
+                { label: 'Sobrante', val: op2Sobrante, set: setOp2Sobrante },
+              ]} />
+              <RacionCard title="Vegetariano" fields={[
+                { label: 'Producidas', val: vegProd, set: setVegProd },
+                { label: 'Servidas', val: vegServ, set: setVegServ },
+                { label: 'Sobrante', val: vegSobrante, set: setVegSobrante },
+              ]} />
+              <RacionCard title="Ensalada" fields={[
+                { label: 'Producidas', val: ensaladaProd, set: setEnsaladaProd },
+                { label: 'Sobrante', val: ensaladaSobrante, set: setEnsaladaSobrante },
+              ]} />
+              <RacionCard title="Postre" fields={[
+                { label: 'Producidas', val: postreProd, set: setPostreProd },
+                { label: 'Sobrante', val: postreSobrante, set: setPostreSobrante },
+              ]} />
             </div>
           </div>
         )}
+
+        {/* Vuelos del día — solo escalas tipo Aeropuerto */}
+        {sedeSel?.tipo === 'Aeropuerto' && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <SectionLabel>
+                <Plane size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                Vuelos del día
+              </SectionLabel>
+              <button onClick={agregarVueloAdHoc} style={{
+                display: 'flex', alignItems: 'center', gap: '0.25rem',
+                padding: '0.3rem 0.7rem', borderRadius: 6, cursor: 'pointer',
+                background: `${COLOR_VUELO}15`, border: `1px solid ${COLOR_VUELO}55`,
+                color: COLOR_VUELO, fontSize: '0.72rem', fontWeight: 700,
+              }}>
+                <Plus size={12} /> No listado
+              </button>
+            </div>
+
+            {vuelosDelDia.length === 0 && vuelosAdHoc.length === 0 ? (
+              <div style={{
+                padding: '0.85rem 1rem', borderRadius: 8, textAlign: 'center',
+                background: 'var(--surface)', border: '1.5px dashed rgba(255,255,255,0.08)',
+                color: 'var(--text-dim)', fontSize: '0.8rem',
+              }}>
+                No hay vuelos pendientes de chequear hoy. Si falta uno, agregalo con "No listado".
+              </div>
+            ) : (
+              <>
+                {vuelosDelDia.map(v => (
+                  <VueloDelDiaCard
+                    key={v.id}
+                    vuelo={v}
+                    estado={vueloEstados[v.id] || ESTADO_VUELO_DEFAULT}
+                    onChange={val => actualizarVueloEstado(v.id, val)}
+                  />
+                ))}
+                {vuelosAdHoc.map((item, i) => (
+                  <VueloAdHocCard
+                    key={i}
+                    item={item}
+                    index={i}
+                    onChange={val => actualizarVueloAdHoc(i, val)}
+                    onRemove={() => quitarVueloAdHoc(i)}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Fotos / Documentos */}
+        <div style={{ marginBottom: '1.25rem' }}>
+          <SectionLabel>Fotos / Documentos (opcional)</SectionLabel>
+          {archivos.map(item => (
+            <ArchivoStagedItem key={item.id} item={item} onRemove={() => quitarArchivo(item.id)} />
+          ))}
+          <label style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+            padding: '0.75rem', borderRadius: 8, cursor: 'pointer',
+            background: 'var(--surface)', border: '1.5px dashed rgba(255,255,255,0.15)',
+            color: 'var(--text-dim)', fontSize: '0.8rem',
+          }}>
+            <Paperclip size={14} /> Adjuntar foto o documento
+            <input
+              type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+              style={{ display: 'none' }}
+              onChange={e => { agregarArchivos(e.target.files); e.target.value = '' }}
+            />
+          </label>
+        </div>
 
         {/* Módulos A-H */}
         <div style={{ marginBottom: '1.25rem' }}>
           <SectionLabel>Módulos</SectionLabel>
           {MODULOS.map(m => (
             <ModuloCard key={m.key} mod={m}
-              estado={modulos[m.key].estado}
-              detalle={modulos[m.key].detalle}
-              onEstado={val => setMod(m.key, 'estado', val)}
-              onDetalle={val => setMod(m.key, 'detalle', val)}
+              items={modulos[m.key].items}
               ejemplo={m.ejemplo}
+              onAgregar={() => agregarItemModulo(m.key)}
+              onActualizar={(i, val) => actualizarItemModulo(m.key, i, val)}
+              onQuitar={(i) => quitarItemModulo(m.key, i)}
             />
           ))}
         </div>
 
-        {/* Escalamientos */}
+        {/* Novedades de vehículo */}
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <SectionLabel>Escalamientos{escalamientos.length > 0 ? ` (${escalamientos.length})` : ''}</SectionLabel>
-            <button onClick={agregarEscalamiento} style={{
+            <SectionLabel>
+              <Truck size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              Novedades de Vehículo{vehiculoNovedades.length > 0 ? ` (${vehiculoNovedades.length})` : ''}
+            </SectionLabel>
+            <button onClick={agregarVehiculoNovedad} style={{
               display: 'flex', alignItems: 'center', gap: '0.25rem',
               padding: '0.3rem 0.7rem', borderRadius: 6, cursor: 'pointer',
-              background: 'rgba(255,42,42,0.08)', border: '1px solid rgba(255,42,42,0.3)',
-              color: '#FF2A2A', fontSize: '0.72rem', fontWeight: 700,
+              background: `${COLOR_VEHICULO}15`, border: `1px solid ${COLOR_VEHICULO}55`,
+              color: COLOR_VEHICULO, fontSize: '0.72rem', fontWeight: 700,
             }}>
               <Plus size={12} /> Agregar
             </button>
           </div>
 
-          {escalamientos.length === 0 ? (
+          {vehiculoNovedades.length === 0 ? (
             <div style={{
               padding: '0.85rem 1rem', borderRadius: 8, textAlign: 'center',
               background: 'var(--surface)', border: '1.5px dashed rgba(255,255,255,0.08)',
               color: 'var(--text-dim)', fontSize: '0.8rem',
             }}>
-              Sin escalamientos — tocá "Agregar" si hay algo que derivar
+              Sin novedades de vehículo — tocá "Agregar" si hay algo que reportar
             </div>
           ) : (
-            escalamientos.map((item, i) => (
-              <EscalamientoCard
+            vehiculoNovedades.map((item, i) => (
+              <VehiculoNovedadCard
                 key={i}
                 item={item}
                 index={i}
-                onChange={val => actualizarEscalamiento(i, val)}
-                onRemove={() => quitarEscalamiento(i)}
+                vehiculos={vehiculosSede}
+                onChange={val => actualizarVehiculoNovedad(i, val)}
+                onRemove={() => quitarVehiculoNovedad(i)}
+                hideCrearTicket={esOperario}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Novedades de personal */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <SectionLabel>
+              <User size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              Novedades de Personal{personaNovedades.length > 0 ? ` (${personaNovedades.length})` : ''}
+            </SectionLabel>
+            <button onClick={agregarPersonaNovedad} style={{
+              display: 'flex', alignItems: 'center', gap: '0.25rem',
+              padding: '0.3rem 0.7rem', borderRadius: 6, cursor: 'pointer',
+              background: `${COLOR_PERSONA}15`, border: `1px solid ${COLOR_PERSONA}55`,
+              color: COLOR_PERSONA, fontSize: '0.72rem', fontWeight: 700,
+            }}>
+              <Plus size={12} /> Agregar
+            </button>
+          </div>
+
+          {personaNovedades.length === 0 ? (
+            <div style={{
+              padding: '0.85rem 1rem', borderRadius: 8, textAlign: 'center',
+              background: 'var(--surface)', border: '1.5px dashed rgba(255,255,255,0.08)',
+              color: 'var(--text-dim)', fontSize: '0.8rem',
+            }}>
+              Sin novedades de personal — tocá "Agregar" si hay algo que reportar
+            </div>
+          ) : (
+            personaNovedades.map((item, i) => (
+              <PersonaNovedadCard
+                key={i}
+                item={item}
+                index={i}
+                personas={personasSede}
+                onChange={val => actualizarPersonaNovedad(i, val)}
+                onRemove={() => quitarPersonaNovedad(i)}
               />
             ))
           )}
@@ -665,7 +1617,7 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
             </div>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: 1.5, marginBottom: '0.8rem' }}>
               Ya se registró un reporte para <strong>{sedeSel?.nombre}</strong>, turno <strong>{turno}</strong> hoy.
-              ¿Querés enviarlo igualmente?
+              Las novedades que cargaste ahora se van a agregar a ese reporte (no se va a duplicar ni pisar el checklist original).
             </p>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
@@ -685,7 +1637,7 @@ ${escalamientos.map((e, i) => `<div class="esc"><strong>${i+1}. [${e.tipo || 'Ge
                   background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)',
                   color: '#F59E0B', fontSize: '0.82rem', fontWeight: 700,
                 }}>
-                Enviar igual
+                Agregar al reporte
               </button>
             </div>
           </div>

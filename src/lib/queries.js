@@ -1,11 +1,12 @@
 import { db, supabase } from './supabase'
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, eachDayOfInterval, getDaysInMonth } from 'date-fns'
-import { notifyHighPriority } from './pushNotifications'
+import { notifyHighPriority, notifyComentario } from './pushNotifications'
+import { buildComedoresMetricas } from './comedoresMetricas'
 
 // ─── SEDES ────────────────────────────────────────────────────────────────────
 
 export async function getSedes(sedeIds = null) {
-  let query = db().from('sedes').select('*').eq('activa', true).order('nombre')
+  let query = db().from('sedes').select('*, grupos(id,nombre)').eq('activa', true).order('nombre')
   if (sedeIds?.length) query = query.in('id', sedeIds)
   const { data, error } = await query
   if (error) throw error
@@ -70,6 +71,20 @@ export async function getRegistrosByFecha(desde, hasta, sedeIds = null) {
 }
 
 // ─── ESCALAMIENTOS ────────────────────────────────────────────────────────────
+
+export async function getComedoresMetricas(dias = 30, sedeIds = null) {
+  const desde = subDays(new Date(), dias)
+  let query = db()
+    .from('registros')
+    .select('*, sedes(id,nombre,tipo)')
+    .gte('fecha_reporte', startOfDay(desde).toISOString())
+    .lte('fecha_reporte', endOfDay(new Date()).toISOString())
+    .order('fecha_reporte', { ascending: false })
+  if (sedeIds?.length) query = query.in('sede_id', sedeIds)
+  const { data, error } = await query
+  if (error) throw error
+  return buildComedoresMetricas(data || [])
+}
 
 export async function getEscalamientosItems(filtros = {}) {
   let query = db()
@@ -140,6 +155,20 @@ export async function getTareas({ sedeId, sedeIds, prioridad, categoria, incluir
   if (categoria) query = query.eq('categoria', categoria)
   const { data, error } = await query
   if (error) throw error
+  // El teléfono puede no estar en perfiles.telefono (login) sino en Equipo o Contactos,
+  // igual que resuelve getPerfilesConDirectorio() para la pantalla de Usuarios.
+  // Sin esto, "Compartir" tira "El usuario no tiene teléfono registrado" aunque el
+  // teléfono sí exista en el directorio.
+  const faltaTelefono = (data || []).some(t => t.perfiles && !t.perfiles.telefono)
+  if (faltaTelefono) {
+    const directorio = await getPerfilesConDirectorio()
+    const telefonoPorId = new Map(directorio.map(p => [p.id, p.telefono]))
+    for (const t of data) {
+      if (t.perfiles && !t.perfiles.telefono) {
+        t.perfiles.telefono = telefonoPorId.get(t.perfiles.id) || null
+      }
+    }
+  }
   return data
 }
 
@@ -167,6 +196,19 @@ export async function updateTarea(id, payload) {
   if (data?.id && String(data.prioridad).toLowerCase() === 'alta') {
     notifyHighPriority({ module:'tareas', entity_id:data.id, priority:data.prioridad })
   }
+  return data
+}
+
+// ─── USUARIOS (resolución de nombre, evita restricción RLS de perfiles) ───────
+
+// Resuelve un uuid de auth.users/perfiles a un nombre legible vía función
+// SECURITY DEFINER (bitacora.get_usuario_nombre). Necesario porque la policy
+// de SELECT en perfiles es "id = auth.uid() OR admin": un usuario normal no
+// puede leer el perfil de otro directamente.
+export async function getUsuarioNombre(uid) {
+  if (!uid) return null
+  const { data, error } = await db().rpc('get_usuario_nombre', { uid })
+  if (error) throw error
   return data
 }
 
@@ -222,7 +264,7 @@ export async function getCapa(filtros = {}) {
   let query = db()
     .from('capa')
     .select('*, no_conformidades(codigo, descripcion, sede_nombre), sedes(id, nombre)')
-    .order('created_at', { ascending: false })
+    .order('codigo', { ascending: true })
   if (filtros.tipo)             query = query.eq('tipo', filtros.tipo)
   if (filtros.estado)           query = query.eq('estado', filtros.estado)
   if (filtros.responsable)      query = query.ilike('responsable', `%${filtros.responsable}%`)
@@ -263,6 +305,29 @@ export async function updateCapa(id, payload) {
   return data
 }
 
+// ─── CAPA: METADATOS DE CABECERA DEL PLAN (para informe PDF) ────────────────
+
+export async function getCapaPlan(auditoria_codigo) {
+  if (!auditoria_codigo) return null
+  const { data, error } = await db()
+    .from('capa_planes')
+    .select('*')
+    .eq('auditoria_codigo', auditoria_codigo)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function upsertCapaPlan(payload) {
+  const { data, error } = await db()
+    .from('capa_planes')
+    .upsert({ ...payload, updated_at: new Date().toISOString() }, { onConflict: 'auditoria_codigo' })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 // ─── INDICADORES POR SEDE ─────────────────────────────────────────────────────
 
 export async function getIndicadoresPorSede(dias = 30, sedeIds = null) {
@@ -279,7 +344,6 @@ export async function getIndicadoresPorSede(dias = 30, sedeIds = null) {
   if (e1) throw e1
   if (e2) throw e2
 
-  const diasPeriodo = dias
   return (sedes || []).map(sede => {
     const regs = (registros || []).filter(r => r.sede_id === sede.id)
     const totalRegs = regs.length
@@ -289,7 +353,15 @@ export async function getIndicadoresPorSede(dias = 30, sedeIds = null) {
     const tareasResueltas = tareasSede.filter(t => t.estado === 'Resuelto').length
     const tareasTotal = tareasSede.length
 
-    // % cumplimiento carga: reportes / dias del periodo
+    let diasPeriodo = 0
+    const ops = sede.dias_operacion || [1,2,3,4,5,6,0]
+    for (let i = 0; i < dias; i++) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      if (ops.includes(d.getDay())) diasPeriodo++
+    }
+
+    // % cumplimiento carga: reportes / dias operativos del periodo
     const pctCumplimiento = diasPeriodo > 0 ? Math.min(100, Math.round((totalRegs / diasPeriodo) * 100)) : 0
     const pctLimpias = totalRegs > 0 ? Math.round((sinNovedades / totalRegs) * 100) : 0
     const tiempoMedioResolucion = tareasResueltas > 0
@@ -395,7 +467,7 @@ export async function getCumplimientoCalendario(anio, mes) {
       .select('id, fecha_reporte, sede_id, sede_nombre, requiere_escalamiento, turno, reportante, estado_general, nivel_actividad, estado_a, estado_b, estado_c, estado_d, estado_e, estado_f, estado_g, estado_h, detalle_a, detalle_b, detalle_c, detalle_d, detalle_e, detalle_f, detalle_g, detalle_h, motivo_escalamiento, sedes(nombre)')
       .gte('fecha_reporte', primerDia.toISOString())
       .lte('fecha_reporte', ultimoDia.toISOString()),
-    db().from('sedes').select('id').eq('activa', true),
+    db().from('sedes').select('id, dias_operacion').eq('activa', true),
     db().from('tareas').select('fecha_limite, estado')
       .gte('fecha_limite', format(primerDia, 'yyyy-MM-dd'))
       .lte('fecha_limite', format(ultimoDia, 'yyyy-MM-dd')),
@@ -403,12 +475,15 @@ export async function getCumplimientoCalendario(anio, mes) {
   if (e1) throw e1
   if (e2) throw e2
 
-  const totalSedes = (sedes || []).length
   const dias = eachDayOfInterval({ start: primerDia, end: ultimoDia })
 
   return dias.map(dia => {
     const diaStr = format(dia, 'yyyy-MM-dd')
+    const jsDay = dia.getDay()
     const esFuturo = dia > hoy
+
+    const sedesOperativas = (sedes || []).filter(s => (s.dias_operacion || [1,2,3,4,5,6,0]).includes(jsDay))
+    const totalSedesOperativas = sedesOperativas.length
 
     const regsDelDia = (registros || []).filter(r => r.fecha_reporte.startsWith(diaStr))
     const sedesQueReportaron = new Set(regsDelDia.map(r => r.sede_id)).size
@@ -417,8 +492,9 @@ export async function getCumplimientoCalendario(anio, mes) {
 
     let estado = 'futuro'
     if (!esFuturo) {
-      if (sedesQueReportaron === 0) estado = 'ninguna'
-      else if (totalSedes > 0 && sedesQueReportaron >= totalSedes) estado = 'todas'
+      if (sedesQueReportaron === 0 && totalSedesOperativas > 0) estado = 'ninguna'
+      else if (totalSedesOperativas === 0 && sedesQueReportaron === 0) estado = 'todas'
+      else if (totalSedesOperativas > 0 && sedesQueReportaron >= totalSedesOperativas) estado = 'todas'
       else estado = 'algunas'
     }
 
@@ -428,8 +504,49 @@ export async function getCumplimientoCalendario(anio, mes) {
       sede_nombre: r.sede_nombre || r.sedes?.nombre || String(r.sede_id),
     }))
 
-    return { dia, diaStr, sedesQueReportaron, totalSedes, estado, tieneEscalamiento, tieneTareaVencida, registros: regsEnriquecidos }
+    return { dia, diaStr, sedesQueReportaron, totalSedes: totalSedesOperativas, estado, tieneEscalamiento, tieneTareaVencida, registros: regsEnriquecidos }
   })
+}
+
+// ─── ANUNCIOS / TABLÓN ────────────────────────────────────────────────────────
+// No hay tabla nueva: se reutiliza bitacora.notificaciones con modulo='anuncio'.
+// El insert real lo hace la Edge Function send-priority-notification (service role),
+// porque notificaciones no tiene policy de INSERT para el cliente (solo select/update propios).
+
+export async function crearAnuncio({ titulo, cuerpo, prioridad = 'media', sedeIds = null, url = null }) {
+  const { data, error } = await supabase.functions.invoke('send-priority-notification', {
+    body: { module: 'anuncio', titulo, cuerpo, prioridad, sede_ids: sedeIds, url },
+  })
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  if (data?.skipped) throw new Error('No autorizado para publicar anuncios')
+  return data // { sent, recipients }
+}
+
+// Cada anuncio genera una fila por destinatario (mismo entidad_id). Acá se deduplica
+// para mostrar un solo card por anuncio en el feed del usuario que consulta.
+export async function getAnuncios(limit = 50) {
+  const { data, error } = await db().from('notificaciones')
+    .select('*').eq('modulo', 'anuncio')
+    .order('created_at', { ascending: false }).limit(limit * 3)
+  if (error) throw error
+  const vistos = new Set()
+  const anuncios = []
+  for (const row of data ?? []) {
+    if (vistos.has(row.entidad_id)) continue
+    vistos.add(row.entidad_id)
+    anuncios.push(row)
+    if (anuncios.length >= limit) break
+  }
+  return anuncios
+}
+
+export async function marcarAnunciosLeidos(userId) {
+  if (!userId) return
+  const { error } = await db().from('notificaciones')
+    .update({ leida_at: new Date().toISOString() })
+    .eq('destinatario_id', userId).eq('modulo', 'anuncio').is('leida_at', null)
+  if (error) throw error
 }
 
 // ─── PERFILES ─────────────────────────────────────────────────────────────────
@@ -441,6 +558,54 @@ export async function getPerfiles() {
     .order('nombre')
   if (error) throw error
   return data
+}
+
+// Directorio unificado para la administración de usuarios.
+// perfiles sigue siendo la fuente de permisos; Equipo y Contactos solo completan
+// datos de contacto faltantes sin duplicarlos ni escribirlos en otra tabla.
+export async function getPerfilesConDirectorio() {
+  const perfiles = await getPerfiles()
+  const [personasResult, contactosResult] = await Promise.allSettled([
+    supabase.from('v_personas').select('id, nombre, apellido, email, telefono, perfil_id'),
+    db().from('contactos').select('id, nombre, email, telefono, perfil_id').eq('activo', true),
+  ])
+  const personas = personasResult.status === 'fulfilled' && !personasResult.value.error
+    ? personasResult.value.data || []
+    : []
+  const contactos = contactosResult.status === 'fulfilled' && !contactosResult.value.error
+    ? contactosResult.value.data || []
+    : []
+  const clean = value => String(value || '').trim().replace(/^['"]|['"]$/g, '').toLowerCase()
+  const cleanName = value => clean(value).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+  const personName = person => cleanName(`${person.nombre || ''} ${person.apellido || ''}`)
+  const profileNameCount = perfiles.reduce((counts, perfil) => {
+    const key = cleanName(perfil.nombre)
+    if (key) counts.set(key, (counts.get(key) || 0) + 1)
+    return counts
+  }, new Map())
+  const personNameCount = personas.reduce((counts, persona) => {
+    const key = personName(persona)
+    if (key) counts.set(key, (counts.get(key) || 0) + 1)
+    return counts
+  }, new Map())
+
+  return perfiles.map(perfil => {
+    const email = clean(perfil.email)
+    const nombre = cleanName(perfil.nombre)
+    const nombreEsUnico = profileNameCount.get(nombre) === 1 && personNameCount.get(nombre) === 1
+    const persona = personas.find(item => item.perfil_id === perfil.id)
+      || personas.find(item => email && clean(item.email) === email)
+      || (nombreEsUnico ? personas.find(item => nombre && personName(item) === nombre) : null)
+    const contacto = contactos.find(item => item.perfil_id === perfil.id)
+      || contactos.find(item => email && clean(item.email) === email)
+    return {
+      ...perfil,
+      telefono: perfil.telefono || persona?.telefono || contacto?.telefono || null,
+      telefono_origen: perfil.telefono ? 'perfil' : persona?.telefono ? 'equipo' : contacto?.telefono ? 'contacto' : null,
+      posible_duplicado: (profileNameCount.get(nombre) || 0) > 1,
+      duplicados_nombre: profileNameCount.get(nombre) || 1,
+    }
+  })
 }
 
 
@@ -467,9 +632,16 @@ export async function createGrupo(payload) {
 }
 
 export async function upsertPerfil(payload) {
+  // Update directo, no upsert: esta función solo edita perfiles ya existentes
+  // (la creación de usuarios nuevos pasa por la edge function admin-user-actions).
+  // Con .upsert() Postgres valida también la política de INSERT
+  // (perfiles_insert_self_as_consultor) aunque el row ya exista, y la rechaza
+  // por RLS al editar el perfil de otra persona.
+  const { id, ...changes } = payload
   const { data, error } = await db()
     .from('perfiles')
-    .upsert({ ...payload, updated_at: new Date().toISOString() })
+    .update({ ...changes, updated_at: new Date().toISOString() })
+    .eq('id', id)
     .select()
     .single()
   if (error) throw error
@@ -693,10 +865,293 @@ export async function getMisTareas(userId) {
     .from('tareas')
     .select('*, sedes(nombre)')
     .eq('responsable_id', userId)
-    .neq('estado', 'Resuelto')
+    .not('estado', 'in', '("Resuelto","Cancelado")')
     .order('prioridad', { ascending: false })
   if (error) return []
   return data ?? []
+}
+
+// ═══════════════════════════════════════════════════════════
+// NOVEDADES DE VEHÍCULO Y DE PERSONA (cargadas desde el registro)
+// ═══════════════════════════════════════════════════════════
+
+export const CATEGORIAS_NOVEDAD_PERSONA = ['Ausentismo', 'Llegada tarde', 'Desempeño', 'Conducta', 'Otro']
+
+// Personas activas asignadas a una sede. v_personas.sede_ids puede fallar con
+// .contains() (visto en sedeReportPdf.js), así que se filtra en cliente.
+export async function getPersonasBySede(sedeId) {
+  if (!sedeId) return []
+  const { data, error } = await supabase
+    .from('v_personas')
+    .select('id, nombre, apellido, puesto, sede_ids')
+    .eq('activo', true)
+  if (error) throw error
+  return (data || []).filter(p => p.sede_ids && p.sede_ids.includes(sedeId))
+}
+
+export async function createVehiculoNovedad(payload) {
+  const { data, error } = await db()
+    .from('vehiculo_novedades')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function createPersonaNovedad(payload) {
+  const { data, error } = await db()
+    .from('persona_novedades')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+
+  // Una novedad asociada a una persona también forma parte de su legajo.
+  // Se registra como "otro" para no convertir automáticamente una novedad
+  // operativa en una sanción o llamado de atención formal.
+  if (data?.persona_id) {
+    const referencia = data.registro_id ? `Registro #${data.registro_id}` : 'Bitácora'
+    const categoria = data.categoria || 'Otro'
+    const { data: historial, error: historialError } = await supabase
+      .schema('equipo')
+      .from('historial_personal')
+      .insert({
+        persona_id: data.persona_id,
+        tipo: 'otro',
+        fecha: data.fecha_reporte || new Date().toISOString().slice(0, 10),
+        descripcion: `[${referencia} · ${categoria}] ${data.descripcion}`,
+        registrado_por: data.reportante || null,
+      })
+      .select('id')
+      .single()
+    if (historialError) throw historialError
+    return { ...data, historial_personal_id: historial?.id || null }
+  }
+
+  return data
+}
+
+/**
+ * Crea la novedad de vehículo y, si se pide, el ticket de Flota y/o el
+ * escalamiento vinculado (mismo patrón que módulos → escalamientos).
+ * payload: { registro_id, sede_id, sede_nombre, activo_id, activo_nombre, tipo, descripcion, reportante, fecha_reporte, crearTicket, prioridad, escalar, tipo_escalamiento }
+ */
+export async function createVehiculoNovedadConTicket(payload) {
+  const { crearTicket, prioridad, escalar, tipo_escalamiento, ...novedadPayload } = payload
+  const novedad = await createVehiculoNovedad(novedadPayload)
+  if (!novedad?.id) return { novedad, ticket: null, escalamiento: null }
+
+  let ticket = null
+  if (crearTicket) {
+    ticket = await createTicket({
+      tipo: 'correctivo',
+      categoria: 'Vehiculos',
+      activo_id: novedad.activo_id,
+      activo_nombre: novedad.activo_nombre,
+      descripcion: novedad.descripcion,
+      estado: 'abierto',
+      prioridad: prioridad || 'media',
+      sede_id: novedad.sede_id,
+      sede: novedad.sede_nombre,
+      // Nota: mnt_tickets NO tiene columna vehiculo_novedad_id (solo tiene
+      // escalamiento_id). Antes se enviaba ese campo igual y rompía el
+      // INSERT con "column vehiculo_novedad_id does not exist" — por eso
+      // fallaba "Crear ticket automático" en vehículos.
+    })
+  }
+
+  let escalamiento = null
+  if (escalar) {
+    escalamiento = await createEscalamientoItem({
+      registro_id:   novedad.registro_id,
+      tipo:          tipo_escalamiento || 'Otro',
+      descripcion:   `[Vehículo: ${novedad.activo_nombre || 'sin nombre'}] ${novedad.descripcion}`,
+      sede_id:       novedad.sede_id,
+      sede_nombre:   novedad.sede_nombre,
+      reportante:    novedad.reportante,
+      fecha_reporte: novedad.fecha_reporte,
+      estado:        'Pendiente',
+    })
+  }
+
+  return { novedad, ticket, escalamiento }
+}
+
+// ═══════════════════════════════════════════════════════════
+// NOVEDADES DE MÓDULO (categorías A-H del checklist de turno)
+// ═══════════════════════════════════════════════════════════
+
+export async function createModuloNovedad(payload) {
+  const { data, error } = await db()
+    .from('modulo_novedades')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Crea la novedad de módulo y, si se pidió escalar, el escalamiento vinculado
+ * (mismo patrón que vehículo → mnt_tickets.vehiculo_novedad_id).
+ * payload: { registro_id, sede_id, sede_nombre, modulo_key, modulo_label,
+ *            severidad, descripcion, privada, reportante, fecha_reporte,
+ *            estado, escalar, tipo_escalamiento }
+ */
+export async function createModuloNovedadConEscalamiento(payload) {
+  const { escalar, tipo_escalamiento, ...novedadPayload } = payload
+  const novedad = await createModuloNovedad(novedadPayload)
+  if (!escalar || !novedad?.id) return { novedad, escalamiento: null }
+  const escalamiento = await createEscalamientoItem({
+    registro_id:        novedad.registro_id,
+    tipo:               tipo_escalamiento || 'Otro',
+    descripcion:        `[${novedad.modulo_label || novedad.modulo_key}] ${novedad.descripcion}`,
+    sede_id:            novedad.sede_id,
+    sede_nombre:        novedad.sede_nombre,
+    reportante:         novedad.reportante,
+    fecha_reporte:      novedad.fecha_reporte,
+    estado:             'Pendiente',
+    modulo_novedad_id:  novedad.id,
+  })
+  return { novedad, escalamiento }
+}
+
+// ═══════════════════════════════════════════════════════════
+// VUELOS POR ESCALA (plantilla semanal + novedades por vuelo)
+// ═══════════════════════════════════════════════════════════
+
+export const TIPOS_NOVEDAD_VUELO = ['OK', 'Demora', 'Cancelado', 'Desvío', 'Otro']
+
+// Vuelos del día para una sede, en una fecha puntual (formato 'YYYY-MM-DD').
+// Se usa en "Nuevo Reporte" → Vuelos del día.
+// 1) Busca primero en el calendario real (vuelos_calendario), cargado mes a mes
+//    desde el Excel de Aduana — refleja exactamente qué vuela ese día.
+// 2) Si no hay datos de calendario para esa fecha (mes no cargado, o la tabla
+//    todavía no existe), cae a la plantilla semanal aproximada (vuelos_programados),
+//    por dia_semana (0=domingo..6=sábado, igual a Date.getDay()).
+// 3) Excluye los vuelos que ya tienen una novedad cargada hoy para esta sede
+//    (incluye 'OK': si un reporte anterior del mismo día ya lo chequeó —sea
+//    "OK" o una novedad real—, no vuelve a aparecer en el siguiente reporte).
+export async function getVuelosDelDia(sedeId, fecha) {
+  if (!sedeId || !fecha) return []
+
+  let calendario = []
+  try {
+    const { data, error } = await db()
+      .from('vuelos_calendario')
+      .select('*')
+      .eq('sede_id', sedeId)
+      .eq('fecha', fecha)
+      .eq('activo', true)
+      .order('orden')
+    if (error) throw error
+    calendario = data || []
+  } catch (e) {
+    console.error('vuelos_calendario no disponible, uso plantilla semanal como fallback:', e)
+  }
+
+  let lista
+  if (calendario.length > 0) {
+    lista = calendario.map(v => ({ ...v, _origen: 'calendario' }))
+  } else {
+    const diaSemana = new Date(fecha + 'T00:00:00').getDay()
+    const { data, error } = await db()
+      .from('vuelos_programados')
+      .select('*')
+      .eq('sede_id', sedeId)
+      .eq('dia_semana', diaSemana)
+      .eq('activo', true)
+      .order('orden')
+    if (error) throw error
+    lista = (data || []).map(v => ({ ...v, _origen: 'plantilla' }))
+  }
+
+  const { data: yaReportados, error: errRep } = await db()
+    .from('vuelo_novedades')
+    .select('vuelo_calendario_id, vuelo_programado_id')
+    .eq('sede_id', sedeId)
+    .eq('fecha_reporte', fecha)
+  if (errRep) { console.error('No se pudo chequear vuelos ya reportados hoy:', errRep); return lista }
+
+  const idsCalendario  = new Set((yaReportados || []).filter(n => n.vuelo_calendario_id != null).map(n => n.vuelo_calendario_id))
+  const idsProgramados = new Set((yaReportados || []).filter(n => n.vuelo_programado_id != null).map(n => n.vuelo_programado_id))
+
+  return lista.filter(v => v._origen === 'calendario' ? !idsCalendario.has(v.id) : !idsProgramados.has(v.id))
+}
+
+// Plantilla completa (los 7 días) de una sede, para la vista de administración.
+export async function getVuelosPlantilla(sedeId) {
+  if (!sedeId) return []
+  const { data, error } = await db()
+    .from('vuelos_programados')
+    .select('*')
+    .eq('sede_id', sedeId)
+    .order('dia_semana')
+    .order('orden')
+  if (error) throw error
+  return data || []
+}
+
+export async function crearVueloPlantilla(payload) {
+  const { data, error } = await db()
+    .from('vuelos_programados')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function actualizarVueloPlantilla(id, payload) {
+  const { data, error } = await db()
+    .from('vuelos_programados')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function eliminarVueloPlantilla(id) {
+  const { error } = await db().from('vuelos_programados').delete().eq('id', id)
+  if (error) throw error
+}
+
+// Novedad de un vuelo del día, ligada al registro de la bitácora.
+// payload: { registro_id, sede_id, sede_nombre, vuelo_programado_id, vuelo_codigo,
+//            destino, aerolinea, tipo, descripcion, reportante, fecha_reporte }
+export async function createVueloNovedad(payload) {
+  const { data, error } = await db()
+    .from('vuelo_novedades')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function getVueloNovedadesByRegistro(registroId) {
+  if (!registroId) return []
+  const { data, error } = await db()
+    .from('vuelo_novedades')
+    .select('id, registro_id, sede_id, sede_nombre, vuelo_codigo, destino, aerolinea, tipo, descripcion, estado, fecha_reporte, created_at')
+    .eq('registro_id', registroId)
+    .order('id')
+  if (error) throw error
+  return data || []
+}
+
+export async function getPersonaNovedadesByRegistro(registroId) {
+  if (!registroId) return []
+  const { data, error } = await db()
+    .from('persona_novedades')
+    .select('id, registro_id, sede_id, sede_nombre, persona_id, persona_nombre, categoria, descripcion, reportante, fecha_reporte, estado, created_at')
+    .eq('registro_id', registroId)
+    .order('id')
+  if (error) throw error
+  return data || []
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -705,7 +1160,7 @@ export async function getMisTareas(userId) {
 
 // ─── RESPONSABLES MNT ───────────────────────────────────────
 export async function getResponsablesMnt() {
-  const { data, error } = await supabase.from('mnt_responsables').select('id,nombre,nivel_escalacion').eq('activo', true).order('nombre')
+  const { data, error } = await supabase.from('mnt_responsables').select('id,nombre,nivel_escalacion,rol,telefono,email').eq('activo', true).order('nombre')
   if (error) return []
   return data ?? []
 }
@@ -801,10 +1256,14 @@ export async function updateTicket(id, payload) {
 }
 
 // ─── PROVEEDORES ────────────────────────────────────────────
-export async function getProveedores() {
-  const { data, error } = await supabase.from('mnt_proveedores').select('*').order('nombre')
+export async function getProveedores(sedeIds = null) {
+  let q = supabase.from('mnt_proveedores').select('*').order('nombre')
+  const { data, error } = await q
   if (error) throw error
-  return data ?? []
+  const all = data ?? []
+  if (!sedeIds?.length) return all
+  // Proveedor sin sede asignada (sede_ids vacío) = general, visible para todas las sedes.
+  return all.filter(p => !p.sede_ids?.length || p.sede_ids.some(id => sedeIds.includes(id)))
 }
 export async function upsertProveedor(payload) {
   const { data, error } = await supabase.from('mnt_proveedores').upsert({ ...payload, updated_at: new Date().toISOString() }).select().single()
@@ -827,6 +1286,7 @@ export async function getMatafuegos(filtros = {}) {
   if (filtros.sedeIds?.length) q = q.in('sede_id', filtros.sedeIds)
   else if (filtros.sede_id) q = q.eq('sede_id', filtros.sede_id)
   if (filtros.sede)    q = q.eq('sede', filtros.sede)
+  if (filtros.activo_id) q = q.eq('activo_id', filtros.activo_id)
   const { data, error } = await q
   if (error) throw error
   return data ?? []
@@ -838,10 +1298,34 @@ export async function upsertMatafuego(payload) {
   return data
 }
 
+// ─── DOCUMENTOS / POEs DE FLOTA ─────────────────────────────
+export async function getPoes(filtros = {}) {
+  let q = supabase.from('mnt_documentos_flota').select('*').order('vencimiento', { ascending: true })
+  if (filtros.activo_id) q = q.eq('activo_id', filtros.activo_id)
+  if (filtros.tipo)      q = q.eq('tipo', filtros.tipo)
+  if (filtros.estado)    q = q.eq('estado', filtros.estado)
+  const { data, error } = await q
+  if (error) throw error
+  return data ?? []
+}
+
+export async function upsertPoe(payload) {
+  const { data, error } = await supabase.from('mnt_documentos_flota').upsert({ ...payload, updated_at: new Date().toISOString() }).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deletePoe(id) {
+  const { error } = await supabase.from('mnt_documentos_flota').delete().eq('id', id)
+  if (error) throw error
+}
+
 // ─── INSUMOS ────────────────────────────────────────────────
 export async function getInsumos(filtros = {}) {
-  // Nota: mantenimiento.insumos no tiene columna sede_id (stock es global, no por sede)
-  const { data, error } = await supabase.from('mnt_insumos').select('*').order('nombre')
+  let q = supabase.from('mnt_insumos').select('*').order('nombre')
+  if (filtros.sedeIds?.length) q = q.in('sede_id', filtros.sedeIds)
+  else if (filtros.sede_id) q = q.eq('sede_id', filtros.sede_id)
+  const { data, error } = await q
   if (error) throw error
   return data ?? []
 }
@@ -882,7 +1366,7 @@ export async function getKPIsMantenimiento(sedeId = null, sedeIds = null) {
 export async function getSedeContactos(sedeId) {
   const { data, error } = await db()
     .from('sede_contactos')
-    .select('id, rol, activo, contactos(id, nombre, email, telefono, cargo, empresa)')
+    .select('id, rol, activo, contactos(id, nombre, email, telefono, cargo, perfil_id)')
     .eq('sede_id', sedeId)
     .eq('activo', true)
     .order('rol')
@@ -890,11 +1374,13 @@ export async function getSedeContactos(sedeId) {
   return data ?? []
 }
 
-export async function getAllSedeContactos() {
-  const { data, error } = await db()
+export async function getAllSedeContactos(sedeIds = null) {
+  let query = db()
     .from('sede_contactos')
     .select('id, sede_id, contacto_id, rol, activo, sedes(nombre), contactos(id, nombre, email, telefono, cargo, perfil_id)')
     .order('sede_id')
+  if (sedeIds?.length) query = query.in('sede_id', sedeIds)
+  const { data, error } = await query
   if (error) return []
   return data ?? []
 }
@@ -1256,75 +1742,192 @@ export async function getAlertas() {
 }
 
 // ── Eventos de mantenimiento para Calendario ──────────────────────────────────
-// Retorna { 'YYYY-MM-DD': [{ color, label }] } con tickets, CAPA y tareas del mes
-export async function getEventosMantenimiento(anio, mes) {
+// Retorna eventos de todas las áreas visibles para la sesión actual.
+export async function getEventosCalendario(anio, mes) {
   const desde = `${anio}-${String(mes).padStart(2,'0')}-01`
-  const hasta  = `${anio}-${String(mes).padStart(2,'0')}-31`
+  const hasta = format(endOfMonth(new Date(anio, mes - 1, 1)), 'yyyy-MM-dd')
 
-  const [{ data: tickets }, { data: capas }, { data: tareas }, { data: vehiculos }] = await Promise.all([
+  const resultados = await Promise.allSettled([
     supabase
-      .schema('mantenimiento')
-      .from('tickets')
-      .select('id, titulo, fecha_limite, estado, prioridad')
+      .from('mnt_tickets')
+      .select('id, numero, descripcion, fecha_limite, estado, prioridad, sede')
       .gte('fecha_limite', desde)
       .lte('fecha_limite', hasta)
-      .neq('estado', 'Cerrado'),
+      .not('estado', 'in', '("resuelto","cerrado")'),
 
     db()
       .from('capa')
-      .select('id, titulo, fecha_limite, estado')
+      .select('id, codigo, descripcion, responsable, fecha_limite, estado, sede_nombre')
       .gte('fecha_limite', desde)
       .lte('fecha_limite', hasta)
-      .neq('estado', 'Cerrado'),
+      .not('estado', 'in', '("Completada","Verificada")'),
 
     db()
       .from('tareas')
-      .select('id, titulo, fecha_limite, estado')
+      .select('id, titulo, responsable, fecha_limite, estado, prioridad')
       .gte('fecha_limite', desde)
       .lte('fecha_limite', hasta)
-      .neq('estado', 'Resuelto')
-      .neq('estado', 'Cancelado'),
+      .not('estado', 'in', '("Resuelto","Cancelado")'),
+
+    db()
+      .from('requerimientos')
+      .select('id, numero, descripcion, sede_nombre, estado, urgencia, fecha_necesidad, fecha_compromiso')
+      .or(`and(fecha_necesidad.gte.${desde},fecha_necesidad.lte.${hasta}),and(fecha_compromiso.gte.${desde},fecha_compromiso.lte.${hasta})`)
+      .not('estado', 'in', '("Cumplido","Rechazado","Cancelado")'),
+
+    supabase
+      .from('mnt_planes')
+      .select('id, nombre, proxima_fecha, frecuencia, activo_nombre, responsable_nombre, estado, activo')
+      .gte('proxima_fecha', desde)
+      .lte('proxima_fecha', hasta)
+      .eq('activo', true),
+
+    supabase
+      .from('mnt_matafuegos')
+      .select('id, codigo, sede_nombre, ubicacion, vencimiento, estado')
+      .gte('vencimiento', desde)
+      .lte('vencimiento', hasta),
 
     supabase
       .from('mnt_activos')
       .select('id, nombre, vencimiento_seguro, vencimiento_vtv, vencimiento_senasa, vencimiento_rmtsa')
       .eq('tipo', 'VEHICULO'),
+
+    db()
+      .from('documentacion_items')
+      .select('id, entity_type, entity_id, titulo, seccion, estado, fecha_vencimiento, aviso_dias')
+      .gte('fecha_vencimiento', desde)
+      .lte('fecha_vencimiento', hasta),
+
+    supabase
+      .schema('equipo')
+      .from('reclutamiento_entrevistas')
+      .select('id, candidato_id, fecha_entrevista, hora_entrevista, entrevistador, nombre_apellido')
+      .gte('fecha_entrevista', desde)
+      .lte('fecha_entrevista', hasta),
+
+    supabase
+      .schema('equipo')
+      .from('reclutamiento_candidatos')
+      .select('id, nombre_apellido, estado, fecha_preocupacional, fecha_ingreso, induccion_at')
+      .or(`and(fecha_preocupacional.gte.${desde},fecha_preocupacional.lte.${hasta}),and(fecha_ingreso.gte.${desde},fecha_ingreso.lte.${hasta}),and(induccion_at.gte.${desde}T00:00:00,induccion_at.lte.${hasta}T23:59:59)`),
   ])
 
+  const nombres = [
+    'tickets', 'capas', 'tareas', 'requerimientos', 'planes', 'matafuegos',
+    'vehiculos', 'documentacion', 'entrevistas', 'candidatos',
+  ]
+  const datos = Object.fromEntries(nombres.map((nombre, index) => {
+    const resultado = resultados[index]
+    if (resultado.status === 'rejected' || resultado.value?.error) {
+      const error = resultado.status === 'rejected' ? resultado.reason : resultado.value.error
+      console.warn(`[calendario] No se pudo cargar ${nombre}:`, error?.message || error)
+      return [nombre, []]
+    }
+    return [nombre, resultado.value.data || []]
+  }))
+
   const mapa = {}
-
-  const agregar = (diaStr, color, label) => {
-    if (!mapa[diaStr]) mapa[diaStr] = []
-    mapa[diaStr].push({ color, label })
+  const agregar = (diaStr, color, label, sub = '', categoria = 'general') => {
+    if (!diaStr) return
+    const fecha = diaStr.slice(0, 10)
+    if (fecha < desde || fecha > hasta) return
+    if (!mapa[fecha]) mapa[fecha] = []
+    mapa[fecha].push({ color, label, sub, categoria })
   }
 
-  for (const t of (tickets || [])) {
-    if (!t.fecha_limite) continue
-    const d = t.fecha_limite.slice(0, 10)
+  for (const t of datos.tickets) {
     const color = t.prioridad === 'critica' ? '#FF2A2A'
-                : t.prioridad === 'alta'    ? '#F59E0B'
+                : t.prioridad === 'alta' ? '#F59E0B'
                 : '#50b4ff'
-    agregar(d, color, `Ticket: ${t.titulo || '—'}`)
+    agregar(t.fecha_limite, color, `Ticket #${t.numero || ''}: ${t.descripcion || 'Sin descripción'}`, t.sede || '', 'mantenimiento')
   }
 
-  for (const c of (capas || [])) {
-    if (!c.fecha_limite) continue
-    agregar(c.fecha_limite.slice(0, 10), '#a78bfa', `CAPA: ${c.titulo || '—'}`)
+  for (const c of datos.capas) {
+    agregar(c.fecha_limite, '#a78bfa', `CAPA ${c.codigo || ''}: ${c.descripcion || 'Acción pendiente'}`, [c.sede_nombre, c.responsable].filter(Boolean).join(' · '), 'calidad')
   }
 
-  for (const t of (tareas || [])) {
-    if (!t.fecha_limite) continue
-    agregar(t.fecha_limite.slice(0, 10), '#34d399', `Tarea: ${t.titulo || '—'}`)
+  for (const t of datos.tareas) {
+    agregar(t.fecha_limite, '#34d399', `Tarea: ${t.titulo || 'Sin título'}`, t.responsable || '', 'tareas')
+  }
+
+  for (const r of datos.requerimientos) {
+    const titulo = `Compra #${r.numero || r.id}: ${r.descripcion || 'Requerimiento'}`
+    const detalle = [r.sede_nombre, r.estado].filter(Boolean).join(' · ')
+    agregar(r.fecha_necesidad, '#f97316', `${titulo} — fecha de necesidad`, detalle, 'compras')
+    agregar(r.fecha_compromiso, '#fb7185', `${titulo} — compromiso`, detalle, 'compras')
+  }
+
+  for (const p of datos.planes) {
+    agregar(
+      p.proxima_fecha,
+      '#38bdf8',
+      `Preventivo: ${p.nombre || 'Plan'}`,
+      [p.activo_nombre, p.responsable_nombre, p.frecuencia].filter(Boolean).join(' · '),
+      'mantenimiento',
+    )
+  }
+
+  for (const m of datos.matafuegos) {
+    agregar(
+      m.vencimiento,
+      '#ef4444',
+      `Matafuego ${m.codigo || ''}: vencimiento`,
+      [m.sede_nombre, m.ubicacion].filter(Boolean).join(' · '),
+      'vencimientos',
+    )
   }
 
   const DOC_LABELS = { vencimiento_seguro:'Seguro', vencimiento_vtv:'VTV', vencimiento_senasa:'SENASA', vencimiento_rmtsa:'RMTSA' }
-  for (const v of (vehiculos || [])) {
+  for (const v of datos.vehiculos) {
     for (const [key, label] of Object.entries(DOC_LABELS)) {
-      const f = v[key]
-      if (f && f >= desde && f <= hasta) {
-        agregar(f.slice(0, 10), '#FF2A2A', `Vehículo ${v.nombre}: ${label} vence`)
-      }
+      agregar(v[key], '#FF2A2A', `Vehículo ${v.nombre}: ${label} vence`, '', 'vencimientos')
     }
+  }
+
+  const DOC_ENTITY_LABELS = {
+    sede: 'Sede',
+    equipo: 'Equipo',
+    flota: 'Flota',
+    vehiculo: 'Vehículo',
+    activo: 'Activo',
+    persona: 'Persona',
+  }
+  const hoy = new Date().toISOString().slice(0, 10)
+  for (const d of datos.documentacion) {
+    const fechaVence = d.fecha_vencimiento?.slice(0, 10)
+    const vencida = fechaVence < hoy && d.estado !== 'vigente'
+    const color = vencida ? '#FF2A2A' : '#F59E0B'
+    const entidad = DOC_ENTITY_LABELS[d.entity_type] || d.entity_type || 'Entidad'
+    const avisoDias = Number.isFinite(Number(d.aviso_dias)) ? Number(d.aviso_dias) : 30
+    agregar(
+      fechaVence,
+      color,
+      `Documentación: ${d.titulo || 'Ítem documental'} vence`,
+      `${entidad}${d.seccion ? ` · ${d.seccion}` : ''} · aviso ${avisoDias} d`,
+      'vencimientos',
+    )
+  }
+
+  for (const e of datos.entrevistas) {
+    agregar(
+      e.fecha_entrevista,
+      '#e879f9',
+      `Entrevista: ${e.nombre_apellido || 'Candidato'}`,
+      [e.hora_entrevista ? `${e.hora_entrevista.slice(0, 5)} hs` : '', e.entrevistador].filter(Boolean).join(' · ') || 'RRHH',
+      'rrhh',
+    )
+  }
+
+  for (const c of datos.candidatos) {
+    const detalle = c.nombre_apellido || 'Candidato'
+    agregar(c.fecha_preocupacional, '#c084fc', `Preocupacional: ${detalle}`, c.estado || '', 'rrhh')
+    agregar(c.fecha_ingreso, '#8b5cf6', `Ingreso programado: ${detalle}`, c.estado || '', 'rrhh')
+    agregar(c.induccion_at, '#7c3aed', `Inducción: ${detalle}`, c.estado || '', 'rrhh')
+  }
+
+  for (const eventos of Object.values(mapa)) {
+    eventos.sort((a, b) => a.categoria.localeCompare(b.categoria) || a.label.localeCompare(b.label))
   }
 
   return mapa
@@ -1363,4 +1966,92 @@ export async function autoEscalarTickets() {
   } catch (err) {
     console.error('[autoEscalarTickets]', err)
   }
+}
+
+// ─── COMENTARIOS POR REGISTRO ─────────────────────────────────────────────────
+// entidadTipo: 'ticket' | 'tarea' | 'escalamiento' | 'no_conformidad'
+
+export async function getComentarios(entidadTipo, entidadId) {
+  if (!entidadId) return []
+  const { data, error } = await db()
+    .from('comentarios')
+    .select('*')
+    .eq('entidad_tipo', entidadTipo)
+    .eq('entidad_id', String(entidadId))
+    .is('eliminado_at', null)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function crearComentario({ entidadTipo, entidadId, autorId, autorNombre, texto }) {
+  const { data, error } = await db()
+    .from('comentarios')
+    .insert({
+      entidad_tipo: entidadTipo,
+      entidad_id:   String(entidadId),
+      autor_id:     autorId,
+      autor_nombre: autorNombre || 'Usuario',
+      texto:        texto.trim(),
+    })
+    .select()
+  if (error) throw error
+  const created = data?.[0]
+  if (created?.id) notifyComentario(created.id)
+  return created
+}
+
+export async function eliminarComentario(id) {
+  const { error } = await db()
+    .from('comentarios')
+    .update({ eliminado_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ═══════════════════════════════════════════════════════════
+// DIRECTORIO DE CONTACTOS (bitacora.directorio_contactos)
+// Contactos por módulo: rrhh | mantenimiento | flota | emergencias
+// Distinto de bitacora.contactos que es el directorio de responsables de sede.
+// ═══════════════════════════════════════════════════════════
+
+export async function getDirectorio(modulo = null) {
+  let q = db()
+    .from('directorio_contactos')
+    .select('*')
+    .eq('activo', true)
+  if (modulo) q = q.eq('modulo', modulo)
+  const { data, error } = await q.order('orden').order('nombre')
+  if (error) throw error
+  return data || []
+}
+
+export async function saveDirectorioContacto(payload) {
+  const { id, ...rest } = payload
+  rest.updated_at = new Date().toISOString()
+  if (id) {
+    const { data, error } = await db()
+      .from('directorio_contactos')
+      .update(rest)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+  const { data, error } = await db()
+    .from('directorio_contactos')
+    .insert(rest)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function removeDirectorioContacto(id) {
+  const { error } = await db()
+    .from('directorio_contactos')
+    .update({ activo: false, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
 }

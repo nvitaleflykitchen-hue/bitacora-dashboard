@@ -110,6 +110,9 @@ Estos son los únicos valores que Postgres acepta para cada campo de estado/clas
 | `evaluaciones.resultado_global` | `Bajo`, `Aceptable`, `Alto`, `Excelente` |
 | `historial_personal.tipo` | `apercibimiento`, `suspension`, `llamado_atencion`, `reconocimiento`, `logro`, `otro` |
 
+- `personas.legajo` es opcional para no bloquear perfiles históricos, pero se muestra en la ficha y se usa para completar formularios laborales.
+- La pestaña **Formularios** de la ficha individual está disponible para perfiles con permiso `equipo.manage`. El primer documento disponible es el formulario de apercibimiento: completa empleado, legajo, DNI y fecha, solicita el motivo, descarga un PDF listo para firma y crea automáticamente un registro `apercibimiento` en `historial_personal`. Desde ese registro se adjunta luego la copia firmada.
+
 ## 3. Reglas de integridad embebidas en triggers (no en el código del frontend)
 
 Estas reglas se aplican **siempre**, sin importar qué cliente escriba (frontend, Edge Function, o cualquier llamada directa con la `anon key`), porque viven en triggers de Postgres:
@@ -166,7 +169,7 @@ Flujo aprobado por el usuario el 2026-06-19:
 ## 8. Notificaciones prioritarias al celular (implementación local pendiente de activar)
 
 - Disparadores iniciales: requerimientos con urgencia `alta`, tareas con prioridad `Alta`, tickets de mantenimiento/flota `alta` o `critica`, y nuevos escalamientos.
-- Destinatarios: todos los perfiles `admin` activos; responsable asignado cuando corresponde a un perfil; técnico de mantenimiento resuelto por coincidencia de email; perfiles `encargado`/`sede` cuyo `sede_ids` contiene la sede del evento.
+- Destinatarios: todos los perfiles `admin` activos; responsable asignado; comprador y supervisor de Compras cuando corresponda; técnico de mantenimiento resuelto por coincidencia de email; perfiles `encargado`/`sede` de la sede y supervisores con rol `grupo` del grupo operativo. Las futuras menciones internas deben notificar únicamente a las personas mencionadas.
 - La Edge Function vuelve a consultar el registro real y verifica su prioridad antes de enviar; no confía en título/prioridad enviados por el navegador.
 - Cada evento usa una clave de deduplicación por módulo, entidad, prioridad y destinatario para evitar alertas repetidas.
 - El usuario debe activar voluntariamente Push en cada dispositivo. La clave privada VAPID y `service_role` sólo viven como secretos de la Edge Function; nunca en variables `VITE_*`.

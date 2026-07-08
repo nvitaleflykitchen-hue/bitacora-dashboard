@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
-import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles } from '../lib/queries'
-import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
+import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles, getRegistroById } from '../lib/queries'
+import ContactosQuickBtn from '../components/ContactosQuickBtn'
+import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
+import RegistroModal from '../components/RegistroModal'
+import { uploadAdjunto } from '../lib/adjuntos'
 import { fmtFecha } from '../lib/dateUtils'
 
 const ESTADOS   = ['Pendiente','Observado','Aprobado','Enviado','En compra','Recibido','Cumplido','Rechazado','Cancelado']
@@ -17,10 +20,103 @@ const ESTADO_TIMESTAMP = {
   'En compra':'compra_iniciada_at', Recibido:'recibido_at', Cumplido:'cumplido_at',
   Rechazado:'rechazado_at', Cancelado:'cancelado_at',
 }
+
+const EQUIPO_COMPRAS = [
+  {
+    nombre:'Ignacio Oyarzabal Indaburu', cargo:'Gerente de Compras', nivel:1,
+    telefono:'+54 9 351 200-2939',
+    emails:['compras.gerencia@serviciosdrill.com.ar','ioyarzabalcompras@gmail.com'],
+    alcance:'Dirección y coordinación general del proceso de compras.',
+  },
+  {
+    nombre:'Leandro Villaruel', cargo:'Analista de Compras', nivel:2,
+    telefono:'+54 9 3512 39-7064',
+    alcance:'Fly Kitchen Planta: fábricas, hospitales, CCI y líneas aéreas.',
+  },
+  {
+    nombre:'Analía Roberto', cargo:'Analista de Compras', nivel:2,
+    telefono:'+54 9 3516 50-5825',
+    alcance:'Compras de proveedor Arcor para cocinas in situ.',
+  },
+  {
+    nombre:'Martina Figueroa', cargo:'Soporte Administrativo de Compras', nivel:2,
+    alcance:'Carga de facturas al sistema. Contacto directo pendiente de confirmar.',
+  },
+  {
+    nombre:'Diego Ferrarassi', cargo:'Analista de Compras Jr', nivel:3,
+    telefono:'+54 9 3513 62-7911',
+    alcance:'Fly Kitchen Interior: comedores in situ, hospitales, educación y escalas. Bajo supervisión de Leandro Villaruel.',
+  },
+]
+
+function whatsappHref(telefono) {
+  const digits = String(telefono || '').replace(/\D/g, '').replace(/^0+/, '')
+  if (!digits) return ''
+  if (digits.startsWith('549')) return `https://wa.me/${digits}`
+  if (digits.startsWith('54')) return `https://wa.me/549${digits.slice(2).replace(/^9/, '')}`
+  return `https://wa.me/549${digits.replace(/^9/, '')}`
+}
+
+function EquipoComprasNode({ persona, accent = '#60A5FA' }) {
+  return (
+    <article style={{ width:260, minHeight:178, padding:'13px', border:`1px solid ${accent}55`, borderRadius:5, background:'var(--surface)', boxShadow:'0 10px 24px rgba(0,0,0,.2)' }}>
+      <p style={{ color:accent, fontSize:'.57rem', letterSpacing:'.08em', fontFamily:'monospace' }}>{persona.cargo.toUpperCase()}</p>
+      <h3 style={{ color:'var(--text)', fontSize:'.82rem', fontWeight:750, marginTop:5 }}>{persona.nombre}</h3>
+      <p style={{ color:'var(--text-dim)', fontSize:'.62rem', lineHeight:1.45, marginTop:6 }}>{persona.alcance}</p>
+      {persona.telefono && <p style={{ color:'rgba(255,255,255,.5)', fontSize:'.59rem', marginTop:7 }}>{persona.telefono}</p>}
+      {(persona.emails||[]).map(email=><a key={email} href={`mailto:${email}`} style={{ color:'rgba(96,165,250,.8)', display:'block', fontSize:'.56rem', marginTop:3, overflowWrap:'anywhere' }}>{email}</a>)}
+      <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:9 }}>
+        {persona.telefono && <a href={whatsappHref(persona.telefono)} target="_blank" rel="noreferrer" className="btn-ghost" style={{ display:'flex', alignItems:'center', gap:4, fontSize:'.58rem', textDecoration:'none', padding:'4px 7px' }}><MessageCircle size={9}/> WhatsApp</a>}
+        {(persona.emails||[]).length>0 && <a href={`mailto:${persona.emails.join(';')}`} className="btn-ghost" style={{ display:'flex', alignItems:'center', gap:4, fontSize:'.58rem', textDecoration:'none', padding:'4px 7px' }}><Mail size={9}/> Email</a>}
+      </div>
+    </article>
+  )
+}
+
+function EquipoComprasModal({ onClose }) {
+  const gerente = EQUIPO_COMPRAS.find(p=>p.nivel===1)
+  const leandro = EQUIPO_COMPRAS.find(p=>p.nombre.startsWith('Leandro'))
+  const analia = EQUIPO_COMPRAS.find(p=>p.nombre.startsWith('Analía'))
+  const martina = EQUIPO_COMPRAS.find(p=>p.nombre.startsWith('Martina'))
+  const diego = EQUIPO_COMPRAS.find(p=>p.nombre.startsWith('Diego'))
+  return (
+    <div className="modal-overlay" style={{ zIndex:60 }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="glass fade-in" style={{ width:'min(1040px,96vw)', maxHeight:'90vh', overflow:'auto', background:'var(--surface)', border:'1px solid rgba(57,255,20,.2)', borderRadius:5 }}>
+        <div style={{ padding:'1rem 1.2rem', display:'flex', justifyContent:'space-between', gap:12, borderBottom:'1px solid rgba(255,255,255,.08)' }}>
+          <div>
+            <h2 style={{ color:'var(--text)', fontWeight:800, fontSize:'1rem' }}>Equipo de Compras</h2>
+            <p style={{ color:'var(--text-dim)', fontSize:'.62rem', marginTop:3 }}>Directorio y alcance operativo · referencia recibida 21/05/2026</p>
+          </div>
+          <button className="btn-ghost" onClick={onClose}><X size={14}/></button>
+        </div>
+        <div style={{ padding:'1.2rem', minWidth:900 }}>
+          <div style={{ display:'flex', justifyContent:'center' }}><EquipoComprasNode persona={gerente} accent="var(--phosphor)"/></div>
+          <div style={{ height:28, width:1, background:'rgba(57,255,20,.45)', margin:'0 auto' }}/>
+          <div style={{ position:'relative', display:'grid', gridTemplateColumns:'repeat(3,260px)', justifyContent:'center', gap:42 }}>
+            <div style={{ position:'absolute', height:1, background:'rgba(57,255,20,.35)', top:0, left:'calc(50% - 302px)', right:'calc(50% - 302px)' }}/>
+            {[leandro, analia, martina].map(persona=>(
+              <div key={persona.nombre} style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                <div style={{ height:24, width:1, background:'rgba(57,255,20,.35)' }}/>
+                <EquipoComprasNode persona={persona}/>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,260px)', justifyContent:'center', gap:42 }}>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+              <div style={{ height:28, width:1, background:'rgba(96,165,250,.4)' }}/>
+              <EquipoComprasNode persona={diego} accent="#2DD4BF"/>
+            </div>
+            <div/><div/>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 const TRANSICIONES = {
   Pendiente:['Observado','Aprobado','Rechazado','Cancelado'],
   Observado:['Pendiente','Rechazado','Cancelado'],
-  Aprobado:['Observado','Rechazado','Cancelado'],
+  Aprobado:['Enviado','Observado','Rechazado','Cancelado'],
   Enviado:['En compra','Recibido','Cancelado'],
   'En compra':['Recibido','Cancelado'],
   Recibido:['En compra','Cumplido'],
@@ -178,7 +274,21 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
   })
   const [saving, setSaving] = useState(false)
   const [justCreated, setJustCreated] = useState(false)
+  const [archivos, setArchivos] = useState([])
+  const [showOrigen, setShowOrigen] = useState(false)
+  const [origenData, setOrigenData] = useState(null)
   const set = (k,v) => setForm(f=>({...f,[k]:v}))
+
+  const handleVerOrigen = async () => {
+    if (!activeReq?.origen_registro_id) return
+    try {
+      const data = await getRegistroById(activeReq.origen_registro_id)
+      setOrigenData(data)
+      setShowOrigen(true)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -203,6 +313,9 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
       const saved = editing
         ? await updateRequerimiento(activeReq.id, payload)
         : await createRequerimiento(payload)
+      if (!editing && archivos.length > 0 && saved?.id) {
+        await Promise.all(archivos.map(f => uploadAdjunto('requerimiento', saved.id, f)))
+      }
       setSavedReq(saved)
       setJustCreated(!editing)
       await onSaved()
@@ -221,6 +334,11 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
             <h2 className="font-title font-bold" style={{ color:'var(--text)', fontSize:'0.95rem' }}>
               {editing ? `Requerimiento #${activeReq.numero||activeReq.id}` : 'Nuevo Requerimiento de Compra'}
             </h2>
+            {editing && activeReq?.origen_registro_id && (
+              <button type="button" onClick={handleVerOrigen} className="btn-ghost" style={{ fontSize:'0.7rem', padding:'0.2rem 0.5rem' }}>
+                👁 Ver reporte origen
+              </button>
+            )}
           </div>
           <button onClick={onClose} className="btn-ghost" style={{ padding:'0.3rem' }}><X size={14}/></button>
         </div>
@@ -389,9 +507,9 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
           </div>
 
           {!editing && (
-            <div style={{ padding:'10px 12px', border:'1px dashed rgba(57,255,20,0.2)', borderRadius:3, color:'var(--text-dim)', fontSize:'0.68rem', display:'flex', alignItems:'center', gap:8 }}>
-              <Paperclip size={13} style={{ color:'var(--phosphor)', flexShrink:0 }}/>
-              Creá el requerimiento para habilitar fotos, documentos y links sin cerrar este formulario.
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Evidencias (Fotos/Archivos)</label>
+              <input type="file" multiple className="input-dark" style={{ padding:'0.4rem' }} onChange={e => setArchivos(Array.from(e.target.files || []))} />
             </div>
           )}
 
@@ -438,12 +556,16 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
 
           <div style={{ display:'flex', justifyContent:'flex-end', gap:8, paddingTop:6, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <button type="button" onClick={onClose} className="btn-ghost">{editing ? 'Cerrar' : 'Cancelar'}</button>
-            <button type="submit" disabled={saving} className="btn-primary">
-              {saving ? 'Guardando...' : (editing ? 'Guardar cambios' : 'Crear y adjuntar')}
+            <button type="submit" disabled={saving} className="btn-primary flex items-center justify-center gap-1.5 flex-1" style={{ padding:'0.6rem' }}>
+              <Save size={14}/> {saving ? 'Guardando...' : (editing ? 'Guardar Cambios' : 'Crear y solicitar')}
             </button>
           </div>
         </form>
       </div>
+
+      {showOrigen && origenData && (
+        <RegistroModal registro={origenData} onClose={() => setShowOrigen(false)} />
+      )}
     </div>
   )
 }
@@ -517,7 +639,7 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
 }
 
 // ─── Vista principal ───────────────────────────────────────
-export default function Requerimientos() {
+export default function Requerimientos({ focusId }) {
   const { allowedSedeIds, perfil, can } = useAuth()
   const canManage = can('compras', 'manage')
   const canRequest = can('compras', 'request') || canManage
@@ -535,6 +657,7 @@ export default function Requerimientos() {
   const [showClosed, setShowClosed] = useState(false)
   const [showKpis, setShowKpis] = useState(false)
   const [showProcess, setShowProcess] = useState(false)
+  const [showEquipoCompras, setShowEquipoCompras] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -549,6 +672,17 @@ export default function Requerimientos() {
   }, [filtroEstado, filtroUrgencia, filtroSede])
 
   useEffect(()=>{ load() }, [load])
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = reqs.find(req => String(req.id) === String(focusId))
+    if (target) {
+      setEditReq(target)
+      setShowForm(true)
+    }
+  }, [focusId, loading, reqs])
+
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setFiltroSede(String(allowedSedeIds[0])) }, [allowedSedeIds])
 
   const handleUpdateEstado = async (id, estado) => {
     if (!canManage) return
@@ -629,6 +763,7 @@ export default function Requerimientos() {
 
   return (
     <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem', display:'flex', flexDirection:'column', gap:16 }}>
+      {showEquipoCompras && <EquipoComprasModal onClose={()=>setShowEquipoCompras(false)}/>} 
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:10 }}>
         <div>
@@ -637,7 +772,13 @@ export default function Requerimientos() {
             GESTIÓN · SEGUIMIENTO · ISO 9001 CL. 7.4
           </p>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <ContactosQuickBtn modulo="compras" />
+          <button onClick={()=>setShowEquipoCompras(true)} className="btn-ghost"
+            title="Ver responsables y alcance del equipo de compras"
+            style={{ padding:'0.4rem 0.65rem', display:'flex', alignItems:'center', gap:5, fontSize:'0.65rem' }}>
+            <Users size={12}/> Equipo de compras
+          </button>
           <button onClick={()=>setShowProcess(v=>!v)} className="btn-ghost"
             title="Ver flujo y condiciones del proceso"
             style={{ padding:'0.4rem 0.65rem', display:'flex', alignItems:'center', gap:5, fontSize:'0.65rem' }}>

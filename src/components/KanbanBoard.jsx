@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isPast, isToday } from 'date-fns'
 import { updateTarea } from '../lib/queries'
-import { Calendar, User, Plus, X, Check, ChevronDown } from 'lucide-react'
-import { ShareButtons, getCategoriaLabel } from './TareaForm'
+import { Calendar, User, Plus, X, Check, ChevronDown, Pencil } from 'lucide-react'
+import TareaForm, { ShareButtons, getCategoriaLabel } from './TareaForm'
 import { fmtFecha } from '../lib/dateUtils'
+import ComentariosHilo from './ComentariosHilo'
 
 const ESTADOS = ['Pendiente','En proceso','Resuelto','Cancelado']
 
@@ -229,10 +230,18 @@ function Intervinientes({ tareaId, intervinientes = [], onUpdate, readOnly }) {
   )
 }
 
-function TareaCard({ tarea, onUpdate, readOnly }) {
-  const [expanded, setExpanded] = useState(false)
+function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
+  const [expanded, setExpanded] = useState(focused)
+  const [editing, setEditing]   = useState(false)
   const [notas, setNotas]       = useState(tarea.notas_resolucion || '')
   const [saving, setSaving]     = useState(false)
+  const cardRef = useRef(null)
+
+  useEffect(() => {
+    if (!focused) return
+    setExpanded(true)
+    cardRef.current?.scrollIntoView({ behavior:'smooth', block:'center' })
+  }, [focused])
 
   const changeEstado = async (v) => {
     try { await onUpdate(tarea.id, { estado: v }) }
@@ -249,10 +258,11 @@ function TareaCard({ tarea, onUpdate, readOnly }) {
   const completadas = subtareas.filter(s => s.completada).length
 
   return (
-    <div className="rounded p-3 fade-in"
+    <div ref={cardRef} className="rounded p-3 fade-in"
       style={{
         background:'var(--surface)',
-        border:'1px solid rgba(255,255,255,0.05)',
+        border:focused ? '1px solid var(--phosphor)' : '1px solid rgba(255,255,255,0.05)',
+        boxShadow:focused ? '0 0 0 2px rgba(57,255,20,0.12)' : 'none',
         opacity: tarea.estado === 'Cancelado' ? 0.45 : 1,
       }}>
       {tarea.registros?.requiere_escalamiento && (
@@ -263,7 +273,15 @@ function TareaCard({ tarea, onUpdate, readOnly }) {
         </div>
       )}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-xs font-medium leading-snug" style={{ color:'var(--text)' }}>{tarea.titulo}</p>
+        <div className="flex items-start gap-1.5 flex-1">
+          <p className="text-xs font-medium leading-snug" style={{ color:'var(--text)' }}>{tarea.titulo}</p>
+          {!readOnly && (
+            <button onClick={() => setEditing(true)} title="Editar tarea"
+              style={{ color:'rgba(57,255,20,0.45)', cursor:'pointer', background:'none', border:'none', padding:0, flexShrink:0, marginTop:1 }}>
+              <Pencil size={10} />
+            </button>
+          )}
+        </div>
         <div className="flex flex-col items-end gap-1">
           {tarea.prioridad && <span className={prioChip[tarea.prioridad] || 'chip chip-gray'} style={{ flexShrink:0 }}>{tarea.prioridad}</span>}
           {subtareas.length > 0 && (
@@ -348,13 +366,25 @@ function TareaCard({ tarea, onUpdate, readOnly }) {
               {saving ? 'Guardando...' : 'Guardar notas'}
             </button>}
           </div>
+
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:'0.6rem' }}>
+            <ComentariosHilo entidadTipo="tarea" entidadId={tarea.id} compact />
+          </div>
         </div>
+      )}
+
+      {editing && (
+        <TareaForm
+          tareaEditar={tarea}
+          onClose={() => setEditing(false)}
+          onUpdated={() => { setEditing(false); onRefresh?.() }}
+        />
       )}
     </div>
   )
 }
 
-export default function KanbanBoard({ tareas, onRefresh, readOnly = false }) {
+export default function KanbanBoard({ tareas, onRefresh, readOnly = false, focusId = null }) {
   const byEstado = ESTADOS.reduce((acc, e) => {
     acc[e] = tareas.filter(t => t.estado === e)
     return acc
@@ -373,7 +403,7 @@ export default function KanbanBoard({ tareas, onRefresh, readOnly = false }) {
             </div>
             <div className="flex flex-col gap-2">
               {byEstado[estado].map(t => (
-                <TareaCard key={t.id} tarea={t} readOnly={readOnly} onUpdate={async (id, payload) => {
+                <TareaCard key={t.id} tarea={t} readOnly={readOnly} focused={String(t.id) === String(focusId)} onRefresh={onRefresh} onUpdate={async (id, payload) => {
                   await updateTarea(id, payload)
                   onRefresh?.()
                 }} />

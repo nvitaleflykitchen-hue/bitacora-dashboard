@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getSedes } from '../../lib/queries'
+import { useAuth } from '../../lib/auth'
 import { fmtFecha } from '../../lib/dateUtils'
 import { CheckSquare, Square, Plus, X, ChevronDown, ChevronRight, Play, ClipboardList } from 'lucide-react'
+import PageHeader from '../../components/PageHeader'
 
 const FREC_COLOR = { DIARIA:'#39FF14', SEMANAL:'#3B82F6', MENSUAL:'#F59E0B', TRIMESTRAL:'#8B5CF6', ANUAL:'#F97316', POR_KM:'#EC4899' }
 const CAT_COLOR  = { inspeccion:'#50b4ff', limpieza:'#39FF14', lubricacion:'#ffb400', ajuste:'#f97316', reemplazo:'#ff5050', medicion:'#c084fc' }
@@ -186,7 +188,7 @@ function EjecucionModal({ plan, onClose, onSaved }) {
 }
 
 // ─── Panel detalle plan ───────────────────────────────────────────────────────
-function PlanDetalle({ plan, activos, responsables, onClose, onSaved }) {
+function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssign }) {
   const [checklist, setChecklist] = useState([])
   const [ejecuciones, setEjecuciones] = useState([])
   const [newTarea, setNewTarea]  = useState('')
@@ -237,7 +239,14 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved }) {
             <ClipboardList size={14} style={{ color:'var(--phosphor)' }} />
             <h2 style={{ color:'var(--text)', fontWeight:700, fontSize:'1rem' }}>Configurar Plan</h2>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:'1.2rem' }}>×</button>
+          <div style={{ display:'flex', gap:'0.5rem' }}>
+            {!form.activo_id && plan.id !== 'nuevo' && (
+              <button onClick={() => onMassAssign(plan)} style={{ background:'rgba(57,255,20,0.1)', color:'var(--phosphor)', border:'1px solid var(--phosphor)', borderRadius:3, padding:'0.3rem 0.6rem', fontSize:'0.7rem', fontWeight:600, cursor:'pointer' }}>
+                Asignar Lote a Sede
+              </button>
+            )}
+            <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:'1.2rem' }}>×</button>
+          </div>
         </div>
 
         {/* Datos del plan */}
@@ -318,28 +327,185 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved }) {
   )
 }
 
+// ─── Modal Asignación Masiva ───────────────────────────────────────────────────
+function MassAssignModal({ plan, activos, sedes, onClose, onSaved }) {
+  const [sedeId, setSedeId] = useState('')
+  const [categoriaFiltro, setCategoriaFiltro] = useState('')
+  const [selectedIds, setSelectedIds] = useState([])
+  const [fecha, setFecha] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Si el usuario solo tiene una sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (sedes?.length === 1) setSedeId(String(sedes[0].id)) }, [sedes])
+
+  // Get unique categories for this Sede and Tipo
+  const categoriasSede = Array.from(new Set(activos.filter(a => a.sede_id === sedeId && (plan.tipo_activo ? a.tipo === plan.tipo_activo : true)).map(a => a.categoria))).filter(Boolean).sort()
+
+  // Filter activos by selected sede, matching plan.tipo_activo, AND category filter
+  const activosSede = activos.filter(a => 
+    a.sede_id === sedeId && 
+    (plan.tipo_activo ? a.tipo === plan.tipo_activo : true) &&
+    (categoriaFiltro ? a.categoria === categoriaFiltro : true)
+  )
+
+  const handleSave = async () => {
+    if (!sedeId || selectedIds.length === 0 || !fecha) return alert('Completa todos los campos')
+    setSaving(true)
+    
+    try {
+      const { data: templateItems } = await supabase.from('mnt_plan_checklist').select('*').eq('plan_id', plan.id).order('orden')
+      
+      for (const act_id of selectedIds) {
+        const { data: newPlan, error: pErr } = await supabase.from('mnt_planes').insert({
+          nombre: plan.nombre,
+          descripcion: plan.descripcion,
+          frecuencia: plan.frecuencia,
+          tipo_activo: plan.tipo_activo,
+          responsable: plan.responsable || null,
+          responsable_id: plan.responsable_id || null,
+          activo_id: act_id,
+          proxima_fecha: fecha,
+          activo: true
+        }).select('id').single()
+        
+        if (pErr) throw pErr
+        
+        if (templateItems && templateItems.length > 0) {
+          const itemsToInsert = templateItems.map(ti => ({
+            plan_id: newPlan.id,
+            tarea: ti.tarea,
+            categoria: ti.categoria,
+            orden: ti.orden
+          }))
+          const { error: cErr } = await supabase.from('plan_checklist').insert(itemsToInsert)
+          if (cErr) throw cErr
+        }
+      }
+      
+      onSaved()
+    } catch(e) {
+      alert(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const INPUT = { padding:'0.5rem 0.75rem', borderRadius:5, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.8rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
+  const LABEL = { fontSize:'0.6rem', color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.3rem' }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:70, padding:16 }}>
+      <div style={{ background:'var(--surface)', borderRadius:3, padding:'1.5rem', width:'100%', maxWidth:500, maxHeight:'92vh', overflowY:'auto' }}>
+        <h2 style={{ color:'var(--text)', fontWeight:700, fontSize:'1rem', marginBottom:'1rem' }}>Asignación Masiva por Sede</h2>
+        <p style={{ fontSize:'0.75rem', color:'var(--text-dim)', marginBottom:'1.5rem' }}>
+          Se crearán instancias individuales de <strong style={{ color:'var(--phosphor)' }}>{plan.nombre}</strong> para los activos seleccionados.
+        </p>
+
+        <div style={{ marginBottom:'1rem' }}>
+          <label style={LABEL}>1. Seleccionar Sede</label>
+          <select value={sedeId} onChange={e => { setSedeId(e.target.value); setSelectedIds([]); setCategoriaFiltro('') }} style={INPUT}>
+            <option value="">-- Elige una sede --</option>
+            {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+        </div>
+
+        {sedeId && (
+          <div style={{ marginBottom:'1rem' }}>
+            <label style={LABEL}>2. Filtrar por Categoría (Opcional)</label>
+            <select value={categoriaFiltro} onChange={e => { setCategoriaFiltro(e.target.value); setSelectedIds([]) }} style={INPUT}>
+              <option value="">-- Todas las categorías --</option>
+              {categoriasSede.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
+
+        {sedeId && (
+          <div style={{ marginBottom:'1rem' }}>
+            <label style={LABEL}>3. Equipos Disponibles ({activosSede.length})</label>
+            <div style={{ background:'#1a1a22', border:'1px solid rgba(255,255,255,0.05)', borderRadius:5, maxHeight:180, overflowY:'auto', padding:'0.5rem' }}>
+              {activosSede.length === 0 ? <p style={{ fontSize:'0.75rem', color:'var(--text-dim)', textAlign:'center', margin:'1rem 0' }}>No hay activos coincidentes.</p> : null}
+              {activosSede.map(a => (
+                <label key={a.id} style={{ display:'flex', alignItems:'center', gap:8, fontSize:'0.8rem', color:'var(--text)', padding:'0.4rem', borderBottom:'1px solid rgba(255,255,255,0.02)', cursor:'pointer' }}>
+                  <input type="checkbox" 
+                    checked={selectedIds.includes(a.id)}
+                    onChange={e => {
+                      if (e.target.checked) setSelectedIds(prev => [...prev, a.id])
+                      else setSelectedIds(prev => prev.filter(id => id !== a.id))
+                    }}
+                    style={{ accentColor:'var(--phosphor)' }}
+                  />
+                  <span>{a.nombre}</span>
+                  <span style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginLeft:'auto' }}>{a.categoria || 'Sin categoría'}</span>
+                </label>
+              ))}
+            </div>
+            {activosSede.length > 0 && (
+              <div style={{ marginTop:8, display:'flex', gap:10 }}>
+                <button onClick={() => setSelectedIds(activosSede.map(a => a.id))} style={{ background:'none', border:'none', color:'var(--phosphor)', fontSize:'0.65rem', cursor:'pointer' }}>Seleccionar Todos</button>
+                <button onClick={() => setSelectedIds([])} style={{ background:'none', border:'none', color:'var(--text-dim)', fontSize:'0.65rem', cursor:'pointer' }}>Desmarcar Todos</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ marginBottom:'1.5rem' }}>
+          <label style={LABEL}>4. Próxima Fecha (Inicio)</label>
+          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} style={INPUT} />
+        </div>
+
+        <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end' }}>
+          <button onClick={onClose} style={{ padding:'0.6rem 1.1rem', borderRadius:2, background:'rgba(57,255,20,0.05)', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>Cancelar</button>
+          <button onClick={handleSave} disabled={saving || !sedeId || selectedIds.length === 0 || !fecha}
+            style={{ padding:'0.6rem 1.3rem', borderRadius:2, background: (saving || !sedeId || selectedIds.length === 0 || !fecha) ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color:'#0A0A0E', border:'none', cursor: (saving || !sedeId || selectedIds.length === 0 || !fecha) ? 'not-allowed' : 'pointer', fontWeight:700 }}>
+            {saving ? 'Clonando...' : 'Clonar y Asignar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Vista principal ──────────────────────────────────────────────────────────
-export default function MntPlanes() {
+export default function MntPlanes({ defaultTipo, focusId } = {}) {
+  const { allowedSedeIds } = useAuth()
   const [planes, setPlanes]           = useState([])
   const [activos, setActivos]         = useState([])
+  const [sedes, setSedes]             = useState([])
   const [responsables, setResponsables] = useState([])
   const [loading, setLoading]         = useState(true)
-  const [filtroTipo, setFiltroTipo]   = useState('todos')
+  const [filtroTipo, setFiltroTipo]   = useState(defaultTipo || 'todos')
   const [modalEjec, setModalEjec]     = useState(null)
   const [modalDet, setModalDet]       = useState(null)
+  const [modalMass, setModalMass]     = useState(null) // plan to mass assign
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = planes.find(item => String(item.id) === String(focusId))
+    if (target) setModalDet(target)
+  }, [focusId, loading, planes])
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [pRes, aRes, rRes] = await Promise.all([
+    let activosQuery = supabase.from('mnt_activos').select('id,nombre,tipo,sede_id').order('nombre')
+    if (allowedSedeIds?.length) activosQuery = activosQuery.in('sede_id', allowedSedeIds)
+    const [pRes, aRes, rRes, sRes] = await Promise.all([
       supabase.from('mnt_planes').select('*').eq('activo', true).order('proxima_fecha'),
-      supabase.from('mnt_activos').select('id,nombre,tipo').order('nombre'),
-      supabase.from('mnt_responsables').select('id,nombre,rol').eq('activo', true),
+      activosQuery,
+      supabase.from('mnt_responsables').select('id,nombre,rol,telefono,email').eq('activo', true),
+      getSedes(allowedSedeIds)
     ])
-    setPlanes(pRes.data || [])
-    setActivos(aRes.data || [])
+    const activosPermitidos = aRes.data || []
+    // mnt_planes no tiene sede_id propio: se acota por el activo al que está asignado.
+    // Los planes sin activo asignado (plantillas) quedan visibles para todos los roles territoriales.
+    const idsActivoPermitidos = new Set(activosPermitidos.map(a => a.id))
+    const planesPermitidos = allowedSedeIds === null
+      ? (pRes.data || [])
+      : (pRes.data || []).filter(p => !p.activo_id || idsActivoPermitidos.has(p.activo_id))
+    setPlanes(planesPermitidos)
+    setActivos(activosPermitidos)
     setResponsables(rRes.data || [])
+    setSedes(sRes || [])
     setLoading(false)
-  }, [])
+  }, [allowedSedeIds])
 
   useEffect(() => { load() }, [load])
 
@@ -360,11 +526,7 @@ export default function MntPlanes() {
     <div style={{ padding:'1.5rem 2rem', height:'100%', display:'flex', flexDirection:'column' }}>
 
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
-        <div>
-          <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Planes Preventivos</h1>
-          <p style={{ fontSize:'0.62rem', color:'rgba(57,255,20,0.5)', letterSpacing:'0.1em', fontFamily:'monospace' }}>CHECKLIST POR TIPO DE ACTIVO · FK MANTENIMIENTO</p>
-        </div>
+      <PageHeader title="Planes Preventivos" subtitle="Checklist por tipo de activo · FK mantenimiento">
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           {vencidos > 0 && (
             <span style={{ fontSize:'0.62rem', color:'#ff5050', background:'rgba(255,80,80,0.1)', border:'1px solid rgba(255,80,80,0.3)', borderRadius:4, padding:'3px 8px' }}>
@@ -381,7 +543,7 @@ export default function MntPlanes() {
             + Nuevo Plan
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Filtros */}
       <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1rem' }}>
@@ -483,7 +645,10 @@ export default function MntPlanes() {
         <EjecucionModal plan={modalEjec} onClose={() => setModalEjec(null)} onSaved={() => { setModalEjec(null); load() }} />
       )}
       {modalDet && (
-        <PlanDetalle plan={modalDet} activos={activos} responsables={responsables} onClose={() => setModalDet(null)} onSaved={() => { setModalDet(null); load() }} />
+        <PlanDetalle plan={modalDet} activos={activos} responsables={responsables} onClose={() => setModalDet(null)} onSaved={() => { setModalDet(null); load() }} onMassAssign={(p) => { setModalDet(null); setModalMass(p); }} />
+      )}
+      {modalMass && (
+        <MassAssignModal plan={modalMass} activos={activos} sedes={sedes} onClose={() => setModalMass(null)} onSaved={() => { setModalMass(null); load() }} />
       )}
 
       <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>

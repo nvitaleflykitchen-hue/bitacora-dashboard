@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react'
 import { X, ExternalLink, AlertTriangle, Plus, Zap, MessageCircle, Mail, Users } from 'lucide-react'
 import AdjuntosPanel from './AdjuntosPanel'
-import { getCategoriasCONNovedad, getSedeContactos } from '../lib/queries'
-import { fmtFechaHora } from '../lib/dateUtils'
+import ComentariosHilo from './ComentariosHilo'
+import {
+  getCategoriasCONNovedad,
+  getPersonaNovedadesByRegistro,
+  getSedeContactos,
+  getVueloNovedadesByRegistro,
+} from '../lib/queries'
+import { fmtFechaHora, fmtFechaHoraReporte } from '../lib/dateUtils'
 import { useAuth } from '../lib/auth'
 
 const CATEGORIAS = [
@@ -16,6 +22,24 @@ const CATEGORIAS = [
   { key: 'h', label: 'Cliente / Usuario / Incidentes' },
 ]
 
+// Arma el texto a precargar en WhatsApp con el resumen de la novedad.
+// Antes el botón "WA" abría el chat del contacto sin ningún mensaje (por eso
+// "no salía nada" al compartir): el link a wa.me no llevaba parámetro `text`.
+function buildMensajeWA(registro) {
+  const lineas = [
+    `📋 ${registro.sede_nombre || registro.sedes?.nombre || 'Reporte'} — ${fmtFechaHoraReporte(registro.fecha_reporte)}${registro.turno ? ` (turno ${registro.turno})` : ''}`,
+  ]
+  if (registro.estado_general) lineas.push(`Estado: ${registro.estado_general}`)
+  const detalles = CATEGORIAS
+    .filter(({ key }) => registro[`estado_${key}`] && registro[`estado_${key}`] !== 'Sin novedad' && registro[`estado_${key}`] !== 'Sin novedades')
+    .map(({ key, label }) => `• ${label}: ${registro[`detalle_${key}`] || registro[`estado_${key}`]}`)
+  if (detalles.length > 0) lineas.push('', 'Novedades:', ...detalles)
+  if (registro.requiere_escalamiento && registro.motivo_escalamiento) {
+    lineas.push('', `🚩 Escalado a ${registro.escalado_a || '—'}:`, registro.motivo_escalamiento)
+  }
+  return lineas.join('\n')
+}
+
 function estadoChip(estado) {
   if (!estado) return null
   if (estado === 'Sin novedades' || estado === 'Sin novedad') return <span className="chip chip-green">{estado}</span>
@@ -24,12 +48,26 @@ function estadoChip(estado) {
   return <span className="chip chip-gray">{estado}</span>
 }
 
+function vueloChip(tipo) {
+  const normalized = String(tipo || '').toLowerCase()
+  if (normalized === 'ok') return <span className="chip chip-green">OK</span>
+  if (normalized === 'demora') return <span className="chip chip-yellow">Demora</span>
+  if (normalized === 'cancelado' || normalized === 'desvio' || normalized === 'desvío') return <span className="chip chip-red">{tipo}</span>
+  return <span className="chip chip-blue">{tipo || 'Vuelo'}</span>
+}
+
 export default function RegistroModal({ registro, onClose, onCreateTarea, onCreateTicket, onCreateNC }) {
   const { can } = useAuth()
   const canManage = can('tareas', 'manage')
   const canAttach = canManage || can('bitacora', 'attach')
   const [showNCHint, setShowNCHint] = useState(false)
   const [responsables, setResponsables] = useState([])
+  const [vuelosReporte, setVuelosReporte] = useState([])
+  const [vuelosLoading, setVuelosLoading] = useState(false)
+  const [vuelosError, setVuelosError] = useState('')
+  const [personalReporte, setPersonalReporte] = useState([])
+  const [personalLoading, setPersonalLoading] = useState(false)
+  const [personalError, setPersonalError] = useState('')
 
   useEffect(() => {
     if (registro?.sede_id) {
@@ -37,12 +75,51 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
     }
   }, [registro?.sede_id])
 
+  useEffect(() => {
+    if (!registro?.id) {
+      setVuelosReporte([])
+      setVuelosError('')
+      return
+    }
+
+    setVuelosLoading(true)
+    setVuelosError('')
+    getVueloNovedadesByRegistro(registro.id)
+      .then(setVuelosReporte)
+      .catch(error => {
+        console.error('No se pudieron cargar vuelos del registro:', error)
+        setVuelosReporte([])
+        setVuelosError(error?.message || 'No se pudieron cargar los vuelos del registro.')
+      })
+      .finally(() => setVuelosLoading(false))
+  }, [registro?.id])
+
+  useEffect(() => {
+    if (!registro?.id) {
+      setPersonalReporte([])
+      setPersonalError('')
+      return
+    }
+
+    setPersonalLoading(true)
+    setPersonalError('')
+    getPersonaNovedadesByRegistro(registro.id)
+      .then(setPersonalReporte)
+      .catch(error => {
+        console.error('No se pudieron cargar novedades de personal del registro:', error)
+        setPersonalReporte([])
+        setPersonalError(error?.message || 'No se pudieron cargar las novedades de personal.')
+      })
+      .finally(() => setPersonalLoading(false))
+  }, [registro?.id])
+
   if (!registro) return null
   const cats = getCategoriasCONNovedad(registro)
 
   const handleCatClick = (cat, catLabel, detalle) => {
     if (cat === 'e') {
       // Categoría E (Equipos/Mantenimiento) → ticket de mantenimiento
+      if (!onCreateTicket) return
       onCreateTicket?.(registro, {
         descripcionInicial: detalle || '',
         sedeNombre: registro.sede_nombre || '',
@@ -50,6 +127,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
       })
     } else {
       // Resto de categorías → tarea general
+      if (!onCreateTarea) return
       onCreateTarea?.(registro, {
         titulo: catLabel,
         categoria: cat.toUpperCase(),
@@ -71,7 +149,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
               {registro.sede_nombre || registro.sedes?.nombre || `Registro #${registro.id}`}
             </h2>
             <p className="font-metric text-xs mt-0.5" style={{ color:'var(--text-dim)' }}>
-              {fmtFechaHora(registro.fecha_reporte)}
+              {fmtFechaHoraReporte(registro.fecha_reporte)}
               {registro.turno && ` · ${registro.turno}`}
             </p>
           </div>
@@ -106,7 +184,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                 { label:'REPORTANTE', value: registro.reportante },
                 { label:'EMAIL', value: registro.email_reportante },
                 { label:'TURNO', value: registro.turno },
-                { label:'FECHA Y HORA', value: registro.fecha_reporte ? fmtFechaHora(registro.fecha_reporte) : null },
+                { label:'FECHA Y HORA', value: registro.fecha_reporte ? fmtFechaHoraReporte(registro.fecha_reporte) : null },
                 { label:'ORIGEN', value: registro.origen_form === 'app' ? 'Aplicación' : registro.origen_form },
                 { label:'TIPO', value: registro.tipo },
                 { label:'REGISTRO', value: registro.id ? `#${registro.id}` : null },
@@ -119,8 +197,112 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
             </div>
           </div>
 
+          {/* Vuelos reportados */}
+          {(vuelosLoading || vuelosError || vuelosReporte.length > 0 || registro.origen_form === 'Aeropuertos' || registro.tipo === 'Aeropuerto') && (
+            <div>
+              <p className="font-metric text-xs mb-2 tracking-wider" style={{ color:'#60a5fa', opacity:0.9 }}>
+                VUELOS REPORTADOS
+              </p>
+              {vuelosLoading && (
+                <div className="rounded px-4 py-3" style={{ background:'rgba(96,165,250,0.04)', border:'1px solid rgba(96,165,250,0.12)' }}>
+                  <p className="text-xs" style={{ color:'var(--text-dim)' }}>Cargando vuelos...</p>
+                </div>
+              )}
+              {!vuelosLoading && vuelosError && (
+                <div className="rounded px-4 py-3" style={{ background:'rgba(255,42,42,0.06)', border:'1px solid rgba(255,42,42,0.18)' }}>
+                  <p className="text-xs" style={{ color:'var(--alert)' }}>{vuelosError}</p>
+                </div>
+              )}
+              {!vuelosLoading && !vuelosError && vuelosReporte.length === 0 && (
+                <div className="rounded px-4 py-3" style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)' }}>
+                  <p className="text-xs" style={{ color:'var(--text-dim)' }}>Sin vuelos cargados para este reporte.</p>
+                </div>
+              )}
+              {!vuelosLoading && !vuelosError && vuelosReporte.length > 0 && (
+                <div className="space-y-2">
+                  {vuelosReporte.map(vuelo => (
+                    <div key={vuelo.id} className="rounded px-4 py-3"
+                      style={{ background:'rgba(96,165,250,0.055)', border:'1px solid rgba(96,165,250,0.18)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <p className="font-title font-bold text-sm" style={{ color:'var(--text)' }}>
+                            {vuelo.vuelo_codigo || 'Vuelo sin codigo'}
+                            {vuelo.destino ? <span style={{ color:'var(--text-dim)', fontWeight:500 }}>{' -> '}{vuelo.destino}</span> : null}
+                          </p>
+                          <p className="font-metric text-xs mt-1" style={{ color:'var(--text-dim)' }}>
+                            {[vuelo.aerolinea, vuelo.estado].filter(Boolean).join(' · ') || 'Sin aerolinea/estado'}
+                          </p>
+                        </div>
+                        {vueloChip(vuelo.tipo)}
+                      </div>
+                      {vuelo.descripcion && (
+                        <p className="text-xs mt-2" style={{ color:'var(--text)', lineHeight:1.5 }}>{vuelo.descripcion}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Novedades de personal vinculadas al reporte */}
+          {(personalLoading || personalError || personalReporte.length > 0) && (
+            <div>
+              <p className="font-metric text-xs mb-2 tracking-wider flex items-center gap-1.5"
+                style={{ color:'#a78bfa', opacity:0.95 }}>
+                <Users size={12} /> NOVEDADES DE PERSONAL
+              </p>
+              {personalLoading && (
+                <div className="rounded px-4 py-3"
+                  style={{ background:'rgba(167,139,250,0.04)', border:'1px solid rgba(167,139,250,0.14)' }}>
+                  <p className="text-xs" style={{ color:'var(--text-dim)' }}>Cargando novedades de personal...</p>
+                </div>
+              )}
+              {!personalLoading && personalError && (
+                <div className="rounded px-4 py-3"
+                  style={{ background:'rgba(255,42,42,0.06)', border:'1px solid rgba(255,42,42,0.18)' }}>
+                  <p className="text-xs" style={{ color:'var(--alert)' }}>{personalError}</p>
+                </div>
+              )}
+              {!personalLoading && !personalError && personalReporte.length > 0 && (
+                <div className="space-y-2">
+                  {personalReporte.map(novedad => (
+                    <div key={novedad.id} className="rounded px-4 py-3"
+                      style={{ background:'rgba(167,139,250,0.055)', border:'1px solid rgba(167,139,250,0.2)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <p className="font-title font-bold text-sm" style={{ color:'var(--text)' }}>
+                            {novedad.persona_nombre || 'Persona sin nombre'}
+                          </p>
+                          <p className="font-metric text-xs mt-1" style={{ color:'var(--text-dim)' }}>
+                            {[novedad.categoria || 'Otro', novedad.estado].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <span className="chip chip-blue">{novedad.categoria || 'Otro'}</span>
+                      </div>
+                      <p className="text-xs mt-2" style={{ color:'var(--text)', lineHeight:1.5 }}>
+                        {novedad.descripcion}
+                      </p>
+                      {(novedad.reportante || novedad.fecha_reporte) && (
+                        <p className="font-metric mt-2" style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>
+                          {[novedad.reportante, (novedad.created_at || novedad.fecha_reporte)
+                            && fmtFechaHora(novedad.created_at || novedad.fecha_reporte)]
+                            .filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Producción */}
-          {(registro.op1_producidos != null || registro.op1_servidos != null) && (
+          {(registro.op1_producidos != null || registro.op1_servidos != null
+            || registro.op1_sobrante != null || registro.op2_producidos != null
+            || registro.op2_servidos != null || registro.op2_sobrante != null
+            || registro.vegetariano_sobrante != null
+            || registro.ensalada_sobrante != null || registro.postre_sobrante != null) && (
             <div>
               <p className="font-metric text-xs mb-2 tracking-wider" style={{ color:'var(--phosphor)', opacity:0.7 }}>
                 PRODUCCIÓN / RACIONES
@@ -129,6 +311,8 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                 {[
                   { label:'Op.1 prod.', val: registro.op1_producidos },
                   { label:'Op.1 serv.', val: registro.op1_servidos },
+                  { label:'Op.2 prod.', val: registro.op2_producidos },
+                  { label:'Op.2 serv.', val: registro.op2_servidos },
                   { label:'Veg. prod.', val: registro.vegetariano_producidos },
                   { label:'Veg. serv.', val: registro.vegetariano_servidos },
                   { label:'Ensalada',   val: registro.ensalada_producidos },
@@ -138,6 +322,19 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                     style={{ background:'rgba(57,255,20,0.04)', border:'1px solid rgba(57,255,20,0.08)' }}>
                     <p className="font-metric text-xs" style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{x.label}</p>
                     <p className="font-metric font-bold text-lg" style={{ color:'var(--phosphor)' }}>{x.val}</p>
+                  </div>
+                ))}
+                {[
+                  { label:'Op.1 sobr.',     val: registro.op1_sobrante },
+                  { label:'Op.2 sobr.',     val: registro.op2_sobrante },
+                  { label:'Veg. sobr.',     val: registro.vegetariano_sobrante },
+                  { label:'Ensalada sobr.', val: registro.ensalada_sobrante },
+                  { label:'Postre sobr.',   val: registro.postre_sobrante },
+                ].filter(x => x.val != null).map(x => (
+                  <div key={x.label} className="rounded p-2.5"
+                    style={{ background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.15)' }}>
+                    <p className="font-metric text-xs" style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{x.label}</p>
+                    <p className="font-metric font-bold text-lg" style={{ color:'#F59E0B' }}>{x.val}</p>
                   </div>
                 ))}
               </div>
@@ -160,17 +357,21 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                 const detalle = registro[`detalle_${cat}`]
                 if (!estado && !detalle) return null
                 const tieneNovedad = estado && estado !== 'Sin novedad' && estado !== 'Sin novedades'
+                const canCreate = canManage && tieneNovedad && (cat === 'e' ? Boolean(onCreateTicket) : Boolean(onCreateTarea))
                 return (
-                  <div key={cat}
-                    onClick={canManage && tieneNovedad ? () => handleCatClick(cat, catLabel, detalle) : undefined}
-                    className="rounded px-4 py-3"
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={canCreate ? () => handleCatClick(cat, catLabel, detalle) : undefined}
+                    disabled={!canCreate}
+                    className="rounded px-4 py-3 w-full text-left"
                     style={{
                       border: tieneNovedad ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgba(255,255,255,0.04)',
                       background: tieneNovedad ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.02)',
-                      cursor: canManage && tieneNovedad ? 'pointer' : 'default',
+                      cursor: canCreate ? 'pointer' : 'default',
                       transition: 'background 0.15s, border 0.15s',
                     }}
-                    onMouseEnter={e => { if (canManage && tieneNovedad) e.currentTarget.style.background = 'rgba(245,158,11,0.12)' }}
+                    onMouseEnter={e => { if (canCreate) e.currentTarget.style.background = 'rgba(245,158,11,0.12)' }}
                     onMouseLeave={e => { if (tieneNovedad) e.currentTarget.style.background = 'rgba(245,158,11,0.06)' }}
                   >
                     <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -189,15 +390,15 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                           — {estado}
                         </span>
                       )}
-                      {canManage && tieneNovedad && (
+                      {canCreate && (
                         <span className="ml-auto flex items-center gap-1 font-metric text-xs"
                           style={{ color:'rgba(245,158,11,0.7)', fontSize:'0.6rem' }}>
-                          <Zap size={10} /> Crear tarea
+                          <Zap size={10} /> {cat === 'e' ? 'Crear ticket' : 'Crear tarea'}
                         </span>
                       )}
                     </div>
                     {detalle && <p className="text-xs" style={{ color:'var(--text)', lineHeight:1.5 }}>{detalle}</p>}
-                  </div>
+                  </button>
                 )
               })}
               {CATEGORIAS.every(({ key: cat }) => !registro[`estado_${cat}`] && !registro[`detalle_${cat}`]) && (
@@ -240,6 +441,14 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
             <AdjuntosPanel entityType="registro" entityId={registro.id} readOnly={!canAttach} />
           </div>
 
+          {/* Comentarios — canal de comunicación con el encargado/sede */}
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:12 }}>
+            <p className="font-metric text-xs mb-3 tracking-wider" style={{ color:'var(--phosphor)', opacity:0.7 }}>
+              COMENTARIOS
+            </p>
+            <ComentariosHilo entidadTipo="registro" entidadId={registro.id} />
+          </div>
+
 
           {/* Responsables de la sede */}
           {responsables.length > 0 && (
@@ -259,7 +468,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                       </div>
                       <div style={{ display:'flex', gap:5 }}>
                         {c.telefono && (
-                          <button onClick={()=>window.open(`https://wa.me/${c.telefono.replace(/\D/g,'')}`, '_blank')}
+                          <button onClick={()=>window.open(`https://wa.me/${c.telefono.replace(/\D/g,'')}?text=${encodeURIComponent(buildMensajeWA(registro))}`, '_blank')}
                             style={{ background:'rgba(37,211,102,0.1)', border:'1px solid rgba(37,211,102,0.25)', color:'#25D366', borderRadius:4, padding:'0.2rem 0.45rem', cursor:'pointer', display:'flex', alignItems:'center', gap:3, fontSize:'0.6rem' }}>
                             <MessageCircle size={10}/> WA
                           </button>
@@ -297,7 +506,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
           <div className="flex flex-wrap justify-between gap-3 pt-3"
             style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <div className="flex gap-2">
-              {canManage && cats.length > 0 && (
+              {canManage && onCreateNC && cats.length > 0 && (
                 <button
                   onClick={() => setShowNCHint(v => !v)}
                   className="btn-ghost text-xs"
@@ -309,7 +518,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
             </div>
             <div className="flex gap-2">
               <button onClick={onClose} className="btn-ghost">Cerrar</button>
-              {canManage && <button onClick={() => { onCreateTarea?.(registro); onClose() }} className="btn-primary">
+              {canManage && onCreateTarea && <button onClick={() => { onCreateTarea(registro); onClose() }} className="btn-primary">
                 + Tarea
               </button>}
             </div>

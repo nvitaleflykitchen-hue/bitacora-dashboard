@@ -3,9 +3,12 @@ import { isPast, isToday } from 'date-fns'
 import { fmtFecha } from '../lib/dateUtils'
 import { getTareas, getSedes, updateTarea } from '../lib/queries'
 import KanbanBoard from '../components/KanbanBoard'
+import PageHeader from '../components/PageHeader'
 import TareaForm, { CATEGORIAS, getCategoriaLabel } from '../components/TareaForm'
 import { Plus, RefreshCw, LayoutGrid, List } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { TASK_STATES } from '../lib/operationalDomains'
+import { canSeeQualityTask, isOwnTask, isQualityOnlyProfile } from '../lib/access'
 
 const PRIORIDADES = ['Alta','Media','Baja']
 
@@ -18,8 +21,9 @@ function fechaChip(f) {
   return <span className="chip chip-gray">{fmtFecha(f)}</span>
 }
 
-export default function Tareas() {
+export default function Tareas({ focusId }) {
   const { rol, sedeIds, allowedSedeIds, perfil, can } = useAuth()
+  const isQualityOnly = isQualityOnlyProfile(perfil)
   const canManage = can('tareas', 'manage')
   const [tareas, setTareas]   = useState([])
   const [sedes, setSedes]     = useState([])
@@ -56,43 +60,40 @@ export default function Tareas() {
       const sedesFilt = (rol === 'encargado' && sedeIds.length > 0)
         ? allSedes.filter(s => sedeIds.includes(s.id))
         : allSedes
-      const tareasFilt = (rol === 'encargado' && sedeIds.length > 0)
+      const tareasTerritoriales = (rol === 'encargado' && sedeIds.length > 0)
         ? t.filter(tarea => !tarea.sede_id || sedeIds.includes(tarea.sede_id))
         : t
-      // Filtro "mis tareas": por nombre de responsable o creador
+      const tareasFilt = isQualityOnly
+        ? tareasTerritoriales.filter(tarea => canSeeQualityTask(tarea, perfil))
+        : tareasTerritoriales
+      // Filtro "mis tareas": por responsable_id, responsable textual, creador o intervinientes
       const nombreUsuario = perfil?.nombre || ''
       const tareasFinal = soloMias && nombreUsuario
-        ? tareasFilt.filter(t =>
-            (t.responsable || '').toLowerCase().includes(nombreUsuario.toLowerCase()) ||
-            (t.creado_por  || '').toLowerCase().includes(nombreUsuario.toLowerCase())
-          )
+        ? tareasFilt.filter(t => isOwnTask(t, perfil))
         : tareasFilt
       setTareas(tareasFinal); setSedes(sedesFilt)
     } catch (e) { console.error(e) }
     finally { setLoading(false); hasLoadedRef.current = true }
-  }, [filtroSede, filtroPrioridad, filtroCategoria, mostrarResueltas, soloMias, rol, sedeIds, perfil])
+  }, [filtroSede, filtroPrioridad, filtroCategoria, mostrarResueltas, soloMias, rol, sedeIds, allowedSedeIds, perfil, isQualityOnly])
 
   useEffect(() => { load() }, [load])
 
-  const pendientes = tareas.filter(t => t.estado === 'Pendiente').length
-  const enProceso  = tareas.filter(t => t.estado === 'En proceso').length
-  const resueltas  = tareas.filter(t => t.estado === 'Resuelto').length
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setFiltroSede(String(allowedSedeIds[0])) }, [allowedSedeIds])
+
+  const pendientes = tareas.filter(t => t.estado === TASK_STATES[0]).length
+  const enProceso  = tareas.filter(t => t.estado === TASK_STATES[1]).length
+  const resueltas  = tareas.filter(t => t.estado === TASK_STATES[2]).length
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>Tareas</h1>
-          <p className="font-metric text-xs mt-0.5" style={{ color:'var(--text-dim)' }}>
-            {tareas.length} tarea{tareas.length !== 1 ? 's' : ''}
-          </p>
-        </div>
+      <PageHeader title="Tareas" subtitle={`${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}`}>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Toggle Todas / Mis tareas */}
           <div className="flex rounded overflow-hidden" style={{ border:'1px solid rgba(57,255,20,0.15)' }}>
             {[
-              { id: false, label: 'Todas' },
+              { id: false, label: isQualityOnly ? 'Alcance Calidad' : 'Todas' },
               { id: true,  label: 'Mis tareas' },
             ].map(({ id, label }) => (
               <button key={String(id)} onClick={() => setSoloMias(id)}
@@ -132,7 +133,7 @@ export default function Tareas() {
             <Plus size={12} /> Nueva tarea
           </button>}
         </div>
-      </div>
+      </PageHeader>
 
       {/* KPIs */}
       {!loading && (
@@ -186,7 +187,7 @@ export default function Tareas() {
             style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
         </div>
       ) : viewMode === 'kanban' ? (
-        <KanbanBoard tareas={tareas} onRefresh={load} readOnly={!canManage} />
+        <KanbanBoard tareas={tareas} onRefresh={load} readOnly={!canManage} focusId={focusId} />
       ) : (
         <div className="glass rounded overflow-hidden" style={{ borderRadius:'3px' }}>
           <div className="overflow-x-auto">

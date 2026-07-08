@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { MessageCircle, Mail, Plus, Trash2, RefreshCw, Users, Upload, Pencil, Link, X, Check } from 'lucide-react'
 import ImportarContactosModal from '../components/ImportarContactosModal'
+import PageHeader from '../components/PageHeader'
 
 const ROLES = ['Responsable','Jefe de cocina','Encargado','Supervisor','Técnico','Administrativo','Otro']
 
@@ -23,7 +24,6 @@ function EditContactoModal({ item, perfiles, onClose, onSaved }) {
   const [form, setForm] = useState({
     nombre:   c.nombre   || '',
     cargo:    c.cargo    || '',
-    empresa:  c.empresa  || '',
     telefono: c.telefono || '',
     email:    c.email    || '',
   })
@@ -93,10 +93,6 @@ function EditContactoModal({ item, perfiles, onClose, onSaved }) {
               <div>
                 <label style={FIELD}>EMAIL</label>
                 <input style={INP} type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="Ej: juan.perez@flykitchen.com" />
-              </div>
-              <div style={{ gridColumn:'1/-1' }}>
-                <label style={FIELD}>EMPRESA / PROVEEDOR</label>
-                <input style={INP} value={form.empresa} onChange={e=>set('empresa',e.target.value)} placeholder="Dejar vacío si es FK" />
               </div>
             </div>
             {error && <p style={{ color:'var(--alert)', fontSize:'0.68rem', marginBottom:8 }}>{error}</p>}
@@ -189,7 +185,7 @@ function ContactoRow({ item, onDelete, onEdit }) {
           )}
         </div>
         <p style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>
-          {item.rol}{c.cargo ? ` · ${c.cargo}` : ''}{c.empresa ? ` · ${c.empresa}` : ''}
+          {item.rol}{c.cargo ? ` · ${c.cargo}` : ''}
         </p>
         {(c.telefono || c.email) && (
           <p style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.6rem', marginTop:1 }}>
@@ -247,7 +243,8 @@ function AddContactoForm({ sedeId, contactos, perfiles, existingIds, onAdded, on
     try {
       let contactoId
       if (sel.startsWith('c:')) {
-        contactoId = parseInt(sel.slice(2))
+        // contactos.id es UUID: debe conservarse como string completo.
+        contactoId = sel.slice(2)
       } else {
         // perfil sin contacto → crear contacto automáticamente
         const pid = sel.slice(2)
@@ -339,13 +336,7 @@ export default function SedeResponsables() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 fade-in">
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem' }}>
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>Responsables por Sede</h1>
-          <p style={{ fontSize:'0.62rem', color:'rgba(57,255,20,0.5)', fontFamily:'monospace', letterSpacing:'0.1em' }}>
-            CONTACTOS · ASIGNACIÓN · COMUNICACIÓN DIRECTA
-          </p>
-        </div>
+      <PageHeader title="Responsables por Sede" subtitle="Contactos · asignación · comunicación directa">
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={load} className="btn-ghost" style={{ padding:'0.4rem' }}>
             <RefreshCw size={13}/>
@@ -355,7 +346,7 @@ export default function SedeResponsables() {
             <Upload size={12}/> Importar Google
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {loading ? (
         <div style={{ display:'flex', justifyContent:'center', padding:'3rem 0' }}>

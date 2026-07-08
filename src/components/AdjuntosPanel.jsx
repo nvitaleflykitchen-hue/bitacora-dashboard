@@ -1,34 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from '../lib/supabase'
+import { createPortal } from 'react-dom'
 import { Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-
-const BUCKET = 'bitacora-adjuntos'
-
-async function getAdjuntos(entityType, entityId) {
-  const entityKey = String(entityId)
-  const { data, error } = await supabase
-    .schema('bitacora')
-    .from('adjuntos')
-    .select('*')
-    .eq('entity_type', entityType)
-    .eq('entity_id', entityKey)
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data || []
-}
-
-async function deleteAdjunto(adjunto) {
-  if (adjunto.storage_path) {
-    await supabase.storage.from(BUCKET).remove([adjunto.storage_path])
-  }
-  const { error } = await supabase
-    .schema('bitacora')
-    .from('adjuntos')
-    .delete()
-    .eq('id', adjunto.id)
-  if (error) throw error
-}
+import { getAdjuntos, uploadAdjunto, addAdjuntoLink, deleteAdjunto } from '../lib/adjuntos'
 
 function iconForMime(mime) {
   if (!mime) return <File size={16} />
@@ -73,7 +47,7 @@ function LinkForm({ onAdd, onCancel }) {
   )
 }
 
-export default function AdjuntosPanel({ entityType, entityId, compact = false, readOnly = false }) {
+export default function AdjuntosPanel({ entityType, entityId, compact = false, readOnly = false, label = 'Adjuntos' }) {
   const { perfil } = useAuth()
   const [adjuntos, setAdjuntos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -97,31 +71,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
-        const entityKey = String(entityId)
-        const ext = file.name.split('.').pop()
-        const path = `${entityType}/${entityKey}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error: uploadErr } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, file, { cacheControl: '3600', upsert: false })
-        if (uploadErr) throw uploadErr
-
-        const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path)
-
-        const { error: dbErr } = await supabase.schema('bitacora').from('adjuntos').insert({
-          entity_type: entityType,
-          entity_id: entityKey,
-          nombre: file.name,
-          tipo: 'archivo',
-          url: publicUrl,
-          storage_path: path,
-          mime_type: file.type,
-          tamaño_bytes: file.size,
-          uploaded_by: perfil?.nombre || 'usuario',
-        })
-        if (dbErr) {
-          await supabase.storage.from(BUCKET).remove([path])
-          throw dbErr
-        }
+        await uploadAdjunto(entityType, entityId, file, perfil?.nombre || 'usuario')
       }
       await load()
     } catch (e) {
@@ -134,17 +84,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
 
   const handleAddLink = async ({ url, nombre, descripcion }) => {
     try {
-      const entityKey = String(entityId)
-      const { error } = await supabase.schema('bitacora').from('adjuntos').insert({
-        entity_type: entityType,
-        entity_id: entityKey,
-        nombre,
-        tipo: 'link',
-        url,
-        descripcion,
-        uploaded_by: perfil?.nombre || 'usuario',
-      })
-      if (error) throw error
+      await addAdjuntoLink(entityType, entityId, { url, nombre, descripcion, uploadedBy: perfil?.nombre || 'usuario' })
       setShowLinkForm(false)
       await load()
     } catch (e) { alert('Error: ' + e.message) }
@@ -176,7 +116,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <Paperclip size={13} style={{ color:'var(--phosphor)' }} />
           <span className="font-metric" style={{ fontSize:'0.68rem', color:'var(--text-dim)', letterSpacing:'0.06em', textTransform:'uppercase' }}>
-            Adjuntos {adjuntos.length > 0 && `(${adjuntos.length})`}
+            {label} {adjuntos.length > 0 && `(${adjuntos.length})`}
           </span>
         </div>
         {!readOnly && <div style={{ display:'flex', gap:5 }}>
@@ -329,8 +269,11 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightbox && (
+      {/* Lightbox — se monta vía portal en document.body para evitar quedar
+          atrapado por el backdrop-filter de los modales padre (.glass crea
+          un containing block para position:fixed, lo que recortaba el
+          overlay contra el modal en vez de cubrir toda la pantalla). */}
+      {lightbox && createPortal(
         <div
           onClick={() => setLightbox(null)}
           style={{
@@ -345,7 +288,8 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
               {lightbox.nombre}
             </p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

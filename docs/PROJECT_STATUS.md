@@ -28,7 +28,7 @@ No hay router (no `react-router`): la navegación es 100% por estado local (`act
 | Bitácora / Novedades | DashboardGlobal, PorSede, Escalamientos, Calendario, NoConformidades, CAPA, Indicadores, Tareas, Requerimientos | `bitacora` (acceso directo vía `db()`) | Operativo, en uso diario |
 | Mantenimiento | MntDashboard, MntTickets, MntActivos, MntPlanes, MntProveedores, MntMatafuegos, MntInsumos, MntKanban, MntResponsables, AuditoriaView | `mantenimiento` (acceso indirecto vía vistas `mnt_*` en `public`) | Operativo |
 | Flota | MntFlotaGestion, MntVehiculos | `mantenimiento.activos` (subtipo VEHICULO) | Operativo, agregado recientemente (ver DECISIONS.md) |
-| Equipo / RRHH | EquipoView, SedeFicha, SedeResponsables | `equipo` (acceso indirecto vía vistas `v_*` en `public`) | Operativo |
+| Equipo / RRHH | EquipoView, SedeFicha, SedeResponsables | `equipo` (acceso indirecto vía vistas `v_*` en `public`) | Operativo — ficha con legajo y Formularios; apercibimiento PDF en desktop/mobile |
 | Usuarios / Admin | Usuarios.jsx | `bitacora.perfiles` + Edge Functions | Operativo, con hallazgos de seguridad (ver KNOWN_ISSUES.md) |
 | App móvil | MobileApp + MobileHome/MobileReporte/MobileChecklist/MobileEscalamientos/MobileSedes/MobileTareas | bitácora + mantenimiento | Operativo, breakpoint 768px |
 
@@ -57,7 +57,7 @@ Las 3 funciones tienen `verify_jwt: false` a nivel de gateway de Supabase (la ve
 
 Hay un hilo de trabajo previo de diagnóstico y arreglo de bugs que quedó pausado para priorizar este paquete de documentación de traspaso. Tareas abiertas en ese frente:
 
-1. Backfill de filas faltantes de novedades — Comedores (en progreso) y Hospitales (pendiente), más verificación de conteos finales.
+1. ✅ Backfill y sincronización de novedades corregidos el 2026-07-02: 585 respuestas reconciliadas, 91 filas faltantes insertadas, segunda pasada idempotente sin pendientes y activadores `onFormSubmitHospitales`/`onFormSubmitComedores` recreados (KNOWN_ISSUES.md §3.13).
 2. Deploy pendiente de un fix en el módulo Escalamientos a Vercel.
 3. Auditoría de consistencia código↔esquema: mapeo de llamadas Supabase, cruce de columnas usadas vs columnas reales, validación de sintaxis de todo `src/`, revisión de funciones RPC/grants, y aplicación de fixes de bajo riesgo.
 

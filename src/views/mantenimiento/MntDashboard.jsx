@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../../lib/auth'
 import { getKPIsMantenimiento, getTickets, getSedes } from '../../lib/queries'
+import PageHeader from '../../components/PageHeader'
 
 const ESTADO_COLOR = { abierto:'#F97316', en_progreso:'#3B82F6', aprobado:'#F59E0B', resuelto:'#39FF14', rechazado:'#6B7280' }
 const PRIORIDAD_COLOR = { critica:'#FF2A2A', alta:'#F97316', media:'#F59E0B', baja:'#39FF14' }
@@ -53,7 +54,10 @@ export default function MntDashboard({ onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [tabla, setTabla]     = useState('responsable')
 
-  useEffect(() => { getSedes().then(setSedes) }, [])
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
+
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
 
   useEffect(() => {
     setLoading(true)
@@ -130,11 +134,7 @@ export default function MntDashboard({ onNavigate }) {
   return (
     <div style={{ padding:'1.5rem 2rem', overflowY:'auto', height:'100%' }}>
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1.25rem' }}>
-        <div>
-          <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Mantenimiento</h1>
-          <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', marginTop:2 }}>Dashboard operativo · FK</p>
-        </div>
+      <PageHeader title="Mantenimiento" subtitle="Dashboard operativo · FK">
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)} style={SEL}>
             <option value=''>Todas las sedes</option>
@@ -145,7 +145,7 @@ export default function MntDashboard({ onNavigate }) {
             + Nuevo Ticket
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {loading ? (
         <div style={{ display:'flex', justifyContent:'center', padding:'4rem' }}>

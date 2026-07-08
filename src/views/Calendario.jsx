@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, addMonths, subMonths, getYear, getMonth, getDaysInMonth, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { getCumplimientoCalendario, getEventosMantenimiento } from '../lib/queries'
+import { getCumplimientoCalendario, getEventosCalendario } from '../lib/queries'
 import RegistroModal from '../components/RegistroModal'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -30,7 +30,7 @@ export default function Calendario() {
     try {
       const [data, mntEvt] = await Promise.all([
         getCumplimientoCalendario(getYear(fecha), getMonth(fecha) + 1),
-        getEventosMantenimiento(getYear(fecha), getMonth(fecha) + 1),
+        getEventosCalendario(getYear(fecha), getMonth(fecha) + 1),
       ])
       setDias(data)
       setEventosMnt(mntEvt || {})
@@ -63,7 +63,7 @@ export default function Calendario() {
           {/* Header nav */}
           <div className="flex items-center justify-between mb-5">
             <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>
-              Calendario de reportes
+              Calendario operativo unificado
             </h1>
             <div className="flex items-center gap-3">
               <button onClick={() => setFecha(f => subMonths(f, 1))} className="btn-ghost" style={{ padding:'0.3rem 0.5rem' }}>
@@ -179,12 +179,12 @@ export default function Calendario() {
               { color:'var(--alert)',    label:'Ninguna sede' },
               { color:'var(--warn)',     label:'Escalamiento', dot:true },
               { color:'var(--alert)',    label:'Tarea vencida', dot:true },
-              { color:'#50b4ff',        label:'Plan preventivo', dot:true },
-              { color:'#f59e0b',        label:'SLA ticket mnt', dot:true },
-              { color:'#a78bfa',        label:'Tarea límite', dot:true },
-              { color:'#ec4899',        label:'NC vence', dot:true },
-              { color:'#8b5cf6',        label:'CAPA límite', dot:true },
-              { color:'#ff2a2a',        label:'Vehículo: doc. vence', dot:true },
+              { color:'#38bdf8',        label:'Mantenimiento / preventivos', dot:true },
+              { color:'#34d399',        label:'Tareas', dot:true },
+              { color:'#a78bfa',        label:'Calidad / CAPA', dot:true },
+              { color:'#fb7185',        label:'Compras / compromisos', dot:true },
+              { color:'#e879f9',        label:'RRHH / entrevistas e hitos', dot:true },
+              { color:'#ff2a2a',        label:'Vencimientos', dot:true },
             ].map(({ color, label, dot }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span style={{
@@ -213,7 +213,7 @@ export default function Calendario() {
               {/* Eventos de mantenimiento del día */}
               {(eventosMnt[diaActual?.diaStr] || []).length > 0 && (
                 <div className="px-3 pb-2">
-                  <p className="font-metric text-xs mb-2" style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.55rem', letterSpacing:'0.1em' }}>MANTENIMIENTO</p>
+                  <p className="font-metric text-xs mb-2" style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.55rem', letterSpacing:'0.1em' }}>COMPROMISOS / VENCIMIENTOS / HITOS</p>
                   {(eventosMnt[diaActual.diaStr] || []).map((ev, i) => (
                     <div key={i} className="rounded px-2 py-1.5 mb-1 flex items-center gap-2"
                       style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${ev.color}22` }}>

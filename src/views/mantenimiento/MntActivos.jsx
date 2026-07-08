@@ -4,6 +4,8 @@ import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
 import { getActivos, upsertActivo, getSedes, getTicketsActivo, getProveedores } from '../../lib/queries'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
+import PageHeader from '../../components/PageHeader'
+import { isQualityOnlyProfile } from '../../lib/access'
 
 const TIPO_COLOR  = { VEHICULO:'#3B82F6', EQUIPO:'#F59E0B', INSTALACION:'#8B5CF6' }
 const ESTADO_COLOR = { operativo:'#39FF14', en_reparacion:'#F59E0B', baja:'#FF2A2A' }
@@ -11,10 +13,36 @@ const INPUT_S = { width:'100%', padding:'0.4rem 0.75rem', borderRadius:2, backgr
 const LABEL_S = { color:'var(--text-dim)', fontSize:'0.62rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.35rem', fontFamily:"'Roboto Mono',monospace" }
 const ROW_S   = { marginBottom:'1rem' }
 
+export const CATEGORIAS_OFICIALES = [
+  'Amasadora',
+  'Aire Acondicionado',
+  'Anafe',
+  'Batidora',
+  'Bomba de Agua',
+  'Campana / Extracción',
+  'Camión',
+  'Cámara Frigorífica',
+  'Cocina',
+  'Freezer',
+  'Freidora',
+  'Generador Eléctrico',
+  'Heladera',
+  'Heladera Exhibidora',
+  'Horno',
+  'Mobiliario Inox',
+  'Montacargas',
+  'Refrigeración Genérica',
+  'Sobadora',
+  'Termotanque',
+  'Vehículo Utilitario',
+  'Otro'
+]
+
+
 function ActivoModal({ activo, sedes, onClose, onSaved }) {
   const isNew = !activo?.id
-  const { rol } = useAuth()
-  const canEdit = ['admin','encargado','editor'].includes(rol)
+  const { rol, perfil } = useAuth()
+  const canEdit = ['admin','encargado','editor'].includes(rol) && !isQualityOnlyProfile(perfil)
 
   const [tab, setTab]         = useState('ficha')
   const [editing, setEditing] = useState(isNew)
@@ -36,7 +64,7 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
     Promise.all([
       getTicketsActivo({ id: activo.id, nombre: activo.nombre }),
       getProveedores(),
-      supabase.from('mnt_responsables').select('id,nombre,rol').order('nombre'),
+      supabase.from('mnt_responsables').select('id,nombre,rol,telefono,email').order('nombre'),
     ])
       .then(([tickets, proveedoresData, responsablesResult]) => {
         if (responsablesResult.error) throw responsablesResult.error
@@ -272,9 +300,11 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW_S}>
-                <label style={LABEL_S}>Categoría</label>
-                <input value={form.categoria||''} onChange={e=>set('categoria',e.target.value)} style={INPUT_S} placeholder="HORNO, CAMION, etc." />
+              <div style={ROW_S}><label style={LABEL_S}>Categoría</label>
+                <select value={form.categoria||''} onChange={e=>set('categoria',e.target.value)} style={INPUT_S}>
+                  <option value="">Seleccionar Categoría...</option>
+                  {CATEGORIAS_OFICIALES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
               <div style={ROW_S}>
                 <label style={LABEL_S}>Sede / Unidad</label>
@@ -389,8 +419,9 @@ function QRModal({ activo, onClose }) {
   )
 }
 
-export default function MntActivos() {
-  const { allowedSedeIds } = useAuth()
+export default function MntActivos({ focusId }) {
+  const { allowedSedeIds, rol, perfil } = useAuth()
+  const canWrite = ['admin','encargado','editor'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [activos, setActivos] = useState([])
   const [sedes, setSedes]     = useState([])
   const [loading, setLoading] = useState(true)
@@ -403,6 +434,9 @@ export default function MntActivos() {
 
   useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [])
 
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
+
   const load = useCallback(() => {
     setLoading(true)
     const filtros = {}
@@ -412,6 +446,11 @@ export default function MntActivos() {
       .finally(() => setLoading(false))
   }, [sedeId])
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = activos.find(activo => String(activo.id) === String(focusId))
+    if (target) setModal(target)
+  }, [focusId, loading, activos])
 
   const filtrados = activos
     .filter(a => filtroTipo   === 'todos' || a.tipo   === filtroTipo)
@@ -432,19 +471,18 @@ export default function MntActivos() {
 
   return (
     <div style={{ padding:'1.5rem 2rem', height:'100%', display:'flex', flexDirection:'column' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem' }}>
-        <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Activos</h1>
+      <PageHeader title="Activos">
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)} style={SEL_S}>
             <option value=''>Todas las sedes</option>
             {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
           </select>
-          <button onClick={()=>setModal({})}
+          {canWrite && <button onClick={()=>setModal({})}
             style={{ background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.55rem 1.1rem', fontWeight:700, cursor:'pointer' }}>
             + Nuevo Activo
-          </button>
+          </button>}
         </div>
-      </div>
+      </PageHeader>
 
       <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'1rem', alignItems:'center' }}>
         <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}

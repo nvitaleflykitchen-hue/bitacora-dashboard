@@ -5,10 +5,16 @@ import MobileTareas from './MobileTareas'
 import MobileSedes from './MobileSedes'
 import MobileEscalamientos from './MobileEscalamientos'
 import MobileChecklist from './MobileChecklist'
+import MobileTickets from './MobileTickets'
+import MobileRequerimientos from './MobileRequerimientos'
+import MobileMas from './MobileMas'
+import GlobalSearch from '../components/GlobalSearch'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import PushNotificationControl from '../components/PushNotificationControl'
 import NotificationCenter from '../components/NotificationCenter'
+import { isQualityOnlyProfile } from '../lib/access'
+import { User, ShoppingCart } from 'lucide-react'
 
 const NAV = [
   { key: 'home',          label: 'Inicio',    icon: '⌂' },
@@ -16,15 +22,56 @@ const NAV = [
   { key: 'sedes',         label: 'Sedes',     icon: '⊞' },
   { key: 'escalamientos', label: 'Escalam.',  icon: '⚠' },
   { key: 'checklist',     label: 'Checklist', icon: '☑' },
-  { key: 'perfil',        label: 'Perfil',    icon: '◎' },
+  { key: 'tickets',       label: 'Tickets',   icon: '🔧' },
+  { key: 'compras',       label: 'Compras',   icon: '🛒' },
+  { key: 'mas',           label: 'Más',       icon: '☰' },
 ]
 
 export default function MobileApp() {
   const { perfil, rol, can } = useAuth()
-  const canReport = can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol)
+  const isQualityOnly = isQualityOnlyProfile(perfil)
+  const canReport = !isQualityOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
   const canUseChecklist = rol !== 'consultor'
-  const [tab, setTab] = useState('home')
+  // 'operario': rol acotado a Inicio (Nuevo Reporte) + Checklist, nada más.
+  const navAllowed = isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null)
+  const [tab, setTab] = useState(isQualityOnly ? 'tareas' : 'home')
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
+  const [showSearch, setShowSearch] = useState(false)
+  const [masModule, setMasModule] = useState(isQualityOnly ? 'calidad' : null)
+
+  const handleNotificationNavigate = (view) => {
+    setScreen('main')
+    if (view === 'calidadHub') { setMasModule('calidad'); setTab('mas') }
+    else if (view === 'mantenimientoHub') { setMasModule('mantenimiento'); setTab('mas') }
+    else if (view === 'mntTickets') { setTab('tickets') }
+    else if (view === 'requerimientos') { setTab('compras') }
+    else if (view === 'tareas') { setTab('tareas') }
+    else if (view === 'escalamientos') { setTab('escalamientos') }
+    else if (view === 'sedesHub' || view === 'sede') { setTab('sedes') }
+  }
+
+  const handleSearchNavigate = (view) => {
+    if (view === 'tareas') {
+      setTab('tareas')
+    } else if (view === 'escalamientos') {
+      setTab('escalamientos')
+    } else if (view === 'requerimientos') {
+      setTab('compras')
+    } else if (view === 'sedesHub' || view === 'sede') {
+      setTab('sedes')
+    } else if (view === 'mntTickets') {
+      setTab('tickets')
+    } else if (['mntActivos', 'mntInsumos', 'mntKanban', 'mntPlanes', 'mntProveedores', 'mntMatafuegos', 'mntResponsables'].includes(view)) {
+      setMasModule('mantenimiento')
+      setTab('mas')
+    } else if (view === 'noConformidades' || view === 'capa') {
+      setMasModule('calidad')
+      setTab('mas')
+    } else if (view === 'equipo') {
+      setMasModule('personal')
+      setTab('mas')
+    }
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -46,11 +93,14 @@ export default function MobileApp() {
         />
       )
     }
-    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} />
+    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} />
     if (tab === 'tareas')        return <MobileTareas />
     if (tab === 'sedes')         return <MobileSedes />
     if (tab === 'escalamientos') return <MobileEscalamientos />
     if (tab === 'checklist')     return <MobileChecklist onBack={() => setTab('home')} />
+    if (tab === 'tickets')       return <MobileTickets />
+    if (tab === 'compras')       return <MobileRequerimientos />
+    if (tab === 'mas')           return <MobileMas initialModule={masModule} />
     if (tab === 'perfil')        return <MobilePerfil perfil={perfil} onLogout={handleLogout} />
     return null
   }
@@ -58,13 +108,14 @@ export default function MobileApp() {
   return (
     <div style={{
       width: '100vw', height: '100dvh',
-      background: 'var(--bg)',
+      background: 'var(--abyss)',
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
+      minHeight: 0,
     }}>
       {/* FK header strip */}
       <div style={{
-        padding: '0.6rem 1rem',
+        padding: 'calc(0.6rem + env(safe-area-inset-top)) 1rem 0.6rem',
         background: 'var(--surface)',
         borderBottom: '1px solid rgba(57,255,20,0.1)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
@@ -75,7 +126,10 @@ export default function MobileApp() {
           <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: 4 }}>· Bitacora In Situ</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <NotificationCenter />
+          {!isQualityOnly && <NotificationCenter onNavigate={handleNotificationNavigate} />}
+          <button onClick={() => setTab('perfil')} style={{ background: 'none', border: 'none', padding: 0, color: tab === 'perfil' ? 'var(--phosphor)' : 'var(--text-dim)', display: 'flex' }}>
+            <User size={18} />
+          </button>
           <span style={{
             background: 'rgba(57,255,20,0.1)', color: 'var(--phosphor)',
             fontSize: '0.6rem', padding: '0.15rem 0.4rem', borderRadius: 3,
@@ -98,9 +152,13 @@ export default function MobileApp() {
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
         {renderContent()}
       </div>
+
+      {showSearch && (
+        <GlobalSearch mobile onNavigate={handleSearchNavigate} onClose={() => setShowSearch(false)} />
+      )}
 
       {/* Bottom nav */}
       {screen === 'main' && (
@@ -110,22 +168,23 @@ export default function MobileApp() {
           display: 'flex',
           padding: '0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom))',
         }}>
-          {NAV.filter(n => canUseChecklist || n.key !== 'checklist').map(n => (
-            <button key={n.key} onClick={() => setTab(n.key)}
+          {NAV.filter(n => (!navAllowed || navAllowed.has(n.key)) && (canUseChecklist || n.key !== 'checklist')).map(n => (
+            <button key={n.key} onClick={() => { setMasModule(null); setTab(n.key) }}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
                 gap: '0.15rem', background: 'none', border: 'none', cursor: 'pointer',
-                padding: '0.35rem 0',
+                padding: '0.35rem 0', minWidth: 0,
               }}>
               <span style={{
-                fontSize: '1rem', lineHeight: 1,
+                fontSize: '0.9rem', lineHeight: 1,
                 color: tab === n.key ? (n.key === 'escalamientos' ? '#F97316' : 'var(--phosphor)') : 'var(--text-dim)',
                 transition: 'color 0.15s'
               }}>{n.icon}</span>
               <span style={{
-                fontSize: '0.55rem', letterSpacing: '0.03em',
+                fontSize: '0.52rem', letterSpacing: '0.01em',
                 color: tab === n.key ? (n.key === 'escalamientos' ? '#F97316' : 'var(--phosphor)') : 'var(--text-dim)',
                 fontWeight: tab === n.key ? 700 : 400,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center'
               }}>{n.label}</span>
             </button>
           ))}
@@ -137,7 +196,7 @@ export default function MobileApp() {
 
 function MobilePerfil({ perfil, onLogout }) {
   return (
-    <div style={{ padding: '1.5rem 1rem', overflowY: 'auto', height: '100%' }}>
+    <div className="mobile-scroll" style={{ padding: '1.5rem 1rem', height: '100%' }}>
       <h1 style={{ color: 'var(--text)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Mi Perfil</h1>
 
       <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '1.25rem', marginBottom: '1rem' }}>

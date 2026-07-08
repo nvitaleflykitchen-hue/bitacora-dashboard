@@ -1,6 +1,6 @@
 # API — bitacora-dashboard
 
-> Verificado contra código fuente real (`src/lib/supabase.js`, `src/lib/queries.js`, `src/views/**`) y contra el proyecto Supabase `mixyhfdlzjarvszinytk` en vivo (Edge Functions, funciones RPC, grants de tabla, políticas RLS). Fecha de verificación: 2026-06-17. No hay capa de API propia: "la API" de esta app son tres superficies de Supabase — PostgREST (tablas/vistas), RPC (funciones Postgres) y 3 Edge Functions.
+> Verificado contra código fuente real (`src/lib/supabase.js`, `src/lib/queries.js`, `src/views/**`) y contra el proyecto Supabase `mixyhfdlzjarvszinytk` en vivo (Edge Functions, funciones RPC, grants de tabla, políticas RLS). Fecha de verificación original: 2026-06-17; búsqueda global actualizada y verificada el 2026-06-28. No hay capa de API propia: "la API" de esta app son tres superficies de Supabase — PostgREST (tablas/vistas), RPC (funciones Postgres) y 3 Edge Functions.
 
 ## 1. Edge Functions
 
@@ -64,7 +64,18 @@ Esta función es, por diseño, un endpoint público de inserción sin autenticac
 
 ## 2. Funciones RPC (Postgres, invocables vía `supabase.rpc(...)`)
 
-Auditoría completa de grants: **15 funciones existen en los esquemas `public`/`bitacora`/`mantenimiento`/`equipo`**, y **las 15 tienen `EXECUTE` otorgado tanto a `anon` como a `authenticated`** (grant `PUBLIC` por defecto de Postgres, nunca revocado en ninguna). Tomado de forma aislada esto parecería una superficie de ataque de 15 funciones — pero hay que distinguir dos grupos:
+### Actualización 2026-06-28 — búsqueda global
+
+| Función | Firma | Seguridad | Usada desde frontend |
+|---|---|---|---|
+| `public.buscar_global` | `(p_query text, p_limit integer DEFAULT 30) RETURNS TABLE (...)` | Wrapper `SECURITY INVOKER`; `EXECUTE` revocado a `PUBLIC`/`anon` y concedido solo a `authenticated` | Sí — `src/components/GlobalSearch.jsx` |
+| `bitacora_private.buscar_global_core` | Misma firma y resultado | `SECURITY DEFINER`, `search_path` fijo, valida `auth.uid()`, perfil activo, rol y alcance de sedes antes de leer | Solo desde el wrapper |
+
+El RPC busca sedes, reportes, tareas, escalamientos, compras, tickets, activos, planes, documentos de flota, insumos, proveedores, matafuegos, no conformidades, CAPA, personas, candidatos de Selección, responsables y vuelos. Los candidatos se buscan por nombre, DNI/CUIL, contacto, estado, origen, puesto y sede, respetando el alcance territorial de la solicitud vinculada. `operario` recibe cero resultados; `flota` queda limitado a entidades vehiculares. Aplicado mediante la migración `global_search_20260628`, ampliado por `add_reclutamiento_global_search` y verificado con simulaciones transaccionales.
+
+Los resultados transportan `tipo`, `id` y `sede_id` hasta la URL (`targetType`, `targetId`, `targetSedeId`). Las vistas consumen ese destino para abrir la ficha, modal o tarjeta expandida correspondiente. Las tareas incluyen además `intervinientes` en el texto buscable. Esto se completó con las migraciones `global_search_participants_20260628` y `global_search_flota_routes_20260628`.
+
+Auditoría original del 2026-06-17: **15 funciones existían en los esquemas `public`/`bitacora`/`mantenimiento`/`equipo`**, y **las 15 tenían `EXECUTE` otorgado tanto a `anon` como a `authenticated`** (grant `PUBLIC` por defecto de Postgres, nunca revocado en ninguna). Las dos funciones de búsqueda agregadas el 2026-06-28 son la excepción explícita documentada arriba. Tomado de forma aislada, el estado original parecía una superficie de ataque de 15 funciones — pero hay que distinguir dos grupos:
 
 ### 2.1 Funciones realmente invocables vía RPC (4 de 15)
 

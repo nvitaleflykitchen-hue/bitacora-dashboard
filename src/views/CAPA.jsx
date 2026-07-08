@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, isPast, isToday, differenceInDays } from 'date-fns'
-import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes } from '../lib/queries'
-import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList } from 'lucide-react'
+import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan } from '../lib/queries'
+import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
+import PageHeader from '../components/PageHeader'
+import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
+import { generarInformeCapaPDF } from '../lib/capaReportPdf'
 
 const ESTADOS_CAPA = ['Pendiente','En ejecución','Completada','Verificada']
 const TIPOS_CAPA   = ['Correctiva','Preventiva']
@@ -35,6 +38,7 @@ function estadoChip(estado) {
 function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
   const { user, perfil } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [archivos, setArchivos] = useState([])
   const [form, setForm] = useState({
     tipo: 'Correctiva', no_conformidad_id: '', descripcion: '',
     responsable: '', fecha_limite: '', estado: 'Pendiente', evidencia: '',
@@ -52,7 +56,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
     e.preventDefault()
     setLoading(true)
     try {
-      await createCapa({
+      const created = await createCapa({
         ...form,
         sede_id: form.sede_id || null,
         no_conformidad_id: form.no_conformidad_id || null,
@@ -61,6 +65,9 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
         auditoria_codigo: form.auditoria_codigo || null,
         created_by: perfil?.nombre || user?.email,
       })
+      if (archivos.length > 0 && created?.id) {
+        await Promise.all(archivos.map(f => uploadAdjunto('capa', created.id, f)))
+      }
       onCreated()
     } catch (err) {
       alert('Error: ' + err.message)
@@ -129,6 +136,10 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
             <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Evidencia (URL)</label>
             <input className="input-dark" value={form.evidencia} onChange={e => set('evidencia', e.target.value)} placeholder="Ej: https://drive.google.com/file/d/..." />
           </div>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Evidencias (Fotos/Archivos)</label>
+            <input type="file" multiple className="input-dark" style={{ padding:'0.4rem' }} onChange={e => setArchivos(Array.from(e.target.files || []))} />
+          </div>
           <div className="flex justify-end gap-3 pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
             <button type="submit" disabled={loading} className="btn-primary">
@@ -141,11 +152,12 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
   )
 }
 
-function CAPACardDetail({ c, canWrite, onEstadoChange, onClose }) {
+function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
   const [estado, setEstado]           = useState(c.estado)
   const [notas, setNotas]             = useState(c.notas || '')
   const [saving, setSaving]           = useState(false)
   const [savingNotas, setSavingNotas] = useState(false)
+  const [savingEficacia, setSavingEficacia] = useState(false)
   const [notasSaved, setNotasSaved]   = useState(false)
 
   const handleSaveEstado = async () => {
@@ -159,10 +171,30 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose }) {
     setSavingNotas(true)
     try {
       await updateCapa(c.id, { notas })
+      c.notas = notas // evita que al reabrir la ficha (con la lista aún sin refrescar) se vea el valor viejo
+      onReload?.()
       setNotasSaved(true)
       setTimeout(() => setNotasSaved(false), 2000)
     } catch (e) { alert(e.message) }
     finally { setSavingNotas(false) }
+  }
+
+  const handleToggleEficacia = async (checked) => {
+    setSavingEficacia(true)
+    try {
+      const payload = {
+        eficacia_verificada: checked,
+        estado: checked ? 'Verificada' : (c.estado === 'Verificada' ? 'Completada' : c.estado),
+        fecha_cierre: checked ? new Date().toISOString().split('T')[0] : c.fecha_cierre,
+      }
+      await updateCapa(c.id, payload)
+      c.eficacia_verificada = checked
+      c.estado = payload.estado
+      c.fecha_cierre = payload.fecha_cierre
+      setEstado(payload.estado)
+      onReload?.()
+    } catch (e) { alert(e.message) }
+    finally { setSavingEficacia(false) }
   }
 
   return (
@@ -207,6 +239,32 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose }) {
               <a href={c.evidencia} target="_blank" rel="noreferrer" style={{ color:'#60A5FA' }}>{c.evidencia.slice(0,50)}…</a>
             </p>
           )}
+
+          <div className="rounded px-3 py-2" style={{ background:'rgba(57,255,20,0.035)', border:'1px solid rgba(57,255,20,0.12)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
+              <div>
+                <p className="font-metric text-xs tracking-wider" style={{ color:'var(--phosphor)' }}>VERIFICACIÓN DE EFICACIA · ISO 9001 10.2</p>
+                <p style={{ color:'var(--text-dim)', fontSize:'0.68rem', marginTop:3 }}>
+                  Marcar cuando Calidad verificó que la acción corrigió la causa y no volvió a repetirse.
+                </p>
+              </div>
+              {canWrite ? (
+                <label style={{ display:'flex', alignItems:'center', gap:8, color:'var(--text)', fontSize:'0.72rem', cursor:'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(c.eficacia_verificada || c.estado === 'Verificada')}
+                    disabled={savingEficacia}
+                    onChange={e => handleToggleEficacia(e.target.checked)}
+                  />
+                  {savingEficacia ? 'Guardando...' : 'Eficacia verificada'}
+                </label>
+              ) : (
+                <span className={`chip ${c.eficacia_verificada || c.estado === 'Verificada' ? 'chip-green' : 'chip-gray'}`} style={{ fontSize:'0.6rem' }}>
+                  {c.eficacia_verificada || c.estado === 'Verificada' ? 'Verificada' : 'Pendiente'}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Notas de avance */}
           <div className="pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
@@ -268,8 +326,11 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose }) {
   )
 }
 
-function CapaKanban({ items, canWrite, onEstadoChange, onReload }) {
+function CapaKanban({ items, canWrite, onEstadoChange, onReload, focusId }) {
   const [detail, setDetail] = useState(null)
+  useEffect(() => {
+    if (focusId) setDetail(items.find(item => String(item.id) === String(focusId)) || null)
+  }, [focusId, items])
 
   return (
     <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:8, minHeight:400 }}>
@@ -350,15 +411,109 @@ function CapaKanban({ items, canWrite, onEstadoChange, onReload }) {
           c={detail} canWrite={canWrite}
           onEstadoChange={async (id, estado) => { await onEstadoChange(id, estado); onReload() }}
           onClose={() => setDetail(null)}
+          onReload={onReload}
         />
       )}
     </div>
   )
 }
 
-function CapaAuditoria({ items, canWrite, onEstadoChange, onReload }) {
+function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSaved }) {
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    empresa_prestataria: plan?.empresa_prestataria || '',
+    responsable_comedor: plan?.responsable_comedor || '',
+    elaboro: plan?.elaboro || '',
+    fecha_auditoria: plan?.fecha_auditoria || '',
+    objetivo: plan?.objetivo || '',
+    alcance: plan?.alcance || '',
+    cumplimiento_informado: plan?.cumplimiento_informado ?? '',
+  })
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const saved = await upsertCapaPlan({
+        auditoria_codigo: auditoriaCodigo,
+        sede_id: sedeId || null,
+        sede_nombre: sedeNombre || null,
+        ...form,
+        fecha_auditoria: form.fecha_auditoria || null,
+        cumplimiento_informado: form.cumplimiento_informado === '' ? null : Number(form.cumplimiento_informado),
+      })
+      onSaved(saved)
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px', maxHeight:'90vh', overflowY:'auto' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
+          <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Datos del plan — {auditoriaCodigo}</h2>
+          <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', lineHeight:1.5 }}>
+            Estos datos se completan una vez por plan y se reutilizan cada vez que se descarga el informe PDF.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Empresa prestataria</label>
+              <input className="input-dark" value={form.empresa_prestataria} onChange={e => set('empresa_prestataria', e.target.value)} placeholder="Ej: Flying Kitchen" />
+            </div>
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Responsable del comedor</label>
+              <input className="input-dark" value={form.responsable_comedor} onChange={e => set('responsable_comedor', e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Elaboró</label>
+              <input className="input-dark" value={form.elaboro} onChange={e => set('elaboro', e.target.value)} />
+            </div>
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Fecha de auditoría</label>
+              <input type="date" className="input-dark" value={form.fecha_auditoria} onChange={e => set('fecha_auditoria', e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>% Cumplimiento informado</label>
+            <input type="number" step="0.1" min="0" max="100" className="input-dark" value={form.cumplimiento_informado} onChange={e => set('cumplimiento_informado', e.target.value)} />
+          </div>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Objetivo</label>
+            <textarea className="input-dark" rows={2} value={form.objetivo} onChange={e => set('objetivo', e.target.value)} style={{ resize:'vertical' }} />
+          </div>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Alcance</label>
+            <textarea className="input-dark" rows={2} value={form.alcance} onChange={e => set('alcance', e.target.value)} style={{ resize:'vertical' }} />
+          </div>
+          <div className="flex justify-end gap-3 pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+            <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
+            <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Guardando...' : 'Guardar datos'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
   const [detail, setDetail] = useState(null)
   const [expandidos, setExpandidos] = useState({})
+  const [planes, setPlanes] = useState({})
+  const [editingPlan, setEditingPlan] = useState(null)
+  const [generando, setGenerando] = useState(null)
+
+  useEffect(() => {
+    if (focusId) setDetail(items.find(item => String(item.id) === String(focusId)) || null)
+  }, [focusId, items])
 
   // Agrupar por auditoria_codigo + sede
   const grupos = {}
@@ -367,12 +522,44 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload }) {
     if (!grupos[key]) grupos[key] = {
       auditoria_codigo: c.auditoria_codigo,
       sede_nombre: c.sede_nombre,
+      sede_id: c.sede_id,
       items: [],
     }
     grupos[key].items.push(c)
   })
 
   const toggleExpand = (key) => setExpandidos(e => ({ ...e, [key]: !e[key] }))
+
+  const ensurePlan = async (codigo) => {
+    if (!codigo) return null
+    if (planes[codigo] !== undefined) return planes[codigo]
+    try {
+      const p = await getCapaPlan(codigo)
+      setPlanes(prev => ({ ...prev, [codigo]: p }))
+      return p
+    } catch (e) {
+      console.error(e)
+      return null
+    }
+  }
+
+  const handleDescargarInforme = async (grupo) => {
+    const key = grupo.auditoria_codigo || `__sin__${grupo.sede_nombre}`
+    setGenerando(key)
+    try {
+      const plan = grupo.auditoria_codigo ? await ensurePlan(grupo.auditoria_codigo) : null
+      await generarInformeCapaPDF({ grupo, plan })
+    } catch (e) {
+      alert('Error generando el informe: ' + e.message)
+    } finally {
+      setGenerando(null)
+    }
+  }
+
+  const handleEditarPlan = async (grupo) => {
+    const plan = await ensurePlan(grupo.auditoria_codigo)
+    setEditingPlan({ grupo, plan })
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -446,6 +633,23 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload }) {
                 })}
               </div>
 
+              {/* Acciones del plan: editar metadatos + descargar informe */}
+              <div style={{ display:'flex', gap:5, flexShrink:0 }} onClick={e => e.stopPropagation()}>
+                {canWrite && grupo.auditoria_codigo && (
+                  <button onClick={() => handleEditarPlan(grupo)} className="btn-ghost flex items-center gap-1"
+                    style={{ padding:'0.25rem 0.5rem', fontSize:'0.62rem' }} title="Datos del plan (cabecera del informe)">
+                    <Pencil size={11} /> Datos del plan
+                  </button>
+                )}
+                <button onClick={() => handleDescargarInforme(grupo)}
+                  disabled={generando === (grupo.auditoria_codigo || `__sin__${grupo.sede_nombre}`)}
+                  className="btn-ghost flex items-center gap-1" style={{ padding:'0.25rem 0.5rem', fontSize:'0.62rem' }}
+                  title="Descargar informe PDF de avance y evidencia">
+                  <FileDown size={11} />
+                  {generando === (grupo.auditoria_codigo || `__sin__${grupo.sede_nombre}`) ? 'Generando...' : 'Informe PDF'}
+                </button>
+              </div>
+
               <span style={{ color:'var(--text-dim)', fontSize:'0.7rem', flexShrink:0 }}>{expanded ? '▲' : '▼'}</span>
             </div>
 
@@ -500,14 +704,29 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload }) {
           c={detail} canWrite={canWrite}
           onEstadoChange={async (id, estado) => { await onEstadoChange(id, estado); onReload() }}
           onClose={() => setDetail(null)}
+          onReload={onReload}
+        />
+      )}
+
+      {editingPlan && (
+        <CapaPlanForm
+          auditoriaCodigo={editingPlan.grupo.auditoria_codigo}
+          sedeId={editingPlan.grupo.sede_id}
+          sedeNombre={editingPlan.grupo.sede_nombre}
+          plan={editingPlan.plan}
+          onClose={() => setEditingPlan(null)}
+          onSaved={(saved) => {
+            setPlanes(prev => ({ ...prev, [editingPlan.grupo.auditoria_codigo]: saved }))
+            setEditingPlan(null)
+          }}
         />
       )}
     </div>
   )
 }
 
-export default function CAPA() {
-  const { rol, sedeIds, allowedSedeIds } = useAuth()
+export default function CAPA({ focusId }) {
+  const { allowedSedeIds, can } = useAuth()
   const [items, setItems]     = useState([])
   const [ncs, setNcs]         = useState([])
   const [sedes, setSedes]     = useState([])
@@ -534,28 +753,33 @@ export default function CAPA() {
           sede_id: filtroSede || undefined,
           auditoria_codigo: filtroAuditoria || undefined,
         }),
-        getNoConformidades({ estado: 'Abierta' }),
+        getNoConformidades({ estado: 'Abierta', sedeIds: allowedSedeIds || undefined }),
         getSedes(allowedSedeIds),
       ])
-      const dataFilt = (rol === 'encargado' && sedeIds.length > 0)
-        ? data.filter(item => sedeIds.includes(item.sede_id))
+      const hasSedeScope = Array.isArray(allowedSedeIds) && allowedSedeIds.length > 0
+      const dataFilt = hasSedeScope
+        ? data.filter(item => allowedSedeIds.includes(item.sede_id))
         : data
-      const sedesFilt = (rol === 'encargado' && sedeIds.length > 0)
-        ? sedesData.filter(s => sedeIds.includes(s.id))
+      const sedesFilt = hasSedeScope
+        ? sedesData.filter(s => allowedSedeIds.includes(s.id))
         : sedesData
       setItems(dataFilt); setNcs(ncData); setSedes(sedesFilt)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [filtroTipo, filtroEstado, filtroResp, filtroSede, filtroAuditoria, rol, sedeIds, allowedSedeIds])
+  }, [filtroTipo, filtroEstado, filtroResp, filtroSede, filtroAuditoria, allowedSedeIds])
 
   useEffect(() => { load() }, [load])
 
-  const canWrite = rol === 'admin' || rol === 'editor' || rol === 'encargado'
+  // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
+  useEffect(() => { if (allowedSedeIds?.length === 1) setFiltroSede(String(allowedSedeIds[0])) }, [allowedSedeIds])
+
+  const canWrite = can('calidad', 'manage')
 
   const saveEstado = async (id, nuevoEstado) => {
     await updateCapa(id, {
       estado: nuevoEstado,
       fecha_cierre: nuevoEstado === 'Completada' || nuevoEstado === 'Verificada' ? format(new Date(), 'yyyy-MM-dd') : null,
+      eficacia_verificada: nuevoEstado === 'Verificada',
     })
     setEditingId(null); load()
   }
@@ -570,21 +794,17 @@ export default function CAPA() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 fade-in">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-title font-bold text-lg" style={{ color:'var(--text)' }}>CAPA</h1>
-          <p className="font-metric text-xs mt-0.5" style={{ color:'var(--text-dim)' }}>
-            Acciones Correctivas y Preventivas · ISO 9001
-            {filtroAuditoria && (
-              <span style={{ color:'var(--phosphor)', marginLeft:6 }}>— {filtroAuditoria}</span>
-            )}
-            {!filtroAuditoria && filtroSede && sedes.find(s => String(s.id) === String(filtroSede)) && (
-              <span style={{ color:'var(--phosphor)', marginLeft:6 }}>
-                — {sedes.find(s => String(s.id) === String(filtroSede))?.nombre}
-              </span>
-            )}
-          </p>
-        </div>
+      <PageHeader title="CAPA" subtitle={<>
+        Acciones Correctivas y Preventivas · ISO 9001
+        {filtroAuditoria && (
+          <span style={{ color:'var(--phosphor)', marginLeft:6 }}>— {filtroAuditoria}</span>
+        )}
+        {!filtroAuditoria && filtroSede && sedes.find(s => String(s.id) === String(filtroSede)) && (
+          <span style={{ color:'var(--phosphor)', marginLeft:6 }}>
+            — {sedes.find(s => String(s.id) === String(filtroSede))?.nombre}
+          </span>
+        )}
+      </>}>
         <div className="flex gap-2 flex-wrap">
           <div style={{ display:'flex', border:'1px solid rgba(255,255,255,0.1)', borderRadius:3, overflow:'hidden' }}>
             {[
@@ -610,7 +830,7 @@ export default function CAPA() {
             </button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {!loading && (
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -627,7 +847,7 @@ export default function CAPA() {
       {/* Filtros */}
       <div className="glass rounded p-3 flex flex-wrap gap-3" style={{ borderRadius:'3px' }}>
         <div>
-          <label className="font-metric text-xs tracking-wider uppercase mb-1 block" style={{ color:'var(--phosphor)', opacity:0.8 }}>Auditoría</label>
+          <label className="font-metric text-xs tracking-wider uppercase mb-1 block" style={{ color:'var(--phosphor)', opacity:0.8 }}>Auditoría / Plan CAPA</label>
           <select className="input-dark" style={{ minWidth:170 }} value={filtroAuditoria} onChange={e => setFiltroAuditoria(e.target.value)}>
             <option value="">Todas</option>
             {auditorias.map(a => <option key={a} value={a}>{a}</option>)}
@@ -667,9 +887,9 @@ export default function CAPA() {
           <div className="w-7 h-7 rounded-full border-2 animate-spin" style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
         </div>
       ) : vista === 'auditoria' ? (
-        <CapaAuditoria items={items} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} />
+        <CapaAuditoria items={items} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} />
       ) : vista === 'kanban' ? (
-        <CapaKanban items={items} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} />
+        <CapaKanban items={items} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} />
       ) : (
         <div className="glass rounded overflow-hidden" style={{ borderRadius:'3px' }}>
           <div className="overflow-x-auto">

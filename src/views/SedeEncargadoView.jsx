@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getRegistrosHoy, getRegistrosBySede, getEscalamientosItems, getTareas, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
-import { fmtFecha } from '../lib/dateUtils'
+import { fmtFecha, fmtFechaReporte, fmtHoraReporte } from '../lib/dateUtils'
 import RegistroModal from '../components/RegistroModal'
 import { RefreshCw, FileText, AlertTriangle, CheckSquare, TrendingUp } from 'lucide-react'
 
@@ -138,7 +138,7 @@ export default function SedeEncargadoView({ onNavigate }) {
                       Turno {r.turno}
                     </p>
                     <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', marginTop:2 }}>
-                      {r.reportante} · {r.fecha_reporte ? new Date(r.fecha_reporte).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }) : '—'}
+                      {r.reportante} · {fmtHoraReporte(r.fecha_reporte)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -270,7 +270,7 @@ export default function SedeEncargadoView({ onNavigate }) {
                   const chip = ESTADO_CHIP[r.estado_general] || { cls:'chip-gray' }
                   return (
                     <tr key={r.id} className="cursor-pointer hover:opacity-80" onClick={() => setSelRegistro(r)}>
-                      <td style={{ color:'var(--text)', fontSize:'0.75rem' }}>{fmtFecha(r.fecha_reporte)}</td>
+                      <td style={{ color:'var(--text)', fontSize:'0.75rem' }}>{fmtFechaReporte(r.fecha_reporte)}</td>
                       <td style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{r.turno}</td>
                       <td><span className={`chip ${chip.cls}`} style={{ fontSize:'0.58rem' }}>{r.estado_general}</span></td>
                       <td style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{r.reportante}</td>

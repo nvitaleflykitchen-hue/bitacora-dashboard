@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { UserCircle, Plus, X, Edit2, Trash2, Phone, Mail, Clock, Shield, Save } from 'lucide-react'
+import PageHeader from '../../components/PageHeader'
 
 const CATEGORIAS = [
   'Edificio','Equipos grandes','Equipos medianos','Equipos chicos',
-  'Vehiculos','Cuchillas','Matafuegos','Insumos','General'
+  'Vehiculos','Cuchillas','Matafuegos','Insumos','RRHH','General'
 ]
 const NIVELES = [
   { value:1, label:'1er Nivel', desc:'Responsable directo', color:'#39ff14' },
@@ -248,10 +249,15 @@ function ReglasTab({ responsables }) {
   )
 }
 
-export default function MntResponsables() {
+export default function MntResponsables({ focusId }) {
   const [responsables, setResponsables] = useState([])
   const [loading, setLoading]           = useState(true)
   const [modal, setModal]               = useState(null)
+  useEffect(() => {
+    if (!focusId || loading) return
+    const target = responsables.find(item => String(item.id) === String(focusId))
+    if (target) setModal(target)
+  }, [focusId, loading, responsables])
   const [tab, setTab]                   = useState('fichas')
 
   const load = async () => {
@@ -283,15 +289,11 @@ export default function MntResponsables() {
       {modal && <ResponsableModal responsable={modal==='new'?null:modal} onClose={()=>setModal(null)} onSave={()=>{ setModal(null); load() }}/>}
 
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div>
-          <h1 className='font-title' style={{ color:'var(--text)', fontWeight:800, fontSize:'1.4rem' }}>Responsables</h1>
-          <p style={{ fontSize:'0.62rem', color:'rgba(57,255,20,0.5)', letterSpacing:'0.1em', fontFamily:'monospace' }}>MATRIZ DE RESPONSABILIDADES · ISO 9001 CL. 5.3</p>
-        </div>
+      <PageHeader title="Responsables" subtitle="Matriz de responsabilidades · ISO 9001 cl. 5.3">
         <button onClick={()=>setModal('new')} style={{ background:'#39ff14', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.55rem 1.1rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
           <Plus size={14}/>Nuevo Responsable
         </button>
-      </div>
+      </PageHeader>
 
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>

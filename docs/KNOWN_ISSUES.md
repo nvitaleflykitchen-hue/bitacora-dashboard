@@ -232,6 +232,39 @@ FROM mantenimiento.tickets;
 
 **Estado:** build exitoso y cero tipos incompatibles restantes en `src/`. Pendiente deploy y repetición del alta QR. La captura confirma que navegación, login, ficha, documentos y scroll mobile ya alcanzan correctamente el formulario.
 
+### 2.13 Compras: `bitacora.perfil_permisos` vacía bloquea a `grupo`/`encargado` para cerrar el flujo de compras (2026-06-22)
+
+**Qué pasa:** el trigger `bitacora_private.protect_requerimiento_after_send()` (sobre `bitacora.requerimientos`) exige, para avanzar un requerimiento más allá del estado "Enviado" (Enviado→En compra, En compra→Recibido, Recibido→Cumplido como no-solicitante, o para modificar `comprador_id`/`proveedor_seleccionado`/`cotizacion_estado`/etc.), que el usuario sea `admin`/`editor` **o** tenga una fila en `bitacora.perfil_permisos` con `accion` en `manage`/`supervise` para el módulo `compras`.
+
+`bitacora.perfil_permisos` existe pero tiene **0 filas** (verificado en vivo), y no hay ninguna pantalla en `Usuarios.jsx` ni en ningún otro lugar de la app para crear esas filas.
+
+Mientras tanto, el frontend (`src/lib/access.js`, función `canWrite()`) le da `compras/manage` a los roles `admin`, `editor`, `grupo` **y** `encargado` por igual, y `Requerimientos.jsx` les muestra los mismos botones de gestión a los cuatro. Las transiciones tempranas (Pendiente→Aprobado/Observado/Rechazado/Cancelado y el envío Aprobado→Enviado) sí funcionan para `grupo`/`encargado`, porque ahí el trigger valida con `is_purchase_approver()`, que sí incluye esos dos roles.
+
+**Impacto:** hoy, si un usuario `grupo` o `encargado` intenta avanzar un requerimiento ya enviado (marcarlo "Recibido", confirmarlo "Cumplido", asignar comprador/proveedor), la base rechaza la operación con `Solo Compras puede avanzar esta etapa` — un error crudo de Postgres, sin mensaje amigable en la UI. En la práctica, **solo las 4 cuentas `admin` pueden hoy completar el circuito de compras de punta a punta**; el resto ve botones que no van a funcionar.
+
+**Verificado:** lectura en vivo de `pg_trigger`/`pg_proc` (definición completa del trigger), conteo de filas de `perfil_permisos` (0), `git diff`/lectura de `Usuarios.jsx` (sin UI de gestión de esa tabla) y de `access.js`/`Requerimientos.jsx` (qué roles ven qué botones).
+
+**Recomendación:** decisión pendiente del usuario, no solo código — ver BACKLOG.md, pregunta abierta. Opciones: (a) construir una pantalla para dar de alta filas en `perfil_permisos` (lo más alineado con el diseño que ya está en la base), (b) aflojar el trigger para que acepte también a `is_purchase_approver()`-equivalente (`grupo`/`encargado`) en las etapas posteriores a "Enviado", o (c) combinar ambas. Cualquier cambio de trigger/política se presenta como SQL para aprobación explícita antes de aplicarse — no se tocó nada en la base para este hallazgo.
+
+---
+
+### 2.14 Mobile cubre 8 de los 33 módulos de escritorio — CAPA y Personal/RRHH no tienen ninguna vista mobile (2026-06-22)
+
+**Qué pasa:** se confirmó vía código (`src/mobile/MobileApp.jsx`, nav fija de 7 pestañas: Inicio, Tareas, Sedes, Escalam., Checklist, Tickets, Compras) contra el inventario completo de vistas de escritorio (`src/views/` + `src/views/mantenimiento/`, 33 archivos) que mobile **no tiene equivalente para**:
+
+- **CAPA / Calidad** (`CAPA.jsx`, `CalidadHub.jsx`, `NoConformidades.jsx`) — cero acceso desde mobile a planes de acción correctiva ni no conformidades.
+- **Personal/RRHH** (`EquipoView.jsx`, `OrganigramaView.jsx`) — cero acceso desde mobile a legajos, evaluaciones u organigrama.
+- **Todo el back-office de Mantenimiento** salvo Tickets: `MntActivos`, `MntPlanes`, `MntInsumos`, `MntKanban`, `MntMatafuegos`, `MntProveedores`, `MntResponsables`, `MntVehiculos`, `MntFlotaGestion`, `MntDashboard`, `AuditoriaView` (11 vistas) — mobile solo tiene `MobileTickets`.
+- **Indicadores, DashboardGlobal, Calendario, SedeFicha, SedeResponsables, Usuarios** — sin vista mobile.
+
+**Confirmado en el routing (no es solo ausencia de archivo):** `App.jsx` decide escritorio vs. mobile únicamente por ancho de viewport (`window.innerWidth < 768`, línea 95-101), sin distinción de rol ni opción de "ver versión completa". Esto significa que **un `admin` que abre la app desde el celular también queda limitado a las 7 pestañas** — no hay forma de escapar a la vista de escritorio desde un dispositivo angosto.
+
+**Impacto:** cualquier usuario que opere solo desde mobile (típicamente `encargado`/`grupo`/`sede` en planta) no puede hoy ver ni actuar sobre CAPA, no conformidades, ficha de personal, ni la mayoría del módulo de Mantenimiento — debe pedirle a alguien con acceso a escritorio que lo haga por él. Esto coincide con lo reportado por el usuario.
+
+**Verificado:** lectura de `src/mobile/MobileApp.jsx` (nav real) y de `App.jsx` (lógica `isMobile`), contra el listado de archivos de `src/views/` y `src/views/mantenimiento/`.
+
+**Recomendación:** no es un bug de una línea — es alcance de producto pendiente. Antes de construir nada, decidir con el usuario el orden de prioridad (ver BACKLOG.md, ítem nuevo). Construir cada vista mobile nueva reutilizando `queries.js` (mismo patrón que `MobileTickets.jsx`/`MobileRequerimientos.jsx`) para no duplicar lógica de negocio.
+
 ---
 
 ## 3. 🟡 MEDIO
@@ -295,6 +328,83 @@ Ya documentado en BUSINESS_RULES.md §1.5. El flujo actual (`Usuarios.jsx`) siem
 
 ---
 
+### 3.9 Mobile usaba dominios incompatibles con PostgreSQL — ✅ corregido localmente; constraint de origen pendiente (2026-06-21)
+
+**Verificación estática y contra producción:** `MobileReporte.jsx` ofrecía turnos `Mañana/Tarde/Noche`, niveles `Alto/Muy alto` y enviaba `origen_form='app'`. Los constraints reales de `bitacora.registros` aceptan únicamente `Apertura/Cierre/Único`, `Bajo/Normal/Pico` y, para origen, `Comedores/Hospitales`. `MobileTareas.jsx` intentaba guardar estados minúsculos (`pendiente/en_curso/resuelto`) aunque `bitacora.tareas` exige `Pendiente/En proceso/Resuelto/Cancelado`.
+
+**Fix local:** los dominios de reportes y tareas ahora viven en `src/lib/operationalDomains.js`; mobile consume esos valores, deriva el origen desde el grupo real de la sede y usa una clase única de scroll táctil. Se agregaron pruebas unitarias del contrato.
+
+**Estado:** corregido en producción el 2026-06-21 mediante la migración `expand_registros_operational_origins_20260621`. El CHECK admite los seis grupos actuales y `RESTAURANTES` quedó normalizado como `Restaurantes`; los 341 registros existentes se conservaron.
+
+---
+
+### 3.10 Push preparado en código, función ya desplegada — falta configurar secretos VAPID (2026-06-21, actualizado 2026-06-22)
+
+**Estado a 2026-06-22:** la Edge Function `send-priority-notification` **ya está desplegada y ACTIVE** en `mixyhfdlzjarvszinytk` (junto con `invite-user`, `admin-user-actions`, `bitacora-ingest`). El código no cambió respecto al del repo — se subió tal cual, sin tocar esquema ni datos. Todos los llamadores (`notifyHighPriority()` en `src/lib/queries.js` y `MntVehiculos.jsx`) ya estaban conectados desde antes, así que no hace falta ningún cambio de código adicional.
+
+**Lo único que falta para que funcione de punta a punta:**
+1. Generar par VAPID — ✅ hecho 2026-06-22 (`scripts/generate-vapid.mjs`). Las claves quedaron en `.env.vapid.local` (gitignored, no se pegaron en el chat) con instrucciones de dónde pegar cada una.
+2. Cargar `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` como secretos de Edge Functions en el dashboard de Supabase — **pendiente, requiere acción manual del usuario** (no hay herramienta para setear secretos vía API en esta sesión).
+3. Cargar `VITE_VAPID_PUBLIC_KEY` en Vercel (Production + Preview) — **pendiente, requiere acción manual del usuario** (mismo problema de scope de token ya documentado en §2.9/BACKLOG #24).
+4. Redeploy (`DEPLOY.bat`) para que el build tome la nueva env var.
+5. Probar "Activar notificaciones" en un dispositivo real y disparar una alerta de prioridad alta controlada.
+
+**Hallazgo adicional (2026-06-22):** el "Centro de Notificaciones" in-app (campanita, `NotificationCenter.jsx`) depende de la misma tabla `bitacora.notificaciones` que escribe esta función — hasta ahora estaba vacía porque nada escribía ahí. Una vez configurados los secretos, la campanita también empieza a poblarse sola; no necesita cambio de código.
+
+**Impacto:** con los secretos sin configurar, el botón "Activar notificaciones" sigue sin completar el flujo (la función responde error "Faltan secretos VAPID"). Es la única pieza que falta — no hay más código pendiente.
+
+**Recomendación:** completar los pasos 2-5 de arriba (manuales, en los dashboards de Supabase y Vercel) y avisar para verificar juntos en un dispositivo real.
+
+---
+
+### 3.11 Gobernanza: 3 archivos "REVISIÓN — NO EJECUTAR" ya estaban aplicados en producción (2026-06-22)
+
+**Qué pasa:** el repo tiene 3 archivos SQL con el banner "REVIEW ONLY — NO EJECUTAR SIN APROBACIÓN EXPLÍCITA DEL USUARIO" (`supabase/security/20260620_access_hardening_REVIEW.sql`, `supabase/security/20260620_compras_workflow_REVIEW.sql`, `supabase/migrations/20260621_expand_registros_operational_origins_REVIEW.sql`). Se verificó contra la base real (`mixyhfdlzjarvszinytk`) que **los tres ya están corriendo en producción**: tablas (`perfil_permisos`, `compras_rutas`), columnas nuevas en `requerimientos`, triggers (`protect_requerimiento_after_send`, `set_requerimiento_solicitante`), las 3 políticas RLS nuevas de `requerimientos`, y el constraint `registros_origen_form_check` coinciden exactamente con lo que definen los archivos.
+
+El tercer archivo (`20260621_...`) es honesto al respecto — su propio comentario de cabecera dice "APLICADA 2026-06-21". Los otros dos siguen mostrando el banner de "no ejecutar" pese a estar igual de aplicados.
+
+**Impacto:** no se puede confiar en el banner "REVIEW ONLY" de un archivo para saber si ya corrió contra la base — al menos dos de tres no reflejan su estado real. Si en el futuro se asume que un archivo REVIEW está pendiente y se reaplica sin verificar primero, hay riesgo de error (doble aplicación, conflicto con cambios ya hechos a mano).
+
+**Recomendación:** confirmar con el usuario quién aplicó estos tres scripts y cuándo (¿Codex/Antigravity tuvieron acceso directo a Supabase, o fue el usuario?). De acá en adelante, antes de tratar cualquier archivo `*_REVIEW.sql` como pendiente, verificar primero contra la base en vivo (no asumir por el nombre/banner del archivo).
+
+---
+
+### 3.12 El formulario "Nuevo Reporte" quedaba transparente sobre la vista activa — ✅ corregido localmente (2026-06-28)
+
+**Reportado por el usuario** con una captura real del formulario abierto sobre el Kanban. El contenedor de escritorio y la raíz mobile usaban `background: var(--bg)`, pero `--bg` no existe en `src/index.css`; el navegador descartaba esa declaración y dejaba ver el contenido del fondo a través del formulario.
+
+**Fix local:** se reemplazó la variable inexistente por `var(--abyss)`, se definió un fondo opaco en la raíz de `MobileReporte`, y se reforzaron el overlay, el borde y la sombra del modal de escritorio.
+
+**Estado:** corregido localmente. Pendiente deploy y verificación visual en producción.
+
+---
+
+### 3.13 La sincronización de Google Forms dejó novedades fuera de la app — ✅ corregido (2026-07-02)
+
+**Qué pasó:** las planillas de Hospitales/Aeropuertos y Comedores continuaron recibiendo respuestas, pero el proceso externo que debía copiarlas a `bitacora.registros` dejó huecos. La app no consulta Google Sheets: solo muestra las filas que ya existen en Supabase.
+
+**Verificación empírica:** se exportaron completas las dos planillas y se reenviaron sus 585 respuestas al Edge Function idempotente `bitacora-ingest`. La función omitió 494 filas que ya existían e insertó 91 filas faltantes, sin errores. Una segunda pasada devolvió 585 filas omitidas y 0 insertadas, confirmando que todas las respuestas quedaron representadas por las constraints únicas de `registros`. `bitacora.errores_ingesta` quedó con 0 errores.
+
+**Estado actual:** los datos faltantes quedaron recuperados en producción. La respuesta más reciente de Hospitales es del 02/07/2026 02:13 y la de Comedores del 01/07/2026 22:39.
+
+**Causa confirmada:** los dos activadores instalables `Al enviar el formulario` habían sido eliminados. El historial mostró que `onFormSubmitHospitales` se ejecutó correctamente por última vez el 30/06/2026 01:48 y después no volvió a invocarse, aunque la planilla siguió recibiendo respuestas. En Comedores tampoco existía el activador; solo quedaba el reporte mensual.
+
+**Fix aplicado:** se recrearon en Apps Script los activadores `Desde la hoja de cálculo → Al enviar el formulario` para `onFormSubmitHospitales` y `onFormSubmitComedores`. Se verificó que ambos figuran activos en sus respectivos proyectos. No se generó una respuesta ficticia para probarlos porque no existe staging y el formulario/base son de producción.
+
+**Recomendación:** mientras Google Forms siga habilitado, mantener un trigger instalable `onFormSubmit` por cada planilla, registrar respuestas HTTP distintas de `{ ok: true }` y ejecutar una reconciliación diaria idempotente como red de seguridad. Si el corte definitivo hacia la carga directa en la app ya fue aprobado, cerrar los formularios para evitar que los usuarios sigan enviando respuestas a un canal sin sincronización.
+
+---
+
+### 3.14 Las fechas sin hora del módulo Equipo se mostraban un día antes — ✅ corregido localmente (2026-07-02)
+
+**Qué pasaba:** las columnas Postgres de tipo `date` llegan al frontend como `yyyy-mm-dd`. `EquipoView.jsx` y `MobilePersonal.jsx` las convertían con `new Date(valor).toLocaleDateString('es-AR')`; JavaScript interpreta ese formato como medianoche UTC y, en Argentina (UTC-3), lo mostraba como el día anterior. Por ejemplo, el formulario editaba `01/07/2026` pero la tarjeta mostraba `30/06/2026`.
+
+**Fix local:** escritorio y mobile ahora usan `fmtFechaLarga()` de `src/lib/dateUtils.js`, que extrae las partes UTC sin desplazar el día. Se corrigieron fecha de ingreso, evaluaciones, historial y logros.
+
+**Verificación:** prueba automatizada para `2026-07-01` y `2026-07-01T00:00:00.000Z`; suite completa 25/25 y `npm run build` exitoso.
+
+---
+
 ## 4. ⚪ BAJO
 
 ### 4.1 10 funciones trigger con `EXECUTE` otorgado a `anon`/`authenticated`, pero inertes
@@ -337,6 +447,8 @@ Ya documentado en SETUP.md §2 y REPOSITORY_AUDIT.md.
 | 2.10 | `adjuntos.entity_id` bigint rechazaba UUID de tickets/activos | 🟠 Alto | Empírica + verificación de columna | ✅ Corregido en Supabase; falta deploy/prueba final |
 | 2.11 | QR de activo no imprimía imagen y el flujo mobile/ticket usaba UUID incorrectamente | 🟠 Alto | Empírica (captura) + estática | ✅ Corregido localmente; falta deploy/prueba física |
 | 2.12 | QR ofrecía tipos de ticket rechazados por el CHECK | 🟠 Alto | Empírica (captura) + constraint documentado | ✅ Corregido localmente; falta deploy/prueba final |
+| 2.13 | Compras: `perfil_permisos` vacía bloquea a `grupo`/`encargado` pasado "Enviado" | 🟠 Alto | Estática (trigger + conteo en vivo) | Medio — requiere decisión del usuario (UI de permisos vs. aflojar trigger) |
+| 2.14 | Mobile cubre 8/33 vistas de escritorio — sin CAPA, sin Personal/RRHH, sin back-office de Mantenimiento | 🟠 Alto | Estática (nav real de `MobileApp.jsx` vs. inventario de `src/views/`) | Alto — feature work, no fix puntual; requiere priorización del usuario |
 | 3.1 | Sidebar no oculta por rol | 🟡 Medio | Estática (código), no auditado vista por vista | Medio (requiere auditoría adicional) |
 | 3.2 | RBAC sin equivalente sistemático en RLS | 🟡 Medio | Estática | Alto (rediseño transversal) |
 | 3.3 | `bitacora-ingest` sin autenticación | 🟡 Medio | Estática (código) | Bajo (agregar secreto compartido o JWT) |
@@ -345,6 +457,10 @@ Ya documentado en SETUP.md §2 y REPOSITORY_AUDIT.md.
 | 3.6 | Tareas muestra códigos de categoría en vez de etiquetas humanas | 🟡 Medio | Empírica (captura real) + estática | ✅ Corregido localmente; falta deploy |
 | 3.7 | Adjuntos del ticket vacío por props incorrectas | 🟡 Medio | Estática (código) | ✅ Corregido localmente; falta deploy/prueba real |
 | 3.8 | Tickets y Kanban tenían editores diferentes para la misma fila | 🟡 Medio | Empírica (capturas) + estática | ✅ Corregido localmente; falta deploy |
+| 3.11 | 3 archivos "REVISIÓN — NO EJECUTAR" ya aplicados en producción sin registro de aprobación | 🟡 Medio | Estática (comparación schema real vs. archivo) | Bajo — requiere respuesta del usuario, no código |
+| 3.12 | "Nuevo Reporte" transparente por variable CSS inexistente | 🟡 Medio | Empírica (captura real) + estática | ✅ Corregido localmente; falta deploy |
+| 3.13 | Google Forms siguió recibiendo respuestas sin sincronizarlas con la app | 🟡 Medio | Empírica (reconciliación completa + historial/activadores de Apps Script) | ✅ 91 filas recuperadas y ambos activadores recreados |
+| 3.14 | Fechas `date` de Equipo se mostraban un día antes por conversión UTC→local | 🟡 Medio | Empírica (capturas) + prueba automatizada | ✅ Corregido localmente en desktop/mobile; falta deploy |
 | 4.1–4.5 | Higiene de repo/infraestructura | ⚪ Bajo | Estática | Bajo |
 
 ## 6. Lo que este documento no cubre
