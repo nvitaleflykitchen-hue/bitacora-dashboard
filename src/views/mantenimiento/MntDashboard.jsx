@@ -3,13 +3,12 @@ import { useAuth } from '../../lib/auth'
 import { getKPIsMantenimiento, getTickets, getSedes } from '../../lib/queries'
 import PageHeader from '../../components/PageHeader'
 
-const ESTADO_COLOR = { abierto:'#F97316', en_progreso:'#3B82F6', aprobado:'#F59E0B', resuelto:'#39FF14', rechazado:'#6B7280' }
-const PRIORIDAD_COLOR = { critica:'#FF2A2A', alta:'#F97316', media:'#F59E0B', baja:'#39FF14' }
+import { TICKET_ESTADO_COLOR as ESTADO_COLOR, PRIORIDAD_COLOR } from '../../lib/estados'
 
 function KPI({ label, value, sub, color, small }) {
   return (
     <div style={{ background:'var(--surface)', borderRadius:3, padding:'1rem 1.2rem', flex:1, minWidth:120 }}>
-      <p style={{ color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.35rem' }}>{label}</p>
+      <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.35rem' }}>{label}</p>
       <p style={{ color:color||'var(--text)', fontWeight:800, fontSize:small?'1.5rem':'2rem', lineHeight:1 }}>{value??'—'}</p>
       {sub && <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginTop:3 }}>{sub}</p>}
     </div>
@@ -185,7 +184,7 @@ export default function MntDashboard({ onNavigate }) {
                   <span style={{ width:6, height:6, borderRadius:'50%', background:ESTADO_COLOR[estado]||'#555' }} />
                   <span style={{ color:'var(--text)', fontSize:'0.78rem', fontWeight:700 }}>{count}</span>
                   <span style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>{estado}</span>
-                  <span style={{ color:'var(--text-dim)', fontSize:'0.58rem' }}>({Math.round(count/tickets.length*100)}%)</span>
+                  <span style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>({Math.round(count/tickets.length*100)}%)</span>
                 </div>
               ))}
             </div>
@@ -207,7 +206,7 @@ export default function MntDashboard({ onNavigate }) {
             <table className="table-dark" style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.78rem' }}>
               <thead><tr style={{ borderBottom:'1px solid rgba(57,255,20,0.05)' }}>
                 {['Responsable','Total','Resueltos','Abiertos','MTTR','Vol.'].map(h=>(
-                  <th key={h} style={{ padding:'0.45rem 1rem', color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:600, textAlign:'left' }}>{h}</th>
+                  <th key={h} style={{ padding:'0.45rem 1rem', color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:600, textAlign:'left' }}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>
@@ -228,7 +227,7 @@ export default function MntDashboard({ onNavigate }) {
             <table className="table-dark" style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.78rem' }}>
               <thead><tr style={{ borderBottom:'1px solid rgba(57,255,20,0.05)' }}>
                 {['Tipo','Total','Resueltos','% Res.','Vol.'].map(h=>(
-                  <th key={h} style={{ padding:'0.45rem 1rem', color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:600, textAlign:'left' }}>{h}</th>
+                  <th key={h} style={{ padding:'0.45rem 1rem', color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:600, textAlign:'left' }}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>
@@ -248,7 +247,7 @@ export default function MntDashboard({ onNavigate }) {
             <table className="table-dark" style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.78rem' }}>
               <thead><tr style={{ borderBottom:'1px solid rgba(57,255,20,0.05)' }}>
                 {['Sede','Total','Pendientes','Vol.'].map(h=>(
-                  <th key={h} style={{ padding:'0.45rem 1rem', color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:600, textAlign:'left' }}>{h}</th>
+                  <th key={h} style={{ padding:'0.45rem 1rem', color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:600, textAlign:'left' }}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>

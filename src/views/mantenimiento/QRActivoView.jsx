@@ -6,9 +6,9 @@ import { useAuth } from '../../lib/auth'
 import { toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
 
-const ESTADO_COLOR  = { operativo:'#39FF14', en_reparacion:'#F59E0B', baja:'#FF2A2A' }
-const TICKET_COLOR  = { abierto:'#F97316', en_progreso:'#3B82F6', aprobado:'#F59E0B', resuelto:'#39FF14', rechazado:'#6B7280' }
-const PRIORIDADES   = ['baja','media','alta','critica']
+import {
+  ACTIVO_ESTADO_COLOR as ESTADO_COLOR, TICKET_ESTADO_COLOR as TICKET_COLOR, PRIORIDADES,
+} from '../../lib/estados'
 const TIPOS_VISITA  = ['inspeccion','mantenimiento','reparacion','entrega','otro']
 
 function fmtFecha(iso) {
@@ -129,7 +129,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
         <button onClick={()=>onNavigate('mntActivos')}
           style={{ background:'none', border:'none', color:'#39FF14', cursor:'pointer', fontSize:'1.1rem', padding:0 }}>←</button>
         <div>
-          <p style={{ color:'rgba(57,255,20,0.5)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase' }}>BITÁCORA IN SITU · FK</p>
+          <p style={{ color:'rgba(57,255,20,0.5)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase' }}>BITÁCORA IN SITU · FK</p>
           <p style={{ color:'#e2e8f0', fontWeight:700, fontSize:'0.9rem' }}>Detalle de Activo</p>
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
             ['N° Serie',   activo.numero_serie || '—'],
           ].map(([k,v]) => (
             <div key={k}>
-              <p style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.55rem', textTransform:'uppercase', letterSpacing:'0.08em' }}>{k}</p>
+              <p style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em' }}>{k}</p>
               <p style={{ color:'#e2e8f0', fontSize:'0.8rem', marginTop:1 }}>{v}</p>
             </div>
           ))}
@@ -212,18 +212,18 @@ export default function QRActivoView({ activoId, onNavigate }) {
         <div style={{ margin:'0 1rem 1rem', background:'#151520', borderRadius:3, border:'1px solid rgba(59,130,246,0.2)', padding:'1.25rem' }}>
           <p style={{ color:'#3B82F6', fontWeight:700, marginBottom:'1rem', fontSize:'0.9rem' }}>📋 Registrar Visita — {activo.nombre}</p>
           <div style={{ marginBottom:'0.85rem' }}>
-            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Tipo de visita</label>
+            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Tipo de visita</label>
             <select value={visitaForm.tipo_visita} onChange={e=>setV('tipo_visita',e.target.value)} style={INPUT}>
               {TIPOS_VISITA.map(t=><option key={t} value={t} style={{ background:'#1a1a2e' }}>{t}</option>)}
             </select>
           </div>
           <div style={{ marginBottom:'0.85rem' }}>
-            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Tu nombre (opcional)</label>
+            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Tu nombre (opcional)</label>
             <input value={visitaForm.visitante} onChange={e=>setV('visitante',e.target.value)}
               placeholder="Nombre del visitante..." style={INPUT} />
           </div>
           <div style={{ marginBottom:'1rem' }}>
-            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Observación (opcional)</label>
+            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Observación (opcional)</label>
             <textarea value={visitaForm.observacion} onChange={e=>setV('observacion',e.target.value)}
               rows={3} placeholder="Notas de la visita..."
               style={{ ...INPUT, resize:'none' }} />
@@ -246,19 +246,19 @@ export default function QRActivoView({ activoId, onNavigate }) {
         <div style={{ margin:'0 1rem 1rem', background:'#151520', borderRadius:3, border:'1px solid rgba(57,255,20,0.06)', padding:'1.25rem' }}>
           <p style={{ color:'#e2e8f0', fontWeight:700, marginBottom:'1rem' }}>Nuevo Ticket — {activo.nombre}</p>
           <div style={{ marginBottom:'0.85rem' }}>
-            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Tipo</label>
+            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Tipo</label>
             <select value={form.tipo} onChange={e=>set('tipo',e.target.value)} style={INPUT}>
               {TICKET_TIPOS_VALIDOS.map(t=><option key={t} value={t} style={{ background:'#1a1a2e' }}>{t}</option>)}
             </select>
           </div>
           <div style={{ marginBottom:'0.85rem' }}>
-            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Prioridad</label>
+            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Prioridad</label>
             <select value={form.prioridad} onChange={e=>set('prioridad',e.target.value)} style={INPUT}>
               {PRIORIDADES.map(p=><option key={p} value={p} style={{ background:'#1a1a2e' }}>{p}</option>)}
             </select>
           </div>
           <div style={{ marginBottom:'1rem' }}>
-            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Descripción del problema *</label>
+            <label style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.4rem' }}>Descripción del problema *</label>
             <textarea value={form.descripcion} onChange={e=>set('descripcion',e.target.value)}
               rows={4} placeholder="Ej: La heladera no enfría correctamente"
               style={{ ...INPUT, resize:'none' }} required />
@@ -291,7 +291,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
               </div>
               <div style={{ textAlign:'right', flexShrink:0, marginLeft:8 }}>
                 <p style={{ color:'rgba(59,130,246,0.7)', fontSize:'0.62rem' }}>{fmtFecha(v.fecha)}</p>
-                <p style={{ color:'rgba(59,130,246,0.4)', fontSize:'0.58rem' }}>{fmtHora(v.fecha)}</p>
+                <p style={{ color:'rgba(59,130,246,0.4)', fontSize:'0.6rem' }}>{fmtHora(v.fecha)}</p>
               </div>
             </div>
           ))}

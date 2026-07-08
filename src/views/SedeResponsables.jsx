@@ -78,7 +78,7 @@ function EditContactoModal({ item, perfiles, onClose, onSaved }) {
         <div style={{ padding:'1.25rem', display:'flex', flexDirection:'column', gap:'1.25rem' }}>
           {/* Info del contacto */}
           <form onSubmit={handleSave}>
-            <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.58rem', letterSpacing:'0.1em', fontFamily:'monospace', marginBottom:'0.75rem' }}>DATOS DEL CONTACTO</p>
+            <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', letterSpacing:'0.1em', fontFamily:'monospace', marginBottom:'0.75rem' }}>DATOS DEL CONTACTO</p>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
               <div>
                 <label style={FIELD}>NOMBRE *</label>
@@ -110,7 +110,7 @@ function EditContactoModal({ item, perfiles, onClose, onSaved }) {
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'1.25rem' }}>
             <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:'0.75rem' }}>
               <Link size={12} style={{ color:'var(--phosphor)' }}/>
-              <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.58rem', letterSpacing:'0.1em', fontFamily:'monospace' }}>ACCESO AL SISTEMA</p>
+              <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', letterSpacing:'0.1em', fontFamily:'monospace' }}>ACCESO AL SISTEMA</p>
             </div>
 
             {perfilVinculado && (
@@ -181,7 +181,7 @@ function ContactoRow({ item, onDelete, onEdit }) {
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <p style={{ color:'var(--text)', fontSize:'0.8rem', fontWeight:600 }}>{c.nombre}</p>
           {c.perfil_id && (
-            <span title="Vinculado al sistema" style={{ display:'inline-flex', alignItems:'center', gap:2, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.25)', borderRadius:10, padding:'0 5px', fontSize:'0.55rem', color:'var(--phosphor)' }}>
+            <span title="Vinculado al sistema" style={{ display:'inline-flex', alignItems:'center', gap:2, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.25)', borderRadius:10, padding:'0 5px', fontSize:'0.6rem', color:'var(--phosphor)' }}>
               <Link size={8}/> sistema
             </span>
           )}

@@ -130,7 +130,7 @@ function ContactosSection() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           {sections.map(key => (
             <div key={key}>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.58rem', letterSpacing: '0.1em', fontFamily: 'var(--font-metric, monospace)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.6rem', letterSpacing: '0.1em', fontFamily: 'var(--font-metric, monospace)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
                 {MODULO_LABEL[key] || key}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.4rem' }}>

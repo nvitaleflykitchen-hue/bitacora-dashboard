@@ -284,12 +284,12 @@ function Bandeja({ onNavigate }) {
                     {deadlineLabel(item)}
                   </div>
                   <div className="hidden lg:flex justify-end">
-                    <span className="btn-ghost" style={{ fontSize:'0.58rem', padding:'0.25rem 0.45rem' }}>{actionLabel(item)}</span>
+                    <span className="btn-ghost" style={{ fontSize:'0.6rem', padding:'0.25rem 0.45rem' }}>{actionLabel(item)}</span>
                   </div>
                 </div>
                 <div className="mt-2 flex lg:hidden items-center justify-between gap-2">
                   <span className="text-xs" style={{ color:isOverdue(item) ? 'var(--alert)' : 'var(--text-dim)' }}>{deadlineLabel(item)}</span>
-                  <span className="btn-ghost" style={{ fontSize:'0.58rem', padding:'0.25rem 0.45rem' }}>{actionLabel(item)}</span>
+                  <span className="btn-ghost" style={{ fontSize:'0.6rem', padding:'0.25rem 0.45rem' }}>{actionLabel(item)}</span>
                 </div>
               </button>
             ))}

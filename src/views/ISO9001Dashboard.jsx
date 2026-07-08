@@ -52,7 +52,7 @@ function ClauseCard({ clause, title, status, detail, progress }) {
           <p className="font-metric text-xs tracking-widest" style={{ color }}>{clause}</p>
           <h3 className="font-title font-bold text-sm mt-1" style={{ color:'var(--text)' }}>{title}</h3>
         </div>
-        <span className={`chip ${tone === 'ok' ? 'chip-green' : tone === 'warn' ? 'chip-yellow' : 'chip-red'}`} style={{ fontSize:'0.58rem' }}>{status}</span>
+        <span className={`chip ${tone === 'ok' ? 'chip-green' : tone === 'warn' ? 'chip-yellow' : 'chip-red'}`} style={{ fontSize:'0.6rem' }}>{status}</span>
       </div>
       <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', lineHeight:1.45, marginTop:10 }}>{detail}</p>
       <Bar value={progress} color={color} />

@@ -265,23 +265,23 @@ export default function Escalamientos({ focusId }) {
                           <div className="flex items-center gap-1.5">
                             {e.registro_id && (
                               <button onClick={() => setSelRegId(e.registro_id)}
-                                className="btn-ghost" style={{ padding:'0.15rem 0.4rem', fontSize:'0.58rem' }}>
+                                className="btn-ghost" style={{ padding:'0.15rem 0.4rem', fontSize:'0.6rem' }}>
                                 Ver
                               </button>
                             )}
                             <button onClick={() => setSelComentarioId(e.id)}
-                              className="btn-ghost flex items-center gap-1" style={{ padding:'0.15rem 0.4rem', fontSize:'0.58rem' }}>
+                              className="btn-ghost flex items-center gap-1" style={{ padding:'0.15rem 0.4rem', fontSize:'0.6rem' }}>
                               <MessageSquare size={9} />
                             </button>
                             {canManage && e.tipo === 'Mantenimiento' && (
                               tickets[e.id] ? (
                                 <span title="Ticket de mantenimiento ya generado"
-                                  style={{ color:'var(--phosphor)', fontSize:'0.58rem', fontWeight:700, whiteSpace:'nowrap' }}>
+                                  style={{ color:'var(--phosphor)', fontSize:'0.6rem', fontWeight:700, whiteSpace:'nowrap' }}>
                                   Ticket #{tickets[e.id].numero}
                                 </span>
                               ) : (
                                 <button onClick={() => abrirGenerarTicket(e)}
-                                  className="btn-ghost flex items-center gap-1" style={{ padding:'0.15rem 0.4rem', fontSize:'0.58rem', color:'#F59E0B' }}>
+                                  className="btn-ghost flex items-center gap-1" style={{ padding:'0.15rem 0.4rem', fontSize:'0.6rem', color:'#F59E0B' }}>
                                   <Wrench size={9} /> Generar ticket
                                 </button>
                               )

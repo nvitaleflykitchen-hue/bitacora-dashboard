@@ -188,7 +188,7 @@ export default function SedeEncargadoView({ onNavigate }) {
                   </p>
                 </div>
                 <span className={`chip ${e.estado === 'Pendiente' ? 'chip-yellow' : 'chip-blue'}`}
-                  style={{ fontSize:'0.58rem', flexShrink:0 }}>
+                  style={{ fontSize:'0.6rem', flexShrink:0 }}>
                   {e.estado}
                 </span>
               </div>
@@ -230,7 +230,7 @@ export default function SedeEncargadoView({ onNavigate }) {
                   )}
                 </div>
                 <span className={`chip ${t.estado === 'En proceso' ? 'chip-blue' : 'chip-yellow'}`}
-                  style={{ fontSize:'0.58rem', flexShrink:0 }}>
+                  style={{ fontSize:'0.6rem', flexShrink:0 }}>
                   {t.estado}
                 </span>
               </div>
@@ -272,7 +272,7 @@ export default function SedeEncargadoView({ onNavigate }) {
                     <tr key={r.id} className="cursor-pointer hover:opacity-80" onClick={() => setSelRegistro(r)}>
                       <td style={{ color:'var(--text)', fontSize:'0.75rem' }}>{fmtFechaReporte(r.fecha_reporte)}</td>
                       <td style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{r.turno}</td>
-                      <td><span className={`chip ${chip.cls}`} style={{ fontSize:'0.58rem' }}>{r.estado_general}</span></td>
+                      <td><span className={`chip ${chip.cls}`} style={{ fontSize:'0.6rem' }}>{r.estado_general}</span></td>
                       <td style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{r.reportante}</td>
                     </tr>
                   )

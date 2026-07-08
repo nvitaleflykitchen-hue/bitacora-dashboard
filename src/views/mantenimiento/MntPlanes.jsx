@@ -136,7 +136,7 @@ function EjecucionModal({ plan, onClose, onSaved }) {
 
         {/* Checklist */}
         <div style={{ marginBottom:'1rem' }}>
-          <p style={{ fontSize:'0.58rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>CHECKLIST</p>
+          <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>CHECKLIST</p>
           {checklist.map(item => (
             <div key={item.id} style={{
               padding:'10px 12px', marginBottom:4, borderRadius:2,
@@ -151,10 +151,10 @@ function EjecucionModal({ plan, onClose, onSaved }) {
                 </button>
                 <span style={{ flex:1, fontSize:'0.8rem', color: checks[item.id] ? 'var(--text)' : 'var(--text-dim)', textDecoration: checks[item.id] ? 'none' : 'none' }}>
                   {item.tarea}
-                  {item.obligatorio && <span style={{ marginLeft:6, fontSize:'0.55rem', color:'#ff5050' }}>*</span>}
+                  {item.obligatorio && <span style={{ marginLeft:6, fontSize:'0.6rem', color:'#ff5050' }}>*</span>}
                 </span>
                 {item.categoria && (
-                  <span style={{ fontSize:'0.55rem', padding:'1px 6px', borderRadius:3, background:`${CAT_COLOR[item.categoria]}18`, color:CAT_COLOR[item.categoria], border:`1px solid ${CAT_COLOR[item.categoria]}30`, fontFamily:'monospace', flexShrink:0 }}>
+                  <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:3, background:`${CAT_COLOR[item.categoria]}18`, color:CAT_COLOR[item.categoria], border:`1px solid ${CAT_COLOR[item.categoria]}30`, fontFamily:'monospace', flexShrink:0 }}>
                     {CAT_LABEL[item.categoria]}
                   </span>
                 )}
@@ -231,7 +231,7 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
   }
 
   const INPUT = { padding:'0.45rem 0.7rem', borderRadius:5, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
-  const LABEL = { fontSize:'0.58rem', color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.25rem' }
+  const LABEL = { fontSize:'0.6rem', color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.25rem' }
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:60, padding:16 }}>
@@ -277,13 +277,13 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
 
         {/* Checklist */}
         <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'12px 14px', marginBottom:'1rem' }}>
-          <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÍTEMS DE CHECKLIST ({checklist.length})</p>
+          <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÍTEMS DE CHECKLIST ({checklist.length})</p>
           {checklist.map((item, i) => (
             <div key={item.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 0', borderBottom: i < checklist.length-1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
               <span style={{ fontSize:'0.62rem', color:'var(--text-dim)', fontFamily:'monospace', minWidth:18 }}>{item.orden}.</span>
               <span style={{ flex:1, fontSize:'0.78rem', color:'var(--text)' }}>{item.tarea}</span>
               {item.categoria && (
-                <span style={{ fontSize:'0.55rem', padding:'1px 6px', borderRadius:3, background:`${CAT_COLOR[item.categoria]}15`, color:CAT_COLOR[item.categoria], fontFamily:'monospace' }}>
+                <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:3, background:`${CAT_COLOR[item.categoria]}15`, color:CAT_COLOR[item.categoria], fontFamily:'monospace' }}>
                   {CAT_LABEL[item.categoria]}
                 </span>
               )}
@@ -306,7 +306,7 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
         {/* Historial ejecuciones */}
         {ejecuciones.length > 0 && (
           <div style={{ marginBottom:'1rem' }}>
-            <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÚLTIMAS EJECUCIONES</p>
+            <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÚLTIMAS EJECUCIONES</p>
             {ejecuciones.slice(0,5).map(e => (
               <div key={e.id} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid rgba(255,255,255,0.03)', fontSize:'0.72rem' }}>
                 <span style={{ color:'var(--phosphor)', fontFamily:'monospace' }}>{fmtFecha(e.fecha)}</span>
@@ -582,10 +582,10 @@ export default function MntPlanes({ defaultTipo, focusId } = {}) {
 
                 {/* Tipo + frecuencia */}
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ fontSize:'0.58rem', padding:'2px 8px', borderRadius:3, background:`${tipoColor}18`, color:tipoColor, border:`1px solid ${tipoColor}30`, fontFamily:'monospace' }}>
+                  <span style={{ fontSize:'0.6rem', padding:'2px 8px', borderRadius:3, background:`${tipoColor}18`, color:tipoColor, border:`1px solid ${tipoColor}30`, fontFamily:'monospace' }}>
                     {plan.tipo_activo || plan.activo_tipo_real || 'GENERAL'}
                   </span>
-                  <span style={{ fontSize:'0.58rem', padding:'2px 8px', borderRadius:3, background:`${frecColor}18`, color:frecColor, fontFamily:'monospace' }}>
+                  <span style={{ fontSize:'0.6rem', padding:'2px 8px', borderRadius:3, background:`${frecColor}18`, color:frecColor, fontFamily:'monospace' }}>
                     {plan.frecuencia}
                   </span>
                 </div>
@@ -601,12 +601,12 @@ export default function MntPlanes({ defaultTipo, focusId } = {}) {
                 {/* Fechas */}
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div>
-                    <p style={{ fontSize:'0.58rem', color:'var(--text-dim)', margin:0 }}>Próxima ejecución</p>
+                    <p style={{ fontSize:'0.6rem', color:'var(--text-dim)', margin:0 }}>Próxima ejecución</p>
                     <ProximaBadge fecha={plan.proxima_fecha} />
                   </div>
                   {plan.ultimo_realizado && (
                     <div style={{ textAlign:'right' }}>
-                      <p style={{ fontSize:'0.58rem', color:'var(--text-dim)', margin:0 }}>Último</p>
+                      <p style={{ fontSize:'0.6rem', color:'var(--text-dim)', margin:0 }}>Último</p>
                       <p style={{ fontSize:'0.65rem', color:'var(--text)', fontFamily:'monospace', margin:0 }}>{fmtFecha(plan.ultimo_realizado)}</p>
                     </div>
                   )}

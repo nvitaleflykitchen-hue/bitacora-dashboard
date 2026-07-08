@@ -9,9 +9,10 @@ import MobileContactosBtn from './MobileContactosBtn'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
-const ESTADO_COLOR = { abierto: '#F97316', aprobado: '#F59E0B', en_progreso: '#3B82F6', resuelto: '#39FF14', rechazado: '#6B7280' }
-const ESTADOS = ['abierto', 'aprobado', 'en_progreso', 'resuelto', 'rechazado']
-const PRIORIDAD_COLOR = { alta: '#FF2A2A', critica: '#FF2A2A', media: '#F59E0B', baja: '#39FF14' }
+import {
+  TICKET_ESTADO_COLOR as ESTADO_COLOR, TICKET_ESTADOS as ESTADOS, PRIORIDAD_COLOR,
+} from '../lib/estados'
+import SkeletonTable from '../components/SkeletonTable'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -91,7 +92,7 @@ function TicketDetalle({ ticket: initialTicket, canManage, responsables, onBack,
           <div style={{ flex: 1, marginRight: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <span style={{ color: 'var(--phosphor)', fontSize: '0.7rem', fontWeight: 800 }}>#{ticket.numero}</span>
-              <span style={{ background: `${tipoColor}18`, border: `1px solid ${tipoColor}55`, borderRadius: 3, padding: '0.1rem 0.35rem', fontSize: '0.55rem', color: tipoColor, fontWeight: 700, textTransform: 'uppercase' }}>
+              <span style={{ background: `${tipoColor}18`, border: `1px solid ${tipoColor}55`, borderRadius: 3, padding: '0.1rem 0.35rem', fontSize: '0.6rem', color: tipoColor, fontWeight: 700, textTransform: 'uppercase' }}>
                 {ticket.tipo}
               </span>
             </div>
@@ -251,7 +252,7 @@ function TicketCard({ t, onClick }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
           <span style={{ color: 'var(--phosphor)', fontSize: '0.65rem', fontWeight: 800 }}>#{t.numero}</span>
-          <span style={{ background: `${tipoColor}18`, border: `1px solid ${tipoColor}44`, borderRadius: 3, padding: '0.1rem 0.3rem', fontSize: '0.52rem', color: tipoColor, fontWeight: 700, textTransform: 'uppercase' }}>
+          <span style={{ background: `${tipoColor}18`, border: `1px solid ${tipoColor}44`, borderRadius: 3, padding: '0.1rem 0.3rem', fontSize: '0.6rem', color: tipoColor, fontWeight: 700, textTransform: 'uppercase' }}>
             {t.tipo}
           </span>
         </div>
@@ -262,7 +263,7 @@ function TicketCard({ t, onClick }) {
           {t.descripcion || 'Sin descripción'}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ background: `${eColor}22`, color: eColor, fontSize: '0.58rem', padding: '0.15rem 0.4rem', borderRadius: 12, fontWeight: 700, textTransform: 'uppercase' }}>
+          <span style={{ background: `${eColor}22`, color: eColor, fontSize: '0.6rem', padding: '0.15rem 0.4rem', borderRadius: 12, fontWeight: 700, textTransform: 'uppercase' }}>
             {t.estado?.replace('_', ' ')}
           </span>
           {t.sede && <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem' }}>{t.sede}</span>}
@@ -373,9 +374,7 @@ export default function MobileTickets() {
       {/* Lista */}
       <div className="mobile-scroll" style={{ flex: 1 }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-          </div>
+          <SkeletonTable filas={6} columnas={2} />
         ) : filtrados.length === 0 ? (
           <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
             <Wrench size={32} style={{ color: 'var(--phosphor)', margin: '0 auto 0.5rem', opacity: 0.8 }} />

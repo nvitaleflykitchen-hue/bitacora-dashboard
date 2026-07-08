@@ -8,7 +8,7 @@ const DOC_FIELDS = ['vencimiento_seguro','vencimiento_vtv','vencimiento_senasa',
 function KPI({ label, value, sub, color }) {
   return (
     <div style={{ background:'var(--surface)', borderRadius:3, padding:'1rem 1.2rem', flex:1, minWidth:120 }}>
-      <p style={{ color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.35rem' }}>{label}</p>
+      <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.35rem' }}>{label}</p>
       <p style={{ color:color||'var(--text)', fontWeight:800, fontSize:'2rem', lineHeight:1 }}>{value??'—'}</p>
       {sub && <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginTop:3 }}>{sub}</p>}
     </div>

@@ -19,7 +19,7 @@ function NivelBadge({ nivel }) {
   const n = NIVELES.find(x => x.value === nivel) || NIVELES[0]
   return (
     <span style={{
-      fontSize:'0.55rem', fontWeight:'bold', padding:'2px 7px', borderRadius:2,
+      fontSize:'0.6rem', fontWeight:'bold', padding:'2px 7px', borderRadius:2,
       background:`${n.color}22`, color:n.color, border:`1px solid ${n.color}44`,
       fontFamily:'monospace', letterSpacing:'0.05em'
     }}>{n.label}</span>
@@ -174,7 +174,7 @@ function ResponsableCard({ r, onEdit, onDelete }) {
       {r.categorias?.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
           {r.categorias.map(c=>(
-            <span key={c} style={{ fontSize:'0.55rem', padding:'2px 7px', borderRadius:4, background:`${n.color}11`, color:n.color, border:`1px solid ${n.color}22` }}>{c}</span>
+            <span key={c} style={{ fontSize:'0.6rem', padding:'2px 7px', borderRadius:4, background:`${n.color}11`, color:n.color, border:`1px solid ${n.color}22` }}>{c}</span>
           ))}
         </div>
       )}

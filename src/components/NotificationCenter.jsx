@@ -79,7 +79,7 @@ export default function NotificationCenter({ onNavigate }) {
       <button onClick={()=>{ setOpen(v=>!v); if (!open) load() }} className="btn-ghost" title="Notificaciones"
         style={{ padding:'0.3rem', position:'relative', color:unread?'#FF5050':'var(--text-dim)' }}>
         <Bell size={13}/>
-        {unread > 0 && <span style={{ position:'absolute', top:-4, right:-5, minWidth:14, height:14, padding:'0 3px', borderRadius:8, background:'#FF2A2A', color:'#fff', fontSize:'0.5rem', display:'grid', placeItems:'center', fontWeight:800 }}>{unread>99?'99+':unread}</span>}
+        {unread > 0 && <span style={{ position:'absolute', top:-4, right:-5, minWidth:14, height:14, padding:'0 3px', borderRadius:8, background:'#FF2A2A', color:'#fff', fontSize:'0.6rem', display:'grid', placeItems:'center', fontWeight:800 }}>{unread>99?'99+':unread}</span>}
       </button>
       {open && (
         <div style={{ position:'fixed', right:12, top:48, zIndex:100, width:'min(360px,calc(100vw - 24px))', maxHeight:'70vh', overflowY:'auto', background:'var(--surface)', border:'1px solid rgba(57,255,20,0.18)', borderRadius:5, boxShadow:'0 18px 50px rgba(0,0,0,0.55)' }}>
@@ -94,7 +94,7 @@ export default function NotificationCenter({ onNavigate }) {
             <button key={item.id} onClick={()=>openItem(item)} style={{ width:'100%', textAlign:'left', padding:'10px 12px', background:item.leida_at?'transparent':'rgba(255,42,42,0.05)', border:'none', borderBottom:'1px solid rgba(255,255,255,0.05)', cursor:'pointer' }}>
               <p style={{ color:item.leida_at?'var(--text-dim)':'var(--text)', fontSize:'0.7rem', fontWeight:700 }}>{item.titulo}</p>
               <p style={{ color:'var(--text-dim)', fontSize:'0.63rem', marginTop:3, lineHeight:1.4 }}>{item.cuerpo}</p>
-              <p style={{ color:'rgba(107,114,128,0.6)', fontSize:'0.55rem', marginTop:4 }}>{new Date(item.created_at).toLocaleString('es-AR')}</p>
+              <p style={{ color:'rgba(107,114,128,0.6)', fontSize:'0.6rem', marginTop:4 }}>{new Date(item.created_at).toLocaleString('es-AR')}</p>
             </button>
           ))}
         </div>

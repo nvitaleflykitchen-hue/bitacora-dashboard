@@ -64,7 +64,7 @@ export default function ContactosQuickBtn({ modulo }) {
           width: 280, zIndex: 999,
           boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
         }}>
-          <p style={{ color: 'rgba(57,255,20,0.5)', fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'var(--font-metric, monospace)', marginBottom: '0.65rem' }}>
+          <p style={{ color: 'rgba(57,255,20,0.5)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'var(--font-metric, monospace)', marginBottom: '0.65rem' }}>
             Contactos rápidos
           </p>
 

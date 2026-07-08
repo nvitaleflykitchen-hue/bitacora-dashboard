@@ -24,9 +24,9 @@ function vencimientoChip(fechaLimite, estado) {
   if (!fechaLimite || estado === 'Completada' || estado === 'Verificada') return null
   const d = new Date(fechaLimite)
   const diff = differenceInDays(d, new Date())
-  if (isPast(d) && !isToday(d)) return <span className="chip chip-red" style={{ fontSize:'0.58rem' }}>Vencido</span>
-  if (diff < 7) return <span className="chip chip-yellow" style={{ fontSize:'0.58rem' }}>&lt;7 días</span>
-  return <span className="chip chip-green" style={{ fontSize:'0.58rem' }}>A tiempo</span>
+  if (isPast(d) && !isToday(d)) return <span className="chip chip-red" style={{ fontSize:'0.6rem' }}>Vencido</span>
+  if (diff < 7) return <span className="chip chip-yellow" style={{ fontSize:'0.6rem' }}>&lt;7 días</span>
+  return <span className="chip chip-green" style={{ fontSize:'0.6rem' }}>A tiempo</span>
 }
 
 function estadoChip(estado) {
@@ -373,7 +373,7 @@ function CapaKanban({ items, canWrite, onEstadoChange, onReload, focusId }) {
                   >
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
                       <span className="font-metric" style={{ fontSize:'0.6rem', color:'var(--phosphor)' }}>{c.codigo}</span>
-                      <span className={`chip ${c.tipo === 'Preventiva' ? 'chip-blue' : 'chip-yellow'}`} style={{ fontSize:'0.55rem', padding:'1px 5px' }}>
+                      <span className={`chip ${c.tipo === 'Preventiva' ? 'chip-blue' : 'chip-yellow'}`} style={{ fontSize:'0.6rem', padding:'1px 5px' }}>
                         {c.tipo.slice(0,4).toUpperCase()}
                       </span>
                     </div>
@@ -390,10 +390,10 @@ function CapaKanban({ items, canWrite, onEstadoChange, onReload, focusId }) {
                         ? <span style={{ color:'var(--text-dim)', fontSize:'0.62rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:110 }}>{c.responsable}</span>
                         : <span />}
                       <div style={{ display:'flex', gap:3, flexShrink:0 }}>
-                        {vencida && <span className="chip chip-red" style={{ fontSize:'0.55rem', padding:'1px 4px' }}>⚠ VEN</span>}
+                        {vencida && <span className="chip chip-red" style={{ fontSize:'0.6rem', padding:'1px 4px' }}>⚠ VEN</span>}
                         {c.fecha_limite && !vencida && (
                           differenceInDays(new Date(c.fecha_limite), new Date()) < 7
-                            ? <span className="chip chip-yellow" style={{ fontSize:'0.55rem', padding:'1px 4px' }}>&lt;7d</span>
+                            ? <span className="chip chip-yellow" style={{ fontSize:'0.6rem', padding:'1px 4px' }}>&lt;7d</span>
                             : <span style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{format(new Date(c.fecha_limite),'dd/MM')}</span>
                         )}
                       </div>
@@ -595,7 +595,7 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
                   </span>
                   <span style={{ fontSize:'0.7rem', color:'var(--text-dim)' }}>· {grupo.sede_nombre}</span>
                   {vencidas > 0 && (
-                    <span className="chip chip-red" style={{ fontSize:'0.55rem' }}>⚠ {vencidas} vencida{vencidas > 1 ? 's' : ''}</span>
+                    <span className="chip chip-red" style={{ fontSize:'0.6rem' }}>⚠ {vencidas} vencida{vencidas > 1 ? 's' : ''}</span>
                   )}
                 </div>
                 <span style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>
@@ -625,7 +625,7 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
                   if (cnt === 0) return null
                   return (
                     <span key={est} style={{
-                      fontSize:'0.58rem', padding:'2px 6px', borderRadius:3, fontWeight:600,
+                      fontSize:'0.6rem', padding:'2px 6px', borderRadius:3, fontWeight:600,
                       background: est === 'Verificada' ? 'rgba(57,255,20,0.15)' : est === 'Completada' ? 'rgba(250,204,21,0.15)' : est === 'En ejecución' ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.1)',
                       color: est === 'Verificada' ? 'var(--phosphor)' : est === 'Completada' ? '#facc15' : est === 'En ejecución' ? '#60a5fa' : 'var(--text-dim)',
                     }}>
@@ -660,11 +660,11 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
               <div style={{ padding:'6px 8px', display:'flex', flexDirection:'column', gap:3 }}>
                 {/* Header columnas */}
                 <div style={{ display:'flex', alignItems:'center', gap:10, padding:'4px 10px', marginBottom:2 }}>
-                  <span className="font-metric" style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.4)', minWidth:90, letterSpacing:'0.08em' }}>CÓDIGO</span>
-                  <span className="font-metric" style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.4)', flex:1, letterSpacing:'0.08em' }}>DESCRIPCIÓN</span>
-                  <span className="font-metric" style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.4)', minWidth:90, textAlign:'right', letterSpacing:'0.08em' }}>RESPONSABLE</span>
-                  <span className="font-metric" style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.4)', minWidth:50, textAlign:'right', letterSpacing:'0.08em' }}>VENCE</span>
-                  <span className="font-metric" style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.4)', minWidth:90, textAlign:'right', letterSpacing:'0.08em' }}>ESTADO</span>
+                  <span className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.4)', minWidth:90, letterSpacing:'0.08em' }}>CÓDIGO</span>
+                  <span className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.4)', flex:1, letterSpacing:'0.08em' }}>DESCRIPCIÓN</span>
+                  <span className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.4)', minWidth:90, textAlign:'right', letterSpacing:'0.08em' }}>RESPONSABLE</span>
+                  <span className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.4)', minWidth:50, textAlign:'right', letterSpacing:'0.08em' }}>VENCE</span>
+                  <span className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.4)', minWidth:90, textAlign:'right', letterSpacing:'0.08em' }}>ESTADO</span>
                 </div>
                 {grupo.items.map(c => {
                   const vencida = c.fecha_limite && isPast(new Date(c.fecha_limite)) && !isToday(new Date(c.fecha_limite))

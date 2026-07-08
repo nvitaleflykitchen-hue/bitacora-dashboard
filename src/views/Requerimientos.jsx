@@ -130,12 +130,9 @@ function estadosDisponibles(req) {
   return [req.estado, ...(TRANSICIONES[req.estado] || [])]
 }
 
-const URG_COLOR = { alta:'#FF2A2A', media:'#F59E0B', baja:'#39FF14' }
-const EST_COLOR = {
-  Pendiente:'rgba(255,255,255,0.5)', Observado:'#FB923C', Aprobado:'#60A5FA',
-  Enviado:'#F59E0B', 'En compra':'#A78BFA', Recibido:'#2DD4BF', Cumplido:'#39FF14',
-  Rechazado:'#F87171', Cancelado:'rgba(107,114,128,0.5)'
-}
+import { URGENCIA_COLOR as URG_COLOR, REQ_ESTADO_COLOR as EST_COLOR } from '../lib/estados'
+import SkeletonTable from '../components/SkeletonTable'
+import usePersistedState from '../hooks/usePersistedState'
 
 const colHeader = {
   Pendiente: { color:'rgba(255,255,255,0.35)', bg:'rgba(107,114,128,0.08)' },
@@ -584,7 +581,7 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
     <div className="rounded p-3 fade-in" style={{ background:observado?'rgba(251,146,60,0.055)':'var(--surface)', border:`1px solid ${observado?'rgba(251,146,60,0.5)':'rgba(255,255,255,0.05)'}`, borderLeft:observado?'3px solid #FB923C':undefined, cursor:'pointer' }}
       onClick={()=>{ if (!readOnly) onEdit(req) }}>
       {observado && (
-        <div style={{ color:'#FB923C', fontSize:'0.58rem', fontWeight:800, letterSpacing:'0.06em', marginBottom:6 }}>
+        <div style={{ color:'#FB923C', fontSize:'0.6rem', fontWeight:800, letterSpacing:'0.06em', marginBottom:6 }}>
           OBSERVADO · REQUIERE CORRECCIÓN
         </div>
       )}
@@ -592,7 +589,7 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
         <p style={{ color:'var(--text)', fontSize:'0.72rem', fontWeight:600, lineHeight:1.35 }}>
           {req.descripcion?.substring(0,70)}{req.descripcion?.length>70?'…':''}
         </p>
-        <span style={{ fontSize:'0.55rem', padding:'1px 5px', borderRadius:3, fontWeight:700, background:`${urg}22`, color:urg, border:`1px solid ${urg}44`, flexShrink:0 }}>
+        <span style={{ fontSize:'0.6rem', padding:'1px 5px', borderRadius:3, fontWeight:700, background:`${urg}22`, color:urg, border:`1px solid ${urg}44`, flexShrink:0 }}>
           {req.urgencia}
         </span>
       </div>
@@ -652,11 +649,11 @@ export default function Requerimientos({ focusId }) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editReq, setEditReq]  = useState(null)
-  const [filtroEstado, setFiltroEstado] = useState('')
-  const [filtroUrgencia, setFiltroUrgencia] = useState('')
-  const [filtroSede, setFiltroSede] = useState('')
+  const [filtroEstado, setFiltroEstado] = usePersistedState('reqs.filtroEstado', '')
+  const [filtroUrgencia, setFiltroUrgencia] = usePersistedState('reqs.filtroUrgencia', '')
+  const [filtroSede, setFiltroSede] = usePersistedState('reqs.filtroSede', '')
   const [emailCompras, setEmailCompras] = useState('compras.gerencia@serviciosdrill.com.ar;compras@flykitchen.com.ar')
-  const [showClosed, setShowClosed] = useState(false)
+  const [showClosed, setShowClosed] = usePersistedState('reqs.showClosed', false)
   const [showKpis, setShowKpis] = useState(false)
   const [showProcess, setShowProcess] = useState(false)
   const [showEquipoCompras, setShowEquipoCompras] = useState(false)
@@ -840,9 +837,9 @@ export default function Requerimientos({ focusId }) {
               <p style={{ color:EST_COLOR[estado], fontSize:'1rem', fontWeight:800 }}>
                 {estado === 'Pendiente' ? byEstado.Pendiente.length + byEstado.Observado.length : byEstado[estado].length}
               </p>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.56rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>{estado}</p>
+              <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>{estado}</p>
               {estado === 'Pendiente' && byEstado.Observado.length > 0 && (
-                <p style={{ color:'#FB923C', fontSize:'0.54rem', marginTop:2 }}>{byEstado.Observado.length} observado{byEstado.Observado.length===1?'':'s'}</p>
+                <p style={{ color:'#FB923C', fontSize:'0.6rem', marginTop:2 }}>{byEstado.Observado.length} observado{byEstado.Observado.length===1?'':'s'}</p>
               )}
             </div>
           ))}
@@ -913,9 +910,7 @@ export default function Requerimientos({ focusId }) {
         </button>
       </div>
       {loading ? (
-        <div style={{ display:'flex', justifyContent:'center', padding:'3rem' }}>
-          <div className="w-7 h-7 rounded-full border-2 animate-spin" style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }}/>
-        </div>
+        <SkeletonTable filas={7} columnas={5} />
       ) : (
         <div style={{ display:'grid', gridTemplateColumns:`repeat(${kanbanEstados.length}, minmax(235px,1fr))`, gap:12, flex:1, overflowX:'auto', paddingBottom:8 }}>
           {kanbanEstados.map(estado=>{

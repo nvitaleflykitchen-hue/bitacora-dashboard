@@ -14,7 +14,7 @@
   --warn:     #F59E0B;
   --slate:    #6B7280;
   --text:     #E5E7EB;
-  --text-dim: #9CA3AF;
+  --text-dim: #A9B1BE;
 
   /* Escala de espaciado (rem) — usar en lugar de valores sueltos */
   --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem; --sp-5: 1.5rem; --sp-6: 2rem;
@@ -156,3 +156,24 @@ select option:hover {
 
 /* Texto secundario legible (gris, nunca verde translúcido) */
 .text-muted { color:var(--text-dim); }
+
+/* ─── Skeleton de carga (SkeletonTable.jsx) ─── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface2) 25%, rgba(255,255,255,0.06) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Targets táctiles en mobile (≥44px, operación en planta) ─── */
+@media (max-width: 767px), (pointer: coarse) {
+  .btn-primary, .btn-ghost {
+    min-height: 44px;
+  }
+  input.input-dark, select.input-dark {
+    min-height: 44px;
+  }
+}

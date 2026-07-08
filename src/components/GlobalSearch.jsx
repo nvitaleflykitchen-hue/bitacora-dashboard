@@ -186,7 +186,7 @@ export default function GlobalSearch({ onNavigate, onClose, mobile = false }) {
                   </p>
                   {result.sub && <p style={{ fontSize:'0.65rem', color:'var(--text-dim)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{result.sub}</p>}
                 </div>
-                <span style={{ fontSize:'0.58rem', padding:'2px 6px', borderRadius:3, background:`${typeInfo.color}18`, color:typeInfo.color, fontFamily:'monospace', flexShrink:0 }}>
+                <span style={{ fontSize:'0.6rem', padding:'2px 6px', borderRadius:3, background:`${typeInfo.color}18`, color:typeInfo.color, fontFamily:'monospace', flexShrink:0 }}>
                   {typeInfo.label}
                 </span>
               </button>
@@ -196,7 +196,7 @@ export default function GlobalSearch({ onNavigate, onClose, mobile = false }) {
 
         <div style={{ padding:'0.4rem 1rem', borderTop:'1px solid rgba(255,255,255,0.04)', display:'flex', gap:12, alignItems:'center' }}>
           {[['↑↓','Navegar'],['↵','Ir'],['Esc','Cerrar']].map(([key, label]) => (
-            <span key={key} style={{ fontSize:'0.58rem', color:'var(--text-dim)', display:'flex', gap:4, alignItems:'center' }}>
+            <span key={key} style={{ fontSize:'0.6rem', color:'var(--text-dim)', display:'flex', gap:4, alignItems:'center' }}>
               <kbd style={{ background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:3, padding:'1px 5px', fontFamily:'monospace', fontSize:'0.6rem' }}>{key}</kbd>
               {label}
             </span>

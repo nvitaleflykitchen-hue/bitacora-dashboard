@@ -891,7 +891,7 @@ export default function ReclutamientoBoard({
         ].map(([label, value]) => (
           <div key={label} className="py-3 px-4 text-center" style={{ borderRight:'1px solid rgba(57,255,20,0.06)' }}>
             <p className="font-title font-bold text-xl" style={{ color:'var(--phosphor)' }}>{value}</p>
-            <p className="font-metric" style={{ fontSize:'0.55rem', color:'var(--text-dim)', letterSpacing:'0.08em' }}>{label.toUpperCase()}</p>
+            <p className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)', letterSpacing:'0.08em' }}>{label.toUpperCase()}</p>
           </div>
         ))}
       </div>
@@ -1003,7 +1003,7 @@ export default function ReclutamientoBoard({
                       )}
                       {c.evaluacion_breve && <p style={{ color:'var(--text-dim)', fontSize:'0.68rem', marginTop:8, lineHeight:1.45 }}>{c.evaluacion_breve}</p>}
                       <label className="block mt-3">
-                        <span className="font-metric flex items-center gap-1.5 mb-1" style={{ color:'var(--text-dim)', fontSize:'0.55rem', letterSpacing:'0.06em' }}>
+                        <span className="font-metric flex items-center gap-1.5 mb-1" style={{ color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.06em' }}>
                           <Link2 size={10}/> BÚSQUEDA PRINCIPAL
                         </span>
                         <select
@@ -1021,7 +1021,7 @@ export default function ReclutamientoBoard({
                         </select>
                       </label>
                       <div className="mt-2 rounded" style={{ border:'1px solid rgba(255,255,255,0.08)', padding:'0.45rem 0.55rem' }}>
-                        <p className="font-metric mb-1.5" style={{ color:'var(--text-dim)', fontSize:'0.53rem', letterSpacing:'0.06em' }}>
+                        <p className="font-metric mb-1.5" style={{ color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.06em' }}>
                           BÚSQUEDAS VINCULADAS ({linkedSolicitudIds.size})
                         </p>
                         <div className="space-y-1.5">
@@ -1046,7 +1046,7 @@ export default function ReclutamientoBoard({
                           })}
                         </div>
                         {!canManageMultipleLinks && (
-                          <p style={{ color:'var(--text-dim)', fontSize:'0.56rem', marginTop:6 }}>
+                          <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:6 }}>
                             Solo administración puede modificar asociaciones múltiples.
                           </p>
                         )}

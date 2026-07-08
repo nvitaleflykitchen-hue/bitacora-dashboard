@@ -325,7 +325,7 @@ function PersonaFicha({ personaId, canManage, onBack }) {
         ].map(k => (
           <div key={k.label} style={{ flex: 1, background: 'var(--surface)', borderRadius: 8, padding: '0.5rem', textAlign: 'center' }}>
             <p style={{ fontWeight: 800, fontSize: '1rem', color: k.color || 'var(--phosphor)' }}>{k.value}</p>
-            <p style={{ fontSize: '0.55rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{k.label}</p>
+            <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{k.label}</p>
           </div>
         ))}
       </div>
@@ -569,7 +569,7 @@ export default function MobilePersonal() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--phosphor)' }}>{p.puntos_total || 0}</p>
-                  <p style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>puntos</p>
+                  <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>puntos</p>
                 </div>
               </button>
             )

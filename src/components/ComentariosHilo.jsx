@@ -99,7 +99,7 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
                   {c.autor_nombre}
                 </span>
                 <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                  <span style={{ color:'rgba(107,114,128,0.6)', fontSize:'0.58rem' }}>
+                  <span style={{ color:'rgba(107,114,128,0.6)', fontSize:'0.6rem' }}>
                     {new Date(c.created_at).toLocaleString('es-AR')}
                   </span>
                   {propio && (

@@ -12,8 +12,9 @@ import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
 const TIPO_COLOR_ACTIVO = { EQUIPO: '#F59E0B', INSTALACION: '#8B5CF6' }
-const ESTADO_COLOR_ACTIVO = { operativo: '#39FF14', en_reparacion: '#F59E0B', baja: '#FF2A2A' }
-const ESTADO_COLOR_MATAFUEGO = { operativo: '#39FF14', vencido: '#FF2A2A', baja: '#6B7280' }
+import {
+  ACTIVO_ESTADO_COLOR as ESTADO_COLOR_ACTIVO, MATAFUEGO_ESTADO_COLOR as ESTADO_COLOR_MATAFUEGO,
+} from '../lib/estados'
 
 function Chip({ children, color }) {
   return <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.15rem 0.45rem', borderRadius: 4, background: `${color}22`, color }}>{children}</span>

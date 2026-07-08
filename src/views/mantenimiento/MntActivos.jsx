@@ -8,7 +8,7 @@ import PageHeader from '../../components/PageHeader'
 import { isQualityOnlyProfile } from '../../lib/access'
 
 const TIPO_COLOR  = { VEHICULO:'#3B82F6', EQUIPO:'#F59E0B', INSTALACION:'#8B5CF6' }
-const ESTADO_COLOR = { operativo:'#39FF14', en_reparacion:'#F59E0B', baja:'#FF2A2A' }
+import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
 const INPUT_S = { width:'100%', padding:'0.4rem 0.75rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(107,114,128,0.3)', color:'var(--text)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', boxSizing:'border-box', outline:'none' }
 const LABEL_S = { color:'var(--text-dim)', fontSize:'0.62rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.35rem', fontFamily:"'Roboto Mono',monospace" }
 const ROW_S   = { marginBottom:'1rem' }
@@ -234,8 +234,8 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
                     <div key={h.id} style={{ borderBottom:'1px solid rgba(57,255,20,0.05)', paddingBottom:10, marginBottom:10 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                         <span style={{ fontSize:'0.6rem', color:'var(--text-dim)', fontFamily:'monospace' }}>{h.created_at ? fmtFecha(h.created_at) : '—'}</span>
-                        <span style={{ fontSize:'0.58rem', padding:'1px 7px', borderRadius:4, background:`${PC[h.prioridad]||'#aaa'}18`, color:PC[h.prioridad]||'#aaa', border:`1px solid ${PC[h.prioridad]||'#aaa'}33` }}>{h.prioridad}</span>
-                        <span style={{ fontSize:'0.58rem', padding:'1px 7px', borderRadius:4, background:`${EC[h.estado]||'#aaa'}18`, color:EC[h.estado]||'#aaa', border:`1px solid ${EC[h.estado]||'#aaa'}33` }}>{h.estado}</span>
+                        <span style={{ fontSize:'0.6rem', padding:'1px 7px', borderRadius:4, background:`${PC[h.prioridad]||'#aaa'}18`, color:PC[h.prioridad]||'#aaa', border:`1px solid ${PC[h.prioridad]||'#aaa'}33` }}>{h.prioridad}</span>
+                        <span style={{ fontSize:'0.6rem', padding:'1px 7px', borderRadius:4, background:`${EC[h.estado]||'#aaa'}18`, color:EC[h.estado]||'#aaa', border:`1px solid ${EC[h.estado]||'#aaa'}33` }}>{h.estado}</span>
                         {h.costo_real && <span style={{ marginLeft:'auto', fontSize:'0.62rem', color:'var(--phosphor)', fontFamily:'monospace' }}>${h.costo_real.toLocaleString('es-AR')}</span>}
                       </div>
                       <p style={{ fontSize:'0.72rem', color:'var(--text)', margin:0 }}>{h.descripcion}</p>

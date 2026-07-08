@@ -41,7 +41,7 @@ function CapaCard({ item, canManage, onUpdate, updating }) {
         <div style={{ flex: 1, marginRight: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span style={{ color: 'var(--phosphor)', fontSize: '0.65rem', fontWeight: 800 }}>{item.codigo}</span>
-            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{item.tipo}</span>
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{item.tipo}</span>
           </div>
           <p style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: expanded ? 10 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {item.descripcion}
@@ -89,7 +89,7 @@ function NCCard({ item, canManage, onUpdate, updating }) {
         <div style={{ flex: 1, marginRight: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span style={{ color: 'var(--phosphor)', fontSize: '0.65rem', fontWeight: 800 }}>{item.codigo}</span>
-            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{item.categoria}</span>
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{item.categoria}</span>
           </div>
           <p style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: expanded ? 10 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {item.descripcion}

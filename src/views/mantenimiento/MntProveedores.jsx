@@ -3,7 +3,7 @@ import { getProveedores, upsertProveedor, getSedes } from '../../lib/queries'
 import { useAuth } from '../../lib/auth'
 import PageHeader from '../../components/PageHeader'
 
-const ESTADO_COLOR = { activo: '#39FF14', inactivo: '#6B7280', bloqueado: '#FF2A2A' }
+import { PROVEEDOR_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
 const STARS = (n) => '★'.repeat(n) + '☆'.repeat(5-n)
 
 function ProveedorModal({ proveedor, sedes, onClose, onSaved }) {

@@ -118,7 +118,7 @@ export default function LoginPage() {
         </form>
 
         <p className="font-metric text-center mt-6"
-          style={{ fontSize:'0.55rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.15em' }}>
+          style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.15em' }}>
           FLY KITCHEN · KITCHEN-OS v2.0
         </p>
       </div>

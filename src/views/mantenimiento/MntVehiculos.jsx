@@ -85,7 +85,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
   }
 
   const INP = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'7px 10px', fontSize:'0.72rem', fontFamily:'monospace', width:'100%', boxSizing:'border-box', outline:'none' }
-  const LBL = { fontSize:'0.58rem', color:'rgba(255,255,255,0.3)', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
+  const LBL = { fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
   const TAB = (active) => ({ padding:'5px 14px', borderRadius:4, fontSize:'0.65rem', cursor:'pointer', fontFamily:'monospace', fontWeight:active?700:400, background: active ? 'rgba(57,255,20,0.1)' : 'transparent', border: active ? '1px solid rgba(57,255,20,0.3)' : '1px solid transparent', color: active ? '#39FF14' : 'rgba(255,255,255,0.35)' })
 
   return (
@@ -97,7 +97,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
         <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(57,255,20,0.06)', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
           <Car size={14} style={{ color:'rgba(57,255,20,0.5)' }}/>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.1em', textTransform:'uppercase' }}>{isNew ? 'Nuevo ticket · Flota' : 'Editar ticket · Flota'}</div>
+            <div style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.1em', textTransform:'uppercase' }}>{isNew ? 'Nuevo ticket · Flota' : 'Editar ticket · Flota'}</div>
             <div style={{ fontSize:'0.85rem', fontWeight:700, color:'var(--text)', marginTop:1 }}>{isNew ? 'Nuevo incidente vehicular' : form.activo_nombre}</div>
           </div>
           <button onClick={onClose} style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={16}/></button>
@@ -244,17 +244,17 @@ function VehCard({ ticket, onClick }) {
       onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)' }}
     >
       <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
-        <span style={{ fontSize:'0.52rem', padding:'1px 6px', borderRadius:4, fontWeight:700, background:`${pc}22`, color:pc, border:`1px solid ${pc}44` }}>{ticket.prioridad}</span>
+        <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:4, fontWeight:700, background:`${pc}22`, color:pc, border:`1px solid ${pc}44` }}>{ticket.prioridad}</span>
         {sla === 'vencido' && <span style={{ width:6,height:6,borderRadius:'50%',background:'#ff5050',display:'inline-block',boxShadow:'0 0 5px #ff5050' }} title="SLA vencido"/>}
         {sla === 'alerta'  && <span style={{ width:6,height:6,borderRadius:'50%',background:'#ffb400',display:'inline-block',boxShadow:'0 0 5px #ffb400' }} title="SLA por vencer"/>}
-        <span style={{ marginLeft:'auto', fontSize:'0.55rem', color:'rgba(255,255,255,0.25)' }}>{ticket.created_at ? fmtFecha(ticket.created_at) : ''}</span>
+        <span style={{ marginLeft:'auto', fontSize:'0.6rem', color:'rgba(255,255,255,0.25)' }}>{ticket.created_at ? fmtFecha(ticket.created_at) : ''}</span>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4 }}>
         <Car size={10} style={{ color:'rgba(57,255,20,0.5)', flexShrink:0 }}/>
         <span style={{ fontSize:'0.72rem', color:'#39FF14', fontWeight:700, fontFamily:'monospace' }}>{ticket.activo_nombre}</span>
         {ticket.lectura_km && (
-          <span style={{ marginLeft:'auto', fontSize:'0.58rem', color:'rgba(255,255,255,0.3)' }}>{ticket.lectura_km.toLocaleString()} km</span>
+          <span style={{ marginLeft:'auto', fontSize:'0.6rem', color:'rgba(255,255,255,0.3)' }}>{ticket.lectura_km.toLocaleString()} km</span>
         )}
       </div>
 
@@ -267,7 +267,7 @@ function VehCard({ ticket, onClick }) {
         <span style={{ fontSize:'0.6rem', color: ticket.responsable?'rgba(255,255,255,0.45)':'rgba(255,80,80,0.55)' }}>
           {ticket.responsable || 'Sin asignar'}
         </span>
-        {ticket.tipo && <span style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.2)', marginLeft:'auto' }}>{ticket.tipo}</span>}
+        {ticket.tipo && <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', marginLeft:'auto' }}>{ticket.tipo}</span>}
       </div>
     </div>
   )

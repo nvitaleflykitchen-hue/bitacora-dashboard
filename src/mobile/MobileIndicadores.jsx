@@ -112,7 +112,7 @@ function TabDashboard() {
               {ultimo ? estadoChip(ultimo.estado_general) : <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.05)', padding: '0.15rem 0.45rem', borderRadius: 4 }}>Sin reporte</span>}
             </div>
             {ultimo?.requiere_escalamiento && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 6, fontSize: '0.58rem', fontWeight: 700, color: '#FF2A2A', background: 'rgba(255,42,42,0.1)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 6, fontSize: '0.6rem', fontWeight: 700, color: '#FF2A2A', background: 'rgba(255,42,42,0.1)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>
                 <AlertTriangle size={9} /> Escalamiento
               </span>
             )}
@@ -152,7 +152,7 @@ function TabDashboard() {
             ].map(([label, value, color]) => (
               <div key={label} style={{ background: 'var(--surface)', borderRadius: 8, padding: '0.5rem', textAlign: 'center' }}>
                 <p style={{ fontSize: '0.95rem', fontWeight: 800, color: color || 'var(--phosphor)', fontFamily: 'monospace' }}>{value}</p>
-                <p style={{ fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: 2 }}>{label}</p>
+                <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: 2 }}>{label}</p>
               </div>
             ))}
           </div>
@@ -215,7 +215,7 @@ function TabIndicadores() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text)', fontWeight: 600 }}>{row.sede.nombre}</p>
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
                     {Object.entries(row.metricas).filter(([, v]) => v > 0).map(([k, v]) => (
-                      <span key={k} style={{ fontSize: '0.58rem', fontWeight: 700, color: '#FF2A2A', background: 'rgba(255,42,42,0.1)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>{k}: {v}</span>
+                      <span key={k} style={{ fontSize: '0.6rem', fontWeight: 700, color: '#FF2A2A', background: 'rgba(255,42,42,0.1)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>{k}: {v}</span>
                     ))}
                   </div>
                 </Card>
@@ -241,7 +241,7 @@ function TabIndicadores() {
                     {[['Registros', regs], ['Escalam.', escalamientos], ['Tareas', `${tareasResueltas}/${tareasTotal}`]].map(([l, v]) => (
                       <div key={l} style={{ textAlign: 'center' }}>
                         <p style={{ fontSize: '0.78rem', fontWeight: 700, color: l === 'Escalam.' && escalamientos > 0 ? '#FF2A2A' : 'var(--text)' }}>{v}</p>
-                        <p style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>{l}</p>
+                        <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{l}</p>
                       </div>
                     ))}
                   </div>
@@ -300,7 +300,7 @@ function TabCalendario() {
             <div style={{ background: 'var(--surface)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid rgba(57,255,20,0.08)' }}>
                 {DIAS_SEMANA.map((d, i) => (
-                  <div key={i} style={{ textAlign: 'center', padding: '0.4rem 0', fontSize: '0.58rem', color: 'rgba(57,255,20,0.4)', fontWeight: 700 }}>{d}</div>
+                  <div key={i} style={{ textAlign: 'center', padding: '0.4rem 0', fontSize: '0.6rem', color: 'rgba(57,255,20,0.4)', fontWeight: 700 }}>{d}</div>
                 ))}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
@@ -353,7 +353,7 @@ function TabCalendario() {
 
             {(eventosMnt[diaActual.diaStr] || []).length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                <p style={{ fontSize: '0.58rem', color: 'rgba(57,255,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Compromisos / vencimientos / hitos</p>
+                <p style={{ fontSize: '0.6rem', color: 'rgba(57,255,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Compromisos / vencimientos / hitos</p>
                 {(eventosMnt[diaActual.diaStr] || []).map((ev, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.4rem 0.6rem', borderRadius: 6, background: 'rgba(255,255,255,0.03)', marginBottom: 4 }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: ev.color, flexShrink: 0 }} />
@@ -377,7 +377,7 @@ function TabCalendario() {
                   <p style={{ fontSize: '0.6rem', color: '#F59E0B', marginTop: 4 }}>{r.estado_general}</p>
                 )}
                 {r.requiere_escalamiento && (
-                  <span style={{ display: 'inline-block', marginTop: 4, fontSize: '0.58rem', fontWeight: 700, color: '#FF2A2A', background: 'rgba(255,42,42,0.1)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>Escalamiento</span>
+                  <span style={{ display: 'inline-block', marginTop: 4, fontSize: '0.6rem', fontWeight: 700, color: '#FF2A2A', background: 'rgba(255,42,42,0.1)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>Escalamiento</span>
                 )}
               </Card>
             )) : <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center', padding: '1rem 0' }}>Sin registros este día.</p>}

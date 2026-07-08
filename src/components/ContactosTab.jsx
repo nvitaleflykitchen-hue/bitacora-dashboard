@@ -48,7 +48,7 @@ function ContactCard({ c, canEdit, onEdit, onDelete, perfilesMap }) {
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
           <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.83rem' }}>{c.nombre}</p>
           {perfilName && (
-            <span style={{ fontSize:'0.58rem', color:'var(--phosphor)', opacity:0.7, background:'rgba(57,255,20,0.08)', padding:'1px 5px', borderRadius:3 }}>
+            <span style={{ fontSize:'0.6rem', color:'var(--phosphor)', opacity:0.7, background:'rgba(57,255,20,0.08)', padding:'1px 5px', borderRadius:3 }}>
               👤 {perfilName}
             </span>
           )}
@@ -196,7 +196,7 @@ function ContactoModal({ contacto, modulo, perfiles, onClose, onSaved }) {
             <div>
               <label style={labelStyle}>TEL (link de llamada) *</label>
               <input style={inputStyle} value={form.tel} onChange={e => set('tel', e.target.value)} placeholder="Ej: 5493513628059" required />
-              <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.58rem', marginTop:3 }}>Se autocompleta al escribir el teléfono</p>
+              <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', marginTop:3 }}>Se autocompleta al escribir el teléfono</p>
             </div>
           </div>
 
@@ -223,7 +223,7 @@ function ContactoModal({ contacto, modulo, perfiles, onClose, onSaved }) {
                 </option>
               ))}
             </select>
-            <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.58rem', marginTop:3 }}>
+            <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', marginTop:3 }}>
               Vinculá este contacto a un usuario ya cargado en el sistema
             </p>
           </div>

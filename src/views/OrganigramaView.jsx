@@ -37,7 +37,7 @@ function PersonNode({ title, contact, tone = 'primary' }) {
   const emails = contact?.emails || (contact?.email ? [contact.email] : [])
   return (
     <article className="glass" style={{ minWidth:210, maxWidth:280, padding:'0.8rem 1rem', border:`1px solid ${tone === 'support' ? 'rgba(245,158,11,.35)' : 'rgba(57,255,20,.28)'}`, borderRadius:5, textAlign:'center' }}>
-      <p className="font-metric" style={{ fontSize:'0.58rem', color, letterSpacing:'.09em' }}>{title}</p>
+      <p className="font-metric" style={{ fontSize:'0.6rem', color, letterSpacing:'.09em' }}>{title}</p>
       <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.8rem', marginTop:5 }}>{contact?.nombre || 'Sin asignar'}</p>
       {contact?.cargo && <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:2 }}>{contact.cargo}</p>}
       {emails.map((email, index) => <a key={email} href={`mailto:${email}`} style={{ color:'var(--text-dim)', fontSize:'0.6rem', display:'block', marginTop:index === 0 ? 5 : 2 }}>{email}</a>)}
@@ -60,14 +60,14 @@ function SedeNode({ sede, assignments, fallbackOwner, excludedContactIds = new S
       <div style={{ padding:'0.75rem', textAlign:'center', borderBottom:'1px solid rgba(57,255,20,.1)', background:'rgba(57,255,20,.035)' }}>
         <div style={{ width:32, height:32, borderRadius:'50%', border:'1px solid rgba(245,158,11,.55)', display:'grid', placeItems:'center', margin:'0 auto 7px', color:'#f59e0b' }}><Users size={16}/></div>
         <p style={{ color:'var(--text)', fontWeight:750, fontSize:'0.8rem' }}>{contact?.nombre || 'Responsable pendiente'}</p>
-        <p className="font-metric" style={{ color:'#f59e0b', fontSize:'0.57rem', marginTop:2 }}>{roleLabel}</p>
-        {contact?.email && <p style={{ color:'var(--text-dim)', fontSize:'0.58rem', marginTop:4, overflowWrap:'anywhere' }}>{contact.email}</p>}
-        {contact?.telefono && <p style={{ color:'var(--text-dim)', fontSize:'0.58rem', marginTop:2 }}>{contact.telefono}</p>}
+        <p className="font-metric" style={{ color:'#f59e0b', fontSize:'0.6rem', marginTop:2 }}>{roleLabel}</p>
+        {contact?.email && <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:4, overflowWrap:'anywhere' }}>{contact.email}</p>}
+        {contact?.telefono && <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:2 }}>{contact.telefono}</p>}
       </div>
       <button type="button" onClick={() => onOpen(sede)} style={{ flex:1, padding:'0.75rem', textAlign:'left', background:'transparent', border:0, cursor:'pointer', color:'inherit' }}>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <Building2 size={12} style={{ color:'var(--phosphor)' }}/>
-          <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'0.59rem' }}>{sede.tipo || 'SEDE'}</p>
+          <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'0.6rem' }}>{sede.tipo || 'SEDE'}</p>
           <ExternalLink size={10} style={{ marginLeft:'auto', color:'var(--text-dim)' }}/>
         </div>
         <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.75rem', marginTop:6 }}>{sede.nombre}</p>

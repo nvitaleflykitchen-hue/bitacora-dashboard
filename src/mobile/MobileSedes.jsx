@@ -116,7 +116,7 @@ export default function MobileSedes() {
               {selectedSede.tipo && <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: 2 }}>{selectedSede.tipo}</p>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ background: stSede.bg, color: stSede.color, fontSize: '0.58rem', padding: '0.2rem 0.5rem', borderRadius: 4, fontWeight: 700 }}>
+              <span style={{ background: stSede.bg, color: stSede.color, fontSize: '0.6rem', padding: '0.2rem 0.5rem', borderRadius: 4, fontWeight: 700 }}>
                 {stSede.label}
               </span>
               <button
@@ -180,7 +180,7 @@ export default function MobileSedes() {
                   <p style={{ color: 'var(--text-dim)', fontSize: '0.6rem', textTransform: 'uppercase', margin: 0 }}>
                     {format(new Date(r.fecha_reporte), 'MMM')}
                   </p>
-                  <p style={{ color: 'var(--text-dim)', fontSize: '0.58rem', margin: 0 }}>
+                  <p style={{ color: 'var(--text-dim)', fontSize: '0.6rem', margin: 0 }}>
                     {format(new Date(r.fecha_reporte), 'HH:mm')}
                   </p>
                 </div>
@@ -188,7 +188,7 @@ export default function MobileSedes() {
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-                    <span style={{ background: chip.bg, color: chip.color, fontSize: '0.58rem', padding: '0.15rem 0.45rem', borderRadius: 4, fontWeight: 700 }}>
+                    <span style={{ background: chip.bg, color: chip.color, fontSize: '0.6rem', padding: '0.15rem 0.45rem', borderRadius: 4, fontWeight: 700 }}>
                       {r.estado_general || '—'}
                     </span>
                     {r.turno && (

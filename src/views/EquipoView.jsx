@@ -275,7 +275,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
         ].map(k => (
           <div key={k.label} className="py-3 px-4 text-center" style={{ borderRight:'1px solid rgba(57,255,20,0.06)' }}>
             <p className="font-title font-bold text-lg" style={{ color: k.color || 'var(--phosphor)' }}>{k.value}</p>
-            <p className="font-metric" style={{ fontSize:'0.55rem', color:'var(--text-dim)', letterSpacing:'0.08em' }}>{k.label}</p>
+            <p className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)', letterSpacing:'0.08em' }}>{k.label}</p>
           </div>
         ))}
       </div>
@@ -432,7 +432,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     <div className="grid grid-cols-3 gap-3">
                       {[['d1_cumple_actividades','Cumple actividades'],['d2_sin_supervision','Sin supervisión'],['d3_comprende_prioridades','Comprende prioridades']].map(([k,l]) => (
                         <div key={k}>
-                          <label className="font-metric block mb-1" style={{ fontSize:'0.58rem', color:'var(--text-dim)' }}>{l.toUpperCase()}</label>
+                          <label className="font-metric block mb-1" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{l.toUpperCase()}</label>
                           <ScoreSelect name={k} value={evalForm[k]} onChange={setEv} />
                         </div>
                       ))}
@@ -443,7 +443,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     <div className="grid grid-cols-3 gap-3">
                       {[['e1_cooperacion','Cooperación'],['e2_comunicacion','Comunicación'],['e3_maneja_desacuerdos','Maneja desacuerdos'],['e4_ambiente_confianza','Ambiente de confianza'],['e5_evita_conflictos','Evita conflictos']].map(([k,l]) => (
                         <div key={k}>
-                          <label className="font-metric block mb-1" style={{ fontSize:'0.58rem', color:'var(--text-dim)' }}>{l.toUpperCase()}</label>
+                          <label className="font-metric block mb-1" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{l.toUpperCase()}</label>
                           <ScoreSelect name={k} value={evalForm[k]} onChange={setEv} />
                         </div>
                       ))}
@@ -454,7 +454,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     <div className="grid grid-cols-3 gap-3">
                       {[['p1_cumple_horario','Cumple horario'],['p2_aseo_personal','Aseo personal'],['p3_uniforme','Uniforme']].map(([k,l]) => (
                         <div key={k}>
-                          <label className="font-metric block mb-1" style={{ fontSize:'0.58rem', color:'var(--text-dim)' }}>{l.toUpperCase()}</label>
+                          <label className="font-metric block mb-1" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{l.toUpperCase()}</label>
                           <ScoreSelect name={k} value={evalForm[k]} onChange={setEv} />
                         </div>
                       ))}
@@ -1166,7 +1166,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
         ].map(k => (
           <div key={k.label} className="py-3 px-4 text-center" style={{ borderRight:'1px solid rgba(57,255,20,0.06)' }}>
             <p className="font-title font-bold text-xl" style={{ color:'var(--phosphor)' }}>{k.value}</p>
-            <p className="font-metric" style={{ fontSize:'0.55rem', color:'var(--text-dim)', letterSpacing:'0.08em' }}>{k.label}</p>
+            <p className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)', letterSpacing:'0.08em' }}>{k.label}</p>
           </div>
         ))}
       </div>
@@ -1246,11 +1246,11 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                       <div className="flex justify-between mb-2 px-1">
                         <div className="text-center">
                           <p className="font-title font-bold" style={{ fontSize: '0.85rem', color: 'var(--phosphor)' }}>{avgSede.toFixed(1)}</p>
-                          <p className="font-metric" style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>PROM.</p>
+                          <p className="font-metric" style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>PROM.</p>
                         </div>
                         <div className="text-center">
                           <p className="font-title font-bold" style={{ fontSize: '0.85rem', color: 'var(--phosphor)' }}>{incSede}</p>
-                          <p className="font-metric" style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>CON INC.</p>
+                          <p className="font-metric" style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>CON INC.</p>
                         </div>
                       </div>
                     )}
@@ -1316,7 +1316,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                   </div>
                   <div className="text-right">
                     <p className="font-title font-bold" style={{ color:'var(--phosphor)', fontSize:'1rem' }}>{p.puntos_total||0}</p>
-                    <p style={{ fontSize:'0.55rem', color:'var(--text-dim)' }}>puntos</p>
+                    <p style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>puntos</p>
                   </div>
                   {res && <span className="font-metric" style={{ fontSize:'0.62rem', color: RESULTADO_COLOR[res], minWidth:56, textAlign:'right' }}>{res}</span>}
                   <ChevronRight size={12} style={{ color:'rgba(57,255,20,0.3)' }} />

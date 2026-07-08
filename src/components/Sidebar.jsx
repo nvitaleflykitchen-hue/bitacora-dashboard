@@ -14,7 +14,7 @@ function SectionLabel({ children }) {
   return (
     <div className="px-3 pt-4 pb-1">
       <span className="font-metric text-xs tracking-widest"
-        style={{ color:'rgba(57,255,20,0.35)', fontSize:'0.58rem', letterSpacing:'0.12em' }}>
+        style={{ color:'rgba(57,255,20,0.35)', fontSize:'0.6rem', letterSpacing:'0.12em' }}>
         {children}
       </span>
     </div>
@@ -137,7 +137,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
         <p className="font-title font-bold text-sm" style={{ color:'var(--phosphor)', lineHeight:1.2 }}>
           Bitácora
         </p>
-        <p className="font-metric" style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.45)', letterSpacing:'0.08em' }}>
+        <p className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.45)', letterSpacing:'0.08em' }}>
           IN SITU · FK
         </p>
       </div>
@@ -207,7 +207,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
             </button>
           </div>
         </div>
-        <p className="font-metric mt-1.5" style={{ fontSize:'0.52rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.1em' }}>
+        <p className="font-metric mt-1.5" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.1em' }}>
           v2.0 · KITCHEN-OS
         </p>
       </div>

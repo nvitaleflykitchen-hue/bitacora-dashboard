@@ -9,6 +9,7 @@ import { Plus, RefreshCw, LayoutGrid, List } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { TASK_STATES } from '../lib/operationalDomains'
 import { canSeeQualityTask, isOwnTask, isQualityOnlyProfile } from '../lib/access'
+import SkeletonTable from '../components/SkeletonTable'
 
 const PRIORIDADES = ['Alta','Media','Baja']
 
@@ -182,10 +183,7 @@ export default function Tareas({ focusId }) {
 
       {/* Contenido */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-7 h-7 rounded-full border-2 animate-spin"
-            style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
-        </div>
+        <SkeletonTable filas={7} columnas={5} />
       ) : viewMode === 'kanban' ? (
         <KanbanBoard tareas={tareas} onRefresh={load} readOnly={!canManage} focusId={focusId} />
       ) : (
@@ -208,7 +206,7 @@ export default function Tareas({ focusId }) {
                     <td>
                       <p style={{ color:'var(--text)', fontWeight:500, fontSize:'0.8rem' }}>{t.titulo}</p>
                       {t.categoria && (
-                        <span className="chip chip-blue" style={{ fontSize:'0.58rem', marginTop:2 }}>{getCategoriaLabel(t.categoria)}</span>
+                        <span className="chip chip-blue" style={{ fontSize:'0.6rem', marginTop:2 }}>{getCategoriaLabel(t.categoria)}</span>
                       )}
                     </td>
                     <td className="hidden sm:table-cell" style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>

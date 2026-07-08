@@ -56,7 +56,7 @@ function ContactosRapidos() {
         <div style={{ display:'flex', flexDirection:'column', gap:'0.85rem' }}>
           {sections.map(key => (
             <div key={key}>
-              <p style={{ color:'rgba(57,255,20,0.45)', fontSize:'0.58rem', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'0.4rem', fontFamily:'var(--font-metric)' }}>
+              <p style={{ color:'rgba(57,255,20,0.45)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'0.4rem', fontFamily:'var(--font-metric)' }}>
                 {MODULO_LABEL[key]}
               </p>
               <div style={{ display:'flex', flexDirection:'column', gap:5 }}>

@@ -95,7 +95,7 @@ function RacionCard({ title, fields }) {
         {fields.map(({ label, val, set }) => (
           <label key={label} style={{ minWidth: 0 }}>
             <span style={{
-              display: 'block', fontSize: '0.55rem', color: 'var(--text-dim)',
+              display: 'block', fontSize: '0.6rem', color: 'var(--text-dim)',
               marginBottom: '0.3rem', textTransform: 'uppercase',
               letterSpacing: '0.04em', textAlign: 'center',
             }}>

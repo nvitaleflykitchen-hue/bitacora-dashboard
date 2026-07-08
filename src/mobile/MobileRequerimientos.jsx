@@ -23,16 +23,7 @@ function SedePill({ label, active, onClick }) {
   )
 }
 
-const ESTADO_COLOR = {
-  'Borrador': '#9CA3AF',
-  'Pendiente': '#F59E0B',
-  'Enviado': '#3B82F6',
-  'Aprobado': '#8B5CF6',
-  'En_camino': '#10B981',
-  'Cumplido': '#39FF14',
-  'Rechazado': '#EF4444',
-  'Observado': '#F97316'
-}
+import { REQ_ESTADO_COLOR as ESTADO_COLOR } from '../lib/estados'
 
 const URGENCIA_COLOR = { baja: '#39FF14', media: '#F59E0B', alta: '#FF2A2A' }
 

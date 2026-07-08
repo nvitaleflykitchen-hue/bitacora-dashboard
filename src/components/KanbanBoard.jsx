@@ -270,7 +270,7 @@ function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
       {tarea.registros?.requiere_escalamiento && (
         <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4,
           background:'rgba(255,180,0,0.1)', border:'1px solid rgba(255,180,0,0.25)',
-          borderRadius:4, padding:'2px 6px', fontSize:'0.58rem', color:'#FBBF24', fontWeight:700 }}>
+          borderRadius:4, padding:'2px 6px', fontSize:'0.6rem', color:'#FBBF24', fontWeight:700 }}>
           ⚡ ESCALAMIENTO
         </div>
       )}
@@ -288,7 +288,7 @@ function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
           {tarea.prioridad && <span className={prioChip[tarea.prioridad] || 'chip chip-gray'} style={{ flexShrink:0 }}>{tarea.prioridad}</span>}
           {subtareas.length > 0 && (
             <span style={{
-              fontSize:'0.55rem', padding:'1px 5px', borderRadius:3, fontWeight:700, flexShrink:0,
+              fontSize:'0.6rem', padding:'1px 5px', borderRadius:3, fontWeight:700, flexShrink:0,
               color: completadas === subtareas.length ? 'var(--phosphor)' : 'rgba(255,255,255,0.4)',
               background: completadas === subtareas.length ? 'rgba(57,255,20,0.12)' : 'rgba(255,255,255,0.06)',
             }}>

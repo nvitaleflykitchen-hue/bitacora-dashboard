@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Download, MessageCircle, Mail } from 'lucide-react'
+import { Download, MessageCircle, Mail, Wrench } from 'lucide-react'
 import { getTickets, createTicket, updateTicket, getActivos, getProveedores, getSedes, TICKET_TIPOS_VALIDOS } from '../../lib/queries'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
@@ -10,11 +10,13 @@ import { uploadAdjunto } from '../../lib/adjuntos'
 import ComentariosHilo from '../../components/ComentariosHilo'
 import { toast } from '../../lib/feedback'
 
-const PRIORIDAD_COLOR = { critica: '#FF2A2A', alta: '#F97316', media: '#F59E0B', baja: '#39FF14' }
-const ESTADO_COLOR    = { abierto: '#F97316', aprobado: '#F59E0B', en_progreso: '#3B82F6', resuelto: '#39FF14', rechazado: '#6B7280' }
-const ESTADOS    = ['abierto','aprobado','en_progreso','resuelto','rechazado']
-const PRIORIDADES = ['baja','media','alta','critica']
-const SLA_HS     = { critica: 2, alta: 4, media: 48, baja: 168 }
+import {
+  PRIORIDAD_COLOR, TICKET_ESTADO_COLOR as ESTADO_COLOR,
+  TICKET_ESTADOS as ESTADOS, PRIORIDADES, SLA_HS,
+} from '../../lib/estados'
+import SkeletonTable from '../../components/SkeletonTable'
+import EmptyState from '../../components/EmptyState'
+import usePersistedState from '../../hooks/usePersistedState'
 
 function exportTicketsCSV(tickets, responsables) {
   const headers = ['#','Descripción','Activo','Tipo','Prioridad','Estado','Responsable','Sede','Apertura','Fecha límite','Cierre','Días abierto','Costo real']
@@ -223,14 +225,14 @@ function CostosTab({ ticket, form, set }) {
   }
 
   const INPUT  = { padding:'0.4rem 0.65rem', borderRadius:5, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
-  const LABEL  = { color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.25rem' }
+  const LABEL  = { color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.25rem' }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
 
       {/* Workflow presupuesto/OC */}
       <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'12px 14px' }}>
-        <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>WORKFLOW APROBACIÓN</p>
+        <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>WORKFLOW APROBACIÓN</p>
 
         {/* Toggle externo */}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
@@ -300,7 +302,7 @@ function CostosTab({ ticket, form, set }) {
       {/* Ítems de costo */}
       {ticket?.id && (
         <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'12px 14px' }}>
-          <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>ÍTEMS DE COSTO</p>
+          <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>ÍTEMS DE COSTO</p>
 
           {loading ? (
             <p style={{ fontSize:'0.7rem', color:'var(--text-dim)' }}>Cargando...</p>
@@ -310,7 +312,7 @@ function CostosTab({ ticket, form, set }) {
                 <div style={{ marginBottom:10 }}>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 90px 90px 90px 28px', gap:'0 6px', marginBottom:4 }}>
                     {['Concepto','Tipo','Cant × P.Unit','Subtotal',''].map((h,i) => (
-                      <span key={i} style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.07em', textTransform:'uppercase' }}>{h}</span>
+                      <span key={i} style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.07em', textTransform:'uppercase' }}>{h}</span>
                     ))}
                   </div>
                   {items.map(item => (
@@ -516,7 +518,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                 {isNew ? 'Nuevo Ticket' : `Ticket #${ticket.numero}`}
               </h2>
               {activoTipo && (
-                <span style={{ fontSize:'0.55rem', padding:'2px 8px', borderRadius:3, fontWeight:700, background:`${tipoColor}18`, color:tipoColor, border:`1px solid ${tipoColor}33`, fontFamily:'monospace' }}>
+                <span style={{ fontSize:'0.6rem', padding:'2px 8px', borderRadius:3, fontWeight:700, background:`${tipoColor}18`, color:tipoColor, border:`1px solid ${tipoColor}33`, fontFamily:'monospace' }}>
                   {activoTipo}
                 </span>
               )}
@@ -627,7 +629,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
 
             {/* FECHAS */}
             <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'10px 14px', marginBottom:'0.85rem' }}>
-              <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>FECHAS</p>
+              <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>FECHAS</p>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 1rem' }}>
                 <div>
                   <label style={LABEL}>Apertura</label>
@@ -734,14 +736,15 @@ export default function MntTickets({ focusId }) {
   const [responsables, setResponsables] = useState([])
   const [loading, setLoading]           = useState(true)
   const [modalTicket, setModalTicket]   = useState(null)
-  const [filtroEstado, setFiltroEstado] = useState('todos')
-  const [filtroTipo, setFiltroTipo]     = useState('todos')
-  const [filtroSLA, setFiltroSLA]       = useState(false)
+  const [filtroEstado, setFiltroEstado] = usePersistedState('mntTickets.filtroEstado', 'todos')
+  const [filtroTipo, setFiltroTipo]     = usePersistedState('mntTickets.filtroTipo', 'todos')
+  const [filtroSLA, setFiltroSLA]       = usePersistedState('mntTickets.filtroSLA', false)
   const { allowedSedeIds, can } = useAuth()
   const canManage = can('mantenimiento', 'manage')
   const canReport = canManage || can('mantenimiento', 'report')
-  const [sedeId, setSedeId]             = useState('')
+  const [sedeId, setSedeId]             = usePersistedState('mntTickets.sedeId', '')
   const [sedes, setSedes]               = useState([])
+  const [visibles, setVisibles]         = useState(100)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -806,6 +809,11 @@ export default function MntTickets({ focusId }) {
     .filter(t => filtroEstado === 'todos' || t.estado === filtroEstado)
     .filter(t => filtroTipo   === 'todos' || t.tipo   === filtroTipo)
   if (filtroSLA) filtrados = filtrados.filter(t => slaStatus(t) === 'vencido')
+  const totalFiltrados = filtrados.length
+  const hayMas = totalFiltrados > visibles
+  filtrados = filtrados.slice(0, visibles)
+
+  useEffect(() => { setVisibles(100) }, [filtroEstado, filtroTipo, filtroSLA, sedeId])
 
   const vencidos   = tickets.filter(t => slaStatus(t) === 'vencido').length
   const sinAsignar = tickets.filter(t => !t.responsable_id && t.estado !== 'resuelto' && t.estado !== 'rechazado').length
@@ -873,12 +881,12 @@ export default function MntTickets({ focusId }) {
       {/* Tabla */}
       <div style={{ flex: 1, overflowY: 'auto', background: 'var(--surface)', borderRadius:3 }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-          </div>
+          <SkeletonTable filas={8} columnas={6} />
         ) : filtrados.length === 0 ? (
-          <p style={{ padding: '2rem', color: 'var(--text-dim)', textAlign: 'center' }}>Sin tickets</p>
-        ) : filtrados.map((t, i) => {
+          <EmptyState icono={Wrench} titulo="Sin tickets"
+            detalle="No hay tickets que coincidan con los filtros actuales. Probá ajustarlos o creá uno nuevo." />
+        ) : <>
+        {filtrados.map((t, i) => {
           const dias = diasAbierto(t)
           return (
             <div key={t.id} onClick={() => setModalTicket(t)}
@@ -909,12 +917,21 @@ export default function MntTickets({ focusId }) {
               <div style={{ textAlign: 'right' }}>
                 <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', fontFamily: 'var(--font-metric)' }}>{fmtFecha(t.fecha_creacion || t.created_at)}</p>
                 {dias !== null && (
-                  <p style={{ fontSize: '0.58rem', color: dias > 7 ? '#ff5050' : 'var(--text-dim)', fontFamily: 'var(--font-metric)' }}>{dias}d</p>
+                  <p style={{ fontSize: '0.6rem', color: dias > 7 ? '#ff5050' : 'var(--text-dim)', fontFamily: 'var(--font-metric)' }}>{dias}d</p>
                 )}
               </div>
             </div>
           )
         })}
+        {hayMas && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.9rem' }}>
+            <button onClick={() => setVisibles(v => v + 100)} className="btn-ghost"
+              style={{ fontSize: '0.7rem', padding: '0.4rem 1rem' }}>
+              Mostrar 100 más ({totalFiltrados - visibles} restantes)
+            </button>
+          </div>
+        )}
+        </>}
       </div>
 
       {modalTicket !== null && (

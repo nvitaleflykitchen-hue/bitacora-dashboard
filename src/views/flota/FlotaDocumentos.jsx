@@ -7,7 +7,7 @@ import { isQualityOnlyProfile } from '../../lib/access'
 import { confirmar } from '../../lib/feedback'
 
 const TIPO_LABEL  = { poe:'POE', legal:'Legal', seguro:'Seguro', manual:'Manual', circulacion:'Circulación', otro:'Otro' }
-const ESTADO_COLOR = { vigente:'#39FF14', vencido:'#FF2A2A', baja:'#6B7280' }
+import { DOC_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
 const INPUT_S = { width:'100%', padding:'0.7rem 0.9rem', borderRadius:2, background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.08)', color:'#e2e8f0', fontSize:'0.88rem', fontFamily:'inherit', boxSizing:'border-box' }
 const LABEL_S = { color:'var(--text-dim)', fontSize:'0.62rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.35rem' }
 const ROW_S   = { marginBottom:'1rem' }
@@ -184,7 +184,7 @@ export default function FlotaDocumentos({ focusId }) {
           { label:'Vigentes', value:items.filter(d=>d.estado==='vigente').length, color:'#39FF14' },
         ].map(k=>(
           <div key={k.label} style={{ background:'var(--surface)', borderRadius:3, padding:'0.75rem 1rem', flex:1, minWidth:90 }}>
-            <p style={{ color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>{k.label}</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>{k.label}</p>
             <p style={{ color:k.color, fontWeight:800, fontSize:'1.5rem', lineHeight:1 }}>{k.value}</p>
           </div>
         ))}
@@ -203,7 +203,7 @@ export default function FlotaDocumentos({ focusId }) {
             <thead>
               <tr style={{ borderBottom:'1px solid rgba(57,255,20,0.05)' }}>
                 {['Título','Tipo','Vehículo','Versión','Vencimiento','Estado'].map(h=>(
-                  <th key={h} style={{ padding:'0.6rem 1rem', color:'var(--text-dim)', fontSize:'0.58rem', textTransform:'uppercase', letterSpacing:'0.06em', fontWeight:600, textAlign:'left' }}>{h}</th>
+                  <th key={h} style={{ padding:'0.6rem 1rem', color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.06em', fontWeight:600, textAlign:'left' }}>{h}</th>
                 ))}
               </tr>
             </thead>

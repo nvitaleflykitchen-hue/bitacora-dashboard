@@ -65,7 +65,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
         onMouseLeave={e=>e.currentTarget.style.background=expanded?'rgba(255,255,255,0.03)':'transparent'}
       >
         {/* Acción */}
-        <span style={{ fontSize:'0.58rem', padding:'2px 7px', borderRadius:3, background:`${color}18`, color, border:`1px solid ${color}33`, fontWeight:700, fontFamily:'monospace', alignSelf:'center', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        <span style={{ fontSize:'0.6rem', padding:'2px 7px', borderRadius:3, background:`${color}18`, color, border:`1px solid ${color}33`, fontWeight:700, fontFamily:'monospace', alignSelf:'center', textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           {row.accion}
         </span>
 
@@ -100,22 +100,22 @@ function AuditoriaRow({ row, expanded, onToggle }) {
         <div style={{ padding:'8px 14px 14px 20px', background:'rgba(255,255,255,0.02)', borderLeft:'2px solid rgba(57,255,20,0.05)' }}>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:10, marginBottom: row.campo ? 10 : 0 }}>
             <div>
-              <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>TIMESTAMP</p>
+              <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>TIMESTAMP</p>
               <p style={{ fontSize:'0.65rem', color:'var(--text)' }}>{row.created_at ? new Date(row.created_at).toLocaleString('es-AR') : '—'}</p>
             </div>
             <div>
-              <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>USUARIO</p>
+              <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>USUARIO</p>
               <p style={{ fontSize:'0.65rem', color:'var(--text)' }}>{row.usuario_nombre || '—'}</p>
               <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)' }}>{row.usuario_email || ''}</p>
             </div>
             <div>
-              <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>TABLA · ID</p>
+              <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>TABLA · ID</p>
               <p style={{ fontSize:'0.65rem', color:'var(--text)' }}>{row.tabla}</p>
               <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace' }}>{row.registro_id || '—'}</p>
             </div>
             {row.sede_nombre && (
               <div>
-                <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>SEDE</p>
+                <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:3 }}>SEDE</p>
                 <p style={{ fontSize:'0.65rem', color:'var(--text)' }}>{row.sede_nombre}</p>
               </div>
             )}
@@ -225,16 +225,16 @@ export default function AuditoriaView() {
       {rows.length > 0 && (
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', flexShrink:0 }}>
           <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.07)', borderRadius:3, padding:'8px 16px' }}>
-            <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:2 }}>EVENTOS</p>
+            <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:2 }}>EVENTOS</p>
             <p style={{ fontSize:'1.1rem', fontWeight:700, color:'var(--text)' }}>{rows.length}</p>
           </div>
           <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.07)', borderRadius:3, padding:'8px 16px' }}>
-            <p style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:2 }}>USUARIOS ACTIVOS</p>
+            <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', marginBottom:2 }}>USUARIOS ACTIVOS</p>
             <p style={{ fontSize:'1.1rem', fontWeight:700, color:'var(--text)' }}>{usuariosUnicos.length}</p>
           </div>
           {totalPorAccion.map(a => (
             <div key={a.value} style={{ background:`${a.color}0c`, border:`1px solid ${a.color}22`, borderRadius:3, padding:'8px 16px' }}>
-              <p style={{ fontSize:'0.55rem', color:`${a.color}99`, fontFamily:'monospace', marginBottom:2 }}>{a.label.toUpperCase()}</p>
+              <p style={{ fontSize:'0.6rem', color:`${a.color}99`, fontFamily:'monospace', marginBottom:2 }}>{a.label.toUpperCase()}</p>
               <p style={{ fontSize:'1.1rem', fontWeight:700, color:a.color }}>{a.count}</p>
             </div>
           ))}
@@ -278,7 +278,7 @@ export default function AuditoriaView() {
         borderBottom:'1px solid rgba(57,255,20,0.07)',
       }}>
         {['Acción','Tabla','Descripción','Usuario','Tiempo',''].map(h=>(
-          <span key={h} style={{ fontSize:'0.55rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em' }}>{h}</span>
+          <span key={h} style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em' }}>{h}</span>
         ))}
       </div>
 

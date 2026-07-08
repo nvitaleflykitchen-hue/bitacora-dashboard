@@ -126,7 +126,7 @@ export default function DashboardGlobal({ onNavigate }) {
               <div>
                 <p className="kpi-value" style={alert ? { color:'var(--alert)', textShadow:'0 0 12px rgba(255,42,42,0.4)' } : {}}>{value}</p>
                 <p className="kpi-label">{label}</p>
-                {extra && <p className="font-metric mt-1" style={{ fontSize:'0.58rem', color:'var(--text-dim)' }}>{extra}</p>}
+                {extra && <p className="font-metric mt-1" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{extra}</p>}
               </div>
               <Icon size={18} style={{ color: alert ? 'var(--alert)' : 'rgba(57,255,20,0.3)', marginTop:2 }} />
             </div>

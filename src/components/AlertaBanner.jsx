@@ -136,7 +136,7 @@ export default function AlertaBanner({ onNavigate }) {
       {/* Controles derecha */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
         {lastRefresh && (
-          <span style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.52rem', color: 'rgba(107,114,128,0.5)', letterSpacing: '0.04em' }}>
+          <span style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '0.6rem', color: 'rgba(107,114,128,0.5)', letterSpacing: '0.04em' }}>
             {lastRefresh.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}

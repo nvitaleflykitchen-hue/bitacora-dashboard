@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import SkeletonTable from '../components/SkeletonTable'
 
 const ROLES = ['admin','editor','encargado','consultor','grupo','sede','operario','flota','mnt_editor']
 const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede', operario: 'Operario', flota: 'Flota', mnt_editor: 'Gestión Mantenimiento' }
@@ -474,10 +475,7 @@ export default function Usuarios() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-7 h-7 rounded-full border-2 animate-spin"
-            style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
-        </div>
+        <SkeletonTable filas={8} columnas={6} />
       ) : (
         <div className="glass rounded overflow-hidden" style={{ borderRadius:'3px' }}>
           <div className="overflow-x-auto">
@@ -507,12 +505,12 @@ export default function Usuarios() {
                         <p style={{ color:'var(--text)', fontWeight:500, fontSize:'0.82rem' }}>{p.nombre || '—'}</p>
                         {p.posible_duplicado && (
                           <span className="chip chip-yellow" title="Mismo nombre en más de una cuenta. Revisar antes de desactivar o eliminar."
-                            style={{ fontSize:'0.52rem', marginTop:3 }}>
+                            style={{ fontSize:'0.6rem', marginTop:3 }}>
                             Posible duplicado · {p.duplicados_nombre} cuentas
                           </span>
                         )}
                         {esMiPerfil && (
-                          <span className="chip chip-green" style={{ fontSize:'0.55rem', marginTop:2 }}>Yo</span>
+                          <span className="chip chip-green" style={{ fontSize:'0.6rem', marginTop:2 }}>Yo</span>
                         )}
                       </td>
                       <td>
@@ -534,7 +532,7 @@ export default function Usuarios() {
                           <span style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>
                             {p.telefono || '—'}
                             {p.telefono_origen && p.telefono_origen !== 'perfil' && (
-                              <small style={{ display:'block', color:'rgba(57,255,20,0.5)', fontSize:'0.52rem', marginTop:2 }}>
+                              <small style={{ display:'block', color:'rgba(57,255,20,0.5)', fontSize:'0.6rem', marginTop:2 }}>
                                 desde {p.telefono_origen === 'equipo' ? 'Equipo' : 'Contactos'}
                               </small>
                             )}
@@ -582,7 +580,7 @@ export default function Usuarios() {
                       <td>
                         {(() => {
                           if (['admin','editor'].includes(p.rol)) {
-                            return <span className="chip chip-gray" style={{ fontSize:'0.58rem' }} title="Admin y editor gestionan Compras siempre">Total (rol)</span>
+                            return <span className="chip chip-gray" style={{ fontSize:'0.6rem' }} title="Admin y editor gestionan Compras siempre">Total (rol)</span>
                           }
                           const propios = permisosCompras.filter(pp => pp.perfil_id === p.id && pp.activo)
                           return (
@@ -590,7 +588,7 @@ export default function Usuarios() {
                               {propios.length
                                 ? propios.map(pp => {
                                     const meta = ACCIONES_COMPRAS.find(a => a.accion === pp.accion)
-                                    return <span key={pp.accion} className="chip chip-blue" style={{ fontSize:'0.55rem' }}>{meta?.label || pp.accion}</span>
+                                    return <span key={pp.accion} className="chip chip-blue" style={{ fontSize:'0.6rem' }}>{meta?.label || pp.accion}</span>
                                   })
                                 : <span style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>—</span>}
                               {perfilActual?.rol?.toLowerCase() === 'admin' && (

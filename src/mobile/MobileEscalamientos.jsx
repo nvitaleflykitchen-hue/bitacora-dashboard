@@ -8,11 +8,10 @@ import RegistroModal from '../components/RegistroModal'
 import TicketRapidoModal from '../components/TicketRapidoModal'
 import ComentariosHilo from '../components/ComentariosHilo'
 
-const ESTADO_COLOR = {
-  'Pendiente':  { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)'  },
-  'En gestión': { color: '#50b4ff', bg: 'rgba(80,180,255,0.1)'  },
-  'Resuelto':   { color: '#39FF14', bg: 'rgba(57,255,20,0.1)'   },
-}
+import { ESCALAMIENTO_ESTADO_COLOR } from '../lib/estados'
+const ESTADO_COLOR = Object.fromEntries(
+  Object.entries(ESCALAMIENTO_ESTADO_COLOR).map(([k, c]) => [k, { color: c, bg: `${c}1A` }])
+)
 const TIPO_COLOR = {
   'Compras':       '#50b4ff',
   'Mantenimiento': '#F59E0B',

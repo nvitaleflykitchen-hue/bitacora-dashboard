@@ -81,11 +81,11 @@ function cleanPhone(p) {
 // ── Chip de estado ──────────────────────────────────────────
 function StatusChip({ status }) {
   if (status === 'nuevo')
-    return <span style={{ fontSize:'0.58rem', padding:'1px 6px', borderRadius:3, background:'rgba(57,255,20,0.15)', color:'#39FF14', fontWeight:700 }}>NUEVO</span>
+    return <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:3, background:'rgba(57,255,20,0.15)', color:'#39FF14', fontWeight:700 }}>NUEVO</span>
   if (status === 'actualizar')
-    return <span style={{ fontSize:'0.58rem', padding:'1px 6px', borderRadius:3, background:'rgba(96,165,250,0.15)', color:'#60A5FA', fontWeight:700 }}>ACTUALIZAR</span>
+    return <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:3, background:'rgba(96,165,250,0.15)', color:'#60A5FA', fontWeight:700 }}>ACTUALIZAR</span>
   if (status === 'sin_datos')
-    return <span style={{ fontSize:'0.58rem', padding:'1px 6px', borderRadius:3, background:'rgba(107,114,128,0.2)', color:'rgba(156,163,175,0.7)', fontWeight:700 }}>SIN DATOS</span>
+    return <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:3, background:'rgba(107,114,128,0.2)', color:'rgba(156,163,175,0.7)', fontWeight:700 }}>SIN DATOS</span>
   return null
 }
 
@@ -244,7 +244,7 @@ export default function ImportarContactosModal({ existentes = [], onClose, onImp
                 ].map(k => (
                   <div key={k.label} style={{ padding:'6px 12px', borderRadius:4, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)' }}>
                     <p style={{ color:k.color, fontSize:'1rem', fontWeight:800, fontFamily:'monospace' }}>{k.val}</p>
-                    <p style={{ color:'var(--text-dim)', fontSize:'0.58rem' }}>{k.label}</p>
+                    <p style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{k.label}</p>
                   </div>
                 ))}
               </div>

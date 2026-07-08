@@ -12,7 +12,7 @@ import {
 
 const labelStyle = {
   color: 'var(--text-dim)',
-  fontSize: '0.58rem',
+  fontSize: '0.6rem',
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
   display: 'block',

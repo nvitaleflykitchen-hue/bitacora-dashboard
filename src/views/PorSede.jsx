@@ -179,7 +179,7 @@ export default function PorSede({ focusId, focusSedeId }) {
                       <td className="hidden lg:table-cell">
                         <div className="flex gap-1 flex-wrap">
                           {cats.length > 0
-                            ? cats.map(c => <span key={c} className="chip chip-yellow" style={{ fontSize:'0.58rem' }}>{c}</span>)
+                            ? cats.map(c => <span key={c} className="chip chip-yellow" style={{ fontSize:'0.6rem' }}>{c}</span>)
                             : <span style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>—</span>}
                         </div>
                       </td>

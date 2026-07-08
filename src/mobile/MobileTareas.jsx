@@ -7,9 +7,7 @@ import { canSeeQualityTask, isQualityOnlyProfile } from '../lib/access'
 import { ChevronDown, Check, X, Plus, User } from 'lucide-react'
 import ComentariosHilo from '../components/ComentariosHilo'
 
-const PRIORIDAD_COLOR = {
-  alta: '#FF2A2A', media: '#F59E0B', baja: '#39FF14'
-}
+import { URGENCIA_COLOR as PRIORIDAD_COLOR } from '../lib/estados'
 
 function SubtareasMobile({ tareaId, subtareas = [], onUpdate, readOnly }) {
   const [adding, setAdding] = useState(false)

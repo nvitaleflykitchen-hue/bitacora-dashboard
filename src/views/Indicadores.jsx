@@ -33,7 +33,7 @@ function HeatMap({ rows, periodo, onNavigate }) {
           <h2 className="font-metric font-bold text-xs tracking-widest uppercase" style={{ color:'var(--phosphor)' }}>Mapa de calor de gestión por sede</h2>
           <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:3 }}>Novedades de los últimos {periodo} días · vencimientos al día de hoy</p>
         </div>
-        <div style={{ display:'flex', gap:10, fontSize:'0.58rem', color:'var(--text-dim)' }}>
+        <div style={{ display:'flex', gap:10, fontSize:'0.6rem', color:'var(--text-dim)' }}>
           {[['#39FF14','Normal'],['#F59E0B','Atención'],['#FF5050','Crítico']].map(([color,label])=><span key={label} style={{ display:'flex', alignItems:'center', gap:4 }}><i style={{ width:7,height:7,borderRadius:2,background:color }}/>{label}</span>)}
         </div>
       </div>
@@ -42,14 +42,14 @@ function HeatMap({ rows, periodo, onNavigate }) {
           <thead>
             <tr>
               <th style={{ textAlign:'left', padding:'7px 9px', color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.06em' }}>SEDE / ÁREA</th>
-              {HEAT_METRICS.map(metric=><th key={metric.key} title={metric.label} style={{ padding:'7px 6px', color:'var(--text-dim)', fontSize:'0.58rem', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>{metric.short.toUpperCase()}</th>)}
-              <th style={{ padding:'7px 6px', color:'var(--text-dim)', fontSize:'0.58rem' }}>TOTAL</th>
+              {HEAT_METRICS.map(metric=><th key={metric.key} title={metric.label} style={{ padding:'7px 6px', color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>{metric.short.toUpperCase()}</th>)}
+              <th style={{ padding:'7px 6px', color:'var(--text-dim)', fontSize:'0.6rem' }}>TOTAL</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(row=><tr key={row.sede.id}>
               <td style={{ padding:'9px', color:'var(--text)', fontSize:'0.7rem', fontWeight:700, whiteSpace:'nowrap' }}>
-                {row.sede.nombre}<span style={{ color:'var(--text-dim)', fontSize:'0.56rem', display:'block', marginTop:2 }}>{row.sede.tipo}</span>
+                {row.sede.nombre}<span style={{ color:'var(--text-dim)', fontSize:'0.6rem', display:'block', marginTop:2 }}>{row.sede.tipo}</span>
               </td>
               {HEAT_METRICS.map(metric=>{
                 const value=row.metricas[metric.key] || 0
@@ -93,7 +93,7 @@ function SedeCard({ ind }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="font-title font-bold text-sm" style={{ color:'var(--text)' }}>{sede.nombre}</p>
-          <span className="chip chip-gray" style={{ fontSize:'0.58rem', marginTop:2 }}>{sede.tipo}</span>
+          <span className="chip chip-gray" style={{ fontSize:'0.6rem', marginTop:2 }}>{sede.tipo}</span>
         </div>
         <span className="kpi-value" style={{ fontSize:'1.4rem' }}>{pctCumplimiento}%</span>
       </div>
@@ -148,7 +148,7 @@ function SedeCard({ ind }) {
           <div key={label} className="text-center">
             <p className="font-metric font-bold text-base"
               style={{ color: alert ? 'var(--alert)' : 'var(--text)', lineHeight:1 }}>{value}</p>
-            <p className="font-metric" style={{ fontSize:'0.55rem', color:'var(--text-dim)', marginTop:2, letterSpacing:'0.06em' }}>
+            <p className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)', marginTop:2, letterSpacing:'0.06em' }}>
               {label.toUpperCase()}
             </p>
           </div>

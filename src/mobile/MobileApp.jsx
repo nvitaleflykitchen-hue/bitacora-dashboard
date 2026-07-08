@@ -172,8 +172,8 @@ export default function MobileApp() {
             <button key={n.key} onClick={() => { setMasModule(null); setTab(n.key) }}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-                gap: '0.15rem', background: 'none', border: 'none', cursor: 'pointer',
-                padding: '0.35rem 0', minWidth: 0,
+                justifyContent: 'center', gap: '0.15rem', background: 'none', border: 'none',
+                cursor: 'pointer', padding: '0.35rem 0', minWidth: 0, minHeight: 48,
               }}>
               <span style={{
                 fontSize: '0.9rem', lineHeight: 1,
@@ -181,7 +181,7 @@ export default function MobileApp() {
                 transition: 'color 0.15s'
               }}>{n.icon}</span>
               <span style={{
-                fontSize: '0.52rem', letterSpacing: '0.01em',
+                fontSize: '0.6rem', letterSpacing: '0.01em',
                 color: tab === n.key ? (n.key === 'escalamientos' ? '#F97316' : 'var(--phosphor)') : 'var(--text-dim)',
                 fontWeight: tab === n.key ? 700 : 400,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center'

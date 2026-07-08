@@ -45,7 +45,7 @@ function ModuleCard({ mod, onOpen }) {
         <ChevronRight size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
       ) : (
         <span style={{
-          fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)',
+          fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-dim)',
           background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.4rem', borderRadius: 6,
           whiteSpace: 'nowrap', flexShrink: 0,
         }}>Próximamente</span>

@@ -153,7 +153,7 @@ export default function Calendario() {
                         )}
                         {/* mini conteo */}
                         {estado !== 'futuro' && sedesQueReportaron > 0 && (
-                          <p className="font-metric mt-0.5" style={{ fontSize:'0.55rem', color:'var(--text-dim)' }}>
+                          <p className="font-metric mt-0.5" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>
                             {sedesQueReportaron}/{totalSedes}
                           </p>
                         )}
@@ -213,7 +213,7 @@ export default function Calendario() {
               {/* Eventos de mantenimiento del día */}
               {(eventosMnt[diaActual?.diaStr] || []).length > 0 && (
                 <div className="px-3 pb-2">
-                  <p className="font-metric text-xs mb-2" style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.55rem', letterSpacing:'0.1em' }}>COMPROMISOS / VENCIMIENTOS / HITOS</p>
+                  <p className="font-metric text-xs mb-2" style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', letterSpacing:'0.1em' }}>COMPROMISOS / VENCIMIENTOS / HITOS</p>
                   {(eventosMnt[diaActual.diaStr] || []).map((ev, i) => (
                     <div key={i} className="rounded px-2 py-1.5 mb-1 flex items-center gap-2"
                       style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${ev.color}22` }}>
@@ -238,17 +238,17 @@ export default function Calendario() {
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
                     {r.turno && (
-                      <span className="font-metric" style={{ fontSize:'0.58rem', color:'var(--text-dim)' }}>{r.turno}</span>
+                      <span className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)' }}>{r.turno}</span>
                     )}
                     {r.reportante && (
-                      <span className="font-metric" style={{ fontSize:'0.58rem', color:'rgba(57,255,20,0.5)' }}>· {r.reportante}</span>
+                      <span className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.5)' }}>· {r.reportante}</span>
                     )}
                   </div>
                   {r.estado_general && r.estado_general !== 'Sin novedades' && r.estado_general !== 'Sin novedad' && (
-                    <p className="font-metric mt-1" style={{ fontSize:'0.58rem', color:'var(--warn)' }}>{r.estado_general}</p>
+                    <p className="font-metric mt-1" style={{ fontSize:'0.6rem', color:'var(--warn)' }}>{r.estado_general}</p>
                   )}
                   {r.requiere_escalamiento && (
-                    <span className="chip chip-red mt-1" style={{ fontSize:'0.58rem' }}>Escalamiento</span>
+                    <span className="chip chip-red mt-1" style={{ fontSize:'0.6rem' }}>Escalamiento</span>
                   )}
                 </div>
               )) : (
