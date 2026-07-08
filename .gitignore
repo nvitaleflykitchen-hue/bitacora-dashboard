@@ -12,3 +12,4 @@ tmp
 supabase/.temp
 vitest.config.js.timestamp-*.mjs
 BITACORA.MD.docx
+.github/workflows/
