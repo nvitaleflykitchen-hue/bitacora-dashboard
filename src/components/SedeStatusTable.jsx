@@ -10,7 +10,7 @@ const estadoConfig = {
 
 export default function SedeStatusTable({ registros, sedes, onRowClick }) {
   const sedesConRegistro = new Map(registros.map(r => [r.sede_id, r]))
-  const sedesQueNoReportaron = sedes.filter(s => !sedesConRegistro.has(s.id))
+  const sedesQueNoReportaron = sedes.filter(s => !sedesConRegistro.has(s.id) && !s.en_pausa)
 
   return (
     <div className="space-y-4">

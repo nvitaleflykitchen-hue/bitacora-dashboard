@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Download, MessageCircle, Mail, Wrench } from 'lucide-react'
+import { Download, MessageCircle, Mail, Wrench, FileText } from 'lucide-react'
 import { getTickets, createTicket, updateTicket, getActivos, getProveedores, getSedes, TICKET_TIPOS_VALIDOS } from '../../lib/queries'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
@@ -9,6 +9,7 @@ import PageHeader from '../../components/PageHeader'
 import { uploadAdjunto } from '../../lib/adjuntos'
 import ComentariosHilo from '../../components/ComentariosHilo'
 import { toast } from '../../lib/feedback'
+import { mensajeError } from '../../lib/errores'
 
 import {
   PRIORIDAD_COLOR, TICKET_ESTADO_COLOR as ESTADO_COLOR,
@@ -17,6 +18,7 @@ import {
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import usePersistedState from '../../hooks/usePersistedState'
+import { generarReporteEficienciaMnt } from '../../lib/mntEficienciaPdf'
 
 function exportTicketsCSV(tickets, responsables) {
   const headers = ['#','Descripción','Activo','Tipo','Prioridad','Estado','Responsable','Sede','Apertura','Fecha límite','Cierre','Días abierto','Costo real']
@@ -851,6 +853,21 @@ export default function MntTickets({ focusId }) {
             title="Exportar CSV"
             style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.3)', borderRadius:3, padding:'0.5rem 0.65rem', cursor:'pointer', color:'var(--phosphor)', display:'flex', alignItems:'center', gap:4 }}>
             <Download size={14} />
+          </button>
+          <button
+            title={sedeId ? 'Reporte de eficiencia PDF de la sede seleccionada' : 'Reporte de eficiencia PDF general (todas las sedes)'}
+            onClick={async () => {
+              try {
+                toast('Generando reporte de eficiencia...')
+                await generarReporteEficienciaMnt({
+                  sedeId: sedeId || null,
+                  sedeNombre: sedeId ? sedes.find(s => String(s.id) === String(sedeId))?.nombre : null,
+                })
+                toast.ok('Reporte PDF descargado.')
+              } catch (e) { toast.error('No se pudo generar el reporte: ' + mensajeError(e)) }
+            }}
+            style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.3)', borderRadius:3, padding:'0.5rem 0.65rem', cursor:'pointer', color:'var(--phosphor)', display:'flex', alignItems:'center', gap:4, fontSize:'0.68rem' }}>
+            <FileText size={14} /> Eficiencia PDF
           </button>
           {canReport && <button onClick={() => setModalTicket({})}
             style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>

@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
-import { getGrupos, createGrupo, getHistorialSemanal } from '../lib/queries'
+import { getGrupos, createGrupo, getHistorialSemanal, setSedePausa } from '../lib/queries'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { fmtFecha } from '../lib/dateUtils'
-import { Pencil, Plus, X, Save, MapPin, Phone, User, Building2, Download, Edit } from 'lucide-react'
+import { Pencil, Plus, X, Save, MapPin, Phone, User, Building2, Download, Edit, Pause, Play } from 'lucide-react'
 import RegistroModal from '../components/RegistroModal'
 import { generarInformeSedePDF } from '../lib/sedeReportPdf'
 import DocumentacionChecklist from '../components/DocumentacionChecklist'
 import { SEDE_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
-import { toast } from '../lib/feedback'
+import { toast, confirmar } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
 const TIPO_COLOR = {
@@ -451,6 +451,32 @@ export default function SedeFicha({ onNavigate, focusId }) {
               </div>
             </div>
             <div style={{ display:'flex', gap:8, flexShrink:0, alignItems:'center' }}>
+              {sede.en_pausa && (
+                <span style={{ fontFamily:'monospace', fontSize:'0.68rem', fontWeight:700, color:'#F59E0B', background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.3)', padding:'5px 10px', borderRadius:2 }}>
+                  ⏸ EN PAUSA
+                </span>
+              )}
+              {canManage && (
+                <button
+                  title={sede.en_pausa
+                    ? 'Reanudar: vuelve a contar en cumplimiento y "sin reporte hoy"'
+                    : 'Pausar: deja de contar como sede esperada hasta que ingrese un registro'}
+                  onClick={async () => {
+                    if (!sede.en_pausa && !await confirmar({
+                      titulo: `Pausar ${sede.nombre}`,
+                      mensaje: 'La sede deja de contar en el cumplimiento de carga y en "sin reporte hoy". Se reanuda sola apenas alguien cargue un registro, o manualmente desde acá.',
+                      confirmText: 'Pausar',
+                    })) return
+                    try {
+                      const actualizada = await setSedePausa(sede.id, !sede.en_pausa)
+                      setSede(prev => ({ ...prev, en_pausa: actualizada.en_pausa }))
+                      toast.ok(actualizada.en_pausa ? `${sede.nombre} en pausa.` : `${sede.nombre} reanudada.`)
+                    } catch (e) { toast.error(mensajeError(e)) }
+                  }}
+                  style={{ display:'flex', alignItems:'center', gap:5, background: sede.en_pausa ? 'rgba(57,255,20,0.08)' : 'rgba(245,158,11,0.08)', border: sede.en_pausa ? '1px solid rgba(57,255,20,0.2)' : '1px solid rgba(245,158,11,0.3)', color: sede.en_pausa ? 'rgba(57,255,20,0.8)' : '#F59E0B', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>
+                  {sede.en_pausa ? <><Play size={11}/> REANUDAR</> : <><Pause size={11}/> PAUSAR</>}
+                </button>
+              )}
               {canManage && <button onClick={()=>setModal('edit')} title="Editar datos de sede" style={{ display:'flex', alignItems:'center', gap:5, background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.2)', color:'rgba(57,255,20,0.7)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>
                 <Pencil size={11}/> Editar
               </button>}

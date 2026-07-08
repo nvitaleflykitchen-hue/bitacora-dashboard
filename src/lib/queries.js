@@ -15,6 +15,16 @@ export async function getSedes(sedeIds = null) {
 
 // ─── REGISTROS HOY ────────────────────────────────────────────────────────────
 
+export async function setSedePausa(sedeId, enPausa) {
+  // Una sede en pausa no cuenta como "esperada" en cumplimiento ni en
+  // "sin reporte hoy". Se despausa sola al ingresar un registro (trigger
+  // trg_despausar_sede en la base).
+  const { data, error } = await db().from('sedes')
+    .update({ en_pausa: enPausa }).eq('id', sedeId).select().single()
+  if (error) throw error
+  return data
+}
+
 export async function getRegistrosHoy(sedeIds = null) {
   const hoy = new Date()
   const desde = startOfDay(hoy).toISOString()
@@ -332,7 +342,7 @@ export async function upsertCapaPlan(payload) {
 
 export async function getIndicadoresPorSede(dias = 30, sedeIds = null) {
   const desde = subDays(new Date(), dias).toISOString()
-  let sedesQ = db().from('sedes').select('*').eq('activa', true)
+  let sedesQ = db().from('sedes').select('*').eq('activa', true).eq('en_pausa', false)
   let regsQ  = db().from('registros').select('sede_id, sede_nombre, estado_general, requiere_escalamiento, fecha_reporte').gte('fecha_reporte', desde)
   let tarQ   = db().from('tareas').select('sede_id, estado, fecha_limite, created_at').gte('created_at', desde)
   if (sedeIds?.length) {
@@ -390,7 +400,7 @@ export async function getIndicadoresPorSede(dias = 30, sedeIds = null) {
 export async function getMapaCalorGestion(dias = 30, sedeIds = null) {
   const desde = format(subDays(new Date(), dias), 'yyyy-MM-dd')
   const hoy = format(new Date(), 'yyyy-MM-dd')
-  let sedesQ = db().from('sedes').select('id,nombre,tipo,grupo_id').eq('activa', true).order('nombre')
+  let sedesQ = db().from('sedes').select('id,nombre,tipo,grupo_id').eq('activa', true).eq('en_pausa', false).order('nombre')
   let registrosQ = db().from('registros').select('sede_id,requiere_escalamiento').gte('fecha_reporte', desde).eq('requiere_escalamiento', true)
   let tareasQ = db().from('tareas').select('sede_id,estado,fecha_limite').not('fecha_limite','is',null)
   let ticketsQ = supabase.from('mnt_tickets').select('sede_id,estado,fecha_limite')
@@ -689,7 +699,7 @@ export async function getKPIsHoy(sedeIds = null) {
   return {
     totalRegistrosHoy: registrosHoy.length,
     sedesReportaronHoy: sedesQueReportaron.size,
-    totalSedesActivas: sedes.length,
+    totalSedesActivas: sedes.filter(s => !s.en_pausa).length,
     escalamientosActivos: escalamientosActivos.length,
     tareasPendientes: tareas.length,
     registrosHoy,
