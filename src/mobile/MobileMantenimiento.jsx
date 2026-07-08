@@ -10,6 +10,7 @@ import { isQualityOnlyProfile } from '../lib/access'
 import { Wrench, Package, Flame, Plus, X, ChevronRight, ChevronLeft, Search } from 'lucide-react'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import { TabPlanes, TabProveedores, TabResponsables, TabTablero } from './MobileMntTabs'
 
 const TIPO_COLOR_ACTIVO = { EQUIPO: '#F59E0B', INSTALACION: '#8B5CF6' }
 import {
@@ -508,31 +509,36 @@ export default function MobileMantenimiento() {
     { id: 'activos', label: 'Activos', icon: Wrench },
     { id: 'insumos', label: 'Insumos', icon: Package },
     { id: 'matafuegos', label: 'Matafuegos', icon: Flame },
+    { id: 'tablero', label: 'Tablero', icon: Wrench },
+    { id: 'planes', label: 'Planes', icon: Wrench },
+    { id: 'proveedores', label: 'Proveedores', icon: Wrench },
+    { id: 'responsables', label: 'Responsables', icon: Wrench },
   ]
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ padding: '0.75rem 1rem 0', flexShrink: 0 }}>
         <h1 style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700, marginBottom: 10 }}>Mantenimiento</h1>
-        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: '0.2rem', borderRadius: 20 }}>
-          {TABS.map(t => {
-            const Icon = t.icon
-            return (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                padding: '0.4rem 0.3rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none',
-                background: tab === t.id ? 'rgba(57,255,20,0.15)' : 'transparent', color: tab === t.id ? 'var(--phosphor)' : 'var(--text-dim)',
-              }}>
-                <Icon size={12} /> {t.label}
-              </button>
-            )
-          })}
+        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: '0.25rem', borderRadius: 20, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              flexShrink: 0, padding: '0.4rem 0.75rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none',
+              background: tab === t.id ? 'rgba(57,255,20,0.15)' : 'transparent', color: tab === t.id ? 'var(--phosphor)' : 'var(--text-dim)',
+              whiteSpace: 'nowrap',
+            }}>
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
         {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} />}
         {tab === 'insumos' && <TabInsumos />}
         {tab === 'matafuegos' && <TabMatafuegos allowedSedeIds={allowedSedeIds} />}
+        {tab === 'tablero' && <TabTablero allowedSedeIds={allowedSedeIds} canManage={canEditActivos} />}
+        {tab === 'planes' && <TabPlanes />}
+        {tab === 'proveedores' && <TabProveedores allowedSedeIds={allowedSedeIds} />}
+        {tab === 'responsables' && <TabResponsables />}
       </div>
     </div>
   )

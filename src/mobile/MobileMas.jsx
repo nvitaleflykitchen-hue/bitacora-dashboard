@@ -8,12 +8,14 @@ import MobileTablon from './MobileTablon'
 import MobileContactos from './MobileContactos'
 import { useAuth } from '../lib/auth'
 import { canAccessView } from '../lib/access'
+import MobileFlota from './MobileFlota'
 
 const MODULES = [
   { key: 'calidad',       label: 'Calidad',       sub: 'CAPA / No Conformidades',         icon: ClipboardList, ready: true,  view: 'calidadHub' },
   { key: 'personal',      label: 'Personal',      sub: 'Equipo / RRHH',                    icon: Users,         ready: true,  view: 'equipo' },
   { key: 'mantenimiento', label: 'Mantenimiento', sub: 'Activos, insumos, matafuegos',     icon: Wrench,        ready: true,  view: 'mantenimientoHub' },
   { key: 'indicadores',   label: 'Indicadores',   sub: 'Dashboard / Calendario',           icon: BarChart3,     ready: true,  view: 'calendario' },
+  { key: 'flota',         label: 'Flota',         sub: 'Vehículos y documentación',        icon: Wrench,        ready: true,  view: 'flotaHub' },
   { key: 'tablon',        label: 'Tablón',        sub: 'Anuncios y novedades',             icon: Megaphone,     ready: true,  view: 'tablon' },
   { key: 'contactos',     label: 'Directorio',    sub: 'Teléfonos importantes',            icon: Phone,         ready: true,  view: 'inicio' },
 ]
@@ -89,6 +91,7 @@ export default function MobileMas({ initialModule = null }) {
           {mod.key === 'personal' && <MobilePersonal />}
           {mod.key === 'mantenimiento' && <MobileMantenimiento />}
           {mod.key === 'indicadores' && <MobileIndicadores />}
+          {mod.key === 'flota' && <MobileFlota />}
           {mod.key === 'tablon' && <MobileTablon />}
           {mod.key === 'contactos' && <MobileContactos />}
         </div>
