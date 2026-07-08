@@ -466,3 +466,13 @@ Ya documentado en SETUP.md §2 y REPOSITORY_AUDIT.md.
 ## 6. Lo que este documento no cubre
 
 No se auditó línea por línea cada vista de escritorio/mobile para confirmar que respeta `allowedSedeIds` en sus queries (§3.1) — es el ítem de mayor incertidumbre restante y queda como acción de seguimiento en BACKLOG.md. Tampoco se verificó si existen otros consumidores de la `anon key` además del frontend (por ejemplo, si algún script externo ya depende del comportamiento abierto de alguna de las tablas de §2.3/§2.4 — corregir esas políticas sin coordinar podría romper algo que hoy "funciona" apoyado en el agujero).
+
+---
+
+## Actualizaciones 2026-07-08
+
+- **§2.1 (equipo sin control por rol) — ✅ RESUELTO.** Migración `equipo_mnt_rbac` aplicada (SQL en `supabase/security/20260708_equipo_mnt_rbac_REVIEW.sql`, aprobada por el usuario). Las 5 tablas de `equipo` ahora usan el patrón rol+sede de reclutamiento: admin/editor todo, consultor lectura, grupo/encargado acotados a sus sedes, sede/operario/flota/mnt_editor sin acceso. Verificación empírica (transacciones con ROLLBACK): rol `sede` lee 0/47 personas; `encargado` (sede 10) lee exactamente sus 10; admin lee todo.
+- **§2.2 (mantenimiento) — ✅ FASE 1 RESUELTA.** DELETE restringido a admin/editor/mnt_editor (verificado: encargado borra 0 tickets) y grants a `anon` revocados en las 18 tablas. SELECT/INSERT/UPDATE siguen abiertos a cualquier autenticado — scoping por sede pendiente (fase 2, requiere auditar vista por vista).
+- **§2.13 (Compras bloqueado) — ✅ RESUELTO.** Seed de `compras.manage` aplicado a los 5 encargados + grupo Gestión de Comedores, y nueva UI de permisos de módulo en `Usuarios.jsx` (columna Compras + modal admin-only). Queries `getPermisosCompras`/`setPermisoCompras` en `queries.js`.
+- **AUDITORIA_2026-07 §1.2 (tablas cerdova en public) — decisión del usuario: dejar como está.** La app cerdova está poco usada / en desarrollo, usa auth propia sobre la anon key, y cerrarla la rompería. Riesgo aceptado explícitamente el 2026-07-08; revisar si la app cerdova pasa a uso activo (la opción recomendada sigue siendo migrarla a su propio proyecto Supabase).
+- Nota operativa: se detectó que el mount de OneDrive puede servir **copias truncadas** de archivos recién editados (mismo patrón que rompió `NoConformidades.jsx` en julio). Antes de commitear un archivo recién modificado, verificar `wc -l` contra lo esperado.
