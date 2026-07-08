@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getTickets, updateTicket, getResponsablesMnt, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
-import { ChevronRight, ChevronLeft, Wrench, Calendar, MessageCircle, Mail, Plus, RefreshCw, AlertTriangle } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Wrench, Calendar, MessageCircle, Mail, Plus, RefreshCw, AlertTriangle, FileText } from 'lucide-react'
 import { fmtFecha } from '../lib/dateUtils'
 import TicketRapidoModal from '../components/TicketRapidoModal'
 import ComentariosHilo from '../components/ComentariosHilo'
@@ -13,6 +13,7 @@ import {
   TICKET_ESTADO_COLOR as ESTADO_COLOR, TICKET_ESTADOS as ESTADOS, PRIORIDAD_COLOR,
 } from '../lib/estados'
 import SkeletonTable from '../components/SkeletonTable'
+import { generarReporteEficienciaMnt } from '../lib/mntEficienciaPdf'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -353,6 +354,21 @@ export default function MobileTickets() {
           <MobileContactosBtn modulo="mantenimiento" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            title="Reporte de eficiencia PDF"
+            onClick={async () => {
+              try {
+                toast('Generando reporte...')
+                await generarReporteEficienciaMnt({
+                  sedeId: selectedSede?.id || null,
+                  sedeNombre: selectedSede?.nombre || null,
+                })
+                toast.ok('Reporte PDF descargado.')
+              } catch (e) { toast.error('No se pudo generar el reporte: ' + mensajeError(e)) }
+            }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 2, cursor: 'pointer' }}>
+            <FileText size={14} />
+          </button>
           <button onClick={load} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 2, cursor: 'pointer' }}>
             <RefreshCw size={14} />
           </button>

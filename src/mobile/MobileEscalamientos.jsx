@@ -9,6 +9,7 @@ import TicketRapidoModal from '../components/TicketRapidoModal'
 import ComentariosHilo from '../components/ComentariosHilo'
 
 import { ESCALAMIENTO_ESTADO_COLOR } from '../lib/estados'
+import SkeletonTable from '../components/SkeletonTable'
 const ESTADO_COLOR = Object.fromEntries(
   Object.entries(ESCALAMIENTO_ESTADO_COLOR).map(([k, c]) => [k, { color: c, bg: `${c}1A` }])
 )
@@ -138,9 +139,7 @@ export default function MobileEscalamientos() {
       {/* Lista */}
       <div className="mobile-scroll" style={{ flex: 1, padding: '0.75rem 1rem' }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-          </div>
+          <SkeletonTable filas={6} columnas={2} />
         ) : filtrados.length === 0 ? (
           <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
             <p style={{ color: 'var(--phosphor)', fontSize: '1.8rem', marginBottom: '0.5rem' }}>✓</p>

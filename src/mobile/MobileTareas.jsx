@@ -8,6 +8,7 @@ import { ChevronDown, Check, X, Plus, User } from 'lucide-react'
 import ComentariosHilo from '../components/ComentariosHilo'
 
 import { URGENCIA_COLOR as PRIORIDAD_COLOR } from '../lib/estados'
+import SkeletonTable from '../components/SkeletonTable'
 
 function SubtareasMobile({ tareaId, subtareas = [], onUpdate, readOnly }) {
   const [adding, setAdding] = useState(false)
@@ -282,9 +283,7 @@ export default function MobileTareas() {
       {error && <div role="alert" style={{ background:'rgba(255,42,42,.08)', border:'1px solid rgba(255,42,42,.25)', color:'#FF5050', borderRadius:8, padding:'.7rem .8rem', marginBottom:'.75rem', fontSize:'.75rem' }}>{error}</div>}
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-        </div>
+          <SkeletonTable filas={6} columnas={2} />
       ) : tareas.length === 0 ? (
         <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
           <p style={{ color: 'var(--phosphor)', fontSize: '2rem', marginBottom: '0.5rem' }}>OK</p>

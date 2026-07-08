@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import MobileHome from './MobileHome'
+import PullToRefresh from './PullToRefresh'
 import MobileReporte from './MobileReporte'
 import MobileTareas from './MobileTareas'
 import MobileSedes from './MobileSedes'
@@ -35,6 +36,7 @@ export default function MobileApp() {
   // 'operario': rol acotado a Inicio (Nuevo Reporte) + Checklist, nada más.
   const navAllowed = isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null)
   const [tab, setTab] = useState(isQualityOnly ? 'tareas' : 'home')
+  const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
   const [showSearch, setShowSearch] = useState(false)
   const [masModule, setMasModule] = useState(isQualityOnly ? 'calidad' : null)
@@ -153,7 +155,11 @@ export default function MobileApp() {
 
       {/* Main content */}
       <div style={{ flex: 1, minHeight: 0 }}>
-        {renderContent()}
+        <PullToRefresh onRefresh={() => setRefreshKey(k => k + 1)}>
+          <div key={refreshKey} style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {renderContent()}
+          </div>
+        </PullToRefresh>
       </div>
 
       {showSearch && (
@@ -217,6 +223,19 @@ function MobilePerfil({ perfil, onLogout }) {
       <div style={{ marginBottom:'1rem' }}>
         <PushNotificationControl />
       </div>
+
+      {['admin', 'editor'].includes(perfil?.rol) && (
+        <button
+          onClick={() => { localStorage.setItem('bd.forceDesktop', '1'); window.location.reload() }}
+          style={{
+            width: '100%', padding: '0.9rem', borderRadius: 8, marginBottom: '0.75rem',
+            background: 'rgba(57,255,20,0.08)', color: 'var(--phosphor)',
+            fontWeight: 600, fontSize: '0.9rem', border: '1px solid rgba(57,255,20,0.2)',
+            cursor: 'pointer'
+          }}>
+          Usar versión de escritorio
+        </button>
+      )}
 
       <button onClick={onLogout}
         style={{

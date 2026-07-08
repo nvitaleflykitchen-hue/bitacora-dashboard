@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
-import { getSedes, getRegistrosHoy, getRegistroById, getRegistrosBySede } from '../lib/queries'
+import { getSedes, getRegistrosHoy, getRegistroById, getRegistrosBySede, setSedePausa } from '../lib/queries'
+import { useAuth } from '../lib/auth'
+import { toast, confirmar } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 import RegistroModal from '../components/RegistroModal'
 import { format } from 'date-fns'
-import { ChevronRight, ChevronLeft, AlertTriangle, RefreshCw } from 'lucide-react'
+import { ChevronRight, ChevronLeft, AlertTriangle, RefreshCw, Pause, Play } from 'lucide-react'
+import SkeletonTable from '../components/SkeletonTable'
 
 const ESTADO_STYLE = {
   sin_novedades: { color: '#39FF14', bg: 'rgba(57,255,20,0.12)', label: 'Sin Novedades', dot: '#39FF14' },
@@ -23,6 +27,8 @@ const ESTADO_CHIP = {
 }
 
 export default function MobileSedes() {
+  const { can } = useAuth()
+  const canManageSedes = can('sedes', 'manage')
   const [sedes, setSedes] = useState([])
   const [registrosHoy, setRegistrosHoy] = useState([])
   const [loading, setLoading] = useState(true)
@@ -119,6 +125,27 @@ export default function MobileSedes() {
               <span style={{ background: stSede.bg, color: stSede.color, fontSize: '0.6rem', padding: '0.2rem 0.5rem', borderRadius: 4, fontWeight: 700 }}>
                 {stSede.label}
               </span>
+              {canManageSedes && (
+                <button
+                  title={selectedSede.en_pausa ? 'Reanudar sede' : 'Pausar sede'}
+                  onClick={async () => {
+                    if (!selectedSede.en_pausa && !await confirmar({
+                      titulo: `Pausar ${selectedSede.nombre}`,
+                      mensaje: 'Deja de contar en cumplimiento y "sin reporte hoy". Se reanuda sola al ingresar un registro.',
+                      confirmText: 'Pausar',
+                    })) return
+                    try {
+                      const act = await setSedePausa(selectedSede.id, !selectedSede.en_pausa)
+                      setSelectedSede(prev => ({ ...prev, en_pausa: act.en_pausa }))
+                      setSedes(prev => prev.map(s => s.id === act.id ? { ...s, en_pausa: act.en_pausa } : s))
+                      toast.ok(act.en_pausa ? 'Sede en pausa.' : 'Sede reanudada.')
+                    } catch (e) { toast.error(mensajeError(e)) }
+                  }}
+                  style={{ background: selectedSede.en_pausa ? 'rgba(57,255,20,0.1)' : 'rgba(245,158,11,0.1)', border: 'none', borderRadius: 5, color: selectedSede.en_pausa ? 'var(--phosphor)' : '#F59E0B', padding: '4px 6px', cursor: 'pointer', display: 'flex' }}
+                >
+                  {selectedSede.en_pausa ? <Play size={13} /> : <Pause size={13} />}
+                </button>
+              )}
               <button
                 onClick={() => openSede(selectedSede)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 2, cursor: 'pointer' }}
@@ -246,9 +273,7 @@ export default function MobileSedes() {
       {/* Lista de sedes */}
       <div className="mobile-scroll" style={{ flex: 1, padding: '0.75rem 1rem' }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-          </div>
+          <SkeletonTable filas={6} columnas={2} />
         ) : sedeConEstado.map(sede => {
           const st = ESTADO_STYLE[sede.estadoHoy]
           return (
@@ -270,10 +295,11 @@ export default function MobileSedes() {
                     {sede.nombre}
                   </p>
                   <span style={{
-                    background: st.bg, color: st.color,
+                    background: sede.en_pausa ? 'rgba(245,158,11,0.12)' : st.bg,
+                    color: sede.en_pausa ? '#F59E0B' : st.color,
                     fontSize: '0.6rem', padding: '0.2rem 0.5rem', borderRadius: 4, fontWeight: 700
                   }}>
-                    {st.label}
+                    {sede.en_pausa ? '⏸ EN PAUSA' : st.label}
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

@@ -24,6 +24,7 @@ function SedePill({ label, active, onClick }) {
 }
 
 import { REQ_ESTADO_COLOR as ESTADO_COLOR } from '../lib/estados'
+import SkeletonTable from '../components/SkeletonTable'
 
 const URGENCIA_COLOR = { baja: '#39FF14', media: '#F59E0B', alta: '#FF2A2A' }
 
@@ -165,9 +166,7 @@ export default function MobileRequerimientos() {
 
       <div style={{ flex: 1 }}>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-          </div>
+          <SkeletonTable filas={6} columnas={2} />
         ) : filtrados.length === 0 ? (
           <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
             <ShoppingCart size={32} style={{ color: 'var(--phosphor)', margin: '0 auto 0.5rem', opacity: 0.8 }} />

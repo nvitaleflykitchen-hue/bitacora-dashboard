@@ -208,8 +208,16 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
           </div>
         </div>
         <p className="font-metric mt-1.5" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.1em' }}>
-          v2.0 · KITCHEN-OS
+          v2.1 · KITCHEN-OS
         </p>
+        {localStorage.getItem('bd.forceDesktop') === '1' && (
+          <button
+            onClick={() => { localStorage.removeItem('bd.forceDesktop'); window.location.reload() }}
+            className="font-metric"
+            style={{ background: 'none', border: 'none', color: 'var(--phosphor)', fontSize: '0.6rem', cursor: 'pointer', padding: 0, marginTop: 4, textDecoration: 'underline' }}>
+            Volver a versión móvil
+          </button>
+        )}
       </div>
     </div>
   )

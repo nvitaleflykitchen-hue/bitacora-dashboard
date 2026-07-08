@@ -215,7 +215,10 @@ function AppInner() {
   if (activeView === 'qrActivo' && isMobile) {
     return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} onNavigate={setActiveView} /></Suspense>
   }
-  if (isMobile || forceMobile) return <Suspense fallback={<LoadingScreen />}><MobileApp /></Suspense>
+  // Escape a escritorio: admin/editor pueden forzar la versión completa desde
+  // el celular (Mi Perfil → "Usar versión de escritorio"). operario nunca.
+  const desktopForzado = ['admin', 'editor'].includes(rol) && localStorage.getItem('bd.forceDesktop') === '1'
+  if ((isMobile || forceMobile) && !(desktopForzado && !forceMobile)) return <Suspense fallback={<LoadingScreen />}><MobileApp /></Suspense>
 
   const navigate = (view, target = null) => {
     if (!ALL_VIEWS[view] || !canAccessView(rol, view, perfil)) return
