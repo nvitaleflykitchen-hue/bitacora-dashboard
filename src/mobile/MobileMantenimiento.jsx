@@ -8,6 +8,8 @@ import {
 import { fmtFecha } from '../lib/dateUtils'
 import { isQualityOnlyProfile } from '../lib/access'
 import { Wrench, Package, Flame, Plus, X, ChevronRight, ChevronLeft, Search } from 'lucide-react'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const TIPO_COLOR_ACTIVO = { EQUIPO: '#F59E0B', INSTALACION: '#8B5CF6' }
 const ESTADO_COLOR_ACTIVO = { operativo: '#39FF14', en_reparacion: '#F59E0B', baja: '#FF2A2A' }
@@ -64,7 +66,7 @@ function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated }) {
   }, [activo.id, activo.nombre])
 
   const save = async () => {
-    if (!form.nombre?.trim()) { alert('El nombre es obligatorio.'); return }
+    if (!form.nombre?.trim()) { toast.warn('El nombre es obligatorio.'); return }
     setSaving(true)
     try {
       let payload = { ...form }
@@ -75,7 +77,7 @@ function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated }) {
       await upsertActivo(payload)
       setEditing(false)
       onUpdated()
-    } catch (e) { alert('Error: ' + e.message) } finally { setSaving(false) }
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) } finally { setSaving(false) }
   }
 
   const sedeName = activo.sede_nombre || sedes.find(s => s.id === activo.sede_id)?.nombre
@@ -186,7 +188,7 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
   useEffect(() => { if (sedes?.length === 1) setForm(f => f.sede_id ? f : { ...f, sede_id: String(sedes[0].id) }) }, [sedes])
 
   const submit = async () => {
-    if (!form.nombre.trim()) { alert('El nombre es obligatorio.'); return }
+    if (!form.nombre.trim()) { toast.warn('El nombre es obligatorio.'); return }
     setSaving(true)
     try {
       let payload = { ...form, sede_id: form.sede_id ? Number(form.sede_id) : null }
@@ -194,7 +196,7 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
       if (sede) payload.sede_nombre = sede.nombre
       await upsertActivo(payload)
       onCreated()
-    } catch (e) { alert('Error: ' + e.message) } finally { setSaving(false) }
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) } finally { setSaving(false) }
   }
 
   return (
@@ -293,12 +295,12 @@ function QuickMovimientoModal({ insumo, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
 
   const submit = async () => {
-    if (!cantidad || +cantidad <= 0) { alert('Ingresá una cantidad válida.'); return }
+    if (!cantidad || +cantidad <= 0) { toast.warn('Ingresá una cantidad válida.'); return }
     setSaving(true)
     try {
       await registrarMovimiento({ insumo_id: insumo.id, tipo, cantidad: +cantidad, motivo: motivo || null })
       onSaved()
-    } catch (e) { alert('Error: ' + e.message) } finally { setSaving(false) }
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) } finally { setSaving(false) }
   }
 
   return (
@@ -326,11 +328,11 @@ function QuickInsumoModal({ onClose, onCreated }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const submit = async () => {
-    if (!form.nombre.trim()) { alert('El nombre es obligatorio.'); return }
+    if (!form.nombre.trim()) { toast.warn('El nombre es obligatorio.'); return }
     setSaving(true)
     const { error } = await supabase.schema('mantenimiento').from('insumos').insert(form)
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (error) { toast.error('Error: ' + mensajeError(error)); return }
     onCreated()
   }
 
@@ -409,7 +411,7 @@ function QuickMatafuegoModal({ sedes, onClose, onCreated }) {
   useEffect(() => { if (sedes?.length === 1) setForm(f => f.sede_id ? f : { ...f, sede_id: String(sedes[0].id) }) }, [sedes])
 
   const submit = async () => {
-    if (!form.codigo.trim()) { alert('El código es obligatorio.'); return }
+    if (!form.codigo.trim()) { toast.warn('El código es obligatorio.'); return }
     setSaving(true)
     try {
       let payload = { ...form, sede_id: form.sede_id ? Number(form.sede_id) : null }
@@ -417,7 +419,7 @@ function QuickMatafuegoModal({ sedes, onClose, onCreated }) {
       if (sede) payload.sede_nombre = sede.nombre
       await upsertMatafuego(payload)
       onCreated()
-    } catch (e) { alert('Error: ' + e.message) } finally { setSaving(false) }
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) } finally { setSaving(false) }
   }
 
   return (

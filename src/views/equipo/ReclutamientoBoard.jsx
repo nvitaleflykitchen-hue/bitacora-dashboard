@@ -9,6 +9,8 @@ import { useAuth } from '../../lib/auth'
 import { deleteAdjunto, getAdjuntos, uploadAdjunto } from '../../lib/adjuntos'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
 import { generateFichaAltaPdf, generateFichaEntrevistaPdf } from '../../lib/reclutamientoPdf'
+import { confirmar, toast } from '../../lib/feedback'
+import { mensajeError } from '../../lib/errores'
 
 const SOLICITUD_ESTADOS = [
   ['borrador', 'Borrador'],
@@ -348,7 +350,7 @@ function SolicitudModal({ initial, sedes, onClose, onSaved }) {
 
   const save = async (nextState) => {
     if (!form.puesto.trim() || !form.sede_id) {
-      alert('Completá puesto y sede antes de guardar.')
+      toast.warn('Completá puesto y sede antes de guardar.')
       return
     }
     setSaving(true)
@@ -359,7 +361,7 @@ function SolicitudModal({ initial, sedes, onClose, onSaved }) {
     const { data, error } = await query
     setSaving(false)
     if (error) {
-      alert('Error guardando solicitud: ' + error.message)
+      toast.error('Error guardando solicitud: ' + mensajeError(error))
       return
     }
     onSaved(data)
@@ -444,7 +446,7 @@ function CandidatoModal({ initial, solicitudes, onClose, onSaved }) {
 
   const save = async () => {
     if (!form.nombre_apellido.trim()) {
-      alert('Completá nombre y apellido.')
+      toast.warn('Completá nombre y apellido.')
       return
     }
     setSaving(true)
@@ -455,7 +457,7 @@ function CandidatoModal({ initial, solicitudes, onClose, onSaved }) {
     const { data, error } = await query
     if (error) {
       setSaving(false)
-      alert('Error guardando candidato: ' + error.message)
+      toast.error('Error guardando candidato: ' + mensajeError(error))
       return
     }
     for (const file of files) {
@@ -543,7 +545,7 @@ function EntrevistaModal({ candidate, solicitud, initial, onClose, onSaved }) {
     const { data, error } = await query
     setSaving(false)
     if (error) {
-      alert('Error guardando entrevista: ' + error.message)
+      toast.error('Error guardando entrevista: ' + mensajeError(error))
       return
     }
     await supabase.schema('equipo').from('reclutamiento_candidatos').update({ estado: 'entrevista' }).eq('id', candidate.id)
@@ -713,7 +715,7 @@ export default function ReclutamientoBoard({
     setCandidateActionId(id)
     const { error } = await supabase.schema('equipo').from('reclutamiento_candidatos').update(payload).eq('id', id)
     if (error) {
-      alert('Error actualizando candidato: ' + error.message)
+      toast.error('Error actualizando candidato: ' + mensajeError(error))
     } else {
       await load()
     }
@@ -748,7 +750,7 @@ export default function ReclutamientoBoard({
       if (error) throw error
       await load()
     } catch (error) {
-      alert('Error cambiando la búsqueda principal: ' + error.message)
+      toast.error('Error cambiando la búsqueda principal: ' + mensajeError(error))
     } finally {
       setCandidateActionId(null)
     }
@@ -774,7 +776,7 @@ export default function ReclutamientoBoard({
       if (error) throw error
       await load()
     } catch (error) {
-      alert('Error actualizando búsquedas vinculadas: ' + error.message)
+      toast.error('Error actualizando búsquedas vinculadas: ' + mensajeError(error))
     } finally {
       setCandidateActionId(null)
     }
@@ -787,9 +789,11 @@ export default function ReclutamientoBoard({
     const personWarning = candidate.persona_id
       ? '\nLa persona ya incorporada al equipo NO será eliminada.'
       : ''
-    const confirmed = window.confirm(
-      `¿Eliminar a ${candidate.nombre_apellido} del tablero de selección?${interviewWarning}${personWarning}\n\nEsta acción no se puede deshacer.`,
-    )
+    const confirmed = await confirmar({
+      titulo: `Eliminar a ${candidate.nombre_apellido}`,
+      mensaje: `Se lo quitará del tablero de selección.${interviewWarning}${personWarning}\n\nEsta acción no se puede deshacer.`,
+      peligro: true, confirmText: 'Eliminar',
+    })
     if (!confirmed) return
 
     setCandidateActionId(candidate.id)
@@ -805,11 +809,11 @@ export default function ReclutamientoBoard({
       const cleanup = await Promise.allSettled(adjuntos.map(deleteAdjunto))
       const failedAttachments = cleanup.filter(result => result.status === 'rejected').length
       if (failedAttachments > 0) {
-        alert(`Postulante eliminado. No se pudieron limpiar ${failedAttachments} archivo(s) adjunto(s).`)
+        toast.warn(`Postulante eliminado, pero no se pudieron limpiar ${failedAttachments} archivo(s) adjunto(s).`)
       }
       await load()
     } catch (error) {
-      alert('Error eliminando candidato: ' + error.message)
+      toast.error('Error eliminando candidato: ' + mensajeError(error))
     } finally {
       setCandidateActionId(null)
     }

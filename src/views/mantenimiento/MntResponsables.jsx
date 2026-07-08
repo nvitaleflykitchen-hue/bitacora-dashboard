@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { UserCircle, Plus, X, Edit2, Trash2, Phone, Mail, Clock, Shield, Save } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
+import { confirmar, toast } from '../../lib/feedback'
+import { mensajeError } from '../../lib/errores'
 
 const CATEGORIAS = [
   'Edificio','Equipos grandes','Equipos medianos','Equipos chicos',
@@ -268,13 +270,13 @@ export default function MntResponsables({ focusId }) {
   useEffect(()=>{ load() },[])
 
   const deleteResponsable = async (r) => {
-    if (!window.confirm(`¿Eliminar a ${r.nombre}? Esta acción no se puede deshacer.\n\nSi tiene tickets o reglas de escalación asignadas, considerá marcarlo como "Inactivo" (editar → desmarcar "Responsable activo") en vez de eliminarlo.`)) return
+    if (!await confirmar({ titulo: `Eliminar a ${r.nombre}`, mensaje: `Esta acción no se puede deshacer.\n\nSi tiene tickets o reglas de escalación asignadas, considerá marcarlo como "Inactivo" (editar → desmarcar "Responsable activo") en vez de eliminarlo.`, peligro: true, confirmText: 'Eliminar' })) return
     try {
       const { error } = await supabase.schema('mantenimiento').from('responsables').delete().eq('id', r.id)
       if (error) throw error
       load()
     } catch (e) {
-      alert('Error al eliminar: ' + e.message)
+      toast.error('Error al eliminar: ' + mensajeError(e))
     }
   }
 

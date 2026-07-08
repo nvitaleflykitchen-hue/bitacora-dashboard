@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getSedes, getVuelosPlantilla, crearVueloPlantilla, actualizarVueloPlantilla, eliminarVueloPlantilla } from '../lib/queries'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
+import { confirmar } from '../lib/feedback'
 
 // Misma convención que sedes.dias_operacion: 0=domingo..6=sábado.
 // Se muestran en orden de semana laboral (Lunes primero).
@@ -88,7 +89,7 @@ export default function VuelosPlantilla() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este vuelo de la plantilla?')) return
+    if (!await confirmar({ mensaje: '¿Eliminar este vuelo de la plantilla?', peligro: true, confirmText: 'Eliminar' })) return
     await eliminarVueloPlantilla(id)
     loadVuelos()
   }

@@ -6,6 +6,8 @@ import { fmtFecha } from '../lib/dateUtils'
 import TicketRapidoModal from '../components/TicketRapidoModal'
 import ComentariosHilo from '../components/ComentariosHilo'
 import MobileContactosBtn from './MobileContactosBtn'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ESTADO_COLOR = { abierto: '#F97316', aprobado: '#F59E0B', en_progreso: '#3B82F6', resuelto: '#39FF14', rechazado: '#6B7280' }
 const ESTADOS = ['abierto', 'aprobado', 'en_progreso', 'resuelto', 'rechazado']
@@ -42,12 +44,12 @@ function shareTicket(ticket, responsable, channel) {
   ].filter(Boolean).join('\n')
 
   if (channel === 'whatsapp') {
-    if (!responsable.telefono) { alert('El responsable no tiene teléfono registrado.'); return }
+    if (!responsable.telefono) { toast.warn('El responsable no tiene teléfono registrado.'); return }
     const phone = responsable.telefono.replace(/\D/g, '')
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(cuerpo)}`, '_blank', 'noopener,noreferrer')
     return
   }
-  if (!responsable.email) { alert('El responsable no tiene email registrado.'); return }
+  if (!responsable.email) { toast.warn('El responsable no tiene email registrado.'); return }
   const subject = encodeURIComponent(`[Ticket #${numero}] ${(ticket.descripcion || '').substring(0, 50)}`)
   window.open(`mailto:${responsable.email}?subject=${subject}&body=${encodeURIComponent(cuerpo)}`, '_blank')
 }
@@ -315,7 +317,7 @@ export default function MobileTickets() {
       // Actualizar también el ticket seleccionado si está abierto
       if (selectedTicket?.id === id) setSelectedTicket(prev => ({ ...prev, ...payload }))
     } catch (e) {
-      alert('Error: ' + e.message)
+      toast.error('Error: ' + mensajeError(e))
     } finally {
       setUpdating(null)
     }

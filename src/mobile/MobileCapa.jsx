@@ -5,6 +5,8 @@ import { ClipboardList, AlertTriangle, ChevronDown, Calendar, Plus, X } from 'lu
 import { fmtFecha } from '../lib/dateUtils'
 import ComentariosHilo from '../components/ComentariosHilo'
 import MobileContactosBtn from './MobileContactosBtn'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ESTADOS_CAPA = ['Pendiente', 'En ejecución', 'Completada', 'Verificada']
 const TIPOS_CAPA = ['Correctiva', 'Preventiva']
@@ -139,7 +141,7 @@ function QuickCapaModal({ sedes, onClose, onCreated }) {
   useEffect(() => { if (sedes?.length === 1) setForm(f => f.sede_id ? f : { ...f, sede_id: String(sedes[0].id) }) }, [sedes])
 
   const submit = async () => {
-    if (!form.sede_id || !form.descripcion) { alert('Completá sede y descripción.'); return }
+    if (!form.sede_id || !form.descripcion) { toast.warn('Completá sede y descripción.'); return }
     setSaving(true)
     try {
       const created = await createCapa({
@@ -149,7 +151,7 @@ function QuickCapaModal({ sedes, onClose, onCreated }) {
       })
       onCreated(created)
     } catch (e) {
-      alert('Error: ' + e.message)
+      toast.error('Error: ' + mensajeError(e))
     } finally {
       setSaving(false)
     }
@@ -195,7 +197,7 @@ function QuickNCModal({ sedes, onClose, onCreated }) {
   useEffect(() => { if (sedes?.length === 1) setForm(f => f.sede_id ? f : { ...f, sede_id: String(sedes[0].id) }) }, [sedes])
 
   const submit = async () => {
-    if (!form.sede_id || !form.descripcion) { alert('Completá sede y descripción.'); return }
+    if (!form.sede_id || !form.descripcion) { toast.warn('Completá sede y descripción.'); return }
     setSaving(true)
     try {
       const sede = sedes.find(s => String(s.id) === String(form.sede_id))
@@ -208,7 +210,7 @@ function QuickNCModal({ sedes, onClose, onCreated }) {
       })
       onCreated(created)
     } catch (e) {
-      alert('Error: ' + e.message)
+      toast.error('Error: ' + mensajeError(e))
     } finally {
       setSaving(false)
     }
@@ -288,7 +290,7 @@ export default function MobileCapa() {
       await updateCapa(id, payload)
       setCapaItems(prev => prev.map(i => i.id === id ? { ...i, ...payload } : i))
     } catch (e) {
-      alert('Error: ' + e.message)
+      toast.error('Error: ' + mensajeError(e))
     } finally {
       setUpdating(null)
     }
@@ -300,7 +302,7 @@ export default function MobileCapa() {
       await updateNoConformidad(id, payload)
       setNcItems(prev => prev.map(i => i.id === id ? { ...i, ...payload } : i))
     } catch (e) {
-      alert('Error: ' + e.message)
+      toast.error('Error: ' + mensajeError(e))
     } finally {
       setUpdating(null)
     }

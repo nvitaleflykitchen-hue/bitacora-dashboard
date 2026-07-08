@@ -6,6 +6,8 @@ import { AlertTriangle, User, Filter, RefreshCw, X, Clock, Tag, MapPin, Wrench, 
 import { useAuth } from '../../lib/auth'
 import PageHeader from '../../components/PageHeader'
 import { TicketModal as FullTicketModal } from './MntTickets'
+import { toast } from '../../lib/feedback'
+import { mensajeError } from '../../lib/errores'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
@@ -106,7 +108,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
       const updated = await updateTicket(ticket.id, payload)
       onUpdate(updated)
       setEditing(false)
-    } catch(e) { alert('Error al guardar: ' + e.message) }
+    } catch(e) { toast.error('Error al guardar: ' + mensajeError(e)) }
     finally { setSaving(false) }
   }
 

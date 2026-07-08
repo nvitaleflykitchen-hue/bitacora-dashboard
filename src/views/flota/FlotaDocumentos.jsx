@@ -4,6 +4,7 @@ import { useAuth } from '../../lib/auth'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
 import PageHeader from '../../components/PageHeader'
 import { isQualityOnlyProfile } from '../../lib/access'
+import { confirmar } from '../../lib/feedback'
 
 const TIPO_LABEL  = { poe:'POE', legal:'Legal', seguro:'Seguro', manual:'Manual', circulacion:'Circulación', otro:'Otro' }
 const ESTADO_COLOR = { vigente:'#39FF14', vencido:'#FF2A2A', baja:'#6B7280' }
@@ -37,7 +38,7 @@ function DocumentoModal({ item, vehiculos, canWrite, onClose, onSaved, onDeleted
   }
 
   const handleDelete = async () => {
-    if (!confirm(`¿Eliminar "${form.titulo}"?`)) return
+    if (!await confirmar({ mensaje: `¿Eliminar "${form.titulo}"?`, peligro: true, confirmText: 'Eliminar' })) return
     try { await deletePoe(form.id); onDeleted() } catch(e) { setErr(e.message) }
   }
 

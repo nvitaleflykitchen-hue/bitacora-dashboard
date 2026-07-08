@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
 import { X, Upload, Check, AlertCircle, RefreshCw, Users } from 'lucide-react'
 import { bulkInsertContactos } from '../lib/queries'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 // ── Parser CSV robusto (maneja comillas con comas adentro) ──
 function parseCSV(text) {
@@ -100,7 +102,7 @@ export default function ImportarContactosModal({ existentes = [], onClose, onImp
 
   const processFile = (file) => {
     if (!file || !file.name.endsWith('.csv')) {
-      alert('Seleccioná un archivo .csv exportado desde Google Contacts.')
+      toast.warn('Seleccioná un archivo .csv exportado desde Google Contacts.')
       return
     }
     const reader = new FileReader()
@@ -157,7 +159,7 @@ export default function ImportarContactosModal({ existentes = [], onClose, onImp
       setStep('done')
       onImported?.()
     } catch (err) {
-      alert('Error al importar: ' + err.message)
+      toast.error('Error al importar: ' + mensajeError(err))
     } finally {
       setLoading(false)
     }

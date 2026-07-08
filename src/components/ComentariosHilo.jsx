@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { MessageSquare, Send, Trash2 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getComentarios, crearComentario, eliminarComentario } from '../lib/queries'
+import { confirmar, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 // Hilo de comentarios genérico, reutilizable en cualquier ficha.
 // entidadTipo: 'ticket' | 'tarea' | 'escalamiento' | 'no_conformidad'
@@ -45,19 +47,19 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
       setTexto('')
       await load()
     } catch (e) {
-      alert('Error al enviar el comentario: ' + e.message)
+      toast.error('Error al enviar el comentario: ' + mensajeError(e))
     } finally {
       setEnviando(false)
     }
   }
 
   const handleDelete = async (c) => {
-    if (!confirm('¿Eliminar este comentario?')) return
+    if (!await confirmar({ mensaje: '¿Eliminar este comentario?', peligro: true, confirmText: 'Eliminar' })) return
     try {
       await eliminarComentario(c.id)
       setComentarios(prev => prev.filter(x => x.id !== c.id))
     } catch (e) {
-      alert('Error: ' + e.message)
+      toast.error('Error: ' + mensajeError(e))
     }
   }
 

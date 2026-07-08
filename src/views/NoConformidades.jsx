@@ -6,6 +6,8 @@ import { Plus, X, ChevronRight, RefreshCw } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../lib/auth'
 import NCFicha from './NCFicha'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ESTADOS_NC = ['Abierta','En proceso','Cerrada','Verificada']
 const CATEGORIAS_NC = ['Higiene','Producción','Servicio','Infraestructura','Proceso','Proveedor','Otro']
@@ -54,7 +56,7 @@ function NCForm({ onClose, onCreated, sedes, rol, ncOrigen }) {
       })
       onCreated(nc)
     } catch (err) {
-      alert('Error: ' + err.message)
+      toast.error('Error: ' + mensajeError(err))
     } finally {
       setLoading(false)
     }

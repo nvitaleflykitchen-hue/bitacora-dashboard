@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
+import { confirmar, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ROLES = ['admin','editor','encargado','consultor','grupo','sede','operario','flota','mnt_editor']
 const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede', operario: 'Operario', flota: 'Flota', mnt_editor: 'Gestión Mantenimiento' }
@@ -229,7 +231,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
                 onClick={() => {
                   const text = `Hola ${form.nombre}! Ya tenés acceso a la app de Fly Kitchen.\n\nLink: https://bitacora-dashboard.vercel.app\nUsuario: ${form.email}\nContraseña temporal: 123456\n\nEl sistema te pedirá cambiar tu contraseña la primera vez que ingreses.`;
                   navigator.clipboard.writeText(text);
-                  alert('¡Datos copiados al portapapeles!');
+                  toast.ok('¡Datos copiados al portapapeles!');
                 }}
               >
                 Copiar accesos al portapapeles
@@ -372,7 +374,7 @@ export default function Usuarios() {
       })
       setEditingId(null)
       load()
-    } catch (e) { alert(e.message) }
+    } catch (e) { toast.error(mensajeError(e)) }
     finally { setSaving(false) }
   }
 
@@ -384,7 +386,7 @@ export default function Usuarios() {
       resend_invite:  `¿Reenviar invitación a ${p.email}?`,
       delete_user:    `⚠ ¿Eliminar permanentemente a ${p.nombre || p.email}? Esta acción no se puede deshacer.`,
     }
-    if (!confirm(msgs[action])) return
+    if (!await confirmar({ mensaje: msgs[action], peligro: action === 'delete_user', confirmText: action === 'delete_user' ? 'Eliminar' : 'Confirmar' })) return
     setActionLoading(p.id + action)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -411,15 +413,20 @@ export default function Usuarios() {
         // La API de Supabase devuelve un action_link al usar generateLink para recovery.
         const link = json.link || (json.data && (json.data.action_link || json.data.properties?.action_link)) || (typeof json.data === 'string' ? json.data : null)
         if (link) {
-          prompt('Link de recuperación generado. Cópielo y envíeselo al usuario:', link)
+          try {
+            await navigator.clipboard.writeText(link)
+            toast.ok('Link de recuperación copiado al portapapeles. Envíaselo al usuario.', { duracion: 8000 })
+          } catch {
+            await confirmar({ titulo: 'Link de recuperación', mensaje: link, confirmText: 'Cerrar', cancelText: 'Cerrar' })
+          }
         } else {
-          alert(json.message || 'Se generó la solicitud de recuperación.')
+          toast.ok(json.message || 'Se generó la solicitud de recuperación.')
         }
       } else {
-        alert(json.message || 'Listo')
+        toast.ok(json.message || 'Listo')
       }
       if (action === 'delete_user') load()
-    } catch (e) { alert('Error: ' + e.message) }
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) }
     finally { setActionLoading(null) }
   }
 

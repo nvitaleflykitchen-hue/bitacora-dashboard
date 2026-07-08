@@ -5,6 +5,8 @@ import { Calendar, User, Plus, X, Check, ChevronDown, Pencil } from 'lucide-reac
 import TareaForm, { ShareButtons, getCategoriaLabel } from './TareaForm'
 import { fmtFecha } from '../lib/dateUtils'
 import ComentariosHilo from './ComentariosHilo'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ESTADOS = ['Pendiente','En proceso','Resuelto','Cancelado']
 
@@ -245,7 +247,7 @@ function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
 
   const changeEstado = async (v) => {
     try { await onUpdate(tarea.id, { estado: v }) }
-    catch (e) { alert(e.message) }
+    catch (e) { toast.error(mensajeError(e)) }
   }
 
   const saveNotas = async () => {

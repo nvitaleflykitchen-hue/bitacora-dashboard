@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, BellOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { activatePushNotifications, deactivatePushNotifications, getCurrentPushSubscription, pushSupported } from '../lib/pushNotifications'
+import { toast } from '../lib/feedback'
 
 export default function PushNotificationControl({ compact = false }) {
   const { user } = useAuth()
@@ -33,7 +34,7 @@ export default function PushNotificationControl({ compact = false }) {
     } catch (e) {
       const message = e.message || 'No se pudo cambiar la configuración.'
       setError(message)
-      if (compact) alert(message)
+      if (compact) toast(message)
     }
     finally { setLoading(false) }
   }

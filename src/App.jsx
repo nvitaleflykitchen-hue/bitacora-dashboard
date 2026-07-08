@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/auth'
+import FeedbackHost from './components/FeedbackHost'
 import LoginPage from './components/LoginPage'
 import CambiarContrasena from './components/CambiarContrasena'
 import Sidebar from './components/Sidebar'
@@ -318,6 +319,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppInner />
+      <FeedbackHost />
     </AuthProvider>
   )
 }

@@ -6,6 +6,8 @@ import { isoToDisplay } from '../lib/dateUtils'
 import { TASK_STATES } from '../lib/operationalDomains'
 import { useAuth } from '../lib/auth'
 import { isQualityOnlyProfile } from '../lib/access'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 export const CATEGORIAS = [
   { key: 'A', label: 'Producción / Servicio del turno' },
@@ -60,14 +62,14 @@ export function ShareButtons({ tarea, responsable, compact = false }) {
   const size = compact ? 11 : 13
 
   const openWA = () => {
-    if (!responsable.telefono) return alert('El usuario no tiene teléfono registrado.')
+    if (!responsable.telefono) return toast.warn('El usuario no tiene teléfono registrado.')
     const phone = responsable.telefono.replace(/\D/g, '')
     const msg = buildWhatsappMsg(tarea, responsable)
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
   }
 
   const openMail = () => {
-    if (!responsable.email) return alert('El usuario no tiene email registrado.')
+    if (!responsable.email) return toast.warn('El usuario no tiene email registrado.')
     const { subject, body } = buildMailMsg(tarea, responsable)
     window.open(`mailto:${responsable.email}?subject=${subject}&body=${body}`, '_blank')
   }
@@ -191,7 +193,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
         onCreated?.(tarea)
       }
     } catch (err) {
-      alert(`Error al ${tareaEditar ? 'guardar' : 'crear'} tarea: ` + err.message)
+      toast.error(`Error al ${tareaEditar ? 'guardar' : 'crear'} tarea: ` + mensajeError(err))
     } finally {
       setLoading(false)
     }

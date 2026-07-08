@@ -5,6 +5,8 @@ import { useAuth } from '../../lib/auth'
 import { fmtFecha } from '../../lib/dateUtils'
 import { CheckSquare, Square, Plus, X, ChevronDown, ChevronRight, Play, ClipboardList } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
+import { toast } from '../../lib/feedback'
+import { mensajeError } from '../../lib/errores'
 
 const FREC_COLOR = { DIARIA:'#39FF14', SEMANAL:'#3B82F6', MENSUAL:'#F59E0B', TRIMESTRAL:'#8B5CF6', ANUAL:'#F97316', POR_KM:'#EC4899' }
 const CAT_COLOR  = { inspeccion:'#50b4ff', limpieza:'#39FF14', lubricacion:'#ffb400', ajuste:'#f97316', reemplazo:'#ff5050', medicion:'#c084fc' }
@@ -76,7 +78,7 @@ function EjecucionModal({ plan, onClose, onSaved }) {
         .eq('id', plan.id)
 
       onSaved()
-    } catch(e) { alert(e.message) } finally { setSaving(false) }
+    } catch(e) { toast.error(mensajeError(e)) } finally { setSaving(false) }
   }
 
   function calcProxima(frecuencia, desde) {
@@ -349,7 +351,7 @@ function MassAssignModal({ plan, activos, sedes, onClose, onSaved }) {
   )
 
   const handleSave = async () => {
-    if (!sedeId || selectedIds.length === 0 || !fecha) return alert('Completa todos los campos')
+    if (!sedeId || selectedIds.length === 0 || !fecha) return toast.warn('Completa todos los campos')
     setSaving(true)
     
     try {
@@ -384,7 +386,7 @@ function MassAssignModal({ plan, activos, sedes, onClose, onSaved }) {
       
       onSaved()
     } catch(e) {
-      alert(e.message)
+      toast.error(mensajeError(e))
     } finally {
       setSaving(false)
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
 import { getDirectorio, saveDirectorioContacto, removeDirectorioContacto, getPerfiles } from '../lib/queries'
+import { confirmar } from '../lib/feedback'
 
 // ─── Labels por módulo ────────────────────────────────────────────────────────
 const MODULO_META = {
@@ -286,7 +287,7 @@ export default function ContactosTab({ modulo }) {
   }, [canEdit])
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este contacto del directorio?')) return
+    if (!await confirmar({ mensaje: '¿Eliminar este contacto del directorio?', peligro: true, confirmText: 'Eliminar' })) return
     await removeDirectorioContacto(id)
     load()
   }

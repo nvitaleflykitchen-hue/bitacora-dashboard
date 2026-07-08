@@ -7,6 +7,8 @@ import AdjuntosPanel from '../components/AdjuntosPanel'
 import RegistroModal from '../components/RegistroModal'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { fmtFecha } from '../lib/dateUtils'
+import { confirmar, pedirTexto, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ESTADOS   = ['Pendiente','Observado','Aprobado','Enviado','En compra','Recibido','Cumplido','Rechazado','Cancelado']
 const KANBAN_ACTIVOS = ['Pendiente','Aprobado','Enviado','En compra','Recibido']
@@ -294,7 +296,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
     e.preventDefault()
     if (!form.descripcion.trim()) return
     if (editing && ['Observado','Rechazado'].includes(form.estado) && form.estado !== activeReq.estado && !form.observacion_aprobacion.trim()) {
-      alert('Escribí el motivo de la observación o rechazo antes de cambiar el estado.')
+      toast.warn('Escribí el motivo de la observación o rechazo antes de cambiar el estado.')
       return
     }
     setSaving(true)
@@ -319,7 +321,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
       setSavedReq(saved)
       setJustCreated(!editing)
       await onSaved()
-    } catch(err) { alert('Error: ' + err.message) }
+    } catch(err) { toast.error('Error: ' + mensajeError(err)) }
     finally { setSaving(false) }
   }
 
@@ -690,9 +692,13 @@ export default function Requerimientos({ focusId }) {
     if (!req || req.estado === estado) return
     let comentario = ''
     if (['Observado','Rechazado'].includes(estado)) {
-      comentario = window.prompt(estado === 'Observado'
-        ? '¿Qué debe corregir o responder el solicitante?'
-        : 'Indicá el motivo del rechazo:')?.trim() || ''
+      comentario = (await pedirTexto({
+        titulo: estado === 'Observado' ? 'Observar requerimiento' : 'Rechazar requerimiento',
+        mensaje: estado === 'Observado'
+          ? '¿Qué debe corregir o responder el solicitante?'
+          : 'Indicá el motivo del rechazo:',
+        confirmText: estado,
+      })) || ''
       if (!comentario) return
     }
     try {
@@ -705,10 +711,10 @@ export default function Requerimientos({ focusId }) {
         const subject = encodeURIComponent(`[ACCIÓN REQUERIDA] Requerimiento #${req.numero||req.id} observado`)
         const body = buildObservationEmail({ ...req, ...payload }, comentario, perfil?.nombre || perfil?.email, sedes)
         window.open(`mailto:${destino}?subject=${subject}&body=${body}`, '_blank')
-        if (!destino) alert('Se abrió el correo, pero el solicitante no tiene un email registrado. Completá el destinatario manualmente.')
+        if (!destino) toast.ok('Se abrió el correo, pero el solicitante no tiene un email registrado. Completá el destinatario manualmente.')
       }
     } catch (e) {
-      alert('No se pudo actualizar el estado: ' + e.message)
+      toast.error('No se pudo actualizar el estado: ' + mensajeError(e))
       await load()
     }
   }
@@ -719,12 +725,12 @@ export default function Requerimientos({ focusId }) {
     const subject = encodeURIComponent(`[Requerimiento #${req.numero||req.id}] ${req.descripcion?.substring(0,50)}`)
     const body = buildEmailBody(req, sedes)
     window.open(`mailto:${dest}?subject=${subject}&body=${body}`, '_blank')
-    if (!window.confirm('¿Confirmás que el correo fue enviado a Compras? Recién entonces comenzará el reloj del SLA.')) return
+    if (!await confirmar({ titulo: 'Envío a Compras', mensaje: '¿Confirmás que el correo fue enviado a Compras? Recién entonces comenzará el reloj del SLA.', confirmText: 'Sí, enviado' })) return
     try {
       const payload = { ...buildTransitionPayload(req, 'Enviado', perfil), enviado_a:dest || null }
       const updated = await updateRequerimiento(req.id, payload)
       setReqs(prev=>prev.map(r=>r.id===req.id?{...r,...updated}:r))
-    } catch (e) { alert('No se pudo registrar el envío: ' + e.message) }
+    } catch (e) { toast.error('No se pudo registrar el envío: ' + mensajeError(e)) }
   }
 
   const byEstado = ESTADOS.reduce((acc, e) => {

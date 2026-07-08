@@ -7,6 +7,8 @@ import PageHeader from '../components/PageHeader'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
 import { generarInformeCapaPDF } from '../lib/capaReportPdf'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ESTADOS_CAPA = ['Pendiente','En ejecución','Completada','Verificada']
 const TIPOS_CAPA   = ['Correctiva','Preventiva']
@@ -70,7 +72,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
       }
       onCreated()
     } catch (err) {
-      alert('Error: ' + err.message)
+      toast.error('Error: ' + mensajeError(err))
     } finally {
       setLoading(false)
     }
@@ -163,7 +165,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
   const handleSaveEstado = async () => {
     setSaving(true)
     try { await onEstadoChange(c.id, estado); onClose() }
-    catch (e) { alert(e.message) }
+    catch (e) { toast.error(mensajeError(e)) }
     finally { setSaving(false) }
   }
 
@@ -175,7 +177,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
       onReload?.()
       setNotasSaved(true)
       setTimeout(() => setNotasSaved(false), 2000)
-    } catch (e) { alert(e.message) }
+    } catch (e) { toast.error(mensajeError(e)) }
     finally { setSavingNotas(false) }
   }
 
@@ -193,7 +195,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
       c.fecha_cierre = payload.fecha_cierre
       setEstado(payload.estado)
       onReload?.()
-    } catch (e) { alert(e.message) }
+    } catch (e) { toast.error(mensajeError(e)) }
     finally { setSavingEficacia(false) }
   }
 
@@ -445,7 +447,7 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSa
       })
       onSaved(saved)
     } catch (err) {
-      alert('Error: ' + err.message)
+      toast.error('Error: ' + mensajeError(err))
     } finally {
       setSaving(false)
     }
@@ -550,7 +552,7 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
       const plan = grupo.auditoria_codigo ? await ensurePlan(grupo.auditoria_codigo) : null
       await generarInformeCapaPDF({ grupo, plan })
     } catch (e) {
-      alert('Error generando el informe: ' + e.message)
+      toast.error('Error generando el informe: ' + mensajeError(e))
     } finally {
       setGenerando(null)
     }

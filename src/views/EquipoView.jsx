@@ -14,6 +14,8 @@ import { PERSONA_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
 import ReclutamientoBoard from './equipo/ReclutamientoBoard'
 import { isQualityOnlyProfile, isQualityTeamPerson } from '../lib/access'
 import { fmtFechaLarga } from '../lib/dateUtils'
+import { confirmar, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 // ──────────────────────────────────────────────
 // PersonaFicha — vista interna de ficha individual
@@ -143,7 +145,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     }
 
     setSaving(false)
-    if (res.error) { alert('Error: ' + res.error.message); return }
+    if (res.error) { toast.error('Error: ' + mensajeError(res.error)); return }
     setShowEvalForm(false)
     setEvalForm(EVAL_INICIAL)
     load()
@@ -168,7 +170,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     }
 
     setSaving(false)
-    if (res.error) { alert('Error: ' + res.error.message); return }
+    if (res.error) { toast.error('Error: ' + mensajeError(res.error)); return }
     setShowHistorialForm(false)
     setHistForm({ tipo: 'apercibimiento', fecha: new Date().toISOString().split('T')[0], descripcion: '', dias_suspension: '', registrado_por: '' })
     load()
@@ -704,11 +706,11 @@ function PersonaModal({ persona, sedes = [], grupos = [], onClose, onSaved }) {
 
   const handleDelete = async () => {
     if (!persona?.id) return
-    if (!confirm('¿Estás seguro que querés eliminar a esta persona? Esta acción ocultará su perfil.')) return
+    if (!await confirmar({ titulo: 'Eliminar persona', mensaje: 'Esta acción ocultará su perfil del equipo (baja lógica).', peligro: true, confirmText: 'Eliminar' })) return
     setSaving(true)
     const res = await supabase.schema('equipo').from('personas').update({ activo: false }).eq('id', persona.id)
     setSaving(false)
-    if (res.error) { alert('Error al eliminar: ' + res.error.message); return }
+    if (res.error) { toast.error('Error al eliminar: ' + mensajeError(res.error)); return }
     onSaved()
   }
 
@@ -726,7 +728,7 @@ function PersonaModal({ persona, sedes = [], grupos = [], onClose, onSaved }) {
   }
 
   const save = async () => {
-    if (!form.nombre.trim()) return alert('El nombre es requerido.')
+    if (!form.nombre.trim()) return toast.warn('El nombre es requerido.')
     setSaving(true)
     const procesos = form.procesos_raw.split('\n').map(s=>s.trim()).filter(Boolean)
     const payload = {
@@ -752,7 +754,7 @@ function PersonaModal({ persona, sedes = [], grupos = [], onClose, onSaved }) {
     }
 
     setSaving(false)
-    if (res.error) { alert('Error: ' + res.error.message); return }
+    if (res.error) { toast.error('Error: ' + mensajeError(res.error)); return }
     onSaved()
   }
 
@@ -939,9 +941,9 @@ ${form.observaciones || '[Completar]'}`
   const copyText = async () => {
     try {
       await navigator.clipboard.writeText(text)
-      alert('Solicitud copiada al portapapeles.')
+      toast.ok('Solicitud copiada al portapapeles.')
     } catch {
-      alert('No se pudo copiar automáticamente. Podés seleccionar el texto de la vista previa.')
+      toast.error('No se pudo copiar automáticamente. Podés seleccionar el texto de la vista previa.')
     }
   }
 

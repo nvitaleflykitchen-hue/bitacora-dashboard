@@ -5,6 +5,8 @@
 import { useState, useEffect } from 'react'
 import { X, Wrench } from 'lucide-react'
 import { createTicket, getResponsablesMnt, getSedes, TICKET_TIPOS_VALIDOS } from '../lib/queries'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const PRIORIDADES = ['baja','media','alta','critica']
 
@@ -65,7 +67,7 @@ export default function TicketRapidoModal({ origen, onClose, onCreated }) {
       onCreated?.(ticket)
       onClose()
     } catch (err) {
-      alert('Error al crear ticket: ' + err.message)
+      toast.error('Error al crear ticket: ' + mensajeError(err))
     } finally {
       setSaving(false)
     }

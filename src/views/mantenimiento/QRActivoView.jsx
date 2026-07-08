@@ -3,6 +3,8 @@ import { getActivoById, getTickets, createTicket, getSedes, TICKET_TIPOS_VALIDOS
 import { supabase } from '../../lib/supabase'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
 import { useAuth } from '../../lib/auth'
+import { toast } from '../../lib/feedback'
+import { mensajeError } from '../../lib/errores'
 
 const ESTADO_COLOR  = { operativo:'#39FF14', en_reparacion:'#F59E0B', baja:'#FF2A2A' }
 const TICKET_COLOR  = { abierto:'#F97316', en_progreso:'#3B82F6', aprobado:'#F59E0B', resuelto:'#39FF14', rechazado:'#6B7280' }
@@ -72,7 +74,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
       setSaved(true)
       setShowForm(false)
       getTickets({ activo_id: activo.id }).then(t => setTickets(t.slice(0,8)))
-    } catch(e) { alert('Error: ' + e.message) }
+    } catch(e) { toast.error('Error: ' + mensajeError(e)) }
     finally { setSaving(false) }
   }
 
@@ -97,7 +99,7 @@ export default function QRActivoView({ activoId, onNavigate }) {
       setVisitaForm({ tipo_visita:'inspeccion', visitante:'', observacion:'' })
       setVisitaOk(true)
       setTimeout(() => setVisitaOk(false), 3000)
-    } catch(e) { alert('Error al registrar visita: ' + e.message) }
+    } catch(e) { toast.error('Error al registrar visita: ' + mensajeError(e)) }
     finally { setVisitando(false) }
   }
 

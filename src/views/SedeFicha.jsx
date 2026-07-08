@@ -9,6 +9,8 @@ import RegistroModal from '../components/RegistroModal'
 import { generarInformeSedePDF } from '../lib/sedeReportPdf'
 import DocumentacionChecklist from '../components/DocumentacionChecklist'
 import { SEDE_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const TIPO_COLOR = {
   Planta:      { color:'#39FF14', bg:'rgba(57,255,20,0.1)' },
@@ -378,7 +380,7 @@ export default function SedeFicha({ onNavigate, focusId }) {
                     await generarInformeSedePDF({ sedeId: sede.id, sedeNombre: sede.nombre })
                   } catch (e) {
                     console.error(e)
-                    alert('Error al generar el informe: ' + e.message)
+                    toast.error('Error al generar el informe: ' + mensajeError(e))
                   } finally {
                     setGeneratingPdf(false)
                   }

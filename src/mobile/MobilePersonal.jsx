@@ -7,6 +7,8 @@ import { fmtFechaLarga } from '../lib/dateUtils'
 import PersonaFormularios from '../components/PersonaFormularios'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star } from 'lucide-react'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -99,7 +101,7 @@ function QuickEvalModal({ personaId, onClose, onSaved }) {
       sugerencias_evaluador: form.sugerencias_evaluador || null,
     })
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (error) { toast.error('Error: ' + mensajeError(error)); return }
     onSaved()
   }
 
@@ -165,7 +167,7 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const submit = async () => {
-    if (!form.descripcion.trim()) { alert('La descripción es obligatoria.'); return }
+    if (!form.descripcion.trim()) { toast.warn('La descripción es obligatoria.'); return }
     setSaving(true)
     const { error } = await supabase.schema('equipo').from('historial_personal').insert({
       persona_id: personaId,
@@ -176,7 +178,7 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
       registrado_por: form.registrado_por || null,
     })
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (error) { toast.error('Error: ' + mensajeError(error)); return }
     onSaved()
   }
 
@@ -217,7 +219,7 @@ function QuickPersonaModal({ onClose, onSaved }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const submit = async () => {
-    if (!form.nombre.trim()) { alert('El nombre es obligatorio.'); return }
+    if (!form.nombre.trim()) { toast.warn('El nombre es obligatorio.'); return }
     setSaving(true)
     const { error } = await supabase.schema('equipo').from('personas').insert({
       nombre: form.nombre.trim(),
@@ -231,7 +233,7 @@ function QuickPersonaModal({ onClose, onSaved }) {
       fecha_ingreso: form.fecha_ingreso || null,
     })
     setSaving(false)
-    if (error) { alert('Error: ' + error.message); return }
+    if (error) { toast.error('Error: ' + mensajeError(error)); return }
     onSaved()
   }
 

@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getAdjuntos, uploadAdjunto, addAdjuntoLink, deleteAdjunto } from '../lib/adjuntos'
+import { confirmar, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 function iconForMime(mime) {
   if (!mime) return <File size={16} />
@@ -75,7 +77,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
       }
       await load()
     } catch (e) {
-      alert('Error subiendo archivo: ' + e.message)
+      toast.error('Error subiendo archivo: ' + mensajeError(e))
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -87,15 +89,15 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
       await addAdjuntoLink(entityType, entityId, { url, nombre, descripcion, uploadedBy: perfil?.nombre || 'usuario' })
       setShowLinkForm(false)
       await load()
-    } catch (e) { alert('Error: ' + e.message) }
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) }
   }
 
   const handleDelete = async (adj) => {
-    if (!confirm(`¿Eliminar "${adj.nombre}"?`)) return
+    if (!await confirmar({ mensaje: `¿Eliminar "${adj.nombre}"?`, peligro: true, confirmText: 'Eliminar' })) return
     try {
       await deleteAdjunto(adj)
       await load()
-    } catch (e) { alert('Error: ' + e.message) }
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) }
   }
 
   const handleDrop = (e) => {

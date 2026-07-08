@@ -5,6 +5,8 @@ import { useAuth } from '../lib/auth'
 import { MessageCircle, Mail, Plus, Trash2, RefreshCw, Users, Upload, Pencil, Link, X, Check } from 'lucide-react'
 import ImportarContactosModal from '../components/ImportarContactosModal'
 import PageHeader from '../components/PageHeader'
+import { confirmar, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ROLES = ['Responsable','Jefe de cocina','Encargado','Supervisor','Técnico','Administrativo','Otro']
 
@@ -161,12 +163,12 @@ function ContactoRow({ item, onDelete, onEdit }) {
   const c = item.contactos
   if (!c) return null
   const openWA = () => {
-    if (!c.telefono) return alert('Sin teléfono registrado.')
+    if (!c.telefono) return toast.warn('Sin teléfono registrado.')
     const phone = c.telefono.replace(/\D/g,'').replace(/^0/,'')
     window.open(`https://wa.me/549${phone}`, '_blank')
   }
   const openMail = () => {
-    if (!c.email) return alert('Sin email registrado.')
+    if (!c.email) return toast.warn('Sin email registrado.')
     window.open(`mailto:${c.email}`, '_blank')
   }
   return (
@@ -262,7 +264,7 @@ function AddContactoForm({ sedeId, contactos, perfiles, existingIds, onAdded, on
       }
       await upsertSedeContacto({ sede_id: sedeId, contacto_id: contactoId, rol, activo: true })
       onAdded()
-    } catch(e) { alert(e.message) }
+    } catch(e) { toast.error(mensajeError(e)) }
     finally { setSaving(false) }
   }
 
@@ -329,7 +331,7 @@ export default function SedeResponsables() {
   const existingIds = sedeItems.map(a => a.contacto_id || a.contactos?.id).filter(Boolean)
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Quitar responsable de esta sede?')) return
+    if (!await confirmar({ mensaje: '¿Quitar responsable de esta sede?', peligro: true, confirmText: 'Quitar' })) return
     await deleteSedeContacto(id)
     load()
   }

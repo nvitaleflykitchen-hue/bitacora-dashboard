@@ -9,6 +9,8 @@ import { generarInformeNoConformidadPDF } from '../lib/noConformidadPdf'
 import { generarInformeNoConformidadDOCX } from '../lib/noConformidadDocx'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import ComentariosHilo from '../components/ComentariosHilo'
+import { confirmar, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const ESTADOS_NC = ['Abierta','En proceso','Cerrada','Verificada']
 
@@ -53,7 +55,7 @@ export default function NCFicha({ nc, onClose, onUpdate, onDerivar, ncOrigen, nc
       setTimeout(() => setCapaOk(false), 3000)
       onUpdate(nc.id, {})
     } catch(err) {
-      alert('Error al crear CAPA: ' + err.message)
+      toast.error('Error al crear CAPA: ' + mensajeError(err))
     } finally {
       setGCAPA(false)
     }
@@ -65,7 +67,7 @@ export default function NCFicha({ nc, onClose, onUpdate, onDerivar, ncOrigen, nc
     try {
       await generarInformeNoConformidadPDF(nc, { creadorNombre })
     } catch (err) {
-      alert('Error al generar el informe PDF: ' + err.message)
+      toast.error('Error al generar el informe PDF: ' + mensajeError(err))
     } finally {
       setGPDF(false)
     }
@@ -77,7 +79,7 @@ export default function NCFicha({ nc, onClose, onUpdate, onDerivar, ncOrigen, nc
     try {
       await generarInformeNoConformidadDOCX(nc, { creadorNombre })
     } catch (err) {
-      alert('Error al generar el Word: ' + err.message)
+      toast.error('Error al generar el Word: ' + mensajeError(err))
     } finally {
       setGDOCX(false)
     }
@@ -93,14 +95,14 @@ export default function NCFicha({ nc, onClose, onUpdate, onDerivar, ncOrigen, nc
       })
       setEditEstado(false)
     } catch (e) {
-      alert(e.message)
+      toast.error(mensajeError(e))
     } finally {
       setSaving(false)
     }
   }
 
   const handleEscalarCalidad = async () => {
-    if (!window.confirm('¿Seguro que deseas escalar esta NC a Calidad? Se enviará un correo de notificación a Calidad.')) return
+    if (!await confirmar({ titulo: 'Escalar a Calidad', mensaje: 'Se enviará un correo de notificación a Calidad.', confirmText: 'Escalar' })) return
     
     setEscalando(true)
     setEscaladoMsg('')
@@ -120,7 +122,7 @@ export default function NCFicha({ nc, onClose, onUpdate, onDerivar, ncOrigen, nc
       await sendQualityEscalationEmail({ ncId: nc.id, escalamientoId: escalamiento.id })
       setEscaladoMsg('Notificación enviada con éxito')
     } catch (err) {
-      alert('Error al escalar: ' + err.message)
+      toast.error('Error al escalar: ' + mensajeError(err))
     } finally {
       setEscalando(false)
     }

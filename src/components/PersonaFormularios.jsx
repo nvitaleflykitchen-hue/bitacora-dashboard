@@ -6,6 +6,8 @@ import {
   apercibimientoFilename,
   createApercibimientoPdf,
 } from '../lib/apercibimientoPdf'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 function localToday() {
   const now = new Date()
@@ -21,7 +23,7 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
 
   const generate = async () => {
     if (!motivo.trim()) {
-      alert('Ingresá el motivo del apercibimiento.')
+      toast.warn('Ingresá el motivo del apercibimiento.')
       return
     }
 
@@ -44,7 +46,7 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
     setSaving(false)
 
     if (error) {
-      alert(`No se pudo registrar el apercibimiento: ${error.message}`)
+      toast.error(`No se pudo registrar el apercibimiento: ${mensajeError(error)}`)
       return
     }
 
