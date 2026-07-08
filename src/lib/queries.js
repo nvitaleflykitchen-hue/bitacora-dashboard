@@ -648,6 +648,33 @@ export async function upsertPerfil(payload) {
   return data
 }
 
+// ─── PERMISOS DE MÓDULO (COMPRAS) ─────────────────────────────────────────────
+// bitacora.perfil_permisos: define quién puede gestionar el circuito de Compras
+// más allá de "Enviado" (trigger protect_requerimiento_after_send). RLS: solo
+// admin puede insertar/editar; cada usuario puede leer sus propios permisos.
+
+export async function getPermisosCompras() {
+  const { data, error } = await db()
+    .from('perfil_permisos')
+    .select('id, perfil_id, accion, activo')
+    .eq('modulo', 'compras')
+  if (error) throw error
+  return data || []
+}
+
+export async function setPermisoCompras({ perfilId, accion, activo, createdBy = null }) {
+  const { data, error } = await db()
+    .from('perfil_permisos')
+    .upsert(
+      { perfil_id: perfilId, modulo: 'compras', accion, activo, created_by: createdBy },
+      { onConflict: 'perfil_id,modulo,accion' }
+    )
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 // ─── KPIs HOY ─────────────────────────────────────────────────────────────────
 
 export async function getKPIsHoy(sedeIds = null) {

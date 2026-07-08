@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes } from '../lib/queries'
+import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes, getPermisosCompras, setPermisoCompras } from '../lib/queries'
 import { supabase } from '../lib/supabase'
-import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound } from 'lucide-react'
+import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 
@@ -14,6 +14,94 @@ function rolChip(rol) {
   if (rol === 'encargado')  return <span className="chip chip-yellow">{label}</span>
   if (rol === 'editor')     return <span className="chip chip-blue">{label}</span>
   return <span className="chip chip-gray">{label}</span>
+}
+
+const ACCIONES_COMPRAS = [
+  { accion: 'request',   label: 'Solicitar',    desc: 'Crear y seguir requerimientos propios' },
+  { accion: 'manage',    label: 'Gestionar',    desc: 'Tomar requerimientos y avanzar etapas post-Enviado' },
+  { accion: 'supervise', label: 'Supervisar',   desc: 'Asignar y reasignar compradores, ver toda la bandeja' },
+  { accion: 'invoice',   label: 'Facturación',  desc: 'Etapa documental y de facturación' },
+]
+
+function PermisosComprasModal({ perfil, permisos, adminId, onClose, onSaved }) {
+  // permisos: filas de perfil_permisos del usuario (modulo compras)
+  const inicial = {}
+  ACCIONES_COMPRAS.forEach(a => {
+    inicial[a.accion] = permisos.some(p => p.accion === a.accion && p.activo)
+  })
+  const [checks, setChecks] = useState(inicial)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleGuardar = async () => {
+    setSaving(true); setError(null)
+    try {
+      for (const a of ACCIONES_COMPRAS) {
+        const antes = inicial[a.accion]
+        const ahora = checks[a.accion]
+        if (antes !== ahora) {
+          await setPermisoCompras({ perfilId: perfil.id, accion: a.accion, activo: ahora, createdBy: adminId })
+        }
+      }
+      onSaved()
+      onClose()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" style={{ zIndex: 50 }}>
+      <div className="glass rounded p-6 w-full max-w-md fade-in" style={{
+        background: 'var(--surface)', border: '1px solid rgba(57,255,20,0.15)', borderRadius: 4
+      }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-title font-bold" style={{ color: 'var(--text)', fontSize: '0.95rem' }}>
+            Permisos de Compras
+          </h2>
+          <button onClick={onClose} className="btn-ghost" style={{ padding: '0.2rem 0.4rem' }}>
+            <XIcon size={14} />
+          </button>
+        </div>
+
+        <p className="font-metric mb-4" style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+          {perfil.nombre || perfil.email}
+        </p>
+
+        <div className="space-y-3 mb-4">
+          {ACCIONES_COMPRAS.map(a => (
+            <label key={a.accion} className="flex items-start gap-2.5 cursor-pointer p-2 rounded"
+              style={{ background: checks[a.accion] ? 'rgba(57,255,20,0.05)' : 'transparent', border: '1px solid rgba(57,255,20,0.08)' }}>
+              <input type="checkbox" checked={checks[a.accion]}
+                onChange={e => setChecks(c => ({ ...c, [a.accion]: e.target.checked }))}
+                style={{ accentColor: 'var(--phosphor)', marginTop: 2 }} />
+              <span>
+                <span className="font-metric block" style={{ color: 'var(--text)', fontSize: '0.75rem' }}>{a.label}</span>
+                <span className="font-metric block" style={{ color: 'var(--text-dim)', fontSize: '0.62rem', lineHeight: 1.4 }}>{a.desc}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <p className="font-metric mb-3" style={{ color: 'var(--text-dim)', fontSize: '0.6rem', lineHeight: 1.5 }}>
+          Los roles admin y editor gestionan Compras siempre, sin necesidad de permisos acá. Estos permisos aplican a cualquier otro rol.
+        </p>
+
+        {error && (
+          <p className="font-metric mb-3" style={{ color: 'var(--alert)', fontSize: '0.7rem' }}>{error}</p>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={handleGuardar} disabled={saving} className="btn-primary flex-1">
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+          <button onClick={onClose} className="btn-ghost">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function NuevoUsuarioModal({ onClose, onCreated }) {
@@ -215,14 +303,18 @@ export default function Usuarios() {
   const [editData, setEditData]   = useState({})
   const [saving, setSaving]       = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [permisosCompras, setPermisosCompras] = useState([])
+  const [permisosPerfil, setPermisosPerfil] = useState(null) // perfil cuyo modal de permisos está abierto
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [perfilesData, gruposData, sedesData] = await Promise.all([
+      const [perfilesData, gruposData, sedesData, permisosData] = await Promise.all([
         getPerfilesConDirectorio(), getGrupos(), getSedes(),
+        getPermisosCompras().catch(e => { console.error('perfil_permisos:', e); return [] }),
       ])
       setPerfiles(perfilesData); setGrupos(gruposData); setSedes(sedesData)
+      setPermisosCompras(permisosData)
     }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -340,6 +432,16 @@ export default function Usuarios() {
         <NuevoUsuarioModal onClose={() => setShowModal(false)} onCreated={load} />
       )}
 
+      {permisosPerfil && (
+        <PermisosComprasModal
+          perfil={permisosPerfil}
+          permisos={permisosCompras.filter(pp => pp.perfil_id === permisosPerfil.id)}
+          adminId={perfilActual?.id}
+          onClose={() => setPermisosPerfil(null)}
+          onSaved={load}
+        />
+      )}
+
       <PageHeader title="Usuarios" subtitle="Gestión de perfiles y roles">
         <div className="flex gap-2">
           <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-1.5"
@@ -380,6 +482,7 @@ export default function Usuarios() {
                   <th>Telefono</th>
                   <th>Rol</th>
                   <th>Grupo / Sedes</th>
+                  <th>Compras</th>
                   <th>Estado</th>
                   <th></th>
                 </tr>
@@ -468,6 +571,30 @@ export default function Usuarios() {
                                   </span>
                                 : <span style={{ color:'var(--text-dim)' }}>—</span>)
                         )}
+                      </td>
+                      <td>
+                        {(() => {
+                          if (['admin','editor'].includes(p.rol)) {
+                            return <span className="chip chip-gray" style={{ fontSize:'0.58rem' }} title="Admin y editor gestionan Compras siempre">Total (rol)</span>
+                          }
+                          const propios = permisosCompras.filter(pp => pp.perfil_id === p.id && pp.activo)
+                          return (
+                            <div className="flex items-center gap-1" style={{ flexWrap:'wrap' }}>
+                              {propios.length
+                                ? propios.map(pp => {
+                                    const meta = ACCIONES_COMPRAS.find(a => a.accion === pp.accion)
+                                    return <span key={pp.accion} className="chip chip-blue" style={{ fontSize:'0.55rem' }}>{meta?.label || pp.accion}</span>
+                                  })
+                                : <span style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>—</span>}
+                              {perfilActual?.rol?.toLowerCase() === 'admin' && (
+                                <button title="Editar permisos de Compras" onClick={() => setPermisosPerfil(p)}
+                                  className="btn-ghost" style={{ padding:'0.15rem 0.35rem', fontSize:'0.6rem' }}>
+                                  <ShoppingCart size={10} />
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td>
                         {isEditing ? (
