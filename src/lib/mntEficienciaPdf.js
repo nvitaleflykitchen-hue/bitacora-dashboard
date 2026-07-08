@@ -23,7 +23,7 @@ const diasAbierto = t => Math.floor(horasAbierto(t) / 24)
 export async function generarReporteEficienciaMnt({ sedeId = null, sedeNombre = null } = {}) {
   // 1. Datos
   let abiertosQ = supabase.from('mnt_tickets')
-    .select('id,numero,descripcion,estado,prioridad,tipo,created_at,responsable_id,sede_id,sede_nombre,fecha_limite')
+    .select('id,numero,descripcion,estado,prioridad,tipo,created_at,responsable_id,sede_id,sede,fecha_limite')
     .not('estado', 'in', '(resuelto,rechazado)')
   let cerradosQ = supabase.from('mnt_tickets')
     .select('id,created_at,fecha_cierre,sede_id')
@@ -118,7 +118,7 @@ export async function generarReporteEficienciaMnt({ sedeId = null, sedeNombre = 
     drawTitle('Resumen por sede')
     const porSede = {}
     tickets.forEach(t => {
-      const k = t.sede_nombre || `Sede ${t.sede_id}`
+      const k = t.sede || `Sede ${t.sede_id}`
       porSede[k] = porSede[k] || { total: 0, sinResp: 0, sla: 0, viejos: 0 }
       porSede[k].total++
       if (!t.responsable_id) porSede[k].sinResp++
@@ -166,7 +166,7 @@ export async function generarReporteEficienciaMnt({ sedeId = null, sedeNombre = 
       const resp = respName(t.responsable_id)
       const fila = sedeId
         ? [t.numero ?? '—', (t.descripcion || '').slice(0, 60), null, t.prioridad, resp || 'SIN ASIGNAR', diasAbierto(t), slaVencido(t) ? 'VENC' : 'ok']
-        : [t.numero ?? '—', (t.descripcion || '').slice(0, 40), (t.sede_nombre || '').slice(0, 22), t.prioridad, resp || 'SIN ASIGNAR', diasAbierto(t), slaVencido(t) ? 'VENC' : 'ok']
+        : [t.numero ?? '—', (t.descripcion || '').slice(0, 40), (t.sede || '').slice(0, 22), t.prioridad, resp || 'SIN ASIGNAR', diasAbierto(t), slaVencido(t) ? 'VENC' : 'ok']
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5)
       fila.forEach((v, i) => {
         if (v === null || !cols[i]) return
