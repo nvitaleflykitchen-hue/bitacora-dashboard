@@ -14,7 +14,7 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import PushNotificationControl from '../components/PushNotificationControl'
 import NotificationCenter from '../components/NotificationCenter'
-import { isQualityOnlyProfile } from '../lib/access'
+import { isComprasOnlyProfile, isQualityOnlyProfile } from '../lib/access'
 import { User, ShoppingCart } from 'lucide-react'
 
 const NAV = [
@@ -31,11 +31,12 @@ const NAV = [
 export default function MobileApp() {
   const { perfil, rol, can } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
-  const canReport = !isQualityOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
+  const isComprasOnly = isComprasOnlyProfile(perfil)
+  const canReport = !isQualityOnly && !isComprasOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
   const canUseChecklist = rol !== 'consultor'
   // 'operario': rol acotado a Inicio (Nuevo Reporte) + Checklist, nada más.
-  const navAllowed = isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null)
-  const [tab, setTab] = useState(isQualityOnly ? 'tareas' : 'home')
+  const navAllowed = isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (isComprasOnly ? new Set(['home', 'compras']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null))
+  const [tab, setTab] = useState(isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home'))
   const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
   const [showSearch, setShowSearch] = useState(false)
@@ -95,7 +96,7 @@ export default function MobileApp() {
         />
       )
     }
-    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} />
+    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} />
     if (tab === 'tareas')        return <MobileTareas />
     if (tab === 'sedes')         return <MobileSedes />
     if (tab === 'escalamientos') return <MobileEscalamientos />
@@ -128,7 +129,7 @@ export default function MobileApp() {
           <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: 4 }}>· Bitacora In Situ</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {!isQualityOnly && <NotificationCenter onNavigate={handleNotificationNavigate} />}
+          {!isQualityOnly && !isComprasOnly && <NotificationCenter onNavigate={handleNotificationNavigate} />}
           <button onClick={() => setTab('perfil')} style={{ background: 'none', border: 'none', padding: 0, color: tab === 'perfil' ? 'var(--phosphor)' : 'var(--text-dim)', display: 'flex' }}>
             <User size={18} />
           </button>
@@ -162,7 +163,7 @@ export default function MobileApp() {
         </PullToRefresh>
       </div>
 
-      {showSearch && (
+      {showSearch && !isComprasOnly && (
         <GlobalSearch mobile onNavigate={handleSearchNavigate} onClose={() => setShowSearch(false)} />
       )}
 

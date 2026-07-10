@@ -27,6 +27,7 @@ function perfilEqual(a, b) {
     && a.nombre === b.nombre
     && a.email === b.email
     && JSON.stringify(a.sede_ids) === JSON.stringify(b.sede_ids)
+    && JSON.stringify(a.compras_permisos || []) === JSON.stringify(b.compras_permisos || [])
 }
 
 export function AuthProvider({ children }) {
@@ -72,6 +73,28 @@ export function AuthProvider({ children }) {
       )
       if (insertError) throw insertError
       data = nuevo
+    }
+
+    try {
+      const { data: permisos, error: permisosError } = await withTimeout(
+        db()
+          .from('perfil_permisos')
+          .select('accion, activo')
+          .eq('perfil_id', authUser.id)
+          .eq('modulo', 'compras'),
+        'Carga de permisos de compras',
+      )
+      if (permisosError) throw permisosError
+      data = {
+        ...data,
+        compras_permisos: (permisos || [])
+          .filter(p => p.activo)
+          .map(p => p.accion)
+          .filter(Boolean),
+      }
+    } catch (permisosError) {
+      console.warn('[auth] no se pudieron cargar permisos de compras', permisosError)
+      data = { ...data, compras_permisos: [] }
     }
 
     // Only update perfil state when data actually changed to avoid cascading re-renders

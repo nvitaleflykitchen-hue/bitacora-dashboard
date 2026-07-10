@@ -7,7 +7,7 @@ import Sidebar from './components/Sidebar'
 import AlertaBanner   from './components/AlertaBanner'
 import GlobalSearch   from './components/GlobalSearch'
 import { useEscalamientosAlert } from './hooks/useEscalamientosAlert'
-import { canAccessView, getDefaultView, isQualityOnlyProfile } from './lib/access'
+import { canAccessView, getDefaultView, isComprasOnlyProfile, isQualityOnlyProfile } from './lib/access'
 import HelpPanel from './components/HelpPanel'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
@@ -158,6 +158,7 @@ function ViewLoading() {
 function AppInner() {
   const { user, perfil, rol, allowedSedeIds, accessBlocked, authError, loading, signOut, can } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
+  const isComprasOnly = isComprasOnlyProfile(perfil)
   // 'operario': rol mobile-only, sin acceso a escritorio sin importar el ancho de pantalla.
   const forceMobile = rol === 'operario'
   const [qrActivoId, setQrActivoId] = useState(() => new URLSearchParams(window.location.search).get('id'))
@@ -193,19 +194,19 @@ function AppInner() {
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
-        if (isQualityOnly) return
+        if (isQualityOnly || isComprasOnly) return
         setShowSearch(s => !s)
       }
       if (e.key === 'Escape') setShowSearch(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isQualityOnly])
+  }, [isQualityOnly, isComprasOnly])
 
   const isMobile = useIsMobile()
 
   // Notificaciones browser para escalamientos Pendientes sin gestionar
-  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !accessBlocked && !isMobile && !isQualityOnly })
+  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !accessBlocked && !isMobile && !isQualityOnly && !isComprasOnly })
 
   if (loading) return <LoadingScreen />
   if (authError) return <AuthStartupError message={authError} onRetry={() => window.location.reload()} onSignOut={signOut} />
@@ -238,7 +239,7 @@ function AppInner() {
   }
 
   const ActiveView = ALL_VIEWS[activeView] || InicioRol
-  const canReport = !isQualityOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
+  const canReport = !isQualityOnly && !isComprasOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background:'var(--abyss)' }}>
@@ -246,7 +247,7 @@ function AppInner() {
       <Sidebar activeView={activeView} onNavigate={navigate} onNuevoReporte={canReport ? () => setShowReporte(true) : null} />
       <main className="flex-1 flex flex-col overflow-hidden pt-12 md:pt-0">
         <AlertaBanner onNavigate={navigate} />
-        {showSearch && !isQualityOnly && (
+        {showSearch && !isQualityOnly && !isComprasOnly && (
           <GlobalSearch onNavigate={navigate} onClose={() => setShowSearch(false)} />
         )}
         <Suspense fallback={<ViewLoading />}>
@@ -254,7 +255,7 @@ function AppInner() {
             ? <QRActivoView activoId={qrActivoId} onNavigate={navigate} />
             : <ActiveView
                 onNavigate={navigate}
-                onOpenSearch={() => setShowSearch(true)}
+                onOpenSearch={!isQualityOnly && !isComprasOnly ? () => setShowSearch(true) : null}
                 focusId={navigationTarget?.id || null}
                 focusType={navigationTarget?.type || null}
                 focusSedeId={navigationTarget?.sedeId || null}

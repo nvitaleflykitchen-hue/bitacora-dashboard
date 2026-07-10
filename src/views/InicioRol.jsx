@@ -6,8 +6,8 @@ import DashboardGlobal from './DashboardGlobal'
 import SedeEncargadoView from './SedeEncargadoView'
 import { getDirectorio } from '../lib/queries'
 
-const MODULO_ORDER = ['rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
-const MODULO_LABEL = { rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
+const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
+const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
 
 const ACTIONS = [
   { id:'pendientes', label:'Ver pendientes', help:'Lo que requiere atención', icon:ClipboardCheck },

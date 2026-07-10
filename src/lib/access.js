@@ -21,6 +21,8 @@ const MANTENIMIENTO_ROLES = new Set([...ALL_OPERATIONAL_ROLES].filter(r => r !==
 const STAFF_ROLES = new Set(['admin', 'editor', 'grupo', 'encargado'])
 const QUALITY_ONLY_EMAILS = new Set(['tecnica@flykitchen.com.ar'])
 const QUALITY_ONLY_NAV = new Set(['pendientes', 'requerimientos', 'mantenimientoHub', 'flotaHub', 'calidadHub', 'equipo'])
+const COMPRAS_ONLY_NAV = new Set(['inicio', 'requerimientos'])
+const COMPRAS_ONLY_VIEWS = new Set(['inicio', 'requerimientos'])
 const QUALITY_ONLY_VIEWS = new Set([
   'pendientes', 'tareas', 'calendario',
   'requerimientos',
@@ -37,6 +39,23 @@ const QUALITY_TEXT_TERMS = ['calidad', 'bpm', 'higiene', 'inocuidad', 'auditoria
 export function isQualityOnlyProfile(perfil) {
   const email = String(perfil?.email || '').trim().toLowerCase()
   return QUALITY_ONLY_EMAILS.has(email)
+}
+
+export function getComprasPermisos(perfil) {
+  return Array.isArray(perfil?.compras_permisos) ? perfil.compras_permisos.filter(Boolean) : []
+}
+
+export function hasComprasPermission(perfil, action = 'request') {
+  const permisos = new Set(getComprasPermisos(perfil))
+  if (action === 'request') return permisos.has('request') || permisos.has('manage') || permisos.has('supervise')
+  if (action === 'manage') return permisos.has('manage') || permisos.has('supervise')
+  if (action === 'supervise') return permisos.has('supervise')
+  if (action === 'invoice') return permisos.has('invoice') || permisos.has('supervise')
+  return permisos.has(action)
+}
+
+export function isComprasOnlyProfile(perfil) {
+  return perfil?.rol === 'consultor' && getComprasPermisos(perfil).length > 0
 }
 
 function normalizeText(value) {
@@ -156,11 +175,13 @@ const VIEW_ROLES = {
 
 export function canAccessView(rol, view, perfil = null) {
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_VIEWS.has(view)
+  if (isComprasOnlyProfile(perfil)) return COMPRAS_ONLY_VIEWS.has(view)
   return Boolean(VIEW_ROLES[view]?.has(rol))
 }
 
 export function getPrimaryNav(rol, perfil = null) {
   if (isQualityOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => QUALITY_ONLY_NAV.has(item.id))
+  if (isComprasOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => COMPRAS_ONLY_NAV.has(item.id))
   return PRIMARY_NAV.filter(item => item.roles.has(rol))
 }
 
@@ -182,6 +203,7 @@ export function getNavSection(view) {
 export function canWrite(rol, domain, action = 'manage', perfil = null) {
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_WRITE_DOMAINS.has(domain)
   if (rol === 'admin' || rol === 'editor') return true
+  if (domain === 'compras' && hasComprasPermission(perfil, action)) return true
   if (rol === 'consultor') return false
   if (rol === 'grupo' || rol === 'encargado') {
     if (domain === 'admin') return false
@@ -232,6 +254,7 @@ export function canDeleteTicket(rol, ticket = null, perfilId = null) {
 
 export function getDefaultView(rol, perfil = null) {
   if (isQualityOnlyProfile(perfil)) return 'calidadHub'
+  if (isComprasOnlyProfile(perfil)) return 'requerimientos'
   return canAccessView(rol, 'inicio', perfil) ? 'inicio' : null
 }
 

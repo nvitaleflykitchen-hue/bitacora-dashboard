@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ROLES, canAccessView, canSeeQualityTask, canWrite, getPrimaryNav, isQualityTeamPerson } from './access'
+import { ROLES, canAccessView, canSeeQualityTask, canWrite, getDefaultView, getPrimaryNav, isQualityTeamPerson } from './access'
 
 describe('matriz de acceso', () => {
   // Tope real hoy: admin/editor/consultor/grupo/encargado ven 9 accesos
@@ -14,6 +14,18 @@ describe('matriz de acceso', () => {
     expect(canAccessView('consultor', 'mantenimientoHub')).toBe(true)
     expect(canWrite('consultor', 'mantenimiento', 'manage')).toBe(false)
     expect(canWrite('consultor', 'compras', 'request')).toBe(false)
+  })
+
+  it('acota un consultor con permisos de compras al mÃ³dulo Compras', () => {
+    const perfil = { id:'u-compras', rol:'consultor', email:'compras@flykitchen.com.ar', compras_permisos:['manage'] }
+    expect(getPrimaryNav('consultor', perfil).map(item => item.id)).toEqual(['inicio', 'requerimientos'])
+    expect(getDefaultView('consultor', perfil)).toBe('requerimientos')
+    expect(canAccessView('consultor', 'requerimientos', perfil)).toBe(true)
+    expect(canAccessView('consultor', 'mantenimientoHub', perfil)).toBe(false)
+    expect(canAccessView('consultor', 'calidadHub', perfil)).toBe(false)
+    expect(canWrite('consultor', 'compras', 'request', perfil)).toBe(true)
+    expect(canWrite('consultor', 'compras', 'manage', perfil)).toBe(true)
+    expect(canWrite('consultor', 'calidad', 'manage', perfil)).toBe(false)
   })
 
   it('permite a sede reportar sin administrar', () => {

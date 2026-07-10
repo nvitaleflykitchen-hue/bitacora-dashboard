@@ -5,8 +5,8 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Search } from 'lucide-react'
 
-const MODULO_ORDER = ['rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
-const MODULO_LABEL = { rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
+const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
+const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
 
 function ContactoChip({ c }) {
   return (
