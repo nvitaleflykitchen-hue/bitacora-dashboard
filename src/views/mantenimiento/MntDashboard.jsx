@@ -66,7 +66,7 @@ export default function MntDashboard({ onNavigate }) {
       getTickets(sid ? { sede_id: sid } : { sedeIds: allowedSedeIds || undefined }),
     ]).then(([k,t]) => { setKpis(k); setTickets(t) })
       .finally(() => setLoading(false))
-  }, [sedeId])
+  }, [sedeId, allowedSedeIds])
 
   const mttr = useMemo(() => calcMTTR(tickets), [tickets])
 

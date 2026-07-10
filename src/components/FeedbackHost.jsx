@@ -39,10 +39,11 @@ export default function FeedbackHost() {
     const onConfirm = e => setConfirmData(e.detail)
     window.addEventListener('app:toast', onToast)
     window.addEventListener('app:confirm', onConfirm)
+    const timers = timersRef.current
     return () => {
       window.removeEventListener('app:toast', onToast)
       window.removeEventListener('app:confirm', onConfirm)
-      Object.values(timersRef.current).forEach(clearTimeout)
+      Object.values(timers).forEach(clearTimeout)
     }
   }, [quitar])
 

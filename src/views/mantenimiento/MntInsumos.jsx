@@ -13,7 +13,7 @@ export default function MntInsumos({ focusId }) {
   const [modalMov, setModalMov] = useState(null) // insumo para registrar movimiento
   const [nuevoModal, setNuevoModal] = useState(false)
 
-  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [])
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
 
   // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
   useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
@@ -23,7 +23,7 @@ export default function MntInsumos({ focusId }) {
     const filtros = { sedeIds: allowedSedeIds || undefined }
     if (sedeId) filtros.sede_id = Number(sedeId)
     getInsumos(filtros).then(setInsumos).finally(() => setLoading(false))
-  }, [sedeId])
+  }, [sedeId, allowedSedeIds])
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!focusId || loading) return

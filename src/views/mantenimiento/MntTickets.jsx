@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Download, MessageCircle, Mail, Wrench, FileText } from 'lucide-react'
-import { getTickets, createTicket, updateTicket, getActivos, getProveedores, getSedes, TICKET_TIPOS_VALIDOS } from '../../lib/queries'
+import { getTickets, createTicket, updateTicket, getActivos, getProveedores, getSedes, TICKET_TIPOS_VALIDOS, sugerirResponsable } from '../../lib/queries'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { fmtFecha, fmtFechaHora } from '../../lib/dateUtils'
@@ -199,13 +199,13 @@ function CostosTab({ ticket, form, set }) {
   const [newItem, setNewItem] = useState({ concepto:'', tipo:'mano_obra', cantidad:1, precio_unit:0, proveedor:'' })
   const [saving, setSaving] = useState(false)
 
-  const loadItems = () => {
+  const loadItems = useCallback(() => {
     if (!ticket?.id) { setLoading(false); return }
     supabase.from('mnt_ticket_costos').select('*')
       .eq('ticket_id', ticket.id).order('created_at')
       .then(({ data }) => { setItems(data || []); setLoading(false) })
-  }
-  useEffect(() => { loadItems() }, [ticket?.id])
+  }, [ticket?.id])
+  useEffect(() => { loadItems() }, [loadItems])
 
   const totalItems = items.reduce((s, i) => s + (i.subtotal || 0), 0)
   const fmt = (n) => n ? `$${Number(n).toLocaleString('es-AR', { minimumFractionDigits:2, maximumFractionDigits:2 })}` : '—'
@@ -453,7 +453,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
     if (isNew && !form.sede_id && sedes?.length === 1) {
       setForm(f => ({ ...f, sede_id: sedes[0].id, sede: sedes[0].nombre }))
     }
-  }, [sedes])
+  }, [sedes, isNew, form.sede_id])
 
   const activoObj   = activos.find(a => a.id === form.activo_id)
   const activoTipo  = activoObj?.tipo?.toUpperCase() || null
@@ -482,6 +482,17 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
       delete payload.fecha_apertura
 
       if (isNew) {
+        // Regla de dueño único: ningún ticket nace sin responsable.
+        if (!payload.responsable_id) {
+          const sugerido = await sugerirResponsable({ categoria: payload.categoria || null, prioridad: payload.prioridad || null })
+          if (!sugerido) {
+            setErr('Elegí un responsable: no hay reglas de asignación ni responsables activos.')
+            setSaving(false)
+            return
+          }
+          payload.responsable_id = sugerido.id
+          toast(`Asignado automáticamente a ${sugerido.nombre}.`)
+        }
         const created = await createTicket(payload)
         if (archivos.length > 0) {
           await Promise.all(archivos.map(f => uploadAdjunto('ticket', created.id, f)))
@@ -805,6 +816,10 @@ export default function MntTickets({ focusId }) {
       if (allowedSedeIds !== null && filtered.length > 0 && !sedeId)
         setSedeId(String(filtered[0].id))
     })
+    // Nota: sedeId NO va en deps a propósito — si estuviera, elegir "Todas las
+    // sedes" re-dispararía la auto-selección y el filtro volvería solo a la
+    // primera sede. setSedeId es estable (useState interno de usePersistedState).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedSedeIds])
 
   let filtrados = tickets

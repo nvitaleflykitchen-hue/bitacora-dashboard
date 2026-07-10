@@ -432,7 +432,7 @@ export default function MntActivos({ focusId }) {
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [busqueda, setBusqueda]         = useState('')
 
-  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [])
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
 
   // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
   useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
@@ -444,7 +444,7 @@ export default function MntActivos({ focusId }) {
     getActivos({ ...filtros, sedeIds: allowedSedeIds || undefined })
       .then(data => setActivos(data.filter(a => a.tipo !== 'VEHICULO')))
       .finally(() => setLoading(false))
-  }, [sedeId])
+  }, [sedeId, allowedSedeIds])
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!focusId || loading) return

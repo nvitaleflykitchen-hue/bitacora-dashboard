@@ -98,7 +98,7 @@ export default function Tablon() {
   const [loading, setLoading]       = useState(true)
   const [nuevoModal, setNuevoModal] = useState(false)
 
-  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [])
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
   useEffect(() => { if (isAdmin) getGrupos().then(setGrupos).catch(() => {}) }, [isAdmin])
 
   const load = useCallback(async () => {

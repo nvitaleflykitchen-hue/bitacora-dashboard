@@ -1101,6 +1101,9 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
   const perfilRol = perfil?.rol
   const perfilGrupoId = perfil?.grupo_id
   const perfilSedeIds = JSON.stringify(perfil?.sede_ids)
+  // load se recrea en cada render y captura los valores actuales; las deps de
+  // abajo son exactamente las que deben disparar el refetch (no 'load' en sí).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [allowedSedeIds, isQualityOnly, perfilRol, perfilGrupoId, perfilSedeIds])
   useEffect(() => {
     if (focusType === 'candidato' || focusType === 'reclutamiento') {

@@ -668,7 +668,7 @@ export default function Requerimientos({ focusId }) {
       setReqs(r); setSedes(s); setContactos(c); setPerfiles(p)
     } catch(e) { console.error(e) }
     finally { setLoading(false) }
-  }, [filtroEstado, filtroUrgencia, filtroSede])
+  }, [filtroEstado, filtroUrgencia, filtroSede, allowedSedeIds])
 
   useEffect(()=>{ load() }, [load])
   useEffect(() => {
@@ -681,7 +681,7 @@ export default function Requerimientos({ focusId }) {
   }, [focusId, loading, reqs])
 
   // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
-  useEffect(() => { if (allowedSedeIds?.length === 1) setFiltroSede(String(allowedSedeIds[0])) }, [allowedSedeIds])
+  useEffect(() => { if (allowedSedeIds?.length === 1) setFiltroSede(String(allowedSedeIds[0])) }, [allowedSedeIds, setFiltroSede])
 
   const handleUpdateEstado = async (id, estado) => {
     if (!canManage) return

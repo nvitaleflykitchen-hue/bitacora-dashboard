@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -58,15 +58,15 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
   const [lightbox, setLightbox] = useState(null)
   const fileRef = useRef()
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!entityId) return
     try {
       setAdjuntos(await getAdjuntos(entityType, entityId))
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }
+  }, [entityType, entityId])
 
-  useEffect(() => { load() }, [entityType, entityId])
+  useEffect(() => { load() }, [load])
 
   const handleFiles = async (files) => {
     if (!files?.length) return

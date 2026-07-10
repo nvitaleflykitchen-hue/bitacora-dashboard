@@ -236,7 +236,7 @@ export default function MntFlotaGestion({ focusId }) {
   const [busqueda, setBusqueda] = useState('')
   const [soloVenc, setSoloVenc] = useState(false)
 
-  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [])
+  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
 
   // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
   useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
@@ -246,7 +246,7 @@ export default function MntFlotaGestion({ focusId }) {
     const filtros = { tipo: 'VEHICULO', sedeIds: allowedSedeIds || undefined }
     if (sedeId) filtros.sede_id = Number(sedeId)
     getActivos(filtros).then(setVehiculos).finally(() => setLoading(false))
-  }, [sedeId])
+  }, [sedeId, allowedSedeIds])
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (!focusId || loading) return

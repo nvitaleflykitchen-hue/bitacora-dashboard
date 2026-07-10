@@ -231,7 +231,7 @@ export default function NoConformidades() {
       }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [filtroEstado, filtroSede, rol, sedeIds])
+  }, [filtroEstado, filtroSede, rol, sedeIds, allowedSedeIds])
 
   useEffect(() => { load() }, [load])
 

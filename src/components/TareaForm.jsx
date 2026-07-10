@@ -136,7 +136,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
     if (!tareaEditar && !sedePreseleccionada && !registroOrigen?.sede_id && allowedSedeIds?.length === 1) {
       setForm(f => f.sede_id ? f : { ...f, sede_id: allowedSedeIds[0] })
     }
-  }, [allowedSedeIds])
+  }, [allowedSedeIds, tareaEditar, sedePreseleccionada, registroOrigen?.sede_id])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 

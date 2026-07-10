@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getSedes, getContactos, getAllSedeContactos, upsertSedeContacto, deleteSedeContacto, updateContacto, linkContactoToPerfil, getPerfiles } from '../lib/queries'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -315,14 +315,14 @@ export default function SedeResponsables() {
   const [editItem, setEditItem]     = useState(null)
   const [loading, setLoading]       = useState(true)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const [s, c, a, p] = await Promise.all([getSedes(), getContactos(), getAllSedeContactos(), getPerfiles()])
     setSedes(s); setContactos(c); setAsignados(a); setPerfiles(p)
-    if (!sedeSel && s.length > 0) setSedeSel(s[0])
+    setSedeSel(prev => prev ?? (s.length > 0 ? s[0] : prev))
     setLoading(false)
-  }
-  useEffect(()=>{ load() },[])
+  }, [])
+  useEffect(()=>{ load() },[load])
 
   const sedesFilt = (rol === 'encargado' && sedeIds?.length > 0)
     ? sedes.filter(s => sedeIds.includes(s.id))

@@ -67,7 +67,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
       .then(setActivos)
       .catch(() => {})
       .finally(() => setLoadingActivos(false))
-  }, [editing])
+  }, [editing, activos.length, loadingActivos, ticket.sede_id])
 
   // Proveedores se cargan siempre (no solo en edición) para poder mostrar el nombre en modo lectura
   useEffect(() => {
@@ -504,7 +504,7 @@ export default function MntKanban() {
   const [filterSLA, setFilterSLA]       = useState(false)
   const [selectedTicket, setSelectedTicket] = useState(null)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const [t,r,a,p,s] = await Promise.all([
       getTickets({ sedeIds: allowedSedeIds || undefined }),
@@ -514,8 +514,8 @@ export default function MntKanban() {
       getSedes(allowedSedeIds),
     ])
     setTickets(t); setResponsables(r.data||[]); setActivos(a); setProveedores(p); setSedesCatalogo(s); setLoading(false)
-  }
-  useEffect(()=>{ load() },[])
+  }, [allowedSedeIds])
+  useEffect(()=>{ load() },[load])
 
   // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
   useEffect(() => { if (sedesCatalogo.length === 1) setFilterSede(sedesCatalogo[0].nombre) }, [sedesCatalogo])

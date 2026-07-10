@@ -75,7 +75,7 @@ function mapGoogleRow(row) {
 function cleanPhone(p) {
   if (!p) return ''
   // Keep +, digits, spaces for international format
-  return p.replace(/[^\d+\s\-]/g, '').trim()
+  return p.replace(/[^\d+\s-]/g, '').trim()
 }
 
 // ── Chip de estado ──────────────────────────────────────────

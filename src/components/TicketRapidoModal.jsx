@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { X, Wrench } from 'lucide-react'
-import { createTicket, getResponsablesMnt, getSedes, TICKET_TIPOS_VALIDOS } from '../lib/queries'
+import { sugerirResponsable, createTicket, getResponsablesMnt, getSedes, TICKET_TIPOS_VALIDOS } from '../lib/queries'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
@@ -53,6 +53,20 @@ export default function TicketRapidoModal({ origen, onClose, onCreated }) {
     if (!form.descripcion.trim()) return
     setSaving(true)
     try {
+      // Regla de dueño único: ningún ticket nace sin responsable.
+      let respId = form.responsable_id || null
+      let respNombre = form.responsable || null
+      if (!respId) {
+        const sugerido = await sugerirResponsable({ prioridad: form.prioridad })
+        if (!sugerido) {
+          toast.warn('Elegí un responsable: no hay reglas de asignación ni responsables activos para asignar automáticamente.')
+          setSaving(false)
+          return
+        }
+        respId = sugerido.id
+        respNombre = sugerido.nombre
+        toast(`Asignado automáticamente a ${sugerido.nombre}.`)
+      }
       const ticket = await createTicket({
         tipo:          form.tipo,
         descripcion:   form.descripcion.trim(),
@@ -60,8 +74,8 @@ export default function TicketRapidoModal({ origen, onClose, onCreated }) {
         sede:          form.sede || null,
         sede_id:       form.sede_id || null,
         estado:        'abierto',
-        responsable_id: form.responsable_id || null,
-        responsable:    form.responsable || null,
+        responsable_id: respId,
+        responsable:    respNombre,
         escalamiento_id: origen?.escalamientoId || null,
       })
       onCreated?.(ticket)

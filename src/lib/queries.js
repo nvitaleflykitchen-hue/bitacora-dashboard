@@ -1196,6 +1196,24 @@ export async function getPersonaNovedadesByRegistro(registroId) {
 // ═══════════════════════════════════════════════════════════
 
 // ─── RESPONSABLES MNT ───────────────────────────────────────
+// Sugiere responsable para un ticket nuevo usando las reglas de escalación
+// (categoria+prioridad → responsable) con fallback al nivel 1 activo.
+// Devuelve { id, nombre } o null si no hay a quién asignar.
+export async function sugerirResponsable({ categoria = null, prioridad = null } = {}) {
+  const [{ data: reglas }, { data: resps }] = await Promise.all([
+    supabase.schema('mantenimiento').from('reglas_escalacion').select('*').eq('activo', true),
+    supabase.from('mnt_responsables').select('id,nombre,nivel_escalacion').eq('activo', true).order('nivel_escalacion'),
+  ])
+  const encontrar = id => (resps || []).find(r => r.id === id) || null
+  const exacta = (reglas || []).find(r => r.categoria === categoria && r.prioridad === prioridad && r.responsable_id)
+  if (exacta) return encontrar(exacta.responsable_id)
+  const porCategoria = (reglas || []).find(r => r.categoria === categoria && r.responsable_id)
+  if (porCategoria) return encontrar(porCategoria.responsable_id)
+  const porPrioridad = (reglas || []).find(r => r.prioridad === prioridad && r.responsable_id)
+  if (porPrioridad) return encontrar(porPrioridad.responsable_id)
+  return (resps || [])[0] || null
+}
+
 export async function getResponsablesMnt() {
   const { data, error } = await supabase.from('mnt_responsables').select('id,nombre,nivel_escalacion,rol,telefono,email').eq('activo', true).order('nombre')
   if (error) return []
