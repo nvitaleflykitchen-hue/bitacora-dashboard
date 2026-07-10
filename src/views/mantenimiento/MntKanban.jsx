@@ -5,6 +5,7 @@ import { updateTicket, getAuditoriaTicket, getActivos, getProveedores, getSedes,
 import { AlertTriangle, User, Filter, RefreshCw, X, Clock, Tag, MapPin, Wrench, ChevronDown, MessageSquare, History } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 import PageHeader from '../../components/PageHeader'
+import AdjuntosPanel from '../../components/AdjuntosPanel'
 import { TicketModal as FullTicketModal } from './MntTickets'
 import { toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
@@ -180,7 +181,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
         {/* Tabs */}
         <div style={{ display:'flex', gap:0, borderBottom:'1px solid rgba(57,255,20,0.06)', flexShrink:0 }}>
-          {[['detalle','Detalle'],['historial','Trazabilidad']].map(([id,label]) => (
+          {[['detalle','Detalle'],['adjuntos','Adjuntos'],['historial','Trazabilidad']].map(([id,label]) => (
             <button key={id} onClick={()=>setTab(id)} style={{
               background:'none', border:'none', borderBottom: tab===id ? '2px solid var(--phosphor)' : '2px solid transparent',
               color: tab===id ? 'var(--phosphor)' : 'rgba(255,255,255,0.4)',
@@ -342,6 +343,10 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
                 )}
               </div>
             </div>
+          )}
+
+          {tab === 'adjuntos' && (
+            <AdjuntosPanel entityType="ticket" entityId={ticket.id} />
           )}
 
           {tab === 'historial' && (
