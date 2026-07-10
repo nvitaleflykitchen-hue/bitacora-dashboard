@@ -19,6 +19,7 @@ function ContactoChip({ c }) {
       <div style={{ display:'flex', gap:4, flexShrink:0 }}>
         <a href={`tel:+${c.tel}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.2)', color:'var(--phosphor)', borderRadius:5, textDecoration:'none', fontSize:'0.85rem' }}>📞</a>
         {c.wa && <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener noreferrer" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.22)', color:'#25d366', borderRadius:5, textDecoration:'none', fontSize:'0.85rem' }}>💬</a>}
+        {c.email && <a href={`mailto:${c.email}`} title="Email" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(80,180,255,0.08)', border:'1px solid rgba(80,180,255,0.22)', color:'#50b4ff', borderRadius:5, textDecoration:'none', fontSize:'0.85rem' }}>✉</a>}
       </div>
     </div>
   )
