@@ -7,6 +7,7 @@ import MntVehiculos from './mantenimiento/MntVehiculos'
 import MntPlanes from './mantenimiento/MntPlanes'
 import FlotaMatafuegos from './flota/FlotaMatafuegos'
 import FlotaDocumentos from './flota/FlotaDocumentos'
+import FlotaChecklist from './flota/FlotaChecklist'
 import ContactosTab from '../components/ContactosTab'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
 
@@ -14,6 +15,7 @@ const VIEWS = {
   resumen: FlotaResumen,
   vehiculos: MntFlotaGestion,
   tickets: MntVehiculos,
+  checklist: FlotaChecklist,
   preventivo: (props) => <MntPlanes defaultTipo="VEHICULO" {...props} />,
   matafuegos: FlotaMatafuegos,
   documentos: FlotaDocumentos,
@@ -24,6 +26,7 @@ const TABS = [
   { id:'resumen', label:'Resumen' },
   { id:'vehiculos', label:'Vehículos' },
   { id:'tickets', label:'Tickets' },
+  { id:'checklist', label:'Checklist' },
   { id:'preventivo', label:'Preventivo', hideFor:['consultor'] },
   { id:'matafuegos', label:'Matafuegos', hideFor:['consultor'] },
   { id:'documentos', label:'Documentos', hideFor:['consultor'] },

@@ -56,6 +56,7 @@ export default function FlotaResumen({ onGoTab }) {
   const accesos = [
     { label:'Vehículos',  tab:'vehiculos',  icon:'🚚' },
     { label:'Tickets',    tab:'tickets',    icon:'🎫' },
+    { label:'Checklist',  tab:'checklist',  icon:'✅' },
     { label:'Preventivo', tab:'preventivo', icon:'📋' },
     { label:'Matafuegos', tab:'matafuegos', icon:'🧯' },
     { label:'Documentos', tab:'documentos', icon:'📄' },
