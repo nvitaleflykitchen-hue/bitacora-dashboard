@@ -1,190 +1,166 @@
-import { jsPDF } from 'jspdf'
-import { format } from 'date-fns'
 import { supabase } from './supabase'
 import { SLA_HS } from './estados'
+import { crearDoc, fechaArchivo } from './pdfKit'
 
 // Reporte de eficiencia de Mantenimiento (PDF) — general o por sede.
-// Pensado para la revisión semanal de pendientes: KPIs arriba, tabla por sede
-// (solo en modo general) y el detalle de tickets abiertos ordenado por
-// prioridad y antigüedad.
-
-const PHOSPHOR = [57, 255, 20]
-const GRAY = [100, 100, 100]
-const LIGHT = [240, 240, 240]
-const RED = [220, 60, 60]
-const AMBER = [217, 140, 20]
+// Secciones: KPIs, carga por responsable, categorías con más fallas,
+// resolución 30d (MTTR por prioridad), preventivo, costos y pendientes.
 
 const PRIORIDAD_ORDEN = { critica: 0, alta: 1, media: 2, baja: 3 }
-
 const horasAbierto = t => (Date.now() - new Date(t.created_at).getTime()) / 3600000
 const slaVencido = t => horasAbierto(t) > (SLA_HS[t.prioridad] ?? 168)
 const diasAbierto = t => Math.floor(horasAbierto(t) / 24)
 
 export async function generarReporteEficienciaMnt({ sedeId = null, sedeNombre = null } = {}) {
-  // 1. Datos
+  // ── Datos ──
+  const desde30 = new Date(Date.now() - 30 * 86400000).toISOString()
   let abiertosQ = supabase.from('mnt_tickets')
-    .select('id,numero,descripcion,estado,prioridad,tipo,created_at,responsable_id,sede_id,sede,fecha_limite')
+    .select('id,numero,descripcion,estado,prioridad,tipo,categoria,created_at,responsable_id,sede_id,sede,fecha_limite,costo_real,costo_estimado')
     .not('estado', 'in', '(resuelto,rechazado)')
   let cerradosQ = supabase.from('mnt_tickets')
-    .select('id,created_at,fecha_cierre,sede_id')
-    .eq('estado', 'resuelto')
-    .gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString())
+    .select('id,prioridad,tipo,categoria,created_at,fecha_cierre,sede_id,costo_real')
+    .eq('estado', 'resuelto').gte('created_at', desde30)
+  let planesQ = supabase.from('mnt_planes').select('id,nombre,proxima_fecha,activo,sede_id').eq('activo', true)
   if (sedeId) {
     abiertosQ = abiertosQ.eq('sede_id', Number(sedeId))
     cerradosQ = cerradosQ.eq('sede_id', Number(sedeId))
+    planesQ = planesQ.eq('sede_id', Number(sedeId))
   }
-  const [{ data: abiertos, error: e1 }, { data: cerrados30, error: e2 }, { data: responsables }] = await Promise.all([
-    abiertosQ, cerradosQ,
-    supabase.from('mnt_responsables').select('id,nombre').eq('activo', true),
-  ])
+  const [{ data: abiertos, error: e1 }, { data: cerrados30, error: e2 }, { data: planes }, { data: responsables }] =
+    await Promise.all([abiertosQ, cerradosQ, planesQ, supabase.from('mnt_responsables').select('id,nombre').eq('activo', true)])
   if (e1) throw e1
   if (e2) throw e2
 
   const respName = id => (responsables || []).find(r => r.id === id)?.nombre || null
   const tickets = (abiertos || []).sort((a, b) =>
     (PRIORIDAD_ORDEN[a.prioridad] ?? 9) - (PRIORIDAD_ORDEN[b.prioridad] ?? 9) || new Date(a.created_at) - new Date(b.created_at))
+  const cerrados = cerrados30 || []
 
-  // KPIs
+  // ── KPIs ──
   const sinResponsable = tickets.filter(t => !t.responsable_id).length
   const fueraSla = tickets.filter(slaVencido).length
   const mas30d = tickets.filter(t => diasAbierto(t) > 30).length
-  const resueltosConCierre = (cerrados30 || []).filter(t => t.fecha_cierre)
-  const diasPromResolucion = resueltosConCierre.length
-    ? Math.round(resueltosConCierre.reduce((acc, t) =>
-        acc + (new Date(t.fecha_cierre) - new Date(t.created_at)) / 86400000, 0) / resueltosConCierre.length)
+  const conCierre = cerrados.filter(t => t.fecha_cierre)
+  const mttrGlobal = conCierre.length
+    ? Math.round(conCierre.reduce((a, t) => a + (new Date(t.fecha_cierre) - new Date(t.created_at)) / 86400000, 0) / conCierre.length)
     : null
 
-  // 2. PDF
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const pageW = doc.internal.pageSize.getWidth()
-  const pageH = doc.internal.pageSize.getHeight()
-  const marginX = 15
-  const contentW = pageW - marginX * 2
-  let y = 18
+  const ctx = crearDoc()
+  ctx.encabezado('REPORTE DE EFICIENCIA — MANTENIMIENTO',
+    sedeId ? `Sede: ${sedeNombre || sedeId}` : 'General — todas las sedes',
+    'Pendientes a la fecha + resolución últimos 30 días')
 
-  const pagina = () => {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 150)
-    doc.text(`Página ${doc.internal.getNumberOfPages()}`, pageW - marginX, pageH - 10, { align: 'right' })
-  }
-  const checkPageBreak = need => {
-    if (y + need > pageH - 20) { pagina(); doc.addPage(); y = 18 }
-  }
-  const drawTitle = (text, marginTop = 8) => {
-    checkPageBreak(15)
-    y += marginTop
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 30, 30)
-    doc.text(text, marginX, y)
-    y += 2
-    doc.setDrawColor(...PHOSPHOR); doc.setLineWidth(0.5)
-    doc.line(marginX, y, marginX + contentW, y)
-    y += 6
-  }
-
-  // Encabezado
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(20, 20, 20)
-  doc.text('REPORTE DE EFICIENCIA — MANTENIMIENTO', pageW / 2, y, { align: 'center' })
-  y += 7
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...GRAY)
-  doc.text(sedeId ? `Sede: ${sedeNombre || sedeId}` : 'General — todas las sedes', pageW / 2, y, { align: 'center' })
-  y += 5
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
-  doc.text(`Generado: ${format(new Date(), 'dd/MM/yyyy HH:mm')} — Pendientes a la fecha + resolución últimos 30 días`, pageW / 2, y, { align: 'center' })
-  y += 10
-
-  // KPIs
-  const kpis = [
+  ctx.filaKpis([
     ['Abiertos', tickets.length],
-    ['Sin responsable', sinResponsable],
-    ['Fuera de SLA', fueraSla],
-    ['Abiertos +30 días', mas30d],
-    ['Días prom. resolución (30d)', diasPromResolucion ?? '—'],
-  ]
-  const kw = contentW / kpis.length
-  doc.setFillColor(...LIGHT)
-  doc.rect(marginX, y, contentW, 18, 'F')
-  kpis.forEach(([label, val], i) => {
-    const cx = marginX + kw * i + kw / 2
-    const alerta = (label === 'Sin responsable' || label === 'Fuera de SLA' || label === 'Abiertos +30 días') && Number(val) > 0
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14)
-    doc.setTextColor(...(alerta ? RED : [30, 30, 30]))
-    doc.text(String(val), cx, y + 8, { align: 'center' })
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...GRAY)
-    doc.text(label.toUpperCase(), cx, y + 14, { align: 'center' })
+    ['Sin responsable', sinResponsable, sinResponsable > 0],
+    ['Fuera de SLA', fueraSla, fueraSla > 0],
+    ['+30 días', mas30d, mas30d > 0],
+    ['Resueltos 30d', cerrados.length],
+    ['MTTR 30d (días)', mttrGlobal ?? '—'],
+  ])
+
+  // ── Carga por responsable (accountability semanal) ──
+  ctx.titulo('Carga por responsable')
+  const porResp = {}
+  tickets.forEach(t => {
+    const k = respName(t.responsable_id) || 'SIN ASIGNAR'
+    porResp[k] = porResp[k] || { total: 0, sla: 0, criticas: 0, viejos: 0 }
+    porResp[k].total++
+    if (slaVencido(t)) porResp[k].sla++
+    if (t.prioridad === 'critica' || t.prioridad === 'alta') porResp[k].criticas++
+    if (diasAbierto(t) > 30) porResp[k].viejos++
   })
-  y += 24
+  ctx.tabla([70, 25, 30, 30, 25],
+    ['Responsable', 'Abiertos', 'Fuera SLA', 'Alta/Crítica', '+30d'],
+    Object.entries(porResp).sort((a, b) => b[1].total - a[1].total).map(([nombre, s]) => [
+      { v: nombre.slice(0, 40), bold: nombre === 'SIN ASIGNAR', color: nombre === 'SIN ASIGNAR' ? 'ambar' : undefined },
+      s.total,
+      { v: s.sla, color: s.sla > 0 ? 'rojo' : 'verde' },
+      s.criticas,
+      { v: s.viejos, color: s.viejos > 0 ? 'ambar' : undefined },
+    ]))
 
-  // Resumen por sede (solo modo general)
-  if (!sedeId) {
-    drawTitle('Resumen por sede')
-    const porSede = {}
-    tickets.forEach(t => {
-      const k = t.sede || `Sede ${t.sede_id}`
-      porSede[k] = porSede[k] || { total: 0, sinResp: 0, sla: 0, viejos: 0 }
-      porSede[k].total++
-      if (!t.responsable_id) porSede[k].sinResp++
-      if (slaVencido(t)) porSede[k].sla++
-      if (diasAbierto(t) > 30) porSede[k].viejos++
-    })
-    const cols = [80, 25, 30, 25, 25]
-    const headers = ['Sede', 'Abiertos', 'Sin resp.', 'F. SLA', '+30d']
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(60, 60, 60)
-    let x = marginX
-    headers.forEach((h, i) => { doc.text(h, x, y); x += cols[i] })
-    y += 4
-    doc.setFont('helvetica', 'normal')
-    Object.entries(porSede).sort((a, b) => b[1].total - a[1].total).forEach(([nombre, s]) => {
-      checkPageBreak(6)
-      x = marginX
-      doc.setTextColor(30, 30, 30)
-      const vals = [nombre.slice(0, 45), s.total, s.sinResp, s.sla, s.viejos]
-      vals.forEach((v, i) => { doc.text(String(v), x, y); x += cols[i] })
-      y += 5
-    })
-    if (!Object.keys(porSede).length) {
-      doc.setTextColor(...GRAY); doc.text('Sin tickets abiertos.', marginX, y); y += 5
-    }
+  // ── Categorías con más fallas (abiertos + resueltos 30d) ──
+  ctx.titulo('Categorías con más tickets (abiertos + resueltos 30d)')
+  const porCat = {}
+  ;[...tickets, ...cerrados].forEach(t => {
+    const k = t.categoria || 'Sin categoría'
+    porCat[k] = (porCat[k] || 0) + 1
+  })
+  ctx.tabla([100, 30],
+    ['Categoría', 'Tickets'],
+    Object.entries(porCat).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([c, n]) => [c.slice(0, 55), n]))
+
+  // ── Resolución 30 días: MTTR por prioridad + mezcla correctivo/preventivo ──
+  ctx.titulo('Resolución últimos 30 días')
+  const filasMttr = ['critica', 'alta', 'media', 'baja'].map(pr => {
+    const del = conCierre.filter(t => t.prioridad === pr)
+    const mttr = del.length
+      ? (del.reduce((a, t) => a + (new Date(t.fecha_cierre) - new Date(t.created_at)) / 86400000, 0) / del.length).toFixed(1)
+      : null
+    const slaDias = (SLA_HS[pr] / 24).toFixed(1)
+    return [pr, del.length, mttr ?? '—',
+      { v: `${slaDias}d`, color: mttr !== null && Number(mttr) > SLA_HS[pr] / 24 ? 'rojo' : 'verde' }]
+  })
+  ctx.tabla([40, 30, 40, 40], ['Prioridad', 'Resueltos', 'MTTR (días)', 'SLA objetivo'], filasMttr)
+  const correctivos = [...tickets, ...cerrados].filter(t => t.tipo === 'correctivo').length
+  const preventivos = [...tickets, ...cerrados].filter(t => t.tipo === 'preventivo').length
+  const totalTipo = correctivos + preventivos
+  if (totalTipo) {
+    ctx.salto(8)
+    ctx.doc.setFont('helvetica', 'normal'); ctx.doc.setFontSize(8); ctx.doc.setTextColor(80, 80, 80)
+    ctx.doc.text(`Mezcla: ${Math.round(100 * correctivos / totalTipo)}% correctivo / ${Math.round(100 * preventivos / totalTipo)}% preventivo. (Más preventivo = menos incendios.)`, ctx.marginX, ctx.y)
+    ctx.y += 6
   }
 
-  // Detalle de pendientes
-  drawTitle(`Pendientes (${tickets.length})`)
-  if (!tickets.length) {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GRAY)
-    doc.text('No hay tickets abiertos. Buen trabajo.', marginX, y)
-    y += 6
-  } else {
-    const cols = sedeId ? [14, 88, 0, 22, 34, 12, 10] : [14, 60, 34, 20, 30, 12, 10]
-    const headers = sedeId
-      ? ['#', 'Descripción', '', 'Prioridad', 'Responsable', 'Días', 'SLA']
-      : ['#', 'Descripción', 'Sede', 'Prioridad', 'Responsable', 'Días', 'SLA']
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(60, 60, 60)
-    let x = marginX
-    headers.forEach((h, i) => { if (cols[i]) { doc.text(h, x, y); x += cols[i] } })
-    y += 4
-    tickets.forEach(t => {
-      checkPageBreak(6)
-      x = marginX
+  // ── Preventivo: planes vencidos / próximos ──
+  const hoy = new Date().toISOString().slice(0, 10)
+  const en7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+  const planesVencidos = (planes || []).filter(p => p.proxima_fecha && p.proxima_fecha < hoy)
+  const planesProximos = (planes || []).filter(p => p.proxima_fecha >= hoy && p.proxima_fecha <= en7)
+  ctx.titulo('Planes preventivos')
+  ctx.tabla([90, 40],
+    ['Estado', 'Cantidad'],
+    [
+      [{ v: 'Vencidos', color: planesVencidos.length ? 'rojo' : undefined }, { v: planesVencidos.length, color: planesVencidos.length ? 'rojo' : 'verde', bold: true }],
+      ['Vencen en 7 días', { v: planesProximos.length, color: planesProximos.length ? 'ambar' : 'verde' }],
+      ['Activos totales', (planes || []).length],
+    ])
+
+  // ── Costos del período ──
+  const costoAbiertos = tickets.reduce((a, t) => a + (Number(t.costo_estimado) || 0), 0)
+  const costoCerrados = cerrados.reduce((a, t) => a + (Number(t.costo_real) || 0), 0)
+  if (costoAbiertos || costoCerrados) {
+    ctx.titulo('Costos')
+    ctx.tabla([90, 50], ['Concepto', 'Monto'], [
+      ['Costo real resueltos (30d)', `$ ${costoCerrados.toLocaleString('es-AR')}`],
+      ['Costo estimado de abiertos', `$ ${costoAbiertos.toLocaleString('es-AR')}`],
+    ])
+  }
+
+  // ── Detalle de pendientes ──
+  ctx.titulo(`Pendientes (${tickets.length})`)
+  const cols = sedeId ? [12, 76, 0, 20, 32, 12, 12] : [12, 52, 30, 20, 30, 12, 12]
+  const headers = ['#', 'Descripción', sedeId ? '' : 'Sede', 'Prioridad', 'Responsable', 'Días', 'SLA'].filter((_, i) => cols[i])
+  ctx.tabla(cols.filter(Boolean), headers,
+    tickets.map(t => {
       const resp = respName(t.responsable_id)
-      const fila = sedeId
-        ? [t.numero ?? '—', (t.descripcion || '').slice(0, 60), null, t.prioridad, resp || 'SIN ASIGNAR', diasAbierto(t), slaVencido(t) ? 'VENC' : 'ok']
-        : [t.numero ?? '—', (t.descripcion || '').slice(0, 40), (t.sede || '').slice(0, 22), t.prioridad, resp || 'SIN ASIGNAR', diasAbierto(t), slaVencido(t) ? 'VENC' : 'ok']
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5)
-      fila.forEach((v, i) => {
-        if (v === null || !cols[i]) return
-        if (i === 4 && !resp) { doc.setTextColor(...AMBER); doc.setFont('helvetica', 'bold') }
-        else if (i === 6 && v === 'VENC') { doc.setTextColor(...RED); doc.setFont('helvetica', 'bold') }
-        else if (i === 3 && (v === 'critica' || v === 'alta')) { doc.setTextColor(...RED) }
-        else { doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'normal') }
-        doc.text(String(v), x, y)
-        x += cols[i]
-      })
-      y += 5
-    })
-  }
+      const base = [
+        t.numero ?? '—',
+        (t.descripcion || '').slice(0, sedeId ? 55 : 38),
+        sedeId ? null : (t.sede || '').slice(0, 18),
+        { v: t.prioridad, color: ['critica', 'alta'].includes(t.prioridad) ? 'rojo' : undefined },
+        { v: resp || 'SIN ASIGNAR', color: resp ? undefined : 'ambar', bold: !resp },
+        diasAbierto(t),
+        { v: slaVencido(t) ? 'VENC' : 'ok', color: slaVencido(t) ? 'rojo' : 'verde', bold: slaVencido(t) },
+      ]
+      return base.filter(c => c !== null)
+    }),
+    { vacio: 'No hay tickets abiertos. Buen trabajo.' })
 
-  pagina()
   const nombre = sedeId
-    ? `eficiencia-mnt-${(sedeNombre || sedeId).toString().toLowerCase().replace(/\s+/g, '-')}-${format(new Date(), 'yyyyMMdd')}.pdf`
-    : `eficiencia-mnt-general-${format(new Date(), 'yyyyMMdd')}.pdf`
-  doc.save(nombre)
+    ? `eficiencia-mnt-${(sedeNombre || sedeId).toString().toLowerCase().replace(/\s+/g, '-')}-${fechaArchivo()}.pdf`
+    : `eficiencia-mnt-general-${fechaArchivo()}.pdf`
+  ctx.guardar(nombre)
   return nombre
 }

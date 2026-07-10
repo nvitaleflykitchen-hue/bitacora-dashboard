@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
 import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles, getRegistroById } from '../lib/queries'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
-import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save } from 'lucide-react'
+import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save, FileText } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import RegistroModal from '../components/RegistroModal'
 import { uploadAdjunto } from '../lib/adjuntos'
@@ -133,6 +133,7 @@ function estadosDisponibles(req) {
 import { URGENCIA_COLOR as URG_COLOR, REQ_ESTADO_COLOR as EST_COLOR } from '../lib/estados'
 import SkeletonTable from '../components/SkeletonTable'
 import usePersistedState from '../hooks/usePersistedState'
+import { generarReporteEficienciaCompras } from '../lib/comprasEficienciaPdf'
 
 const colHeader = {
   Pendiente: { color:'rgba(255,255,255,0.35)', bg:'rgba(107,114,128,0.08)' },
@@ -902,7 +903,23 @@ export default function Requerimientos({ focusId }) {
       </div>
 
       {/* Kanban */}
-      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:-8 }}>
+      <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginBottom:-8 }}>
+        <button
+          title={filtroSede ? 'Reporte de eficiencia PDF de la sede filtrada' : 'Reporte de eficiencia PDF general'}
+          onClick={async () => {
+            try {
+              toast('Generando reporte de Compras...')
+              await generarReporteEficienciaCompras({
+                sedeId: filtroSede || null,
+                sedeNombre: filtroSede ? sedes.find(s => String(s.id) === String(filtroSede))?.nombre : null,
+              })
+              toast.ok('Reporte PDF descargado.')
+            } catch (e) { toast.error('No se pudo generar el reporte: ' + mensajeError(e)) }
+          }}
+          className="btn-ghost"
+          style={{ padding:'0.35rem 0.6rem', display:'flex', alignItems:'center', gap:5, fontSize:'0.63rem', color:'var(--phosphor)' }}>
+          <FileText size={11}/> Eficiencia PDF
+        </button>
         <button onClick={()=>setShowClosed(v=>!v)} className="btn-ghost"
           style={{ padding:'0.35rem 0.6rem', display:'flex', alignItems:'center', gap:5, fontSize:'0.63rem' }}>
           {showClosed ? <EyeOff size={11}/> : <Eye size={11}/>}

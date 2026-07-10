@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getRequerimientos, updateRequerimiento, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { isQualityOnlyProfile } from '../lib/access'
-import { ShoppingCart, ChevronDown } from 'lucide-react'
+import { ShoppingCart, ChevronDown, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -25,6 +25,9 @@ function SedePill({ label, active, onClick }) {
 
 import { REQ_ESTADO_COLOR as ESTADO_COLOR } from '../lib/estados'
 import SkeletonTable from '../components/SkeletonTable'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
+import { generarReporteEficienciaCompras } from '../lib/comprasEficienciaPdf'
 
 const URGENCIA_COLOR = { baja: '#39FF14', media: '#F59E0B', alta: '#FF2A2A' }
 
@@ -146,7 +149,19 @@ export default function MobileRequerimientos() {
     <div className="mobile-scroll" style={{ padding: '1.25rem 1rem 1rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
         <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700 }}>Compras</h1>
-        
+
+        <button
+          title="Reporte de eficiencia PDF"
+          onClick={async () => {
+            try {
+              toast('Generando reporte...')
+              await generarReporteEficienciaCompras({})
+              toast.ok('Reporte PDF descargado.')
+            } catch (e) { toast.error('No se pudo generar el reporte: ' + mensajeError(e)) }
+          }}
+          style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 4, cursor: 'pointer', marginLeft: 'auto', marginRight: 8, display: 'flex' }}>
+          <FileText size={16} />
+        </button>
         <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--surface)', padding: '0.2rem', borderRadius: 20 }}>
           <button onClick={() => setFiltro('activos')} style={{ padding: '0.3rem 0.6rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none', background: filtro === 'activos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'activos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Activos</button>
           <button onClick={() => setFiltro('todos')} style={{ padding: '0.3rem 0.6rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none', background: filtro === 'todos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'todos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Todos</button>
