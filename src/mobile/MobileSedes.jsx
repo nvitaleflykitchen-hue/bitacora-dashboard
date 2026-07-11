@@ -7,6 +7,7 @@ import RegistroModal from '../components/RegistroModal'
 import { format } from 'date-fns'
 import { ChevronRight, ChevronLeft, AlertTriangle, RefreshCw, Pause, Play } from 'lucide-react'
 import SkeletonTable from '../components/SkeletonTable'
+import { useBackHandler } from '../lib/backStack'
 
 const ESTADO_STYLE = {
   sin_novedades: { color: '#39FF14', bg: 'rgba(57,255,20,0.12)', label: 'Sin Novedades', dot: '#39FF14' },
@@ -35,6 +36,7 @@ export default function MobileSedes() {
 
   // Vista detalle de sede
   const [selectedSede, setSelectedSede] = useState(null)
+  useBackHandler(() => { setSelectedSede(null); setSedeRegistros([]) }, !!selectedSede)
   const [sedeRegistros, setSedeRegistros] = useState([])
   const [loadingRegistros, setLoadingRegistros] = useState(false)
   const [diasFiltro, setDiasFiltro] = useState(30)

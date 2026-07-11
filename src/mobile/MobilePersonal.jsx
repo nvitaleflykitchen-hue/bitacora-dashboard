@@ -9,6 +9,7 @@ import AdjuntosPanel from '../components/AdjuntosPanel'
 import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star } from 'lucide-react'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import { useBackHandler } from '../lib/backStack'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -473,6 +474,7 @@ export default function MobilePersonal() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState('lista') // 'lista' | 'ranking'
   const [selectedId, setSelectedId] = useState(null)
+  useBackHandler(() => setSelectedId(null), !!selectedId)
   const [showNew, setShowNew] = useState(false)
   const [sedes, setSedes] = useState([])
   const [selectedSede, setSelectedSede] = useState(null)

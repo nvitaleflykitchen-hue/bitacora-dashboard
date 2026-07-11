@@ -14,6 +14,7 @@ import {
 } from '../lib/estados'
 import SkeletonTable from '../components/SkeletonTable'
 import { generarReporteEficienciaMnt } from '../lib/mntEficienciaPdf'
+import { useBackHandler } from '../lib/backStack'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -292,6 +293,7 @@ export default function MobileTickets() {
   const [filtro, setFiltro] = useState('activos')
   const [selectedSede, setSelectedSede] = useState(null)
   const [selectedTicket, setSelectedTicket] = useState(null)
+  useBackHandler(() => setSelectedTicket(null), !!selectedTicket)
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => { getResponsablesMnt().then(setResponsables).catch(() => {}) }, [])

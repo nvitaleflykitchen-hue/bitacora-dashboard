@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import MobileHome from './MobileHome'
 import PullToRefresh from './PullToRefresh'
 import MobileReporte from './MobileReporte'
@@ -16,6 +16,7 @@ import PushNotificationControl from '../components/PushNotificationControl'
 import NotificationCenter from '../components/NotificationCenter'
 import { isComprasOnlyProfile, isQualityOnlyProfile } from '../lib/access'
 import { User, ShoppingCart } from 'lucide-react'
+import { initBackNavigation, useBackHandler } from '../lib/backStack'
 
 const NAV = [
   { key: 'home',          label: 'Inicio',    icon: '⌂' },
@@ -41,6 +42,13 @@ export default function MobileApp() {
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
   const [showSearch, setShowSearch] = useState(false)
   const [masModule, setMasModule] = useState(isQualityOnly ? 'calidad' : null)
+
+  // Botón atrás del celular: navegar en vez de cerrar la app.
+  const tabInicio = isQualityOnly ? 'tareas' : 'home'
+  useEffect(() => initBackNavigation(), [])
+  useBackHandler(() => { setMasModule(null); setTab(tabInicio) }, screen === 'main' && tab !== tabInicio)
+  useBackHandler(() => setScreen('main'), screen !== 'main')
+  useBackHandler(() => setShowSearch(false), showSearch)
 
   const handleNotificationNavigate = (view) => {
     setScreen('main')

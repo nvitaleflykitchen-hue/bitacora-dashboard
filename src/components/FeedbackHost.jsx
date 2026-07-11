@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { CheckCircle2, AlertTriangle, XCircle, Info, X as XIcon } from 'lucide-react'
+import { useBackHandler } from '../lib/backStack'
 
 // Host único de toasts y modal de confirmación (ver src/lib/feedback.js).
 // Montado una sola vez en App.jsx — cubre desktop, mobile y LoginPage.
@@ -58,6 +59,9 @@ export default function FeedbackHost() {
     }
     setConfirmData(null)
   }
+
+  // Atrás del celular sobre un modal de confirmación = cancelar
+  useBackHandler(() => responder(false), !!confirmData)
 
   return (
     <>

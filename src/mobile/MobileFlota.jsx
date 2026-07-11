@@ -6,6 +6,7 @@ import { mensajeError } from '../lib/errores'
 import SkeletonTable from '../components/SkeletonTable'
 import EmptyState from '../components/EmptyState'
 import { Car, FileText, ChevronLeft, AlertTriangle } from 'lucide-react'
+import { useBackHandler } from '../lib/backStack'
 
 // Flota mobile: vehículos con estado y vencimientos, y documentos/POEs.
 // Lectura + alerta de vencimientos; la gestión completa vive en escritorio.
@@ -36,6 +37,7 @@ export default function MobileFlota() {
   const [docs, setDocs] = useState([])
   const [loading, setLoading] = useState(true)
   const [sel, setSel] = useState(null)
+  useBackHandler(() => setSel(null), !!sel)
 
   useEffect(() => {
     Promise.all([getActivos({ tipo: 'VEHICULO' }), getPoes()])

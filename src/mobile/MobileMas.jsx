@@ -9,6 +9,7 @@ import MobileContactos from './MobileContactos'
 import { useAuth } from '../lib/auth'
 import { canAccessView } from '../lib/access'
 import MobileFlota from './MobileFlota'
+import { useBackHandler } from '../lib/backStack'
 
 const MODULES = [
   { key: 'calidad',       label: 'Calidad',       sub: 'CAPA / No Conformidades',         icon: ClipboardList, ready: true,  view: 'calidadHub' },
@@ -59,6 +60,7 @@ function ModuleCard({ mod, onOpen }) {
 export default function MobileMas({ initialModule = null }) {
   const { rol, perfil } = useAuth()
   const [active, setActive] = useState(initialModule)
+  useBackHandler(() => setActive(null), !!active)
   const visibleModules = MODULES.filter(m => canAccessView(rol, m.view, perfil))
 
   if (active) {
