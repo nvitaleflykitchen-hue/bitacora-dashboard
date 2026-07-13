@@ -6,7 +6,7 @@ const cors = {
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
 }
 
-type EventInput = { module:string; entity_id:string | number }
+type EventInput = { module:string; entity_id:string | number; mentioned_user_ids?:string[] }
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers:cors })
@@ -25,34 +25,40 @@ Deno.serve(async req => {
     if (!caller?.activo) return json({ error:'Perfil inactivo' }, 403)
 
     const input = await req.json() as EventInput
-    const event = await resolveVerifiedEvent(admin, input)
+    const event = await resolveVerifiedEvent(admin, input, user.id)
     if (!event) return json({ skipped:true, reason:'El registro no es de prioridad alta/crítica' })
 
     const recipientIds = new Set<string>()
-    const { data:admins } = await admin.schema('bitacora').from('perfiles')
-      .select('id').eq('activo', true).eq('rol', 'admin')
-    for (const profile of admins || []) recipientIds.add(profile.id)
+    if (event.mentionedUserIds?.length) {
+      const { data:mentionedProfiles } = await admin.schema('bitacora').from('perfiles')
+        .select('id').eq('activo', true).in('id', event.mentionedUserIds)
+      for (const profile of mentionedProfiles || []) recipientIds.add(profile.id)
+    } else {
+      const { data:admins } = await admin.schema('bitacora').from('perfiles')
+        .select('id').eq('activo', true).eq('rol', 'admin')
+      for (const profile of admins || []) recipientIds.add(profile.id)
 
-    if (event.responsableUserId) recipientIds.add(event.responsableUserId)
-    for (const profileId of event.responsableUserIds || []) {
-      if (profileId) recipientIds.add(profileId)
-    }
-    if (event.responsableEmail) {
-      const { data:profile } = await admin.schema('bitacora').from('perfiles')
-        .select('id').eq('activo', true).ilike('email', event.responsableEmail).maybeSingle()
-      if (profile?.id) recipientIds.add(profile.id)
-    }
-    if (event.sedeId) {
-      const { data:sedeProfiles } = await admin.schema('bitacora').from('perfiles')
-        .select('id').eq('activo', true).in('rol', ['encargado','sede']).contains('sede_ids', [event.sedeId])
-      for (const profile of sedeProfiles || []) recipientIds.add(profile.id)
+      if (event.responsableUserId) recipientIds.add(event.responsableUserId)
+      for (const profileId of event.responsableUserIds || []) {
+        if (profileId) recipientIds.add(profileId)
+      }
+      if (event.responsableEmail) {
+        const { data:profile } = await admin.schema('bitacora').from('perfiles')
+          .select('id').eq('activo', true).ilike('email', event.responsableEmail).maybeSingle()
+        if (profile?.id) recipientIds.add(profile.id)
+      }
+      if (event.sedeId) {
+        const { data:sedeProfiles } = await admin.schema('bitacora').from('perfiles')
+          .select('id').eq('activo', true).in('rol', ['encargado','sede']).contains('sede_ids', [event.sedeId])
+        for (const profile of sedeProfiles || []) recipientIds.add(profile.id)
 
-      const { data:sede } = await admin.schema('bitacora').from('sedes')
-        .select('grupo_id').eq('id', event.sedeId).maybeSingle()
-      if (sede?.grupo_id) {
-        const { data:groupSupervisors } = await admin.schema('bitacora').from('perfiles')
-          .select('id').eq('activo', true).eq('rol', 'grupo').eq('grupo_id', sede.grupo_id)
-        for (const profile of groupSupervisors || []) recipientIds.add(profile.id)
+        const { data:sede } = await admin.schema('bitacora').from('sedes')
+          .select('grupo_id').eq('id', event.sedeId).maybeSingle()
+        if (sede?.grupo_id) {
+          const { data:groupSupervisors } = await admin.schema('bitacora').from('perfiles')
+            .select('id').eq('activo', true).eq('rol', 'grupo').eq('grupo_id', sede.grupo_id)
+          for (const profile of groupSupervisors || []) recipientIds.add(profile.id)
+        }
       }
     }
 
@@ -112,7 +118,7 @@ Deno.serve(async req => {
   }
 })
 
-async function resolveVerifiedEvent(admin:any, input:EventInput) {
+async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:string) {
   const module = String(input?.module || '')
   const id = input?.entity_id
   if (!id) return null
@@ -156,10 +162,15 @@ async function resolveVerifiedEvent(admin:any, input:EventInput) {
     const { data:c } = await admin.schema('bitacora').from('comentarios')
       .select('id,entidad_tipo,entidad_id,autor_id,autor_nombre,texto,eliminado_at').eq('id', id).maybeSingle()
     if (!c || c.eliminado_at) return null
+    if (String(c.autor_id) !== String(callerUserId)) return null
     const parent = await resolveComentarioParent(admin, c.entidad_tipo, c.entidad_id)
     if (!parent) return null
+    const mentionedUserIds = Array.isArray(input.mentioned_user_ids)
+      ? [...new Set(input.mentioned_user_ids.filter(Boolean).map(String))]
+      : []
     return { module, entityType:'comentario', entityId:c.id, priority:'media', sedeId:parent.sedeId,
       responsableUserId:parent.responsableUserId, responsableEmail:parent.responsableEmail,
+      mentionedUserIds,
       excludeUserId:c.autor_id,
       title:`Nuevo comentario de ${c.autor_nombre}`,
       body:c.texto.length > 140 ? `${c.texto.slice(0,140)}...` : c.texto,

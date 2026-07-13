@@ -26,3 +26,8 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/send-quality-email/deno.json"
 entrypoint = "./functions/send-quality-email/index.ts"
+
+[functions.send-priority-notification]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/send-priority-notification/index.ts"

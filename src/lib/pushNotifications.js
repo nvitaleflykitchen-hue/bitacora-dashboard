@@ -79,10 +79,11 @@ export async function notifyHighPriority(event) {
 
 // Los comentarios siempre notifican al responsable del registro padre (prioridad
 // 'media' fija, resuelta server-side), por eso no pasan por el filtro de notifyHighPriority.
-export async function notifyComentario(comentarioId) {
+export async function notifyComentario(comentarioId, mencionadoUserIds = []) {
   if (!comentarioId) return
+  const mentionIds = [...new Set((mencionadoUserIds || []).filter(Boolean).map(String))]
   const { error } = await supabase.functions.invoke('send-priority-notification', {
-    body: { module:'comentario', entity_id:comentarioId },
+    body: { module:'comentario', entity_id:comentarioId, mentioned_user_ids:mentionIds },
   })
   if (error) console.warn('[push] No se pudo notificar el comentario:', error.message)
 }

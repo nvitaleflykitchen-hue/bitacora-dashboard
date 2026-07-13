@@ -7,6 +7,7 @@ import { mensajeError } from '../lib/errores'
 
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const personaNombre = persona => `${persona?.nombre || ''} ${persona?.apellido || ''}`.trim().replace(/\s+/g, ' ')
+const unique = values => [...new Set(values.filter(Boolean).map(String))]
 
 function getMentionContext(text, caret) {
   const before = text.slice(0, caret)
@@ -39,6 +40,7 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
   const [texto, setTexto] = useState('')
   const [caretPos, setCaretPos] = useState(0)
   const [personas, setPersonas] = useState([])
+  const [mentions, setMentions] = useState([])
   const [mentionIndex, setMentionIndex] = useState(0)
   const [enviando, setEnviando] = useState(false)
   const listRef = useRef()
@@ -61,7 +63,7 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
   useEffect(() => {
     let alive = true
     getPersonasMencionables()
-      .then(rows => { if (alive) setPersonas(rows) })
+      .then(rows => { if (alive) setPersonas((rows || []).filter(persona => persona.perfil_id)) })
       .catch(error => console.warn('[comentarios] No se pudo cargar personas para menciones:', error.message))
     return () => { alive = false }
   }, [])
@@ -98,6 +100,10 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
     const next = `${before}${mention} ${after}`
     const nextCaret = before.length + mention.length + 1
     setTexto(next)
+    setMentions(current => {
+      if (!persona.perfil_id || current.some(item => String(item.perfil_id) === String(persona.perfil_id))) return current
+      return [...current, { perfil_id:persona.perfil_id, persona_id:persona.id, nombre }]
+    })
     setCaretPos(nextCaret)
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
@@ -108,6 +114,7 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
   const handleEnviar = async () => {
     const valor = texto.trim()
     if (!valor || !user?.id || enviando) return
+    const mentionedUserIds = resolveMentionedUserIds(valor)
     setEnviando(true)
     try {
       await crearComentario({
@@ -115,8 +122,10 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
         autorId: user.id,
         autorNombre: perfil?.nombre || user.email,
         texto: valor,
+        mencionadoUserIds: mentionedUserIds,
       })
       setTexto('')
+      setMentions([])
       await load()
     } catch (e) {
       toast.error('Error al enviar el comentario: ' + mensajeError(e))
@@ -133,6 +142,21 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
     } catch (e) {
       toast.error('Error: ' + mensajeError(e))
     }
+  }
+
+  const resolveMentionedUserIds = value => {
+    const selected = mentions
+      .filter(item => value.includes(`@${item.nombre}`))
+      .map(item => item.perfil_id)
+    const nameCounts = personas.reduce((counts, persona) => {
+      const key = norm(personaNombre(persona))
+      counts.set(key, (counts.get(key) || 0) + 1)
+      return counts
+    }, new Map())
+    const exactTyped = personas
+      .filter(persona => nameCounts.get(norm(personaNombre(persona))) === 1 && value.includes(`@${personaNombre(persona)}`))
+      .map(persona => persona.perfil_id)
+    return unique([...selected, ...exactTyped]).filter(id => String(id) !== String(user?.id))
   }
 
   const handleKeyDown = (e) => {

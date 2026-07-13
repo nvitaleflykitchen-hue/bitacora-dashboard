@@ -929,7 +929,7 @@ export async function getPersonasBySede(sedeId) {
 export async function getPersonasMencionables() {
   const { data, error } = await supabase
     .from('v_personas')
-    .select('id, nombre, apellido, puesto, area, email, activo')
+    .select('id, nombre, apellido, puesto, area, email, perfil_id, activo')
     .eq('activo', true)
     .order('nombre')
   if (error) throw error
@@ -2049,7 +2049,7 @@ export async function getComentarios(entidadTipo, entidadId) {
   return data || []
 }
 
-export async function crearComentario({ entidadTipo, entidadId, autorId, autorNombre, texto }) {
+export async function crearComentario({ entidadTipo, entidadId, autorId, autorNombre, texto, mencionadoUserIds = [] }) {
   const { data, error } = await db()
     .from('comentarios')
     .insert({
@@ -2062,7 +2062,7 @@ export async function crearComentario({ entidadTipo, entidadId, autorId, autorNo
     .select()
   if (error) throw error
   const created = data?.[0]
-  if (created?.id) notifyComentario(created.id)
+  if (created?.id) notifyComentario(created.id, mencionadoUserIds)
   return created
 }
 
