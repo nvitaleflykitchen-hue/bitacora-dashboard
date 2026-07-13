@@ -249,6 +249,16 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
         {/* HISTORIAL */}
         {!isNew && !editing && tab === 'historial' && (
           <div style={{ minHeight:200 }}>
+            <div style={{ borderBottom:'1px solid rgba(57,255,20,0.08)', paddingBottom:12, marginBottom:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+                <span style={{ fontSize:'0.6rem', color:'var(--text-dim)', fontFamily:'monospace' }}>{activo.created_at ? fmtFecha(activo.created_at) : 'Fecha no registrada'}</span>
+                <span style={{ fontSize:'0.6rem', padding:'1px 7px', borderRadius:4, background:'rgba(57,255,20,0.12)', color:'var(--phosphor)', border:'1px solid rgba(57,255,20,0.25)' }}>alta</span>
+              </div>
+              <p style={{ fontSize:'0.74rem', color:'var(--text)', margin:0, fontWeight:600 }}>Alta del activo</p>
+              <p style={{ fontSize:'0.62rem', color:'var(--text-dim)', margin:'3px 0 0' }}>
+                {[activo.codigo_interno ? `Codigo ${activo.codigo_interno}` : null, activo.fecha_compra ? `Compra ${fmtFecha(activo.fecha_compra)}` : null].filter(Boolean).join(' · ') || 'Registro inicial del equipo'}
+              </p>
+            </div>
             {loadingHist ? (
               <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', textAlign:'center', padding:'2rem' }}>Cargando...</p>
             ) : historialError ? (
