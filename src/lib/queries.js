@@ -927,13 +927,41 @@ export async function getPersonasBySede(sedeId) {
 }
 
 export async function getPersonasMencionables() {
-  const { data, error } = await supabase
-    .from('v_personas')
-    .select('id, nombre, apellido, puesto, area, email, perfil_id, activo')
-    .eq('activo', true)
-    .order('nombre')
-  if (error) throw error
-  return data || []
+  const perfiles = (await getPerfiles()).filter(perfil => perfil.activo !== false)
+  const [personasResult, contactosResult] = await Promise.allSettled([
+    supabase.from('v_personas').select('id, nombre, apellido, puesto, area, email, telefono, perfil_id, activo').eq('activo', true),
+    db().from('contactos').select('id, nombre, email, telefono, cargo, perfil_id').eq('activo', true),
+  ])
+  const personas = personasResult.status === 'fulfilled' && !personasResult.value.error
+    ? personasResult.value.data || []
+    : []
+  const contactos = contactosResult.status === 'fulfilled' && !contactosResult.value.error
+    ? contactosResult.value.data || []
+    : []
+  const clean = value => String(value || '').trim().replace(/^['"]|['"]$/g, '').toLowerCase()
+  const fullName = persona => `${persona.nombre || ''} ${persona.apellido || ''}`.trim().replace(/\s+/g, ' ')
+
+  return perfiles
+    .map(perfil => {
+      const email = clean(perfil.email)
+      const persona = personas.find(item => item.perfil_id === perfil.id)
+        || personas.find(item => email && clean(item.email) === email)
+      const contacto = contactos.find(item => item.perfil_id === perfil.id)
+        || contactos.find(item => email && clean(item.email) === email)
+      const nombre = fullName(persona || {}) || contacto?.nombre || perfil.nombre || perfil.email
+      return {
+        id: persona?.id || contacto?.id || perfil.id,
+        perfil_id: perfil.id,
+        nombre,
+        apellido: '',
+        puesto: persona?.puesto || contacto?.cargo || perfil.rol || '',
+        area: persona?.area || '',
+        email: perfil.email || persona?.email || contacto?.email || '',
+        telefono: perfil.telefono || persona?.telefono || contacto?.telefono || '',
+        rol: perfil.rol || '',
+      }
+    })
+    .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'))
 }
 
 export async function createVehiculoNovedad(payload) {

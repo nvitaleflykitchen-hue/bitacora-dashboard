@@ -78,7 +78,7 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
     const query = norm(mentionContext.query)
     return personas
       .filter(persona => {
-        const searchable = norm(`${personaNombre(persona)} ${persona.puesto || ''} ${persona.area || ''} ${persona.email || ''}`)
+        const searchable = norm(`${personaNombre(persona)} ${persona.puesto || ''} ${persona.area || ''} ${persona.rol || ''} ${persona.email || ''}`)
         return !query || query.split(/\s+/).filter(Boolean).every(term => searchable.includes(term))
       })
       .slice(0, compact ? 5 : 7)
@@ -257,9 +257,9 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
                     }}
                   >
                     <div style={{ fontWeight:700, fontSize:'0.72rem' }}>@{personaNombre(persona)}</div>
-                    {(persona.puesto || persona.area) && (
+                    {(persona.puesto || persona.area || persona.rol) && (
                       <div style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:2 }}>
-                        {[persona.puesto, persona.area].filter(Boolean).join(' · ')}
+                        {[persona.puesto, persona.area, persona.rol].filter(Boolean).join(' · ')}
                       </div>
                     )}
                   </button>
