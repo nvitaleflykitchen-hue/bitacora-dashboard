@@ -816,7 +816,7 @@ export default function ReclutamientoBoard({
         .eq('id', candidate.id)
       if (candidateError) throw candidateError
 
-      toast.success('Persona dada de alta en Equipo.')
+      toast.ok('Persona dada de alta en Equipo.')
       await load()
     } catch (error) {
       toast.error('Error dando de alta en Equipo: ' + mensajeError(error))
