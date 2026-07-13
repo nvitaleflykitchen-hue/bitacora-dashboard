@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle, Briefcase, CalendarDays, ClipboardCheck, Download,
   FileText, Link2, Loader2, MessageCircle, Plus, Save, Search, Send,
-  Trash2, UserCheck, X
+  Trash2, UserCheck, UserPlus, X
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
@@ -252,6 +252,34 @@ function formatDate(value) {
 function formatTime(value) {
   if (!value) return ''
   return String(value).slice(0, 5)
+}
+
+function splitNombreApellido(nombreCompleto = '') {
+  const parts = String(nombreCompleto || '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean)
+  if (parts.length <= 1) return { nombre: parts[0] || '', apellido: '' }
+  return { nombre: parts.slice(0, -1).join(' '), apellido: parts.at(-1) }
+}
+
+function candidatoToPersonaPayload(candidate, solicitud, entrevista) {
+  const { nombre, apellido } = splitNombreApellido(candidate.nombre_apellido)
+  const procesos = String(solicitud?.tareas || '')
+    .split('\n')
+    .map(item => item.trim())
+    .filter(Boolean)
+  return {
+    nombre,
+    apellido: apellido || null,
+    dni: candidate.dni || entrevista?.dni || null,
+    puesto: solicitud?.puesto || null,
+    area: solicitud?.categoria || null,
+    telefono: candidate.celular || entrevista?.celular || null,
+    email: candidate.email || entrevista?.email || null,
+    fecha_ingreso: candidate.fecha_ingreso || null,
+    descripcion_puesto: solicitud?.tareas || solicitud?.requisitos || null,
+    procesos: procesos.length ? procesos : null,
+    sede_ids: solicitud?.sede_id ? [Number(solicitud.sede_id)] : null,
+    activo: true,
+  }
 }
 
 function Field({ label, children }) {
@@ -722,6 +750,81 @@ export default function ReclutamientoBoard({
     setCandidateActionId(null)
   }
 
+  const incorporarCandidato = async (candidate) => {
+    if (!canManage || candidate.persona_id) return
+    const solicitud = solicitudesById.get(candidate.solicitud_id)
+    const entrevista = entrevistasByCandidato.get(candidate.id)
+    if (!candidate.fecha_ingreso) {
+      toast.warn('Cargá la fecha de ingreso antes de dar de alta en Equipo.')
+      setActiveCandidato(candidate)
+      return
+    }
+    if (!solicitud?.sede_id) {
+      toast.warn('El candidato necesita una búsqueda principal con sede para crear la persona.')
+      return
+    }
+
+    const confirmed = await confirmar({
+      titulo: 'Dar de alta en Equipo',
+      mensaje: `Se creará una persona activa para ${candidate.nombre_apellido} y el candidato pasará a Incorporado.`,
+      confirmText: 'Dar de alta',
+    })
+    if (!confirmed) return
+
+    setCandidateActionId(candidate.id)
+    try {
+      const duplicateChecks = []
+      if (candidate.dni) {
+        duplicateChecks.push(
+          supabase.schema('equipo').from('personas').select('id,nombre,apellido,dni,email').eq('dni', candidate.dni).limit(1).maybeSingle(),
+        )
+      }
+      if (candidate.email) {
+        duplicateChecks.push(
+          supabase.schema('equipo').from('personas').select('id,nombre,apellido,dni,email').ilike('email', candidate.email).limit(1).maybeSingle(),
+        )
+      }
+      const duplicateResults = await Promise.all(duplicateChecks)
+      const duplicateError = duplicateResults.find(result => result.error)?.error
+      if (duplicateError) throw duplicateError
+      const existing = duplicateResults.find(result => result.data)?.data
+      if (existing?.id) {
+        const { error: linkError } = await supabase
+          .schema('equipo')
+          .from('reclutamiento_candidatos')
+          .update({ persona_id: existing.id, estado: 'incorporado' })
+          .eq('id', candidate.id)
+        if (linkError) throw linkError
+        toast.warn('Ya existía una persona con ese DNI/email. Vinculé el candidato al legajo existente.')
+        await load()
+        return
+      }
+
+      const payload = candidatoToPersonaPayload(candidate, solicitud, entrevista)
+      const { data: persona, error: personaError } = await supabase
+        .schema('equipo')
+        .from('personas')
+        .insert(payload)
+        .select('id')
+        .single()
+      if (personaError) throw personaError
+
+      const { error: candidateError } = await supabase
+        .schema('equipo')
+        .from('reclutamiento_candidatos')
+        .update({ persona_id: persona.id, estado: 'incorporado' })
+        .eq('id', candidate.id)
+      if (candidateError) throw candidateError
+
+      toast.success('Persona dada de alta en Equipo.')
+      await load()
+    } catch (error) {
+      toast.error('Error dando de alta en Equipo: ' + mensajeError(error))
+    } finally {
+      setCandidateActionId(null)
+    }
+  }
+
   const setPrimarySolicitud = async (candidate, solicitudId) => {
     setCandidateActionId(candidate.id)
     try {
@@ -1057,6 +1160,21 @@ export default function ReclutamientoBoard({
                         </select>
                         <button onClick={() => setActiveCandidato(c)} disabled={!canManage || candidateBusy} className="btn-ghost" style={{ fontSize:'0.68rem' }}>Editar</button>
                       </div>
+                      {c.persona_id ? (
+                        <div className="mt-2 rounded px-2 py-1.5" style={{ color:'var(--phosphor)', background:'rgba(57,255,20,0.06)', border:'1px solid rgba(57,255,20,0.18)', fontSize:'0.66rem' }}>
+                          Ya incorporado al Equipo
+                        </div>
+                      ) : c.estado === 'apto_ingreso' && canManage ? (
+                        <button
+                          onClick={() => incorporarCandidato(c)}
+                          disabled={candidateBusy}
+                          className="btn-primary flex items-center justify-center gap-1.5 mt-2 w-full"
+                          style={{ fontSize:'0.68rem' }}
+                        >
+                          {candidateBusy ? <Loader2 size={11} className="animate-spin"/> : <UserPlus size={11}/>}
+                          Dar de alta en Equipo
+                        </button>
+                      ) : null}
                       <div className="flex items-center gap-2 mt-2">
                         <button onClick={() => openInterview(c)} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.66rem' }}><FileText size={11}/> Entrevista/PDF</button>
                         {canManage && (
