@@ -926,6 +926,16 @@ export async function getPersonasBySede(sedeId) {
   return (data || []).filter(p => p.sede_ids && p.sede_ids.includes(sedeId))
 }
 
+export async function getPersonasMencionables() {
+  const { data, error } = await supabase
+    .from('v_personas')
+    .select('id, nombre, apellido, puesto, area, email, activo')
+    .eq('activo', true)
+    .order('nombre')
+  if (error) throw error
+  return data || []
+}
+
 export async function createVehiculoNovedad(payload) {
   const { data, error } = await db()
     .from('vehiculo_novedades')

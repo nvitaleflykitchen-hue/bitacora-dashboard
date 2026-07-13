@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 const hasAny = (value, terms) => terms.some(term => norm(value).includes(term))
+const displayGroupName = value => norm(value) === 'otros' ? 'Planta de Producción Córdoba' : value
 
 const ESCALAS_REFERENCE = {
   executive: { nombre:'Benjamín García', cargo:'Gerente General' },
@@ -30,6 +31,10 @@ const ESCALAS_REFERENCE = {
     { match:'tucuman', nombre:'Exequiel Lobo' },
     { match:'salta', nombre:'Leonardo Flores' },
   ],
+}
+
+const CORDOBA_PRODUCTION_REFERENCE = {
+  plant: { nombre:'Vanesa Ledezma', cargo:'Jefatura de Planta' },
 }
 
 function PersonNode({ title, contact, tone = 'primary' }) {
@@ -126,6 +131,7 @@ export default function OrganigramaView({ onNavigate }) {
   const isAirportGroup = groupSedes.length >= 3 && groupSedes.every(s => norm(s.tipo).includes('aeropuerto') || norm(s.nombre).includes('aeropuerto'))
   const isDiningGroup = groupSedes.length >= 2 && groupSedes.every(s => norm(s.tipo).includes('comedor') || norm(s.nombre).includes('comedor'))
   const isEscalas = norm(selectedGroup?.nombre).includes('escala') || groupId === '__escalas__' || isAirportGroup
+  const isCordobaProductionGroup = norm(selectedGroup?.nombre) === 'otros' || groupSedes.some(s => norm(s.nombre).includes('planta de produccion cordoba'))
   const sedes = groupSedes
   const sedeIds = useMemo(() => new Set(sedes.map(s => String(s.id))), [sedes])
   const assignments = useMemo(() => data.assignments.filter(a => a.activo !== false && sedeIds.has(String(a.sede_id))), [data.assignments, sedeIds])
@@ -144,7 +150,9 @@ export default function OrganigramaView({ onNavigate }) {
     }
   }
   const executive = findPerson(isEscalas ? ESCALAS_REFERENCE.executive : null, ['gerente general','direccion general','presidencia'])
-  const operations = findPerson(isEscalas ? ESCALAS_REFERENCE.plant : null, ['jefatura de planta','jefe de planta'])
+  const operations = isCordobaProductionGroup
+    ? findPerson(CORDOBA_PRODUCTION_REFERENCE.plant, ['vanesa ledezma'])
+    : findPerson(isEscalas ? ESCALAS_REFERENCE.plant : null, ['jefatura de planta','jefe de planta'])
   const diningSupervisorAssignment = isDiningGroup
     ? assignments.find(a => hasAny(`${a.rol} ${a.contactos?.cargo} ${a.contactos?.nombre}`, ['gestion de comedores','supervisor de comedores','supervision de comedores']))
     : null
@@ -155,7 +163,7 @@ export default function OrganigramaView({ onNavigate }) {
     supervisor?.id ? [String(supervisor.id)] : []
   ), [supervisor?.id])
   const commercial = findPerson(isEscalas ? ESCALAS_REFERENCE.commercial : null, ['comercial','facturacion','santiago testoni'])
-  const quality = findPerson(isEscalas ? ESCALAS_REFERENCE.quality : null, ['calidad','direccion tecnica','tecnica de calidad','debora rodriguez'])
+  const quality = findPerson(ESCALAS_REFERENCE.quality, ['calidad','direccion tecnica','tecnica de calidad','debora rodriguez'])
 
   const openSede = sede => {
     sessionStorage.setItem('bitacora:openSedeId', String(sede.id))
@@ -174,7 +182,7 @@ export default function OrganigramaView({ onNavigate }) {
         </div>
         <div className="flex gap-2">
           <select className="input-dark" value={groupId} onChange={e => setGroupId(e.target.value)} style={{ minWidth:190, fontSize:'0.72rem' }}>
-            {data.grupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+            {data.grupos.map(g => <option key={g.id} value={g.id}>{displayGroupName(g.nombre)}</option>)}
           </select>
           <button type="button" onClick={load} className="btn-ghost" aria-label="Actualizar organigrama"><RefreshCw size={13}/></button>
         </div>
@@ -193,16 +201,14 @@ export default function OrganigramaView({ onNavigate }) {
             </div>}
           </div>
           <div style={{ width:1, height:28, background:'rgba(57,255,20,.35)', margin:'0 auto' }}/>
-          <div className="flex justify-center">
-            <PersonNode title="JEFATURA DE PLANTA" contact={operations}/>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'280px 280px 280px', justifyContent:'center', alignItems:'start', columnGap:28 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'280px 280px 280px', justifyContent:'center', alignItems:'center', columnGap:28 }}>
             <div/>
-            <div style={{ width:1, height:'100%', minHeight:120, background:'rgba(57,255,20,.35)', margin:'0 auto' }}/>
-            {quality && <div style={{ borderTop:'2px dashed rgba(245,158,11,.45)', paddingTop:12, marginTop:18 }}>
+            <PersonNode title="JEFATURA DE PLANTA" contact={operations}/>
+            {quality && <div style={{ borderLeft:'2px dashed rgba(245,158,11,.45)', paddingLeft:24 }}>
               <PersonNode title="DIRECCIÓN TÉCNICA DE CALIDAD" contact={quality} tone="support"/>
             </div>}
           </div>
+          <div style={{ width:1, height:28, background:'rgba(57,255,20,.35)', margin:'0 auto' }}/>
           {supervisor && <>
             <div className="flex justify-center"><PersonNode title={isEscalas ? 'SUPERVISIÓN DE OPERACIONES – ESCALAS' : isDiningGroup ? 'SUPERVISIÓN DE COMEDORES' : 'SUPERVISIÓN OPERATIVA'} contact={supervisor}/></div>
             <div style={{ width:1, height:28, background:'rgba(57,255,20,.35)', margin:'0 auto' }}/>
