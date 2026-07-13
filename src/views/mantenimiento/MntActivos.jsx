@@ -6,12 +6,29 @@ import { getActivos, upsertActivo, getSedes, getTicketsActivo, getProveedores } 
 import AdjuntosPanel from '../../components/AdjuntosPanel'
 import PageHeader from '../../components/PageHeader'
 import { isQualityOnlyProfile } from '../../lib/access'
+import { Mail, MessageCircle, Phone } from 'lucide-react'
 
 const TIPO_COLOR  = { VEHICULO:'#3B82F6', EQUIPO:'#F59E0B', INSTALACION:'#8B5CF6' }
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
 const INPUT_S = { width:'100%', padding:'0.4rem 0.75rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(107,114,128,0.3)', color:'var(--text)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', boxSizing:'border-box', outline:'none' }
 const LABEL_S = { color:'var(--text-dim)', fontSize:'0.62rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.35rem', fontFamily:"'Roboto Mono',monospace" }
 const ROW_S   = { marginBottom:'1rem' }
+
+const phoneDigits = phone => String(phone || '').replace(/\D/g, '')
+const callHref = phone => phoneDigits(phone) ? `tel:${phoneDigits(phone)}` : ''
+const whatsappHref = phone => {
+  const digits = phoneDigits(phone)
+  if (!digits) return ''
+  if (digits.startsWith('549')) return `https://wa.me/${digits}`
+  if (digits.startsWith('54')) return `https://wa.me/549${digits.slice(2).replace(/^9/, '')}`
+  return `https://wa.me/549${digits.replace(/^9/, '')}`
+}
+const contactButtonStyle = {
+  display:'inline-flex', alignItems:'center', gap:5, padding:'0.38rem 0.65rem',
+  borderRadius:3, fontSize:'0.65rem', fontWeight:700, textDecoration:'none',
+  border:'1px solid rgba(57,255,20,0.16)', background:'rgba(57,255,20,0.06)',
+  color:'var(--phosphor)', whiteSpace:'nowrap',
+}
 
 export const CATEGORIAS_OFICIALES = [
   'Amasadora',
@@ -57,12 +74,11 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
   const set = (k,v) => setForm(f=>({...f,[k]:v}))
 
   useEffect(() => {
-    if (!activo?.id) return
     let cancelled = false
     setLoadingHist(true)
     setHistorialError(null)
     Promise.all([
-      getTicketsActivo({ id: activo.id, nombre: activo.nombre }),
+      activo?.id ? getTicketsActivo({ id: activo.id, nombre: activo.nombre }) : Promise.resolve([]),
       getProveedores(),
       supabase.from('mnt_responsables').select('id,nombre,rol,telefono,email').order('nombre'),
     ])
@@ -116,9 +132,15 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
   const sedeName = activo?.sede_nombre || sedes.find(s=>s.id===activo?.sede_id)?.nombre
   const nombreResponsable = ticket => responsables.find(r => r.id === ticket?.responsable_id)?.nombre || ticket?.responsable || ''
   const nombreProveedor = ticket => proveedores.find(p => p.id === ticket?.proveedor_id)?.nombre || ''
+  const proveedorServicio = proveedores.find(p => p.id === activo?.proveedor_servicio_id)
+  const proveedoresDisponibles = proveedores
+    .filter(p => p.estado === 'activo' || p.id === form.proveedor_servicio_id)
+    .filter(p => !form.sede_id || !p.sede_ids?.length || p.sede_ids.includes(Number(form.sede_id)))
   const estadosCerrados = ['resuelto','rechazado','cancelado','cerrado']
   const reparacionActual = historial.find(ticket => !estadosCerrados.includes(String(ticket.estado || '').toLowerCase().replace(' ', '_')))
   const reparacionVisible = reparacionActual || historial[0]
+  const waServicio = whatsappHref(proveedorServicio?.telefono)
+  const callServicio = callHref(proveedorServicio?.telefono)
 
   return (
     <div className='modal-overlay'>
@@ -171,6 +193,28 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
               <Field label="Sede / Unidad" value={sedeName} />
               <Field label="Responsable" value={activo.responsable} />
               <Field label="Nro. Serie" value={activo.numero_serie} />
+            </div>
+            <div style={{ borderTop:'1px solid rgba(57,255,20,0.08)', paddingTop:'0.75rem', marginTop:'0.25rem' }}>
+              <p style={LABEL_S}>Servicio tecnico</p>
+              {proveedorServicio ? (
+                <div style={{ background:'rgba(57,255,20,0.03)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:'0.75rem 0.8rem' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', gap:10, alignItems:'flex-start', flexWrap:'wrap' }}>
+                    <div>
+                      <p style={{ color:'var(--text)', fontSize:'0.82rem', fontWeight:700, margin:0 }}>{proveedorServicio.nombre}</p>
+                      <p style={{ color:'var(--text-dim)', fontSize:'0.68rem', margin:'3px 0 0' }}>
+                        {[proveedorServicio.categoria, proveedorServicio.contacto, proveedorServicio.telefono].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                      {callServicio && <a href={callServicio} style={contactButtonStyle} title="Llamar"><Phone size={12}/> Llamar</a>}
+                      {waServicio && <a href={waServicio} target="_blank" rel="noreferrer" style={{ ...contactButtonStyle, color:'#25d366', borderColor:'rgba(37,211,102,0.22)', background:'rgba(37,211,102,0.08)' }} title="WhatsApp"><MessageCircle size={12}/> WhatsApp</a>}
+                      {proveedorServicio.email && <a href={`mailto:${proveedorServicio.email}`} style={{ ...contactButtonStyle, color:'#60A5FA', borderColor:'rgba(96,165,250,0.22)', background:'rgba(96,165,250,0.08)' }} title="Email"><Mail size={12}/> Email</a>}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', margin:0 }}>Sin proveedor de servicio tecnico asignado</p>
+              )}
             </div>
             <div style={{ borderTop:'1px solid rgba(57,255,20,0.08)', paddingTop:'0.75rem', marginTop:'0.25rem' }}>
               <p style={LABEL_S}>{reparacionActual ? 'Reparación actual' : 'Última reparación'}</p>
@@ -318,6 +362,19 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW_S}><label style={LABEL_S}>Responsable</label><input value={form.responsable||''} onChange={e=>set('responsable',e.target.value)} style={INPUT_S} /></div>
               <div style={ROW_S}><label style={LABEL_S}>Nro. Serie</label><input value={form.numero_serie||''} onChange={e=>set('numero_serie',e.target.value)} style={INPUT_S} /></div>
+            </div>
+
+            <div style={ROW_S}>
+              <label style={LABEL_S}>Servicio tecnico</label>
+              <select value={form.proveedor_servicio_id || ''} onChange={e=>set('proveedor_servicio_id', e.target.value || null)} style={INPUT_S}>
+                <option value="">Sin proveedor asignado</option>
+                {proveedoresDisponibles.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre}{p.telefono ? ` · ${p.telefono}` : ''}</option>
+                ))}
+              </select>
+              <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', margin:'0.35rem 0 0' }}>
+                Se toma de Proveedores. Carga ahi el telefono del service para habilitar WhatsApp.
+              </p>
             </div>
 
             <div style={ROW_S}><label style={LABEL_S}>Notas</label><textarea value={form.notas||''} onChange={e=>set('notas',e.target.value)} rows={3} style={{ ...INPUT_S, resize:'vertical' }} /></div>
