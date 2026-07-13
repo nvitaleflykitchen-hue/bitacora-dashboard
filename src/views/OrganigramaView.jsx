@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Building2, ExternalLink, Loader2, Network, RefreshCw, Users } from 'lucide-react'
+import { Building2, ExternalLink, Loader2, Mail, MessageCircle, Network, Phone, RefreshCw, Users } from 'lucide-react'
 import { getAllSedeContactos, getContactos, getGrupos, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 
@@ -7,6 +7,17 @@ const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u03
 
 const hasAny = (value, terms) => terms.some(term => norm(value).includes(term))
 const displayGroupName = value => norm(value) === 'otros' ? 'Planta de Producción Córdoba' : value
+const isAirportSite = sede => norm(sede?.tipo).includes('aeropuerto') || norm(sede?.nombre).includes('aeropuerto')
+const isAirportGroupName = value => hasAny(value, ['aeropuerto', 'aeropuertos', 'escala', 'escalas'])
+const phoneDigits = value => String(value || '').replace(/\D/g, '').replace(/^0+/, '')
+const callHref = phone => phoneDigits(phone) ? `tel:${phoneDigits(phone)}` : ''
+const whatsappHref = phone => {
+  const digits = phoneDigits(phone)
+  if (!digits) return ''
+  if (digits.startsWith('549')) return `https://wa.me/${digits}`
+  if (digits.startsWith('54')) return `https://wa.me/549${digits.slice(2).replace(/^9/, '')}`
+  return `https://wa.me/549${digits.replace(/^9/, '')}`
+}
 
 const ESCALAS_REFERENCE = {
   executive: { nombre:'Benjamín García', cargo:'Gerente General' },
@@ -37,6 +48,29 @@ const CORDOBA_PRODUCTION_REFERENCE = {
   plant: { nombre:'Vanesa Ledezma', cargo:'Jefatura de Planta' },
 }
 
+function ContactActions({ contact, tone = 'primary' }) {
+  const phone = contact?.telefono
+  const emails = contact?.emails || (contact?.email ? [contact.email] : [])
+  const email = emails[0]
+  const phoneLink = callHref(phone)
+  const waLink = whatsappHref(phone)
+  const border = tone === 'support' ? 'rgba(245,158,11,.28)' : 'rgba(57,255,20,.22)'
+  const color = tone === 'support' ? '#f59e0b' : 'var(--phosphor)'
+  if (!phoneLink && !email && !waLink) return null
+  const actionStyle = {
+    width:28, height:26, border:`1px solid ${border}`, borderRadius:4,
+    display:'inline-flex', alignItems:'center', justifyContent:'center',
+    color, background:'rgba(255,255,255,0.03)', textDecoration:'none',
+  }
+  return (
+    <div style={{ display:'flex', justifyContent:'center', gap:6, marginTop:8 }}>
+      {phoneLink && <a href={phoneLink} title="Llamar" aria-label="Llamar" style={actionStyle}><Phone size={12}/></a>}
+      {email && <a href={`mailto:${email}`} title="Enviar correo" aria-label="Enviar correo" style={actionStyle}><Mail size={12}/></a>}
+      {waLink && <a href={waLink} target="_blank" rel="noreferrer" title="WhatsApp" aria-label="WhatsApp" style={actionStyle}><MessageCircle size={12}/></a>}
+    </div>
+  )
+}
+
 function PersonNode({ title, contact, tone = 'primary' }) {
   const color = tone === 'support' ? '#f59e0b' : 'var(--phosphor)'
   const emails = contact?.emails || (contact?.email ? [contact.email] : [])
@@ -47,6 +81,7 @@ function PersonNode({ title, contact, tone = 'primary' }) {
       {contact?.cargo && <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:2 }}>{contact.cargo}</p>}
       {emails.map((email, index) => <a key={email} href={`mailto:${email}`} style={{ color:'var(--text-dim)', fontSize:'0.6rem', display:'block', marginTop:index === 0 ? 5 : 2 }}>{email}</a>)}
       {contact?.telefono && <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:2 }}>{contact.telefono}</p>}
+      <ContactActions contact={contact} tone={tone}/>
     </article>
   )
 }
@@ -68,6 +103,7 @@ function SedeNode({ sede, assignments, fallbackOwner, excludedContactIds = new S
         <p className="font-metric" style={{ color:'#f59e0b', fontSize:'0.6rem', marginTop:2 }}>{roleLabel}</p>
         {contact?.email && <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:4, overflowWrap:'anywhere' }}>{contact.email}</p>}
         {contact?.telefono && <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:2 }}>{contact.telefono}</p>}
+        <ContactActions contact={contact} tone="support"/>
       </div>
       <button type="button" onClick={() => onOpen(sede)} style={{ flex:1, padding:'0.75rem', textAlign:'left', background:'transparent', border:0, cursor:'pointer', color:'inherit' }}>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -125,12 +161,12 @@ export default function OrganigramaView({ onNavigate }) {
 
   const selectedGroup = data.grupos.find(g => String(g.id) === String(groupId))
   const groupSedes = useMemo(() => data.sedes.filter(s => {
-    if (groupId === '__escalas__') return norm(s.tipo).includes('aeropuerto') || norm(s.nombre).includes('aeropuerto')
+    if (groupId === '__escalas__' || isAirportGroupName(selectedGroup?.nombre)) return isAirportSite(s)
     return !groupId || String(s.grupo_id) === String(groupId)
-  }), [data.sedes, groupId])
-  const isAirportGroup = groupSedes.length >= 3 && groupSedes.every(s => norm(s.tipo).includes('aeropuerto') || norm(s.nombre).includes('aeropuerto'))
+  }), [data.sedes, groupId, selectedGroup?.nombre])
+  const isAirportGroup = groupSedes.length >= 3 && groupSedes.every(isAirportSite)
   const isDiningGroup = groupSedes.length >= 2 && groupSedes.every(s => norm(s.tipo).includes('comedor') || norm(s.nombre).includes('comedor'))
-  const isEscalas = norm(selectedGroup?.nombre).includes('escala') || groupId === '__escalas__' || isAirportGroup
+  const isEscalas = isAirportGroupName(selectedGroup?.nombre) || groupId === '__escalas__' || isAirportGroup
   const isCordobaProductionGroup = norm(selectedGroup?.nombre) === 'otros' || groupSedes.some(s => norm(s.nombre).includes('planta de produccion cordoba'))
   const sedes = groupSedes
   const sedeIds = useMemo(() => new Set(sedes.map(s => String(s.id))), [sedes])
@@ -192,7 +228,7 @@ export default function OrganigramaView({ onNavigate }) {
       {warning && <div style={{ color:'#f59e0b', border:'1px solid rgba(245,158,11,.25)', background:'rgba(245,158,11,.07)', padding:'0.65rem', fontSize:'0.68rem', marginBottom:'1rem' }}>{warning}</div>}
 
       {!error && data.grupos.length > 0 && (
-        <div style={{ minWidth:Math.max(900, sedes.length * 250), paddingBottom:'2rem' }}>
+        <div style={{ minWidth:900, paddingBottom:'2rem' }}>
           <div style={{ display:'grid', gridTemplateColumns:'280px 280px 280px', justifyContent:'center', alignItems:'center', columnGap:28 }}>
             <div/>
             <PersonNode title="DIRECCIÓN GENERAL" contact={executive}/>
@@ -214,7 +250,7 @@ export default function OrganigramaView({ onNavigate }) {
             <div style={{ width:1, height:28, background:'rgba(57,255,20,.35)', margin:'0 auto' }}/>
           </>}
           {sedes.length > 0 && <div style={{ height:1, background:'rgba(57,255,20,.28)', margin:`0 ${Math.max(115, 125)}px` }}/>} 
-          <div style={{ display:'flex', gap:20, justifyContent:'center', alignItems:'flex-start' }}>
+          <div style={{ display:'flex', gap:20, justifyContent:'center', alignItems:'flex-start', flexWrap:'wrap', rowGap:22 }}>
             {sedes.map(sede => (
               <div key={sede.id} style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
                 <div style={{ width:1, height:24, background:'rgba(57,255,20,.28)' }}/>
