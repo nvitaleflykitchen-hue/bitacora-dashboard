@@ -6,7 +6,16 @@ const cors = {
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
 }
 
-type EventInput = { module:string; entity_id:string | number; mentioned_user_ids?:string[] }
+type EventInput = {
+  module:string
+  entity_id?:string | number
+  mentioned_user_ids?:string[]
+  titulo?:string
+  cuerpo?:string
+  prioridad?:string
+  sede_ids?:Array<string | number>
+  url?:string | null
+}
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers:cors })
@@ -21,11 +30,11 @@ Deno.serve(async req => {
 
     const admin = createClient(url, serviceKey)
     const { data:caller } = await admin.schema('bitacora').from('perfiles')
-      .select('id,activo').eq('id', user.id).single()
+      .select('id,activo,rol').eq('id', user.id).single()
     if (!caller?.activo) return json({ error:'Perfil inactivo' }, 403)
 
     const input = await req.json() as EventInput
-    const event = await resolveVerifiedEvent(admin, input, user.id)
+    const event = await resolveVerifiedEvent(admin, input, user.id, caller)
     if (!event) return json({ skipped:true, reason:'El registro no es de prioridad alta/crítica' })
 
     const recipientIds = new Set<string>()
@@ -33,6 +42,10 @@ Deno.serve(async req => {
       const { data:mentionedProfiles } = await admin.schema('bitacora').from('perfiles')
         .select('id').eq('activo', true).in('id', event.mentionedUserIds)
       for (const profile of mentionedProfiles || []) recipientIds.add(profile.id)
+    } else if (event.recipientUserIds?.length) {
+      for (const profileId of event.recipientUserIds) {
+        if (profileId) recipientIds.add(profileId)
+      }
     } else {
       const { data:admins } = await admin.schema('bitacora').from('perfiles')
         .select('id').eq('activo', true).eq('rol', 'admin')
@@ -118,8 +131,23 @@ Deno.serve(async req => {
   }
 })
 
-async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:string) {
+async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:string, caller:any) {
   const module = String(input?.module || '')
+  if (module === 'anuncio') {
+    if (!['admin', 'editor'].includes(String(caller?.rol || '').toLowerCase())) return null
+    const title = String(input?.titulo || '').trim()
+    const body = String(input?.cuerpo || '').trim()
+    if (!title || !body) return null
+    const priorityInput = String(input?.prioridad || 'media').toLowerCase()
+    const priority = ['baja', 'media', 'alta', 'critica'].includes(priorityInput) ? priorityInput : 'media'
+    const sedeIds = Array.isArray(input?.sede_ids)
+      ? [...new Set(input.sede_ids.filter(Boolean).map(id => String(id)))]
+      : []
+    const recipientUserIds = await resolveAnuncioRecipients(admin, sedeIds)
+    return { module, entityType:'anuncio', entityId:crypto.randomUUID(), priority,
+      recipientUserIds, excludeUserId:null, title, body, url:input?.url || '/?view=tablon' }
+  }
+
   const id = input?.entity_id
   if (!id) return null
   if (module === 'compras') {
@@ -177,6 +205,27 @@ async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:st
       url:parent.url }
   }
   return null
+}
+
+async function resolveAnuncioRecipients(admin:any, sedeIds:string[]) {
+  const { data:profiles } = await admin.schema('bitacora').from('perfiles')
+    .select('id,rol,sede_ids,grupo_id').eq('activo', true)
+  if (!sedeIds.length) return (profiles || []).map((profile:any) => profile.id)
+
+  const { data:sedes } = await admin.schema('bitacora').from('sedes')
+    .select('id,grupo_id').in('id', sedeIds)
+  const targetSedes = new Set(sedeIds.map(String))
+  const targetGrupos = new Set((sedes || []).map((sede:any) => sede.grupo_id).filter(Boolean).map(String))
+
+  return (profiles || [])
+    .filter((profile:any) => {
+      const role = String(profile.rol || '').toLowerCase()
+      if (['admin', 'editor'].includes(role)) return true
+      if (role === 'grupo' && profile.grupo_id && targetGrupos.has(String(profile.grupo_id))) return true
+      const scopedSedes = Array.isArray(profile.sede_ids) ? profile.sede_ids.map(String) : []
+      return scopedSedes.some((id:string) => targetSedes.has(id))
+    })
+    .map((profile:any) => profile.id)
 }
 
 async function resolveComentarioParent(admin:any, entidadTipo:string, entidadId:string) {
