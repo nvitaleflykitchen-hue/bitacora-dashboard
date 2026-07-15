@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getTickets, updateTicket, getResponsablesMnt, getSedes } from '../lib/queries'
+import { getTickets, updateTicket, getResponsablesMnt, getSedes, getActivos } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { ChevronRight, ChevronLeft, Wrench, Calendar, MessageCircle, Mail, Plus, RefreshCw, AlertTriangle, FileText } from 'lucide-react'
 import { fmtFecha } from '../lib/dateUtils'
@@ -15,6 +15,13 @@ import {
 import SkeletonTable from '../components/SkeletonTable'
 import { generarReporteEficienciaMnt } from '../lib/mntEficienciaPdf'
 import { useBackHandler } from '../lib/backStack'
+import AdjuntosPanel from '../components/AdjuntosPanel'
+import {
+  enrichMobileTickets,
+  findOwnMaintenanceResponsible,
+  isClosedMaintenanceTicket,
+  sortMobileMaintenanceWork,
+} from '../lib/mobileMaintenance'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -58,7 +65,7 @@ function shareTicket(ticket, responsable, channel) {
 }
 
 // ── FICHA COMPLETA DE TICKET ──────────────────────────────────────────────────
-function TicketDetalle({ ticket: initialTicket, canManage, responsables, onBack, onUpdate, updating }) {
+function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, responsables, onBack, onUpdate, updating }) {
   const [ticket, setTicket] = useState(initialTicket)
   const [diagnostico, setDiagnostico] = useState(initialTicket.diagnostico || '')
   const [saving, setSaving] = useState(false)
@@ -75,6 +82,28 @@ function TicketDetalle({ ticket: initialTicket, canManage, responsables, onBack,
     try {
       await onUpdate(ticket.id, { diagnostico })
       setTicket(prev => ({ ...prev, diagnostico }))
+    } finally { setSaving(false) }
+  }
+
+  const handleStartWork = async () => {
+    await handleUpdate({ estado: 'en_progreso' })
+  }
+
+  const handleFinishWork = async () => {
+    if (!diagnostico.trim()) {
+      toast.warn('Antes de finalizar, describí el trabajo realizado.')
+      return
+    }
+    setSaving(true)
+    try {
+      const payload = {
+        diagnostico: diagnostico.trim(),
+        estado: 'resuelto',
+        fecha_cierre: new Date().toISOString(),
+      }
+      await onUpdate(ticket.id, payload)
+      setTicket(prev => ({ ...prev, ...payload }))
+      toast.ok('Trabajo finalizado y registrado.')
     } finally { setSaving(false) }
   }
 
@@ -130,7 +159,7 @@ function TicketDetalle({ ticket: initialTicket, canManage, responsables, onBack,
         </Section>
 
         {/* Estado */}
-        {canManage && (
+        {canManage && !isMaintenanceEditor && (
           <Section label="Estado">
             <select
               value={ticket.estado}
@@ -148,7 +177,7 @@ function TicketDetalle({ ticket: initialTicket, canManage, responsables, onBack,
 
         {/* Responsable */}
         <Section label="Responsable">
-          {canManage ? (
+          {canManage && !isMaintenanceEditor ? (
             <>
               <select
                 value={ticket.responsable_id || ''}
@@ -176,7 +205,9 @@ function TicketDetalle({ ticket: initialTicket, canManage, responsables, onBack,
               )}
             </>
           ) : (
-            <p style={{ color: 'var(--text)', fontSize: '0.82rem' }}>{responsableActual?.nombre || 'Sin asignar'}</p>
+            <p style={{ color: 'var(--text)', fontSize: '0.82rem' }}>
+              {isMaintenanceEditor ? 'Asignado a vos' : (responsableActual?.nombre || 'Sin asignar')}
+            </p>
           )}
         </Section>
 
@@ -205,6 +236,45 @@ function TicketDetalle({ ticket: initialTicket, canManage, responsables, onBack,
             <p style={{ color: 'var(--text)', fontSize: '0.82rem', lineHeight: 1.5 }}>{ticket.diagnostico || 'Sin diagnóstico aún.'}</p>
           )}
         </Section>
+
+        <Section label="Evidencias">
+          <AdjuntosPanel
+            entityType="ticket"
+            entityId={ticket.id}
+            compact
+            camera
+            readOnly={!canManage || isClosedMaintenanceTicket(ticket)}
+            label="Fotos y archivos"
+          />
+        </Section>
+
+        {canManage && isMaintenanceEditor && (
+          <Section label="Avance del trabajo">
+            {isClosedMaintenanceTicket(ticket) ? (
+              <p style={{ color: 'var(--phosphor)', fontSize: '0.82rem', fontWeight: 700 }}>
+                ✓ Trabajo finalizado
+              </p>
+            ) : ticket.estado === 'en_progreso' ? (
+              <button
+                type="button"
+                onClick={handleFinishWork}
+                disabled={saving || updating === ticket.id}
+                className="btn-primary w-full"
+                style={{ padding: '0.65rem', fontSize: '0.8rem' }}>
+                {saving ? 'Finalizando...' : 'Finalizar trabajo'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStartWork}
+                disabled={updating === ticket.id}
+                className="btn-primary w-full"
+                style={{ padding: '0.65rem', fontSize: '0.8rem' }}>
+                {updating === ticket.id ? 'Actualizando...' : 'Iniciar trabajo'}
+              </button>
+            )}
+          </Section>
+        )}
 
         {/* Comentarios */}
         <Section label="Comentarios">
@@ -283,33 +353,66 @@ function TicketCard({ t, onClick }) {
 
 // ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
 export default function MobileTickets() {
-  const { allowedSedeIds, can } = useAuth()
+  const { allowedSedeIds, can, perfil } = useAuth()
+  const isMaintenanceEditor = perfil?.rol === 'mnt_editor'
   const canManage = can('mantenimiento', 'manage') || can('mantenimiento', 'edit')
   const [tickets, setTickets] = useState([])
   const [responsables, setResponsables] = useState([])
   const [sedes, setSedes] = useState([])
+  const [activos, setActivos] = useState([])
+  const [catalogsReady, setCatalogsReady] = useState(false)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
-  const [filtro, setFiltro] = useState('activos')
+  const [filtro, setFiltro] = useState(isMaintenanceEditor ? 'mios' : 'activos')
   const [selectedSede, setSelectedSede] = useState(null)
   const [selectedTicket, setSelectedTicket] = useState(null)
   useBackHandler(() => setSelectedTicket(null), !!selectedTicket)
   const [showModal, setShowModal] = useState(false)
 
-  useEffect(() => { getResponsablesMnt().then(setResponsables).catch(() => {}) }, [])
-  useEffect(() => { getSedes(allowedSedeIds || undefined).then(setSedes).catch(() => {}) }, [allowedSedeIds])
+  useEffect(() => {
+    let active = true
+    setCatalogsReady(false)
+    Promise.all([
+      getResponsablesMnt(),
+      getSedes(allowedSedeIds || undefined),
+      getActivos({ sedeIds: allowedSedeIds || undefined }),
+    ]).then(([nextResponsables, nextSedes, nextActivos]) => {
+      if (!active) return
+      setResponsables(nextResponsables)
+      setSedes(nextSedes)
+      setActivos(nextActivos)
+      setCatalogsReady(true)
+    }).catch(error => {
+      console.error(error)
+      if (active) setCatalogsReady(true)
+    })
+    return () => { active = false }
+  }, [allowedSedeIds])
 
   const load = useCallback(() => {
+    if (!catalogsReady) return
     setLoading(true)
-    getTickets({ sedeIds: allowedSedeIds || undefined })
+    const ownResponsible = isMaintenanceEditor
+      ? findOwnMaintenanceResponsible(perfil, responsables)
+      : null
+
+    if (isMaintenanceEditor && !ownResponsible) {
+      setTickets([])
+      setLoading(false)
+      return
+    }
+
+    getTickets({
+      sedeIds: allowedSedeIds || undefined,
+      responsable_id: ownResponsible?.id,
+    })
       .then(data => {
-        const activos = data.filter(t => !['resuelto', 'rechazado'].includes(t.estado))
-        const inactivos = data.filter(t => ['resuelto', 'rechazado'].includes(t.estado))
-        setTickets([...activos, ...inactivos])
+        const enriched = enrichMobileTickets(data, sedes, activos)
+        setTickets(sortMobileMaintenanceWork(enriched))
       })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [allowedSedeIds])
+  }, [activos, allowedSedeIds, catalogsReady, isMaintenanceEditor, perfil, responsables, sedes])
 
   useEffect(() => { load() }, [load])
 
@@ -328,8 +431,14 @@ export default function MobileTickets() {
   }
 
   const filtrados = tickets.filter(t => {
-    if (filtro === 'activos' && ['resuelto', 'rechazado'].includes(t.estado)) return false
-    if (selectedSede && t.sede_id !== selectedSede.id) return false
+    if (isMaintenanceEditor && filtro === 'mios' && isClosedMaintenanceTicket(t)) return false
+    if (!isMaintenanceEditor && filtro === 'activos' && isClosedMaintenanceTicket(t)) return false
+    if (!isMaintenanceEditor && filtro === 'mios') {
+      if (isClosedMaintenanceTicket(t)) return false
+      const ownResponsible = findOwnMaintenanceResponsible(perfil, responsables)
+      if (!ownResponsible || String(t.responsable_id) !== String(ownResponsible.id)) return false
+    }
+    if (selectedSede && String(t.sede_id) !== String(selectedSede.id)) return false
     return true
   })
 
@@ -339,6 +448,7 @@ export default function MobileTickets() {
       <TicketDetalle
         ticket={selectedTicket}
         canManage={canManage}
+        isMaintenanceEditor={isMaintenanceEditor}
         responsables={responsables}
         onBack={() => setSelectedTicket(null)}
         onUpdate={handleUpdate}
@@ -348,15 +458,24 @@ export default function MobileTickets() {
   }
 
   return (
-    <div style={{ padding: '1.25rem 1rem 1rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ padding: '1.25rem 1rem 1rem', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700 }}>Tickets</h1>
+          <div>
+            <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700 }}>
+              {isMaintenanceEditor ? 'Mi trabajo' : 'Tickets'}
+            </h1>
+            {isMaintenanceEditor && !loading && (
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: 2 }}>
+                {tickets.filter(t => !isClosedMaintenanceTicket(t)).length} pendientes asignados
+              </p>
+            )}
+          </div>
           <MobileContactosBtn modulo="mantenimiento" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
+          {!isMaintenanceEditor && <button
             title="Reporte de eficiencia PDF"
             onClick={async () => {
               try {
@@ -370,15 +489,26 @@ export default function MobileTickets() {
             }}
             style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 2, cursor: 'pointer' }}>
             <FileText size={14} />
-          </button>
-          <button onClick={load} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 2, cursor: 'pointer' }}>
+          </button>}
+          <button title="Actualizar" onClick={load} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 6, cursor: 'pointer' }}>
             <RefreshCw size={14} />
           </button>
-          <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--surface)', padding: '0.2rem', borderRadius: 20 }}>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.3rem', width: 'fit-content', background: 'var(--surface)', padding: '0.2rem', borderRadius: 20, marginBottom: '0.65rem', flexShrink: 0 }}>
+        {isMaintenanceEditor ? (
+          <>
+            <button onClick={() => setFiltro('mios')} style={{ padding: '0.35rem 0.75rem', borderRadius: 16, fontSize: '0.68rem', fontWeight: 700, border: 'none', background: filtro === 'mios' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'mios' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Pendientes</button>
+            <button onClick={() => setFiltro('historial')} style={{ padding: '0.35rem 0.75rem', borderRadius: 16, fontSize: '0.68rem', fontWeight: 700, border: 'none', background: filtro === 'historial' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'historial' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Historial</button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => setFiltro('mios')} style={{ padding: '0.3rem 0.6rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none', background: filtro === 'mios' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'mios' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Mi trabajo</button>
             <button onClick={() => setFiltro('activos')} style={{ padding: '0.3rem 0.6rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none', background: filtro === 'activos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'activos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Activos</button>
             <button onClick={() => setFiltro('todos')} style={{ padding: '0.3rem 0.6rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none', background: filtro === 'todos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'todos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Todos</button>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Pills de sede */}
@@ -397,7 +527,7 @@ export default function MobileTickets() {
           <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
             <Wrench size={32} style={{ color: 'var(--phosphor)', margin: '0 auto 0.5rem', opacity: 0.8 }} />
             <p style={{ color: 'var(--text)', fontSize: '0.9rem' }}>
-              Sin tickets {filtro === 'activos' ? 'activos' : ''}{selectedSede ? ` en ${selectedSede.nombre}` : ''}
+              {isMaintenanceEditor && filtro === 'mios' ? 'No tenés trabajos pendientes' : `Sin tickets${filtro === 'activos' ? ' activos' : ''}`}{selectedSede ? ` en ${selectedSede.nombre}` : ''}
             </p>
           </div>
         ) : filtrados.map(t => (
@@ -408,6 +538,8 @@ export default function MobileTickets() {
       {canManage && (
         <button
           onClick={() => setShowModal(true)}
+          aria-label="Crear nuevo ticket"
+          title="Crear nuevo ticket"
           style={{
             position: 'absolute', bottom: '1.5rem', right: '1.5rem',
             width: 50, height: 50, borderRadius: 25,
@@ -424,7 +556,7 @@ export default function MobileTickets() {
         <TicketRapidoModal
           origen={{}}
           onClose={() => setShowModal(false)}
-          onCreated={(ticket) => { setTickets(prev => [ticket, ...prev]) }}
+          onCreated={() => { setShowModal(false); load() }}
         />
       )}
     </div>

@@ -90,7 +90,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(4px)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
+      >
       <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.1)', borderRadius:3, width:'100%', maxWidth:620, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
 
         {/* Header modal */}

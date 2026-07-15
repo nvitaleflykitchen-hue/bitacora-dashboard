@@ -29,7 +29,7 @@ function Card({ children, onClick, style }) {
 }
 function SheetModal({ title, onClose, children }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }} onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>{title}</h2>
@@ -502,10 +502,10 @@ function TabMatafuegos({ allowedSedeIds }) {
 
 export default function MobileMantenimiento() {
   const { rol, allowedSedeIds, perfil } = useAuth()
-  const canEditActivos = (rol === 'admin' || rol === 'editor' || rol === 'encargado') && !isQualityOnlyProfile(perfil)
+  const canEditActivos = ['admin', 'editor', 'encargado', 'mnt_editor'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [tab, setTab] = useState('activos')
 
-  const TABS = [
+  const allTabs = [
     { id: 'activos', label: 'Activos', icon: Wrench },
     { id: 'insumos', label: 'Insumos', icon: Package },
     { id: 'matafuegos', label: 'Matafuegos', icon: Flame },
@@ -514,6 +514,9 @@ export default function MobileMantenimiento() {
     { id: 'proveedores', label: 'Proveedores', icon: Wrench },
     { id: 'responsables', label: 'Responsables', icon: Wrench },
   ]
+  const TABS = rol === 'mnt_editor'
+    ? allTabs.filter(item => ['activos', 'insumos', 'matafuegos', 'planes', 'proveedores'].includes(item.id))
+    : allTabs
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>

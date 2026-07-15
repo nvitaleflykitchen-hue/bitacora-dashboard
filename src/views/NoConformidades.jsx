@@ -63,7 +63,7 @@ function NCForm({ onClose, onCreated, sedes, rol, ncOrigen }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px' }}>
         <div className="flex items-center justify-between px-6 py-4"
           style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>

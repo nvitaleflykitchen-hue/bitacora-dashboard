@@ -8,7 +8,9 @@ import {
   LayoutDashboard, Building2, AlertTriangle,
   Wrench, Users, Menu, X, LogOut, KeyRound,
   Users2, ShoppingCart, Shield, ClipboardCheck, Megaphone, Plus, Truck,
+  Sparkles, Activity,
 } from 'lucide-react'
+import { APP_NAME, APP_VERSION } from '../data/releases'
 
 function SectionLabel({ children }) {
   return (
@@ -119,6 +121,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
   const iconByName = {
     home: LayoutDashboard,
     announcement: Megaphone,
+    updates: Sparkles,
     pending: ClipboardCheck,
     sites: Building2,
     purchases: ShoppingCart,
@@ -135,10 +138,10 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
       {/* Header */}
       <div className="px-4 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
         <p className="font-title font-bold text-sm" style={{ color:'var(--phosphor)', lineHeight:1.2 }}>
-          Bitácora
+          {APP_NAME}
         </p>
         <p className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.45)', letterSpacing:'0.08em' }}>
-          IN SITU · FK
+          PLATAFORMA INTEGRAL · FK
         </p>
       </div>
 
@@ -175,14 +178,27 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
             <SectionLabel>ADMIN</SectionLabel>
             <NavItem id="usuarios"  label="Usuarios"     icon={Users}  active={activeView==='usuarios'}  onClick={nav} />
             <NavItem id="auditoria" label="Trazabilidad" icon={Shield} active={activeView==='auditoria'} onClick={nav} />
+            <NavItem id="accesosApp" label="Accesos" icon={Activity} active={activeView==='accesosApp'} onClick={nav} />
           </>
         )}
 
       </nav>
 
       {/* Footer */}
-      <div style={{ borderTop:'1px solid rgba(57,255,20,0.08)', padding:'0.75rem 1rem' }}>
+      <div style={{ borderTop:'1px solid rgba(57,255,20,0.08)', padding:'0.7rem 0.65rem 0.75rem' }}>
         {showPwModal && <ChangePasswordModal onClose={() => setShowPwModal(false)} />}
+        <button
+          type="button"
+          onClick={() => nav('actualizaciones')}
+          className="btn-ghost"
+          style={{ width:'100%', minWidth:0, display:'flex', flexDirection:'column', alignItems:'stretch', gap:3, marginBottom:'0.65rem', padding:'0.5rem 0.6rem', borderRadius:4, overflow:'hidden', color: activeView === 'actualizaciones' ? 'var(--phosphor)' : 'var(--text-dim)' }}
+        >
+          <span style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
+            <Sparkles size={13} style={{ flexShrink:0 }} />
+            <span style={{ whiteSpace:'nowrap' }}>Actualizaciones</span>
+          </span>
+          <span className="font-metric" style={{ fontSize:'0.54rem', whiteSpace:'nowrap', opacity:0.62, paddingLeft:20, textAlign:'left' }}>Versión {APP_VERSION}</span>
+        </button>
         <div className="flex items-center justify-between">
           <button onClick={() => setShowPwModal(true)} className="min-w-0 text-left"
             style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}
@@ -208,7 +224,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
           </div>
         </div>
         <p className="font-metric mt-1.5" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.1em' }}>
-          v2.1 · KITCHEN-OS
+          v{APP_VERSION} · FLY GESTIÓN
         </p>
         {localStorage.getItem('bd.forceDesktop') === '1' && (
           <button

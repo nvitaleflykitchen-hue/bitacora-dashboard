@@ -129,7 +129,7 @@ export default function NCFicha({ nc, onClose, onUpdate, onDerivar, ncOrigen, nc
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded flex flex-col" style={{ borderRadius:'3px', background:'var(--surface)' }}>
         {/* CABECERA */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>

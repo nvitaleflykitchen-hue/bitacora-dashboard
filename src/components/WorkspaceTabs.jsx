@@ -1,3 +1,5 @@
+import React from 'react'
+
 export default function WorkspaceTabs({ title, subtitle, tabs, activeTab, onTabChange, children, rightSlot }) {
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">

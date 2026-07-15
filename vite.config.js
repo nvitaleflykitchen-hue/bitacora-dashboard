@@ -10,10 +10,12 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          supabase: ['@supabase/supabase-js'],
-          charts: ['recharts'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('/react/') || id.includes('/react-dom/')) return 'vendor'
+          if (id.includes('/@supabase/')) return 'supabase'
+          if (id.includes('/recharts/')) return 'charts'
+          return undefined
         },
       },
     },

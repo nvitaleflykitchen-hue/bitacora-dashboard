@@ -16,7 +16,7 @@ export const CATEGORIAS = [
   { key: 'D', label: 'Stock crítico' },
   { key: 'E', label: 'Equipos / Mantenimiento' },
   { key: 'F', label: 'Higiene / BPM' },
-  { key: 'G', label: 'Personal / Dotación' },
+  { key: 'G', label: 'Dotación y cobertura del turno' },
   { key: 'H', label: 'Cliente / Usuario / Incidentes' },
   { key: 'OTRA', label: 'Otras' },
 ]
@@ -32,7 +32,7 @@ function buildWhatsappMsg(tarea, responsable) {
   const sede = tarea.sede_nombre || ''
   const vence = tarea.fecha_limite ? ` · Vence: ${isoToDisplay(tarea.fecha_limite)}` : ''
   return encodeURIComponent(
-    `Hola ${responsable.nombre} 👋\n\nSe te asignó una tarea en *Bitácora In Situ*:\n\n` +
+    `Hola ${responsable.nombre} 👋\n\nSe te asignó una tarea en *Fly Gestión*:\n\n` +
     `📋 *${tarea.titulo}*\n` +
     (tarea.descripcion ? `${tarea.descripcion}\n\n` : '\n') +
     `🏥 Sede: ${sede || 'General'}\n` +
@@ -47,7 +47,7 @@ function buildMailMsg(tarea, responsable) {
   const subject = encodeURIComponent(`[Tarea] ${tarea.titulo}`)
   const body = encodeURIComponent(
     `Hola ${responsable.nombre},\n\n` +
-    `Se te asignó una tarea en Bitácora In Situ:\n\n` +
+    `Se te asignó una tarea en Fly Gestión:\n\n` +
     `Tarea: ${tarea.titulo}\n` +
     (tarea.descripcion ? `Descripción: ${tarea.descripcion}\n` : '') +
     `Sede: ${sede}\n` +
@@ -186,7 +186,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
         const tarea = await updateTarea(tareaEditar.id, payload)
         onUpdated?.(tarea)
       } else {
-        const tarea = await createTarea({ ...payload, estado: form.estado })
+        const tarea = await createTarea({ ...payload, estado: form.estado, creado_por: perfil?.id || null })
         if (archivos.length > 0) {
           await Promise.all(archivos.map(f => uploadAdjunto('tarea', tarea.id, f)))
         }
@@ -200,7 +200,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px' }}>
         <div className="flex items-center justify-between px-6 py-4"
           style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>

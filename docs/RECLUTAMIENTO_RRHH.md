@@ -1,5 +1,7 @@
 # Reclutamiento / selección de personal
 
+Para el alta y comunicación inicial de una persona incorporada, usar la plantilla de `PLANTILLA_BIENVENIDA_USUARIOS.md` después de crear y verificar su cuenta, rol y sede.
+
 Estado: implementación frontend lista; esquema Supabase pendiente de aprobación/aplicación.
 
 ## Flujo cubierto

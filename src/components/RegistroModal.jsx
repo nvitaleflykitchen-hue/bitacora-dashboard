@@ -18,7 +18,7 @@ const CATEGORIAS = [
   { key: 'd', label: 'Stock crítico' },
   { key: 'e', label: 'Equipos / Mantenimiento' },
   { key: 'f', label: 'Higiene / BPM' },
-  { key: 'g', label: 'Personal / Dotación' },
+  { key: 'g', label: 'Dotación y cobertura del turno' },
   { key: 'h', label: 'Cliente / Usuario / Incidentes' },
 ]
 
@@ -138,7 +138,7 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded"
         style={{ borderRadius:'3px' }}>
         {/* Header */}

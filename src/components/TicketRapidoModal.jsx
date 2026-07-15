@@ -92,7 +92,7 @@ export default function TicketRapidoModal({ origen, onClose, onCreated }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-md rounded" style={{ borderRadius: 3 }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1rem 1.5rem', borderBottom:'1px solid rgba(57,255,20,0.1)' }}>

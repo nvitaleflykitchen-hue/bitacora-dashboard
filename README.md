@@ -1,4 +1,4 @@
-# Bitácora In Situ — Fly Kitchen
+# Fly Gestión — Fly Kitchen
 
 App interna de gestión operativa de sedes (comedores, hospitales, aeropuertos):
 bitácora diaria, escalamientos, no conformidades, CAPA, tareas, mantenimiento

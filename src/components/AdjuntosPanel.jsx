@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus } from 'lucide-react'
+import { Camera, Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getAdjuntos, uploadAdjunto, addAdjuntoLink, deleteAdjunto } from '../lib/adjuntos'
 import { confirmar, toast } from '../lib/feedback'
@@ -49,7 +49,7 @@ function LinkForm({ onAdd, onCancel }) {
   )
 }
 
-export default function AdjuntosPanel({ entityType, entityId, compact = false, readOnly = false, label = 'Adjuntos' }) {
+export default function AdjuntosPanel({ entityType, entityId, compact = false, readOnly = false, label = 'Adjuntos', camera = false }) {
   const { perfil } = useAuth()
   const [adjuntos, setAdjuntos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +57,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [lightbox, setLightbox] = useState(null)
   const fileRef = useRef()
+  const cameraRef = useRef()
 
   const load = useCallback(async () => {
     if (!entityId) return
@@ -81,6 +82,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
+      if (cameraRef.current) cameraRef.current.value = ''
     }
   }
 
@@ -122,13 +124,22 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
           </span>
         </div>
         {!readOnly && <div style={{ display:'flex', gap:5 }}>
+          {camera && <button type="button"
+            onClick={() => cameraRef.current?.click()}
+            disabled={uploading}
+            className="btn-ghost"
+            style={{ padding:'0.2rem 0.5rem', fontSize:'0.65rem', display:'flex', alignItems:'center', gap:4 }}>
+            <Camera size={11} /> {uploading ? 'Subiendo...' : 'Tomar foto'}
+          </button>}
           <button
+            type="button"
             onClick={() => setShowLinkForm(v => !v)}
             className="btn-ghost"
             style={{ padding:'0.2rem 0.5rem', fontSize:'0.65rem', display:'flex', alignItems:'center', gap:4 }}>
             <Link2 size={11} /> Link
           </button>
           <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             className="btn-ghost"
@@ -137,6 +148,8 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
           </button>
           <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
             style={{ display:'none' }} onChange={e => handleFiles(e.target.files)} />
+          {camera && <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+            style={{ display:'none' }} onChange={e => handleFiles(e.target.files)} />}
         </div>}
       </div>
 

@@ -46,7 +46,7 @@ export default function CambiarContrasena() {
         borderRadius: 8, padding: '40px 36px', width: 380, maxWidth: '90vw',
       }}>
         <div style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: 3, marginBottom: 4 }}>
-          BITÁCORA IN SITU · FK
+          FLY GESTIÓN · FK
         </div>
         <h2 style={{ color: 'var(--text)', margin: '0 0 8px', fontSize: 18 }}>
           Cambiar contraseña

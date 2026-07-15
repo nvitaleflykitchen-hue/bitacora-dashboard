@@ -249,6 +249,12 @@ async function resolveComentarioParent(admin:any, entidadTipo:string, entidadId:
     if (!t) return null
     return { sedeId:t.sede_id, responsableUserId:t.responsable_id, url:'/?view=tareas' }
   }
+  if (entidadTipo === 'registro') {
+    const { data:r } = await admin.schema('bitacora').from('registros')
+      .select('id,sede_id').eq('id', entidadId).maybeSingle()
+    if (!r) return null
+    return { sedeId:r.sede_id, url:'/?view=sedesHub' }
+  }
   if (entidadTipo === 'escalamiento') {
     const { data:e } = await admin.schema('bitacora').from('escalamientos')
       .select('id,sede_id').eq('id', entidadId).maybeSingle()

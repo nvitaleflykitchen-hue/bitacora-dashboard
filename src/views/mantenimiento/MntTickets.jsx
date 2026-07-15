@@ -697,6 +697,17 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
               </div>
             )}
 
+            {!isNew && (
+              <button type="button" onClick={() => setTab('comentarios')} style={{
+                width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:7,
+                padding:'0.7rem', marginBottom:'0.85rem', borderRadius:3, cursor:'pointer',
+                background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.25)',
+                color:'var(--phosphor)', fontWeight:700, fontFamily:'inherit',
+              }}>
+                <MessageCircle size={15} /> Agregar comentario o informar un avance
+              </button>
+            )}
+
             {/* Evidencias — solo al crear */}
             {isNew && (
               <div style={ROW}>
@@ -752,7 +763,8 @@ export default function MntTickets({ focusId }) {
   const [filtroEstado, setFiltroEstado] = usePersistedState('mntTickets.filtroEstado', 'todos')
   const [filtroTipo, setFiltroTipo]     = usePersistedState('mntTickets.filtroTipo', 'todos')
   const [filtroSLA, setFiltroSLA]       = usePersistedState('mntTickets.filtroSLA', false)
-  const { allowedSedeIds, can } = useAuth()
+  const { allowedSedeIds, can, perfil } = useAuth()
+  const [soloMios, setSoloMios] = usePersistedState('mntTickets.soloMios', perfil?.rol === 'mnt_editor')
   const canManage = can('mantenimiento', 'manage')
   const canReport = canManage || can('mantenimiento', 'report')
   const [sedeId, setSedeId]             = usePersistedState('mntTickets.sedeId', '')
@@ -812,25 +824,28 @@ export default function MntTickets({ focusId }) {
         ? all
         : all.filter(s => allowedSedeIds.includes(s.id))
       setSedes(filtered)
-      // Roles territoriales arrancan con su primera sede asignada
-      if (allowedSedeIds !== null && filtered.length > 0 && !sedeId)
-        setSedeId(String(filtered[0].id))
     })
     // Nota: sedeId NO va en deps a propósito — si estuviera, elegir "Todas las
     // sedes" re-dispararía la auto-selección y el filtro volvería solo a la
     // primera sede. setSedeId es estable (useState interno de usePersistedState).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedSedeIds])
 
   let filtrados = tickets
     .filter(t => filtroEstado === 'todos' || t.estado === filtroEstado)
     .filter(t => filtroTipo   === 'todos' || t.tipo   === filtroTipo)
+  const responsablePropioIds = new Set(
+    responsables
+      .filter(r => (perfil?.email && r.email?.toLowerCase() === perfil.email.toLowerCase()) ||
+        (perfil?.nombre && r.nombre?.trim().toLowerCase() === perfil.nombre.trim().toLowerCase()))
+      .map(r => String(r.id))
+  )
+  if (soloMios) filtrados = filtrados.filter(t => responsablePropioIds.has(String(t.responsable_id)))
   if (filtroSLA) filtrados = filtrados.filter(t => slaStatus(t) === 'vencido')
   const totalFiltrados = filtrados.length
   const hayMas = totalFiltrados > visibles
   filtrados = filtrados.slice(0, visibles)
 
-  useEffect(() => { setVisibles(100) }, [filtroEstado, filtroTipo, filtroSLA, sedeId])
+  useEffect(() => { setVisibles(100) }, [filtroEstado, filtroTipo, filtroSLA, soloMios, sedeId])
 
   const vencidos   = tickets.filter(t => slaStatus(t) === 'vencido').length
   const sinAsignar = tickets.filter(t => !t.responsable_id && t.estado !== 'resuelto' && t.estado !== 'rechazado').length
@@ -893,6 +908,14 @@ export default function MntTickets({ focusId }) {
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
+        <button onClick={() => setSoloMios(v => !v)} style={{
+          ...SEL(soloMios),
+          background: soloMios ? 'rgba(57,255,20,0.14)' : 'var(--surface)',
+          color: soloMios ? 'var(--phosphor)' : 'var(--text-dim)',
+        }}>
+          <span style={{ display:'inline-flex', alignItems:'center', gap:5 }}><Wrench size={12} /> Mi trabajo</span>
+        </button>
+        <span style={{ borderLeft: '1px solid rgba(57,255,20,0.08)', margin: '0 0.25rem', height: 16 }} />
         {['todos', ...ESTADOS].map(s => (
           <button key={s} onClick={() => setFiltroEstado(s)} style={SEL(filtroEstado === s)}>
             {s === 'todos' ? 'Todos' : s.replace('_',' ')}

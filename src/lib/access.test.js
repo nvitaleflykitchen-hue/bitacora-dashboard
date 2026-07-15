@@ -84,4 +84,18 @@ describe('matriz de acceso', () => {
     expect(isQualityTeamPerson({ area:'Calidad', puesto:'Tecnica' }, perfil)).toBe(true)
     expect(isQualityTeamPerson({ area:'Cocina', puesto:'Cocinero' }, perfil)).toBe(false)
   })
+
+  it('acota Seguridad e Higiene y deja Equipo en consulta', () => {
+    const perfil = { id:'hys1', rol:'encargado', email:'Rrhh.higieneyseguridad.emp@gmail.com' }
+    expect(getPrimaryNav('encargado', perfil).map(item => item.id)).toEqual(['tablon', 'pendientes', 'sedesHub', 'requerimientos', 'mantenimientoHub', 'calidadHub', 'equipo'])
+    expect(getDefaultView('encargado', perfil)).toBe('calidadHub')
+    expect(canAccessView('encargado', 'equipo', perfil)).toBe(true)
+    expect(canAccessView('encargado', 'usuarios', perfil)).toBe(false)
+    expect(canAccessView('encargado', 'flotaHub', perfil)).toBe(false)
+    expect(canWrite('encargado', 'mantenimiento', 'manage', perfil)).toBe(true)
+    expect(canWrite('encargado', 'noConformidades', 'manage', perfil)).toBe(true)
+    expect(canWrite('encargado', 'equipo', 'manage', perfil)).toBe(false)
+    expect(canWrite('encargado', 'compras', 'request', perfil)).toBe(true)
+    expect(canWrite('encargado', 'compras', 'manage', perfil)).toBe(false)
+  })
 })

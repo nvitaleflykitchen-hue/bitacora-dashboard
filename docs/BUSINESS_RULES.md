@@ -179,6 +179,15 @@ Flujo aprobado por el usuario el 2026-06-19:
 
 La vista `Indicadores` incorpora una matriz por sede con seis riesgos: novedades que requieren escalamiento dentro del período seleccionado; tareas vencidas; tickets fuera de SLA; compras enviadas fuera de SLA; CAPA vencidas; y documentación vehicular/matafuegos vencidos. Verde representa 0 casos; amarillo desde 1 hasta antes del umbral crítico; rojo usa umbrales iniciales de 2 para novedades/compras/documentación y 3 para tareas/tickets/CAPA. Las celdas abren el módulo correspondiente. Las CAPA corporativas con `sede_id = NULL` y `sede_nombre = 'Gestión'` aparecen en una fila adicional sólo para usuarios sin restricción de sedes.
 
+### 8.2 Auditorías internas por sede
+
+- Una auditoría pertenece a una sede y conserva plantilla, auditor, fecha, alcance, respuestas, hallazgos y resultado.
+- Escala: `Cumple` = 2, `Parcial` = 1, `No cumple` = 0 y `No observado` queda fuera del denominador. El peso de cada pregunta se aplica al cálculo.
+- Los hallazgos pueden ser `Observación`, `Oportunidad de mejora` o `No conformidad`, con criticidad `Crítica`, `Alta`, `Media` o `Baja`.
+- Un hallazgo puede generar una No Conformidad y una CAPA vinculadas. Sus archivos usan `bitacora.adjuntos` con `entity_type = 'auditoria_hallazgo'`.
+- Calidad y Seguridad e Higiene gestionan todas las sedes; Miguel Riviere gestiona aeropuertos; responsables territoriales leen y aportan respuestas/evidencias en su alcance.
+- No existe borrado desde la aplicación: se cancela o cierra para conservar trazabilidad.
+
 ## 9. Limitaciones de esta documentación
 
 Este documento cubre las reglas de negocio verificables por dominio de datos (`CHECK` constraints) y por lógica de triggers/RBAC explícita en el código leído. No cubre: lógica de negocio que viva únicamente dentro de componentes React no auditados línea por línea (ej. validaciones de formulario client-side en cada módulo de Mantenimiento/Flota/Equipo), ni reglas que dependan de convención sin enforcement (ej. relación No Conformidad↔CAPA). Donde no fue posible verificar algo, se indica explícitamente arriba en lugar de asumirlo.

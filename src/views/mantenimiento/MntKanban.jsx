@@ -141,7 +141,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
   }
 
   return (
-    <div style={MODAL_BG} onClick={e => { if(e.target===e.currentTarget) onClose() }}>
+    <div style={MODAL_BG}>
       <div style={MODAL_BOX}>
 
         {/* Header */}

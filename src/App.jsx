@@ -9,11 +9,14 @@ import GlobalSearch   from './components/GlobalSearch'
 import { useEscalamientosAlert } from './hooks/useEscalamientosAlert'
 import { canAccessView, getDefaultView, isComprasOnlyProfile, isQualityOnlyProfile } from './lib/access'
 import HelpPanel from './components/HelpPanel'
+import WhatsNewModal from './components/WhatsNewModal'
+import { hasSeenLatestRelease } from './data/releases'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
 const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
 const InicioRol = lazy(() => import('./views/InicioRol'))
 const Tablon = lazy(() => import('./views/Tablon'))
+const Actualizaciones = lazy(() => import('./views/Actualizaciones'))
 const PendientesHub = lazy(() => import('./views/PendientesHub'))
 const SedesHub = lazy(() => import('./views/SedesHub'))
 const MantenimientoHub = lazy(() => import('./views/MantenimientoHub'))
@@ -43,6 +46,7 @@ const SedeResponsables = lazy(() => import('./views/SedeResponsables'))
 const Requerimientos = lazy(() => import('./views/Requerimientos'))
 const QRActivoView = lazy(() => import('./views/mantenimiento/QRActivoView'))
 const AuditoriaView = lazy(() => import('./views/mantenimiento/AuditoriaView'))
+const AccesosAppReport = lazy(() => import('./views/AccesosAppReport'))
 const SedeFicha = lazy(() => import('./views/SedeFicha'))
 const VuelosPlantilla = lazy(() => import('./views/VuelosPlantilla'))
 const EquipoView = lazy(() => import('./views/EquipoView'))
@@ -51,6 +55,7 @@ const SedeEncargadoView = lazy(() => import('./views/SedeEncargadoView'))
 const ALL_VIEWS = {
   inicio:          InicioRol,
   tablon:          Tablon,
+  actualizaciones: Actualizaciones,
   pendientes:     PendientesHub,
   sedesHub:        SedesHub,
   mantenimientoHub: MantenimientoHub,
@@ -83,6 +88,7 @@ const ALL_VIEWS = {
   vuelosPlantilla:  VuelosPlantilla,
   equipo:           EquipoView,
   auditoria:        AuditoriaView,
+  accesosApp:       AccesosAppReport,
   sedeEncargado:    SedeEncargadoView,
 }
 
@@ -165,6 +171,7 @@ function AppInner() {
   const [showSearch, setShowSearch] = useState(false)
   const [showReporte, setShowReporte] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [showWhatsNew, setShowWhatsNew] = useState(false)
   const [navigationTarget, setNavigationTarget] = useState(() => {
     const p = new URLSearchParams(window.location.search)
     return p.get('targetType') || p.get('targetId')
@@ -189,6 +196,12 @@ function AppInner() {
     const p = new URLSearchParams(window.location.search)
     if (p.get('scan') === 'activo' && p.get('id')) setQrActivoId(p.get('id'))
   }, [])
+
+  useEffect(() => {
+    if (!loading && user?.id && !accessBlocked && !hasSeenLatestRelease(user.id)) {
+      setShowWhatsNew(true)
+    }
+  }, [loading, user?.id, accessBlocked])
 
   useEffect(() => {
     const handler = (e) => {
@@ -284,6 +297,14 @@ function AppInner() {
       </button>
 
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
+
+      {showWhatsNew && (
+        <WhatsNewModal
+          userId={user.id}
+          onClose={() => setShowWhatsNew(false)}
+          onOpenAll={() => navigate('actualizaciones')}
+        />
+      )}
 
       {/* Modal "Nuevo Reporte" desde escritorio — reusa el mismo form que la vista mobile,
           montado en un contenedor angosto para no romper su estilado pensado para celular. */}

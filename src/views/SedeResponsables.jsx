@@ -64,7 +64,7 @@ function EditContactoModal({ item, perfiles, onClose, onSaved }) {
   const INP   = { padding:'0.4rem 0.6rem', borderRadius:4, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text)', fontSize:'0.78rem', width:'100%', colorScheme:'dark', fontFamily:'inherit' }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass fade-in" style={{ width:'100%', maxWidth:480, borderRadius:4, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.15)', overflow:'hidden' }}>
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

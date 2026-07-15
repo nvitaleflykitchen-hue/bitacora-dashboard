@@ -193,6 +193,10 @@ function MobileTareaCard({ t, canManage, onAvanzar, onUpdate, updating }) {
 
       {expanded && (
         <div className="mt-3 pt-3" style={{ borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+          <div style={{ background:'rgba(255,255,255,0.025)', borderRadius:6, padding:'0.6rem 0.7rem', marginBottom:'0.7rem' }}>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.7rem' }}>Creada por: <span style={{ color:'var(--text)' }}>{t.creador?.nombre || 'Autor no registrado'}</span></p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', marginTop:3 }}>Creada el: <span style={{ color:'var(--text)' }}>{t.created_at ? new Date(t.created_at).toLocaleString('es-AR', { dateStyle:'short', timeStyle:'short' }) : 'Fecha no registrada'}</span></p>
+          </div>
           {t.descripcion && (
             <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.5, whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>
               {t.descripcion}

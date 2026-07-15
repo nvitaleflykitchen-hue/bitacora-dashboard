@@ -14,9 +14,11 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import PushNotificationControl from '../components/PushNotificationControl'
 import NotificationCenter from '../components/NotificationCenter'
-import { isComprasOnlyProfile, isQualityOnlyProfile } from '../lib/access'
+import { isComprasOnlyProfile, isQualityOnlyProfile, isSafetyOnlyProfile } from '../lib/access'
 import { User, ShoppingCart } from 'lucide-react'
 import { initBackNavigation, useBackHandler } from '../lib/backStack'
+import WhatsNewModal from '../components/WhatsNewModal'
+import { APP_NAME, APP_VERSION, hasSeenLatestRelease } from '../data/releases'
 
 const NAV = [
   { key: 'home',          label: 'Inicio',    icon: '⌂' },
@@ -30,21 +32,30 @@ const NAV = [
 ]
 
 export default function MobileApp() {
-  const { perfil, rol, can } = useAuth()
+  const { user, perfil, rol, can } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
   const isComprasOnly = isComprasOnlyProfile(perfil)
-  const canReport = !isQualityOnly && !isComprasOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
+  const isSafetyOnly = isSafetyOnlyProfile(perfil)
+  const isMaintenanceEditor = rol === 'mnt_editor'
+  const canReport = !isQualityOnly && !isComprasOnly && !isMaintenanceEditor && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
   const canUseChecklist = rol !== 'consultor'
   // 'operario': rol acotado a Inicio (Nuevo Reporte) + Checklist, nada más.
-  const navAllowed = isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (isComprasOnly ? new Set(['home', 'compras']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null))
-  const [tab, setTab] = useState(isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home'))
+  const navAllowed = isSafetyOnly
+    ? new Set(['tareas', 'sedes', 'tickets', 'compras', 'mas'])
+    : (isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (isComprasOnly ? new Set(['home', 'compras']) : (isMaintenanceEditor ? new Set(['tickets', 'sedes', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null))))
+  const [tab, setTab] = useState(isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home')))
   const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
   const [showSearch, setShowSearch] = useState(false)
-  const [masModule, setMasModule] = useState(isQualityOnly ? 'calidad' : null)
+  const [masModule, setMasModule] = useState(isSafetyOnly || isQualityOnly ? 'calidad' : null)
+  const [showWhatsNew, setShowWhatsNew] = useState(() => user?.id ? !hasSeenLatestRelease(user.id) : false)
+
+  useEffect(() => {
+    if (user?.id && !hasSeenLatestRelease(user.id)) setShowWhatsNew(true)
+  }, [user?.id])
 
   // Botón atrás del celular: navegar en vez de cerrar la app.
-  const tabInicio = isQualityOnly ? 'tareas' : 'home'
+  const tabInicio = isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : 'home')
   useEffect(() => initBackNavigation(), [])
   useBackHandler(() => { setMasModule(null); setTab(tabInicio) }, screen === 'main' && tab !== tabInicio)
   useBackHandler(() => setScreen('main'), screen !== 'main')
@@ -100,7 +111,7 @@ export default function MobileApp() {
       return (
         <MobileReporte
           onBack={() => setScreen('main')}
-          onSuccess={() => { setScreen('main'); setTab('home') }}
+          onSuccess={() => { setScreen('main'); setTab(isSafetyOnly ? 'tareas' : 'home') }}
         />
       )
     }
@@ -134,7 +145,7 @@ export default function MobileApp() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ color: '#F97316', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.02em' }}>FLY</span>
           <span style={{ color: 'var(--text)', fontWeight: 800, fontSize: '0.85rem' }}>KITCHEN</span>
-          <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: 4 }}>· Bitacora In Situ</span>
+          <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: 4 }}>· {APP_NAME}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {!isQualityOnly && !isComprasOnly && <NotificationCenter onNavigate={handleNotificationNavigate} />}
@@ -146,7 +157,7 @@ export default function MobileApp() {
             fontSize: '0.6rem', padding: '0.15rem 0.4rem', borderRadius: 3,
             fontWeight: 700, letterSpacing: '0.06em'
           }}>
-            {perfil?.rol?.toUpperCase() || 'FK'}
+            {isMaintenanceEditor ? 'MANTENIMIENTO' : (perfil?.rol?.toUpperCase() || 'FK')}
           </span>
           {/* Boton reporte rapido en header */}
           {screen === 'main' && canReport && (
@@ -205,11 +216,27 @@ export default function MobileApp() {
           ))}
         </nav>
       )}
+      {showWhatsNew && (
+        <WhatsNewModal
+          userId={user.id}
+          onClose={() => setShowWhatsNew(false)}
+          onOpenAll={() => { setMasModule('actualizaciones'); setTab('mas') }}
+        />
+      )}
     </div>
   )
 }
 
 function MobilePerfil({ perfil, onLogout }) {
+  const actualizarAplicacion = async () => {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(registrations.map(registration => registration.update()))
+    }
+    const url = new URL(window.location.href)
+    url.searchParams.set('_update', Date.now().toString())
+    window.location.replace(url.toString())
+  }
   return (
     <div className="mobile-scroll" style={{ padding: '1.5rem 1rem', height: '100%' }}>
       <h1 style={{ color: 'var(--text)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Mi Perfil</h1>
@@ -227,7 +254,17 @@ function MobilePerfil({ perfil, onLogout }) {
         }}>
           {perfil?.rol}
         </span>
+        <p style={{ color:'var(--text-dim)', fontSize:'0.68rem', marginTop:12 }}>{APP_NAME} · versión {APP_VERSION}</p>
       </div>
+
+      <button onClick={actualizarAplicacion}
+        style={{
+          width:'100%', padding:'0.85rem', borderRadius:8, marginBottom:'0.75rem',
+          background:'rgba(96,165,250,0.08)', color:'#60a5fa', fontWeight:600,
+          fontSize:'0.85rem', border:'1px solid rgba(96,165,250,0.22)', cursor:'pointer'
+        }}>
+        Actualizar aplicación
+      </button>
 
       <div style={{ marginBottom:'1rem' }}>
         <PushNotificationControl />

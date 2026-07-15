@@ -79,7 +79,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px', maxHeight:'90vh', overflowY:'auto' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
           <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Nueva Acción CAPA</h2>
@@ -200,7 +200,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-md rounded" style={{ borderRadius:'3px', maxHeight:'92vh', overflowY:'auto' }}>
         <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
           <div>
@@ -454,7 +454,7 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSa
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px', maxHeight:'90vh', overflowY:'auto' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
           <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Datos del plan — {auditoriaCodigo}</h2>

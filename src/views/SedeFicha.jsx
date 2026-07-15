@@ -11,6 +11,7 @@ import DocumentacionChecklist from '../components/DocumentacionChecklist'
 import { SEDE_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
 import { toast, confirmar } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import AuditoriasInternas from './AuditoriasInternas'
 
 const TIPO_COLOR = {
   Planta:      { color:'#39FF14', bg:'rgba(57,255,20,0.1)' },
@@ -132,7 +133,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
   const lbl = { fontSize:'0.65rem', color:'rgba(255,255,255,0.35)', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:3, width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', padding:24 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div>
@@ -482,6 +483,7 @@ export default function SedeFicha({ onNavigate, focusId }) {
               </button>}
               <button onClick={()=>setFichaTab('resumen')} style={{ background:fichaTab==='resumen'?'rgba(57,255,20,0.12)':'transparent', border:'1px solid rgba(57,255,20,0.16)', color:fichaTab==='resumen'?'#39FF14':'rgba(255,255,255,0.42)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>RESUMEN</button>
               <button onClick={()=>setFichaTab('documentacion')} style={{ background:fichaTab==='documentacion'?'rgba(57,255,20,0.12)':'transparent', border:'1px solid rgba(57,255,20,0.24)', color:fichaTab==='documentacion'?'#39FF14':'rgba(57,255,20,0.65)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>DOCUMENTACIÓN</button>
+              <button onClick={()=>setFichaTab('auditorias')} style={{ background:fichaTab==='auditorias'?'rgba(167,139,250,0.14)':'transparent', border:'1px solid rgba(167,139,250,0.3)', color:fichaTab==='auditorias'?'#c4b5fd':'#a78bfa', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>AUDITORÍAS</button>
               <button onClick={()=>onNavigate && onNavigate('sede')} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'rgba(255,255,255,0.4)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>VER BITACORA</button>
               <button onClick={()=>onNavigate && onNavigate('mntTickets')} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.2)', color:'rgba(57,255,20,0.6)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>TICKETS MNT</button>
               {canManage && sede.tipo === 'Aeropuerto' && (
@@ -493,7 +495,9 @@ export default function SedeFicha({ onNavigate, focusId }) {
             </div>
           </div>
 
-          {fichaTab === 'documentacion' ? (
+          {fichaTab === 'auditorias' ? (
+            <AuditoriasInternas sedeId={sede.id} />
+          ) : fichaTab === 'documentacion' ? (
             <DocumentacionChecklist
               entityType="sede"
               entityId={sede.id}

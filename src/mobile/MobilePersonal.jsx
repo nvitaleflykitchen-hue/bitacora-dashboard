@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
-import { isQualityOnlyProfile, isQualityTeamPerson } from '../lib/access'
+import { isQualityOnlyProfile, isQualityTeamPerson, isSafetyOnlyProfile } from '../lib/access'
 import { fmtFechaLarga } from '../lib/dateUtils'
 import PersonaFormularios from '../components/PersonaFormularios'
 import AdjuntosPanel from '../components/AdjuntosPanel'
@@ -10,6 +10,8 @@ import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star } 
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { useBackHandler } from '../lib/backStack'
+import { downloadEvaluacionPersonalPdf, evaluacionPersonalFile, textoEvaluacionPersonal } from '../lib/evaluacionPersonalPdf'
+import { Download, Share2, Copy } from 'lucide-react'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -78,12 +80,29 @@ function calcPuntaje(f) {
   return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10
 }
 
-function QuickEvalModal({ personaId, onClose, onSaved }) {
-  const [form, setForm] = useState(EVAL_INICIAL)
+function QuickEvalModal({ persona, onClose, onSaved }) {
+  const { perfil, user } = useAuth()
+  const personaId = persona?.id
+  const fecha = new Date()
+  const periodoActual = `Q${Math.floor(fecha.getMonth() / 3) + 1} ${fecha.getFullYear()}`
+  const [form, setForm] = useState({ ...EVAL_INICIAL, evaluador_nombre: perfil?.nombre || '', periodo: periodoActual })
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const puntaje = calcPuntaje(form)
   const resultado = getResultado(puntaje)
+
+  useEffect(() => {
+    if (!user?.id) return
+    supabase.from('v_personas').select('nombre,apellido,puesto').eq('perfil_id', user.id).limit(1).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        setForm(f => ({
+          ...f,
+          evaluador_nombre: [data.nombre, data.apellido].filter(Boolean).join(' ') || f.evaluador_nombre,
+          evaluador_cargo: data.puesto || f.evaluador_cargo,
+        }))
+      })
+  }, [user?.id])
 
   const submit = async () => {
     setSaving(true)
@@ -107,12 +126,26 @@ function QuickEvalModal({ personaId, onClose, onSaved }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }} onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nueva evaluación</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
+        <Card style={{ background: 'rgba(57,255,20,0.04)', border: '1px solid rgba(57,255,20,0.12)' }}>
+          <p style={{ fontSize: '0.58rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 7 }}>Personal evaluado</p>
+          {[
+            ['Nombre', [persona?.nombre, persona?.apellido].filter(Boolean).join(' ')],
+            ['DNI', persona?.dni], ['Legajo', persona?.legajo], ['Puesto', persona?.puesto],
+            ['Sede', persona?.sede_nombre],
+            ['Ingreso', persona?.fecha_ingreso ? fmtFechaLarga(persona.fecha_ingreso) : null],
+          ].filter(([, value]) => value).map(([label, value]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+              <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>{label}</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text)', textAlign: 'right' }}>{value}</span>
+            </div>
+          ))}
+        </Card>
         <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: 10 }}>Escala: 1 = muy bajo, 3 = aceptable, 5 = excelente. Dejá sin calificar si no aplica.</p>
 
         {[['evaluador_nombre', 'Evaluador', 'Ej: María González'], ['evaluador_cargo', 'Cargo evaluador', 'Ej: Jefe de Cocina'], ['periodo', 'Período', 'Ej: Q2 2026']].map(([k, l, ph]) => (
@@ -184,7 +217,7 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }} onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nuevo registro</h2>
@@ -214,13 +247,14 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
   )
 }
 
-function QuickPersonaModal({ onClose, onSaved }) {
-  const [form, setForm] = useState({ nombre: '', apellido: '', legajo: '', dni: '', puesto: '', area: '', telefono: '', email: '', fecha_ingreso: '' })
+function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }) {
+  const [form, setForm] = useState({ nombre: '', apellido: '', legajo: '', dni: '', puesto: '', area: '', telefono: '', email: '', fecha_ingreso: '', sede_ids: sedes.length===1?[sedes[0].id]:[] })
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const submit = async () => {
     if (!form.nombre.trim()) { toast.warn('El nombre es obligatorio.'); return }
+    if (requireSede && !form.sede_ids.length) { toast.warn('Seleccioná la sede de la persona.'); return }
     setSaving(true)
     const { error } = await supabase.schema('equipo').from('personas').insert({
       nombre: form.nombre.trim(),
@@ -232,6 +266,7 @@ function QuickPersonaModal({ onClose, onSaved }) {
       telefono: form.telefono.trim() || null,
       email: form.email.trim() || null,
       fecha_ingreso: form.fecha_ingreso || null,
+      sede_ids: form.sede_ids.length ? form.sede_ids : null,
     })
     setSaving(false)
     if (error) { toast.error('Error: ' + mensajeError(error)); return }
@@ -239,7 +274,7 @@ function QuickPersonaModal({ onClose, onSaved }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }} onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }}>
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nueva persona</h2>
@@ -253,6 +288,11 @@ function QuickPersonaModal({ onClose, onSaved }) {
         ))}
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fecha de ingreso</label>
         <input type="date" className="input-dark w-full" value={form.fecha_ingreso} onChange={e => set('fecha_ingreso', e.target.value)} style={{ marginBottom: 16 }} />
+        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede {requireSede?'*':''}</label>
+        <select className="input-dark w-full" value={form.sede_ids[0]||''} onChange={e=>set('sede_ids',e.target.value?[Number(e.target.value)]:[])} style={{marginBottom:16}}>
+          {!requireSede&&<option value="">Sin sede asignada</option>}
+          {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+        </select>
         <button onClick={submit} disabled={saving} className="btn-primary w-full" style={{ padding: '0.75rem' }}>
           {saving ? 'Guardando...' : 'Guardar persona'}
         </button>
@@ -270,6 +310,30 @@ function PersonaFicha({ personaId, canManage, onBack }) {
   const [tab, setTab] = useState('info')
   const [showEval, setShowEval] = useState(false)
   const [showHist, setShowHist] = useState(false)
+
+  const copyEvaluacion = async (ev) => {
+    try {
+      await navigator.clipboard.writeText(textoEvaluacionPersonal(persona, ev))
+      toast.ok('Resumen de la evaluación copiado.')
+    } catch { toast.error('No se pudo copiar la evaluación.') }
+  }
+
+  const shareEvaluacion = async (ev) => {
+    const text = textoEvaluacionPersonal(persona, ev)
+    try {
+      const file = evaluacionPersonalFile(persona, ev)
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+        await navigator.share({ title: `Evaluación de desempeño - ${persona.nombre}`, text, files: [file] })
+      } else if (navigator.share) {
+        await navigator.share({ title: `Evaluación de desempeño - ${persona.nombre}`, text })
+      } else {
+        await navigator.clipboard.writeText(text)
+        toast.ok('Resumen copiado para compartir.')
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') toast.error('No se pudo compartir la evaluación.')
+    }
+  }
 
   const load = useCallback(() => {
     setLoading(true)
@@ -395,6 +459,11 @@ function PersonaFicha({ personaId, canManage, onBack }) {
                   )}
                 </div>
                 {ev.observaciones_rrhh && <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>📝 {ev.observaciones_rrhh}</p>}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                  <button onClick={() => downloadEvaluacionPersonalPdf(persona, ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem' }}><Download size={12} /> PDF</button>
+                  <button onClick={() => shareEvaluacion(ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem' }}><Share2 size={12} /> Compartir</button>
+                  <button onClick={() => copyEvaluacion(ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem' }}><Copy size={12} /> Copiar</button>
+                </div>
               </Card>
             ))}
           </>
@@ -459,7 +528,7 @@ function PersonaFicha({ personaId, canManage, onBack }) {
         )}
       </div>
 
-      {showEval && <QuickEvalModal personaId={personaId} onClose={() => setShowEval(false)} onSaved={() => { setShowEval(false); load() }} />}
+      {showEval && <QuickEvalModal persona={persona} onClose={() => setShowEval(false)} onSaved={() => { setShowEval(false); load() }} />}
       {showHist && <QuickHistorialModal personaId={personaId} onClose={() => setShowHist(false)} onSaved={() => { setShowHist(false); load() }} />}
     </div>
   )
@@ -468,7 +537,8 @@ function PersonaFicha({ personaId, canManage, onBack }) {
 export default function MobilePersonal() {
   const { can, perfil, allowedSedeIds } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
-  const canManage = can('equipo', 'manage') && !isQualityOnly
+  const isSafetyOnly = isSafetyOnlyProfile(perfil)
+  const canManage = can('equipo', 'manage') && !isQualityOnly && !isSafetyOnly
   const [personas, setPersonas] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -507,7 +577,7 @@ export default function MobilePersonal() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
       <div style={{ padding: '1.25rem 1rem 0.75rem', flexShrink: 0 }}>
-        <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.75rem' }}>{isQualityOnly ? 'Equipo Calidad' : 'Equipo'}</h1>
+        <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.75rem' }}>{isQualityOnly ? 'Equipo Calidad' : isSafetyOnly ? 'Personal · Seguridad e Higiene' : 'Equipo'}</h1>
         <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--surface)', padding: '0.2rem', borderRadius: 20, marginBottom: '0.75rem' }}>
           <button onClick={() => setView('lista')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'lista' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'lista' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
             <Users size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Lista
@@ -589,7 +659,7 @@ export default function MobilePersonal() {
         </button>
       )}
 
-      {showNew && <QuickPersonaModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />}
+      {showNew && <QuickPersonaModal sedes={sedes} requireSede={allowedSedeIds!==null} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />}
     </div>
   )
 }

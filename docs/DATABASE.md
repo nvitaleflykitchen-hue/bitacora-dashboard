@@ -349,6 +349,7 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | descripcion | text | YES | — |
 | subtareas | jsonb | YES | `'[]'` |
 | intervinientes | jsonb | NO | `'[]'` |
+| 🔗 creado_por | uuid | YES | → `perfiles.id` (`ON DELETE SET NULL`) |
 
 **requerimientos** (pedidos de compra/insumos por sede)
 | Columna | Tipo | Nulo | Default |
@@ -831,3 +832,7 @@ Notas relevantes:
    - `bitacora.auditoria` y `bitacora.audit_log` también se solapan en propósito (ambas registran acciones de usuarios sobre el sistema) sin que se haya podido verificar en este paquete cuál de las dos está activa en el código del frontend — confirmar contra `queries.js` antes de asumir cuál es la fuente de verdad para reportes de auditoría.
 5. **FKs cross-schema reales** (no solo convención): `mantenimiento.activos.sede_id`, `mantenimiento.matafuegos.sede_id`, `mantenimiento.tickets.sede_id` → `bitacora.sedes.id`; `mantenimiento.tickets.creado_por` → `bitacora.perfiles.id`; `mantenimiento.tickets.escalamiento_id` → `bitacora.escalamientos.id`. El aislamiento entre esquemas que aporta el patrón de vistas `public` (ver ARCHITECTURE.md §2) es solo para el acceso desde el frontend — a nivel de integridad referencial en Postgres, los esquemas están acoplados.
 6. **RLS y políticas de seguridad**: no se repiten aquí en detalle para evitar duplicar contenido — ver KNOWN_ISSUES.md para la matriz completa de qué tablas tienen RLS habilitado/deshabilitado y qué políticas existen. Lo único que vale remarcar desde la perspectiva de esquema: ninguna de las FKs ni vistas documentadas en este archivo implementa por sí misma una restricción de acceso por sede o por rol.
+
+### Auditorías internas (incorporado 2026-07-14)
+
+El módulo utiliza `auditoria_plantillas`, `auditoria_secciones`, `auditoria_preguntas`, `auditorias_internas`, `auditoria_respuestas` y `auditoria_hallazgos`. Las auditorías se vinculan con sedes y perfiles; los hallazgos pueden vincularse con No Conformidades y CAPA. Todas las tablas tienen RLS, no otorgan acceso a `anon` ni permiso `DELETE` a `authenticated`. Fuente: `supabase/migrations/20260714143000_auditorias_internas.sql`.

@@ -12,21 +12,22 @@ import { X } from 'lucide-react'
  *     ...contenido...
  *   </Modal>
  *
- * - Cierra con Escape y con click en el overlay.
+ * - Los formularios no se cierran al tocar el fondo ni con Escape, para evitar
+ *   perder información cargada por accidente.
  * - `title` opcional dibuja el encabezado con botón de cierre.
  */
-export default function Modal({ open, onClose, title, children, maxWidth = 480 }) {
+export default function Modal({ open, onClose, title, children, maxWidth = 480, closeOnBackdrop = false, closeOnEscape = false }) {
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    const onKey = (e) => { if (closeOnEscape && e.key === 'Escape') onClose?.() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, onClose, closeOnEscape])
 
   if (!open) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={closeOnBackdrop ? onClose : undefined}>
       <div
         className="modal-panel fade-in"
         style={{ maxWidth }}

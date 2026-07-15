@@ -1,10 +1,10 @@
-# PROJECT_STATUS — bitacora-dashboard (Fly Kitchen)
+# PROJECT_STATUS — Fly Gestión (Fly Kitchen)
 
 > Última verificación: 2026-06-17. Todo lo indicado en este documento fue confirmado contra el código fuente del repositorio y el proyecto Supabase real (`mixyhfdlzjarvszinytk`), no contra memoria de conversaciones previas. Donde no fue posible verificar un dato, se indica explícitamente como "no verificado".
 
 ## 1. Qué es el sistema
 
-Aplicación web interna de Fly Kitchen para gestión operativa de sedes (comedores y hospitales): bitácora/novedades diarias, escalamientos, no conformidades, CAPA, tareas, mantenimiento de activos e instalaciones, gestión de flota de vehículos, y un módulo de equipo/RRHH (evaluaciones, historial, logros). Single Page Application sin backend propio: toda la lógica de negocio vive en el frontend y en Postgres (Supabase), sin una capa de API intermedia salvo 3 Edge Functions puntuales.
+**Fly Gestión** es la plataforma web interna de Fly Kitchen para gestión operativa de sedes (comedores y hospitales): bitácora/novedades diarias, escalamientos, no conformidades, CAPA, tareas, mantenimiento de activos e instalaciones, gestión de flota de vehículos y equipo/RRHH. La bitácora sigue siendo la base operativa, pero ya no es el nombre del producto completo. Single Page Application sin backend propio: toda la lógica de negocio vive en el frontend y en Postgres (Supabase), sin una capa de API intermedia salvo Edge Functions puntuales.
 
 ## 2. Stack tecnológico confirmado
 

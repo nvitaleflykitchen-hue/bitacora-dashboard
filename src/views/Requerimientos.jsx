@@ -82,7 +82,7 @@ function EquipoComprasModal({ onClose }) {
   const martina = EQUIPO_COMPRAS.find(p=>p.nombre.startsWith('Martina'))
   const diego = EQUIPO_COMPRAS.find(p=>p.nombre.startsWith('Diego'))
   return (
-    <div className="modal-overlay" style={{ zIndex:60 }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="modal-overlay" style={{ zIndex:60 }}>
       <div className="glass fade-in" style={{ width:'min(1040px,96vw)', maxHeight:'90vh', overflow:'auto', background:'var(--surface)', border:'1px solid rgba(57,255,20,.2)', borderRadius:5 }}>
         <div style={{ padding:'1rem 1.2rem', display:'flex', justifyContent:'space-between', gap:12, borderBottom:'1px solid rgba(255,255,255,.08)' }}>
           <div>
@@ -326,7 +326,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
   const L = { color:'var(--text-dim)', fontSize:'0.62rem', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:'monospace', display:'block', marginBottom:4 }
 
   return (
-    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in rounded" style={{ borderRadius:3, width:'100%', maxWidth:640, maxHeight:'92vh', overflowY:'auto' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.9rem 1.25rem', borderBottom:'1px solid rgba(57,255,20,0.1)', position:'sticky', top:0, background:'var(--surface)', zIndex:1 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>

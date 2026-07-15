@@ -20,6 +20,17 @@ const ALL_OPERATIONAL_ROLES = new Set(ROLES.filter(r => r !== 'operario'))
 const MANTENIMIENTO_ROLES = new Set([...ALL_OPERATIONAL_ROLES].filter(r => r !== 'flota'))
 const STAFF_ROLES = new Set(['admin', 'editor', 'grupo', 'encargado'])
 const QUALITY_ONLY_EMAILS = new Set(['tecnica@flykitchen.com.ar'])
+const SAFETY_ONLY_EMAILS = new Set(['rrhh.higieneyseguridad.emp@gmail.com'])
+const SAFETY_ONLY_NAV = new Set(['tablon', 'pendientes', 'sedesHub', 'requerimientos', 'mantenimientoHub', 'calidadHub', 'equipo'])
+const SAFETY_ONLY_VIEWS = new Set([
+  'tablon', 'pendientes', 'tareas', 'calendario',
+  'sedesHub', 'sede', 'sedeFicha',
+  'requerimientos',
+  'mantenimientoHub', 'mntDashboard', 'mntTickets', 'mntActivos', 'mntPlanes', 'mntProveedores',
+  'mntMatafuegos', 'mntInsumos', 'mntKanban', 'qrActivo',
+  'calidadHub', 'noConformidades', 'capa', 'indicadores',
+  'equipo',
+])
 const QUALITY_ONLY_NAV = new Set(['pendientes', 'requerimientos', 'mantenimientoHub', 'flotaHub', 'calidadHub', 'equipo'])
 const COMPRAS_ONLY_NAV = new Set(['inicio', 'requerimientos'])
 const COMPRAS_ONLY_VIEWS = new Set(['inicio', 'requerimientos'])
@@ -39,6 +50,11 @@ const QUALITY_TEXT_TERMS = ['calidad', 'bpm', 'higiene', 'inocuidad', 'auditoria
 export function isQualityOnlyProfile(perfil) {
   const email = String(perfil?.email || '').trim().toLowerCase()
   return QUALITY_ONLY_EMAILS.has(email)
+}
+
+export function isSafetyOnlyProfile(perfil) {
+  const email = String(perfil?.email || '').trim().toLowerCase()
+  return SAFETY_ONLY_EMAILS.has(email)
 }
 
 export function getComprasPermisos(perfil) {
@@ -136,6 +152,7 @@ export const PRIMARY_NAV = [
 const VIEW_ROLES = {
   inicio: ALL_OPERATIONAL_ROLES,
   tablon: ALL_OPERATIONAL_ROLES,
+  actualizaciones: ALL_OPERATIONAL_ROLES,
   pendientes: ALL_OPERATIONAL_ROLES,
   sedesHub: ALL_OPERATIONAL_ROLES,
   requerimientos: ALL_OPERATIONAL_ROLES,
@@ -168,18 +185,21 @@ const VIEW_ROLES = {
   qrActivo: ALL_OPERATIONAL_ROLES,
   usuarios: new Set(['admin']),
   auditoria: new Set(['admin']),
+  accesosApp: new Set(['admin']),
   // Plantilla semanal de vuelos por escala (admin/editor). No tiene ícono propio
   // en el menú principal: se entra desde la ficha de la sede tipo Aeropuerto.
   vuelosPlantilla: new Set(['admin','editor']),
 }
 
 export function canAccessView(rol, view, perfil = null) {
+  if (isSafetyOnlyProfile(perfil)) return SAFETY_ONLY_VIEWS.has(view)
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_VIEWS.has(view)
   if (isComprasOnlyProfile(perfil)) return COMPRAS_ONLY_VIEWS.has(view)
   return Boolean(VIEW_ROLES[view]?.has(rol))
 }
 
 export function getPrimaryNav(rol, perfil = null) {
+  if (isSafetyOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => SAFETY_ONLY_NAV.has(item.id))
   if (isQualityOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => QUALITY_ONLY_NAV.has(item.id))
   if (isComprasOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => COMPRAS_ONLY_NAV.has(item.id))
   return PRIMARY_NAV.filter(item => item.roles.has(rol))
@@ -201,6 +221,12 @@ export function getNavSection(view) {
 }
 
 export function canWrite(rol, domain, action = 'manage', perfil = null) {
+  if (isSafetyOnlyProfile(perfil)) {
+    if (['calidad', 'noConformidades', 'capa', 'tareas', 'mantenimiento'].includes(domain)) return true
+    if (domain === 'bitacora') return ['report', 'attach'].includes(action)
+    if (domain === 'compras') return action === 'request'
+    return false
+  }
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_WRITE_DOMAINS.has(domain)
   if (rol === 'admin' || rol === 'editor') return true
   if (domain === 'compras' && hasComprasPermission(perfil, action)) return true
@@ -253,6 +279,7 @@ export function canDeleteTicket(rol, ticket = null, perfilId = null) {
 }
 
 export function getDefaultView(rol, perfil = null) {
+  if (isSafetyOnlyProfile(perfil)) return 'calidadHub'
   if (isQualityOnlyProfile(perfil)) return 'calidadHub'
   if (isComprasOnlyProfile(perfil)) return 'requerimientos'
   return canAccessView(rol, 'inicio', perfil) ? 'inicio' : null

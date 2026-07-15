@@ -1,7 +1,7 @@
 self.addEventListener('push', event => {
   let payload = {}
   try { payload = event.data?.json() || {} } catch { payload = { body:event.data?.text() || '' } }
-  const title = payload.title || 'Bitácora In Situ · Fly Kitchen'
+  const title = payload.title || 'Fly Gestión · Fly Kitchen'
   event.waitUntil(self.registration.showNotification(title, {
     body:payload.body || 'Tenés una nueva alerta prioritaria.',
     tag:payload.tag || payload.dedupe_key || 'bitacora-alerta',

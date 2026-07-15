@@ -168,7 +168,7 @@ export default function ImportarContactosModal({ existentes = [], onClose, onImp
   const L = { color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:'monospace' }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="glass hud-corner fade-in rounded" style={{ borderRadius:3, width:'100%', maxWidth:700, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
 
         {/* Header */}

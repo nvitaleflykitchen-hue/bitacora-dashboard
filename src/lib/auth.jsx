@@ -38,6 +38,28 @@ export function AuthProvider({ children }) {
   const [accessBlocked, setAccessBlocked] = useState(false)
   const [authError, setAuthError] = useState(null)
   const perfilRef = useRef(null)
+  const accesoRegistradoRef = useRef(new Set())
+
+  const registrarAcceso = async (authUser) => {
+    if (!authUser?.id || accesoRegistradoRef.current.has(authUser.id)) return
+    accesoRegistradoRef.current.add(authUser.id)
+
+    const storageKey = `bitacora:acceso:${authUser.id}`
+    let sessionId = sessionStorage.getItem(storageKey)
+    if (!sessionId) {
+      sessionId = crypto.randomUUID()
+      sessionStorage.setItem(storageKey, sessionId)
+    }
+
+    const { error } = await supabase.rpc('registrar_acceso_app', {
+      p_session_id: sessionId,
+      p_user_agent: navigator.userAgent,
+    })
+    if (error) {
+      accesoRegistradoRef.current.delete(authUser.id)
+      console.warn('[auth] no se pudo registrar el acceso', error)
+    }
+  }
 
   const loadPerfil = async (authUser) => {
     if (!authUser) {
@@ -125,7 +147,7 @@ export function AuthProvider({ children }) {
       if (sedesError) throw sedesError
       setAllowedSedeIds((sedes || []).map(s => s.id))
       setAccessBlocked(!(sedes || []).length)
-    } else if ((rol === 'encargado' || rol === 'sede' || rol === 'operario') && data?.sede_ids?.length) {
+    } else if ((rol === 'encargado' || rol === 'sede' || rol === 'operario' || rol === 'mnt_editor') && data?.sede_ids?.length) {
       setAllowedSedeIds(data.sede_ids)
       setAccessBlocked(false)
     } else {
@@ -147,7 +169,8 @@ export function AuthProvider({ children }) {
       setUser(authUser ?? null)
 
       try {
-        await loadPerfil(authUser)
+        const perfilCargado = await loadPerfil(authUser)
+        if (perfilCargado?.activo) registrarAcceso(authUser)
       } catch (err) {
         console.error(`[auth] ${source} falló`, err)
         if (cancelled || currentRun !== runId) return

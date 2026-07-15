@@ -36,7 +36,7 @@ serve(async (req) => {
       // Ver si ya existe un ticket abierto/en progreso para este plan
       const { data: ticketsActivos, error: errTkt } = await supabaseClient
         .from('mnt_tickets')
-        .select('id, estado')
+        .select('id, estado, escalamiento_id')
         .eq('plan_id', plan.id)
         .neq('estado', 'cerrado')
         .neq('estado', 'cancelado')
@@ -51,16 +51,29 @@ serve(async (req) => {
          
          if (diffDays > 3) {
              const ticketId = ticketsActivos[0].id
-             // Escalar ticket si no está ya escalado
-             const { data: checkEsc } = await supabaseClient.from('escalamientos').select('id').eq('entidad_id', ticketId).eq('entidad_tipo', 'mnt_ticket')
-             if (!checkEsc || checkEsc.length === 0) {
-                 await supabaseClient.from('escalamientos').insert({
-                     entidad_id: ticketId,
-                     entidad_tipo: 'mnt_ticket',
-                     motivo: 'Mantenimiento preventivo vencido por más de 3 días',
-                     estado: 'Pendiente'
+             // El vínculo real vive en mantenimiento.tickets.escalamiento_id.
+             if (!ticketsActivos[0].escalamiento_id) {
+               const { data: escalamiento, error: errEsc } = await supabaseClient
+                 .schema('bitacora')
+                 .from('escalamientos')
+                 .insert({
+                   tipo: 'Mantenimiento',
+                   descripcion: 'Mantenimiento preventivo vencido por más de 3 días',
+                   estado: 'Pendiente',
+                   sede_id: plan.sede_id,
+                   fecha_reporte: today,
+                   reportante: 'Sistema'
                  })
-                 escalados++
+                 .select('id')
+                 .single()
+               if (errEsc) throw new Error(`No se pudo escalar el plan ${plan.id}: ${errEsc.message}`)
+
+               const { error: errLink } = await supabaseClient
+                 .from('mnt_tickets')
+                 .update({ escalamiento_id: escalamiento.id })
+                 .eq('id', ticketId)
+               if (errLink) throw new Error(`No se pudo vincular el escalamiento al ticket ${ticketId}: ${errLink.message}`)
+               escalados++
              }
          }
       } else {
@@ -73,15 +86,16 @@ serve(async (req) => {
                plan_id: plan.id,
                activo_id: plan.activo_id,
                sede_id: activoData?.sede_id,
-               tipo: 'Preventivo',
-               prioridad: 'Media',
+               responsable_id: plan.responsable_id,
+               tipo: 'preventivo',
+               prioridad: 'media',
                estado: 'abierto',
                descripcion: `Mantenimiento Preventivo: ${plan.nombre}`,
                fecha_limite: plan.proxima_fecha
                // El creador_id o responsable se pueden vincular después
             }).select('id, prioridad, sede_id').single()
 
-         if (errNewTkt) throw errNewTkt
+         if (errNewTkt) throw new Error(`No se pudo crear el ticket del plan ${plan.id}: ${errNewTkt.message}`)
          generated++
          
          // Trigger push notification invoking the other edge function

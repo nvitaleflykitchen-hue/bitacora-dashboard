@@ -4,6 +4,12 @@
 
 ## 1. Decisiones de producto / alcance
 
+### 1.0 Identidad Fly Gestión y comunicación obligatoria de cambios (2026-07-14)
+
+La plataforma pasa a llamarse **Fly Gestión**. “Bitácora” se conserva como denominación del registro operativo, pero deja de representar al producto completo. El Tablón queda reservado para anuncios operativos y la sección **Actualizaciones** concentra las versiones del sistema mediante fichas estructuradas. Cada versión debe informar fecha, funciones, problema resuelto, usuarios afectados, uso y capturas o ejemplos cuando corresponda. El aviso de una versión no vista aparece al ingresar y se registra localmente por usuario y navegador, sin agregar escrituras en Supabase.
+
+El criterio de cierre adoptado es: **un cambio no se considera terminado hasta que esté desarrollado, probado, documentado y comunicado**. El procedimiento se detalla en `docs/RELEASE_PROCESS.md`.
+
 ### 1.1 Unificar Comedores y Hospitales en una sola app, no dos
 `registros.origen_form` distingue `Comedores`/`Hospitales` como valores de un mismo dominio, no como sistemas separados. Mismo turno (`Apertura`/`Cierre`/`Único`), mismo flujo de escalamiento, mismo RBAC. Decisión implícita en el esquema, no hay documentación explícita de la alternativa descartada (apps separadas por tipo de sede).
 
@@ -35,6 +41,12 @@ A pedido del usuario, se cargaron directamente por SQL (no por el formulario de 
 
 ### 1.4d Carga del Plan CAPA “Gestión integral de Escalas” (2026-06-19)
 A pedido explícito del usuario se cargaron en producción las 11 acciones del documento `Plan_de_Accion_Gestion_de_Escalas_Miguel_Nicolas.docx` como `CA-2026-010` a `CA-2026-020`, agrupadas bajo `auditoria_codigo = 'FK-GEST-ESCALAS-2026-06-19'`. La asignación operativa solicitada prevalece sobre los responsables mixtos del documento: todas quedaron con `responsable = 'Miguel Riviere'`, `sede_id = NULL` y `sede_nombre = 'Gestión'`; los responsables adicionales originales se conservaron en `notas` junto con plazo, inicio y evidencia de cierre. Estado inicial `Pendiente`, tipo `Correctiva`, sin vínculo a No Conformidad. El cargador idempotente `scripts/load_plan_gestion_escalas.mjs` verificó 11 filas, códigos consecutivos, asignación y ausencia de caracteres corruptos.
+
+### 1.4e Auditoría de Seguridad, Higiene y Medio Ambiente - Aeropuerto Rosario (2026-07-14)
+
+Se cargó la auditoría de junio de 2026 como `NC-2026-012`, sede `Aeropuerto Rosario` (`sede_id=10`), categoría `Seguridad, Higiene y Medio Ambiente`, vinculada a 16 acciones correctivas `CA-2026-029` a `CA-2026-044` bajo `auditoria_codigo='FK-HYS-ROS-2026-06'`. El PDF completo quedó adjunto a la NC y enlazado desde cada CAPA; 19 fotografías originales extraídas de las páginas 6 y 7 quedaron asociadas a los relevamientos fotografiados.
+
+El usuario confirmó que el encabezado `UTV Aeroemergencias / 04-2026 / Hangar 12` incluido en la hoja del plan es un error de edición del auditor y debe ignorarse. El documento no informaba responsables ni fechas. Para permitir seguimiento se asignaron responsables operativos según dominio (`Gastón Gracia`, `Técnica Fly Kitchen`, `Nicolás Vitale` o combinaciones) y plazos por nivel de riesgo: nivel 6 al 21/07/2026, nivel 4 al 28/07/2026, nivel 3 al 13/08/2026, nivel 2 al 28/08/2026 y nivel 1 al 12/09/2026. Esta regla quedó explícita en las notas de cada CAPA.
 
 ### 1.4 Agregar Flota como submódulo de Mantenimiento, no como módulo nuevo independiente
 Los vehículos se modelan como un subtipo de `mantenimiento.activos` (`tipo = 'VEHICULO'`), reutilizando la misma tabla y los mismos tickets/checklists que equipos e instalaciones, en lugar de crear tablas `vehiculos`/`tickets_flota` separadas. Confirmado en el código: `MntFlotaGestion.jsx` y `MntVehiculos.jsx` filtran `activos` por `tipo`, y `MntActivos.jsx` explícitamente excluye `VEHICULO` de su listado para no duplicar la vista. Ventaja: reutiliza todo el motor de tickets/checklists/alertas sin duplicar lógica. Costo: cualquier columna específica de vehículo (patente, vencimiento de documentación) vive en las mismas columnas genéricas de `activos`, lo que acopla el modelo de datos de vehículos al de equipos/instalaciones.

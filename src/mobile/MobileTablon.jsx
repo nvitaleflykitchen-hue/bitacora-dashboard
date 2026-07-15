@@ -36,7 +36,10 @@ export default function MobileTablon() {
   return (
     <div className="mobile-scroll" style={{ padding: '1.25rem 1rem 1rem', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
-        <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700 }}>📣 Tablón</h1>
+        <div>
+          <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700 }}>📣 Tablón operativo</h1>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.7rem', marginTop: 3 }}>Avisos de la operación; las versiones están en Actualizaciones.</p>
+        </div>
       </div>
 
       <div style={{ flex: 1 }}>

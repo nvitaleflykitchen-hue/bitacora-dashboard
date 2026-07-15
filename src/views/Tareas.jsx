@@ -195,6 +195,8 @@ export default function Tareas({ focusId }) {
                   <th>Título</th>
                   <th className="hidden sm:table-cell">Sede</th>
                   <th className="hidden md:table-cell">Responsable</th>
+                  <th className="hidden xl:table-cell">Creada por</th>
+                  <th className="hidden xl:table-cell">Creada el</th>
                   <th>Prioridad</th>
                   <th>Estado</th>
                   <th className="hidden lg:table-cell">Vence</th>
@@ -215,6 +217,12 @@ export default function Tareas({ focusId }) {
                     <td className="hidden md:table-cell" style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>
                       {t.responsable || '—'}
                     </td>
+                    <td className="hidden xl:table-cell" style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>
+                      {t.creador?.nombre || 'Autor no registrado'}
+                    </td>
+                    <td className="hidden xl:table-cell" style={{ color:'var(--text-dim)', fontSize:'0.72rem', whiteSpace:'nowrap' }}>
+                      {t.created_at ? new Date(t.created_at).toLocaleString('es-AR', { dateStyle:'short', timeStyle:'short' }) : '—'}
+                    </td>
                     <td>
                       <span className={`chip ${t.prioridad === 'Alta' ? 'chip-red' : t.prioridad === 'Media' ? 'chip-yellow' : 'chip-gray'}`}>
                         {t.prioridad}
@@ -230,7 +238,7 @@ export default function Tareas({ focusId }) {
                 ))}
                 {tareas.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-10" style={{ color:'var(--text-dim)' }}>Sin tareas</td>
+                    <td colSpan={8} className="text-center py-10" style={{ color:'var(--text-dim)' }}>Sin tareas</td>
                   </tr>
                 )}
               </tbody>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HELP_MODULES } from '../data/helpContent'
+import { APP_VERSION } from '../data/releases'
 
 /* ── Print styles ──────────────────────────────────────────────────────────
    Se inyectan en <head> al montar el panel y se eliminan al desmontarlo.
@@ -34,7 +35,7 @@ function injectPrintStyles() {
 function PrintRoot() {
   return (
     <div id="help-print-root">
-      <h1 style={{ fontSize:'1.4rem', marginBottom:'0.25rem' }}>Manual de Uso — Bitácora</h1>
+      <h1 style={{ fontSize:'1.4rem', marginBottom:'0.25rem' }}>Manual de Uso — Fly Gestión</h1>
       <p style={{ fontSize:'0.78rem', color:'#555', marginBottom:'2rem' }}>
         Sistema de operaciones · {new Date().toLocaleDateString('es-AR', { year:'numeric', month:'long' })}
       </p>
@@ -104,7 +105,7 @@ export default function HelpPanel({ onClose }) {
               📖 Manual de Uso
             </p>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', marginTop: 2 }}>
-              Central de ayuda · Bitácora
+              Central de ayuda · Fly Gestión
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -215,7 +216,7 @@ export default function HelpPanel({ onClose }) {
             {HELP_MODULES.length} módulos · Presioná Esc para cerrar
           </p>
           <p style={{ color: 'rgba(57,255,20,0.25)', fontSize: '0.6rem' }}>
-            Bitácora · v2.0
+            Fly Gestión · v{APP_VERSION}
           </p>
         </div>
       </div>

@@ -7,12 +7,12 @@ export const HELP_MODULES = [
     id: 'general',
     label: 'Primeros pasos',
     icon: '🚀',
-    intro: 'Todo lo que necesitás saber para empezar a usar la bitácora.',
+    intro: 'Todo lo que necesitás saber para empezar a usar Fly Gestión.',
     sections: [
       {
-        title: '¿Qué es Bitácora?',
+        title: '¿Qué es Fly Gestión?',
         body: [
-          'Bitácora es el sistema central de operaciones de la empresa: un lugar donde registrar novedades del turno, gestionar mantenimiento, controlar la flota, hacer seguimiento de calidad y coordinar compras.',
+          'Fly Gestión es la plataforma integral de gestión de la empresa. La bitácora operativa es su base para registrar novedades y mantener trazabilidad, y se complementa con tareas, personal, mantenimiento, flota, calidad y compras.',
           'Cada área tiene su módulo. Dependiendo de tu rol (encargado, sede, flota, etc.) vas a ver solo lo que te corresponde.',
         ],
       },
@@ -59,6 +59,14 @@ export const HELP_MODULES = [
         ],
       },
       {
+        title: 'Dotación del turno o novedad de una persona',
+        body: [
+          'Usá “Dotación y cobertura del turno” para informar la situación general del equipo durante ese turno: dotación insuficiente, puestos sin cubrir, reemplazos, reorganización o impacto en el servicio.',
+          'Usá “Novedades de personal” cuando el hecho corresponda a una persona concreta. Seleccioná a la persona y registrá la categoría correspondiente: ausentismo, llegada tarde, desempeño, conducta u otro.',
+          'Ejemplo: si faltó una persona y fue necesario reorganizar el turno, registrá la cobertura general en Dotación y agregá la ausencia individual en Novedades de personal. De esta forma, ambos hechos quedan vinculados en un mismo reporte sin mezclar sus finalidades.',
+        ],
+      },
+      {
         title: 'Adjuntar fotos',
         body: [
           'En el formulario de reporte hay un campo para adjuntar imágenes. Podés tomar una foto en el momento o elegir una de la galería.',
@@ -79,29 +87,27 @@ export const HELP_MODULES = [
     id: 'tablon',
     label: 'Tablón',
     icon: '📌',
-    intro: 'El registro histórico de todas las novedades del sistema.',
+    intro: 'Anuncios operativos dirigidos a toda la organización o a sedes específicas.',
     sections: [
       {
         title: '¿Qué es el Tablón?',
         body: [
-          'El Tablón muestra todas las novedades cargadas en el sistema, de todas las sedes. Es la vista "histórica" de la bitácora.',
-          'Podés filtrar por sede, módulo, fecha y estado para encontrar lo que buscás.',
+          'El Tablón muestra comunicaciones operativas publicadas por administradores para toda la organización, grupos o sedes específicas.',
+          'Las nuevas versiones y cambios de funciones se consultan por separado en Actualizaciones.',
         ],
       },
       {
-        title: 'Filtros y búsqueda',
+        title: 'Anuncios y alcance',
         body: [
-          'Usá los filtros en la parte superior para acotar la búsqueda por: sede, módulo (Operaciones, Personal, Mantenimiento, etc.), rango de fechas.',
-          'El buscador global (Ctrl+K en la computadora) te permite buscar en toda la app, incluyendo novedades.',
+          'Cada usuario ve los anuncios destinados a su alcance. Un anuncio puede incluir texto, imágenes y archivos.',
+          'Al abrir el Tablón, los anuncios pendientes quedan marcados como leídos.',
         ],
       },
       {
-        title: 'Estados de las novedades',
+        title: 'Qué no se publica acá',
         body: [
-          '• Pendiente: registrada, sin resolver.',
-          '• En gestión: fue escalada y está siendo atendida.',
-          '• Resuelta: la novedad fue cerrada con resolución.',
-          '• Rechazada: fue marcada como no procedente.',
+          'Las versiones, funciones nuevas y cambios de uso se publican en Actualizaciones.',
+          'Las novedades de turno continúan en la bitácora operativa y sus vistas de seguimiento.',
         ],
       },
     ],
@@ -170,6 +176,15 @@ export const HELP_MODULES = [
           'Un ticket es una solicitud de trabajo o reparación. Puede crearse manualmente o a partir de una novedad escalada.',
           'Cada ticket tiene: sede, descripción, prioridad (baja / media / alta / urgente), estado (abierto / en proceso / resuelto) y responsable.',
           'Desde la vista de Tickets podés filtrar por estado, sede y prioridad.',
+        ],
+      },
+      {
+        title: 'Trabajo desde el celular',
+        body: [
+          'Los usuarios de Gestión Mantenimiento ingresan directamente a Mi trabajo y solo ven los tickets que tienen asignados.',
+          'Abrí un ticket y tocá Iniciar trabajo. Registrá el diagnóstico o la tarea realizada y agregá fotos, archivos o comentarios como evidencia.',
+          'Cuando el trabajo esté terminado, tocá Finalizar trabajo. El sistema exige una descripción del trabajo realizado y conserva el ticket en Historial.',
+          'La cámara del teléfono se abre desde Evidencias → Tomar foto. Si el navegador solicita permiso, elegí Permitir.',
         ],
       },
       {
@@ -263,6 +278,17 @@ export const HELP_MODULES = [
     icon: '✅',
     intro: 'No conformidades y acciones correctivas/preventivas (CAPA) para la mejora continua.',
     sections: [
+      {
+        title: 'Auditorías internas',
+        body: [
+          'Desde Calidad → Auditorías internas podés programar una auditoría y seleccionar la sede, fecha, tipo y plantilla. La misma sección también aparece dentro de la ficha de cada sede.',
+          'Cada punto se evalúa como Cumple, Parcial, No cumple o No observado. Los puntos Parcial o No cumple deben llevar una observación y pueden originar un hallazgo con criticidad, responsable, plazo y evidencia.',
+          'Calidad y Seguridad e Higiene pueden auditar todas las sedes. Miguel Riviere puede gestionar auditorías de aeropuertos. Los responsables territoriales pueden consultar y aportar respuestas o evidencias en sus sedes.',
+          'Desde el celular, usá “Tomar foto” debajo de cada punto para abrir la cámara trasera. También podés elegir imágenes de la galería o adjuntar documentos.',
+          'En los hallazgos, cargá por separado la evidencia inicial y la evidencia de corrección o cierre. Usá “Editar” para actualizar los datos generales sin cambiar la plantilla.',
+          'Desde un hallazgo se puede generar una No Conformidad y su CAPA. La auditoría se considera finalizada cuando el relevamiento, los hallazgos y el porcentaje estén completos; el cierre definitivo requiere verificar las acciones.',
+        ],
+      },
       {
         title: 'No conformidades',
         body: [

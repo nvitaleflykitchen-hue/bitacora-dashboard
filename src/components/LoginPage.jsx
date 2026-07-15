@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { APP_VERSION } from '../data/releases'
 
 function FKLogo({ size = 'md' }) {
   const big = size === 'lg'
@@ -59,11 +60,11 @@ export default function LoginPage() {
           {/* logo removido */}
           <p className="font-metric text-xs mt-3 tracking-widest"
             style={{ color:'var(--phosphor)', opacity:0.9 }}>
-            BITÁCORA IN SITU
+            FLY GESTIÓN
           </p>
           <p className="font-metric text-xs mt-0.5 tracking-widest"
             style={{ color:'rgba(57,255,20,0.45)', fontSize:'0.6rem' }}>
-            KITCHEN-OS
+            PLATAFORMA INTEGRAL
           </p>
         </div>
 
@@ -119,7 +120,7 @@ export default function LoginPage() {
 
         <p className="font-metric text-center mt-6"
           style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.15em' }}>
-          FLY KITCHEN · KITCHEN-OS v2.0
+          FLY KITCHEN · FLY GESTIÓN v{APP_VERSION}
         </p>
       </div>
     </div>

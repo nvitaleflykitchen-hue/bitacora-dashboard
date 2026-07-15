@@ -120,7 +120,10 @@ export default function Tablon() {
   return (
     <div style={{ padding: '1.5rem 2rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 className='font-title' style={{ color: 'var(--text)', fontWeight: 800, fontSize: '1.4rem' }}>📣 Tablón</h1>
+        <div>
+          <h1 className='font-title' style={{ color: 'var(--text)', fontWeight: 800, fontSize: '1.4rem' }}>📣 Tablón operativo</h1>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: 4 }}>Avisos para la operación. Las versiones y funciones nuevas se publican en Actualizaciones.</p>
+        </div>
         {isAdmin && (
           <button onClick={() => setNuevoModal(true)}
             style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius: 3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>

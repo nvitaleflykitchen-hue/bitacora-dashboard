@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { isPast, isToday } from 'date-fns'
 import { updateTarea } from '../lib/queries'
-import { Calendar, User, Plus, X, Check, ChevronDown, Pencil } from 'lucide-react'
+import { Calendar, User, Plus, X, Check, ChevronDown, Pencil, UserRoundPlus, Clock3 } from 'lucide-react'
 import TareaForm, { ShareButtons, getCategoriaLabel } from './TareaForm'
 import { fmtFecha } from '../lib/dateUtils'
 import ComentariosHilo from './ComentariosHilo'
@@ -27,6 +27,11 @@ function fechaChip(fechaLimite) {
   const diff = (d - new Date()) / 86400000
   if (diff < 7) return <span className="chip chip-yellow">{label}</span>
   return <span className="chip chip-gray">{label}</span>
+}
+
+function fechaCreacion(value) {
+  if (!value) return 'Fecha no registrada'
+  return new Date(value).toLocaleString('es-AR', { dateStyle:'short', timeStyle:'short' })
 }
 
 function Subtareas({ tareaId, subtareas = [], onUpdate, readOnly }) {
@@ -323,6 +328,14 @@ function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
             {fechaChip(tarea.fecha_limite)}
           </div>
         )}
+        <div className="flex items-center gap-1" style={{ color:'var(--text-dim)', fontSize:'0.66rem' }}>
+          <UserRoundPlus size={10} />
+          <span>Creada por: {tarea.creador?.nombre || 'Autor no registrado'}</span>
+        </div>
+        <div className="flex items-center gap-1" style={{ color:'var(--text-dim)', fontSize:'0.66rem' }}>
+          <Clock3 size={10} />
+          <span>Creada el: {fechaCreacion(tarea.created_at)}</span>
+        </div>
       </div>
 
       <select

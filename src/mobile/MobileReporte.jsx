@@ -28,7 +28,7 @@ const MODULOS = [
   { key: 'd', label: 'Stock crítico', ejemplo: 'Ej: quedan 2 días de aceite, pedir reposición urgente' },
   { key: 'e', label: 'Equipos / Mantenimiento', ejemplo: 'Ej: el horno industrial no calienta, ya se generó ticket' },
   { key: 'f', label: 'Higiene / BPM', ejemplo: 'Ej: falta jabón en el lavamanos de cocina' },
-  { key: 'g', label: 'Personal / Dotación', ejemplo: 'Ej: ausencia sin aviso de un cocinero, se cubrió con suplente' },
+  { key: 'g', label: 'Dotación y cobertura del turno', ejemplo: 'Ej: dotación incompleta en el turno, se reorganizaron puestos o se cubrió con suplente' },
   { key: 'h', label: 'Cliente / Usuario / Incidentes', ejemplo: 'Ej: reclamo de un comensal por demora, ya resuelto' },
 ]
 
@@ -1515,6 +1515,9 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
         {/* Módulos A-H */}
         <div style={{ marginBottom: '1.25rem' }}>
           <SectionLabel>Módulos</SectionLabel>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.45, margin: '-0.1rem 0 0.7rem' }}>
+            En “Dotación y cobertura del turno” registrá la situación general del equipo. Si el hecho corresponde a una persona concreta, agregalo también en “Novedades de personal”.
+          </p>
           {MODULOS.map(m => (
             <ModuloCard key={m.key} mod={m}
               items={modulos[m.key].items}

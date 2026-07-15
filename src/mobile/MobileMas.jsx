@@ -1,23 +1,27 @@
 import { useState } from 'react'
-import { ClipboardList, Users, Wrench, BarChart3, Megaphone, Phone, ChevronRight, ChevronLeft } from 'lucide-react'
+import { ClipboardCheck, ClipboardList, Users, Wrench, BarChart3, Megaphone, Phone, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
 import MobileCapa from './MobileCapa'
 import MobilePersonal from './MobilePersonal'
 import MobileMantenimiento from './MobileMantenimiento'
 import MobileIndicadores from './MobileIndicadores'
 import MobileTablon from './MobileTablon'
 import MobileContactos from './MobileContactos'
+import MobileActualizaciones from './MobileActualizaciones'
 import { useAuth } from '../lib/auth'
 import { canAccessView } from '../lib/access'
 import MobileFlota from './MobileFlota'
 import { useBackHandler } from '../lib/backStack'
+import AuditoriasInternas from '../views/AuditoriasInternas'
 
 const MODULES = [
   { key: 'calidad',       label: 'Calidad',       sub: 'CAPA / No Conformidades',         icon: ClipboardList, ready: true,  view: 'calidadHub' },
+  { key: 'auditorias',    label: 'Auditorías internas', sub: 'Relevamiento, fotos y hallazgos', icon: ClipboardCheck, ready: true, view: 'calidadHub' },
   { key: 'personal',      label: 'Personal',      sub: 'Equipo / RRHH',                    icon: Users,         ready: true,  view: 'equipo' },
   { key: 'mantenimiento', label: 'Mantenimiento', sub: 'Activos, insumos, matafuegos',     icon: Wrench,        ready: true,  view: 'mantenimientoHub' },
   { key: 'indicadores',   label: 'Indicadores',   sub: 'Dashboard / Calendario',           icon: BarChart3,     ready: true,  view: 'calendario' },
   { key: 'flota',         label: 'Flota',         sub: 'Vehículos y documentación',        icon: Wrench,        ready: true,  view: 'flotaHub' },
-  { key: 'tablon',        label: 'Tablón',        sub: 'Anuncios y novedades',             icon: Megaphone,     ready: true,  view: 'tablon' },
+  { key: 'tablon',        label: 'Tablón',        sub: 'Anuncios operativos',               icon: Megaphone,     ready: true,  view: 'tablon' },
+  { key: 'actualizaciones', label: 'Actualizaciones', sub: 'Versiones y nuevas funciones',  icon: Sparkles,      ready: true,  view: 'actualizaciones' },
   { key: 'contactos',     label: 'Directorio',    sub: 'Teléfonos importantes',            icon: Phone,         ready: true,  view: 'inicio' },
 ]
 
@@ -61,7 +65,10 @@ export default function MobileMas({ initialModule = null }) {
   const { rol, perfil } = useAuth()
   const [active, setActive] = useState(initialModule)
   useBackHandler(() => setActive(null), !!active)
-  const visibleModules = MODULES.filter(m => canAccessView(rol, m.view, perfil))
+  const visibleModules = MODULES.filter(m =>
+    canAccessView(rol, m.view, perfil) &&
+    (rol !== 'mnt_editor' || ['mantenimiento', 'actualizaciones', 'contactos'].includes(m.key))
+  )
 
   if (active) {
     const mod = visibleModules.find(m => m.key === active)
@@ -90,11 +97,13 @@ export default function MobileMas({ initialModule = null }) {
         </button>
         <div style={{ flex: 1, minHeight: 0 }}>
           {mod.key === 'calidad' && <MobileCapa />}
+          {mod.key === 'auditorias' && <div className="mobile-scroll" style={{height:'100%',overflowY:'auto',padding:'1rem'}}><AuditoriasInternas /></div>}
           {mod.key === 'personal' && <MobilePersonal />}
           {mod.key === 'mantenimiento' && <MobileMantenimiento />}
           {mod.key === 'indicadores' && <MobileIndicadores />}
           {mod.key === 'flota' && <MobileFlota />}
           {mod.key === 'tablon' && <MobileTablon />}
+          {mod.key === 'actualizaciones' && <MobileActualizaciones />}
           {mod.key === 'contactos' && <MobileContactos />}
         </div>
       </div>
