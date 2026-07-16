@@ -5,11 +5,13 @@ import PorSede from './PorSede'
 import SedeFicha from './SedeFicha'
 import SedeResponsables from './SedeResponsables'
 import ComedoresMetricas from './ComedoresMetricas'
+import ChecklistsView from './ChecklistsView'
 
 const TABS = [
   { id:'estado', label:'Estado por sede' },
   { id:'comedores', label:'Comedores' },
   { id:'ficha', label:'Ficha de unidad' },
+  { id:'checklists', label:'Checklists', hideFor:['sede'] },
   { id:'responsables', label:'Responsables', hideFor:['sede'] },
 ]
 
@@ -24,11 +26,13 @@ export default function SedesHub({ onNavigate, focusId, focusType }) {
   })
   const ActiveView = activeTab === 'ficha'
     ? SedeFicha
-    : activeTab === 'responsables'
-      ? SedeResponsables
-      : activeTab === 'comedores'
-        ? ComedoresMetricas
-        : PorSede
+    : activeTab === 'checklists'
+      ? ChecklistsView
+      : activeTab === 'responsables'
+        ? SedeResponsables
+        : activeTab === 'comedores'
+          ? ComedoresMetricas
+          : PorSede
 
   return (
     <WorkspaceTabs title="Sedes" subtitle="Operación, comedores, ficha y responsables en un solo lugar" tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>

@@ -125,6 +125,16 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
   })
   const [nuevoInterviniente, setNuevoInterviniente] = useState('')
 
+  const esAdminTareas = ['admin', 'editor'].includes(perfil?.rol)
+  const misSedes = allowedSedeIds
+  const perfilesVisibles = esAdminTareas || misSedes === null
+    ? perfiles
+    : perfiles.filter(p =>
+        p.id === perfil?.id ||
+        (Array.isArray(p.sede_ids) && p.sede_ids.some(id => misSedes?.includes(id))) ||
+        (p.sede_id != null && misSedes?.includes(p.sede_id))
+      )
+
   useEffect(() => {
     Promise.all([getSedes(), getPerfilesConDirectorio(), getContactos()])
       .then(([s, p, c]) => { setSedes(s); setPerfiles(p.filter(x => x.activo !== false)); setContactos(c) })
@@ -258,9 +268,9 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
                 handleResponsable(source, id)
               }}>
               <option value="">— Sin asignar —</option>
-              {perfiles.length > 0 && (
-                <optgroup label="── Usuarios del sistema ──">
-                  {perfiles.map(p => (
+              {perfilesVisibles.length > 0 && (
+                <optgroup label={esAdminTareas ? "── Usuarios del sistema ──" : "── Mi equipo ──"}>
+                  {perfilesVisibles.map(p => (
                     <option key={p.id} value={`perfil::${p.id}`}>{p.nombre} · {p.rol}</option>
                   ))}
                 </optgroup>

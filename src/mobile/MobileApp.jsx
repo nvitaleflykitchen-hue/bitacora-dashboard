@@ -119,7 +119,7 @@ export default function MobileApp() {
     if (tab === 'tareas')        return <MobileTareas />
     if (tab === 'sedes')         return <MobileSedes />
     if (tab === 'escalamientos') return <MobileEscalamientos />
-    if (tab === 'checklist')     return <MobileChecklist onBack={() => setTab('home')} />
+    if (tab === 'checklist')     return <MobileChecklist onBack={() => setTab('home')} onGoTareas={() => setTab('tareas')} />
     if (tab === 'tickets')       return <MobileTickets />
     if (tab === 'compras')       return <MobileRequerimientos />
     if (tab === 'mas')           return <MobileMas initialModule={masModule} />

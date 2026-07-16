@@ -3,13 +3,15 @@ import { getChecklistItems, getChecklistHoy, createChecklist, getSedes } from '.
 import { useAuth } from '../lib/auth'
 import { ChevronLeft, CheckSquare, Square, Check } from 'lucide-react'
 import { ELPIDIO_TORRES_SEDE_ID, ELPIDIO_TURNO_INFO } from '../data/checklistSedeTemplates'
+import { toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 const TIPO_LABELS = {
   apertura: { label: 'Apertura', emoji: '🌅', color: '#39FF14' },
   cierre:   { label: 'Cierre',   emoji: '🌙', color: '#F59E0B' },
 }
 
-export default function MobileChecklist({ onBack }) {
+export default function MobileChecklist({ onBack, onGoTareas }) {
   const { perfil, allowedSedeIds } = useAuth()
   const [tipo,      setTipo]      = useState(null)    // 'apertura' | 'cierre'
   const [sedes,     setSedes]     = useState([])
@@ -73,11 +75,11 @@ export default function MobileChecklist({ onBack }) {
   const handleSubmit = async () => {
     if (!sedeId || !tipo) return
     if (esPilotoElpidio && answeredCount < totalCount) {
-      alert('Completá todos los puntos antes de enviar el checklist.')
+      toast.warn('Completá todos los puntos antes de enviar el checklist.')
       return
     }
     if (esPilotoElpidio && noCumplidos > 0 && !obs.trim()) {
-      alert('Contanos brevemente qué ocurrió en los puntos no cumplidos.')
+      toast.warn('Contanos brevemente qué ocurrió en los puntos no cumplidos.')
       return
     }
     setLoading(true)
@@ -99,6 +101,7 @@ export default function MobileChecklist({ onBack }) {
       setSubmitted(true)
     } catch (e) {
       console.error(e)
+      toast.error('No se pudo enviar el checklist: ' + mensajeError(e))
     } finally {
       setLoading(false)
     }
@@ -126,8 +129,17 @@ export default function MobileChecklist({ onBack }) {
           marginTop:'0.5rem', padding:'0.75rem 2rem', borderRadius:8,
           background:'var(--phosphor)', color:'#0A0A0E', fontWeight:700, border:'none', cursor:'pointer',
         }}>
-          Volver
+          Volver al inicio
         </button>
+        {onGoTareas && (
+          <button onClick={onGoTareas} style={{
+            padding:'0.75rem 2rem', borderRadius:8, background:'none',
+            border:'1px solid rgba(57,255,20,0.3)', color:'var(--phosphor)',
+            fontWeight:600, fontSize:'0.85rem', cursor:'pointer',
+          }}>
+            Registrar tarea de seguimiento
+          </button>
+        )}
       </div>
     )
   }
