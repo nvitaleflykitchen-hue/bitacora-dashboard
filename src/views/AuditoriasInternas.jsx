@@ -28,6 +28,7 @@ import {
   upsertAuditoriaRespuestas,
 } from "../lib/queries";
 import AdjuntosPanel from "../components/AdjuntosPanel";
+import AuditoriaInforme from "./AuditoriaInforme";
 import { generarInformeAuditoriaPDF } from "../lib/auditoriaReportPdf";
 import { toast } from "../lib/feedback";
 import { mensajeError } from "../lib/errores";
@@ -501,7 +502,8 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
     [finding, setFinding] = useState(false),
     [editing, setEditing] = useState(false),
     [resumenFinal, setResumenFinal] = useState(""),
-    [conclusiones, setConclusiones] = useState("");
+    [conclusiones, setConclusiones] = useState(""),
+    [modoEdicion, setModoEdicion] = useState(false);
   const load = useCallback(async () => {
     try {
       const a = await getAuditoriaInterna(id);
@@ -546,6 +548,9 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
       </div>
     );
   const canManage = canManageAudit(perfil, audit.sedes?.tipo);
+  // Finalizada/Cerrada se muestran como informe de lectura, no como formulario.
+  const esInforme =
+    ["Finalizada", "Cerrada"].includes(audit.estado) && !modoEdicion;
   const canShare =
     perfil?.rol === "admin" && ["Finalizada", "Cerrada"].includes(audit.estado);
   const shareText = () =>
@@ -702,9 +707,18 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canManage && (
+          {canManage && !esInforme && (
             <button className="btn-ghost" onClick={() => setEditing(true)}>
               <Pencil size={14} /> Editar
+            </button>
+          )}
+          {canManage && esInforme && (
+            <button
+              className="btn-ghost"
+              title="Volver al modo edición del recorrido"
+              onClick={() => setModoEdicion(true)}
+            >
+              <Pencil size={14} /> Reabrir edición
             </button>
           )}
           <button
@@ -754,14 +768,16 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
               </button>
             </>
           )}
-          <button
-            className="btn-ghost"
-            disabled={busy}
-            onClick={() => save(false)}
-          >
-            <Save size={14} /> Guardar
-          </button>
-          {canManage && (
+          {!esInforme && (
+            <button
+              className="btn-ghost"
+              disabled={busy}
+              onClick={() => save(false)}
+            >
+              <Save size={14} /> Guardar
+            </button>
+          )}
+          {canManage && !esInforme && (
             <button
               className="btn-primary"
               disabled={busy}
@@ -772,6 +788,17 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
           )}
         </div>
       </div>
+      {esInforme && (
+        <AuditoriaInforme
+          audit={audit}
+          answers={answers}
+          score={score}
+          scoreSummary={scoreSummary}
+          resultado={clasificarAuditoria(score) || audit.resultado}
+        />
+      )}
+      {!esInforme && (
+      <>
       <div
         className="rounded p-3 text-sm"
         style={{
@@ -1026,6 +1053,8 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
           ))}
         </div>
       </section>
+      </>
+      )}
       {finding && (
         <FindingForm
           audit={audit}
