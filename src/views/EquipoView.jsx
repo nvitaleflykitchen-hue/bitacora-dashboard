@@ -23,6 +23,7 @@ import {
   FileDown,
   Share2,
   ShieldCheck,
+  HelpCircle,
   ShieldX,
   Clock3,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import {
   isSafetyOnlyProfile,
 } from "../lib/access";
 import { fmtFechaLarga } from "../lib/dateUtils";
+import { CRITERIOS_GUIA, ESCALA_GUIA, RECORDATORIO_ESCALA } from "../data/evaluacionGuia";
 import { confirmar, toast } from "../lib/feedback";
 import { mensajeError } from "../lib/errores";
 import PersonalNovedadesReportModal from "../components/PersonalNovedadesReportModal";
@@ -474,6 +476,48 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     reconocimiento: "#3b82f6",
     logro: "#39FF14",
     otro: "rgba(57,255,20,0.4)",
+  };
+
+  const [ayudaAbierta, setAyudaAbierta] = useState(null);
+  const LabelCriterio = ({ campo, texto }) => {
+    const g = CRITERIOS_GUIA[campo];
+    const abierta = ayudaAbierta === campo;
+    return (
+      <div style={{ position: "relative" }}>
+        <label
+          className="font-metric mb-1"
+          style={{ fontSize: "0.6rem", color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 4 }}
+        >
+          {texto.toUpperCase()}
+          {g && (
+            <button
+              type="button"
+              onClick={() => setAyudaAbierta(abierta ? null : campo)}
+              title="Qué evaluar en este criterio"
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: abierta ? "var(--phosphor)" : "rgba(255,255,255,0.35)", display: "flex" }}
+            >
+              <HelpCircle size={11} />
+            </button>
+          )}
+        </label>
+        {abierta && g && (
+          <div
+            style={{
+              position: "absolute", zIndex: 20, top: "100%", left: 0, right: 0, marginTop: 2,
+              background: "var(--surface2, #26262E)", border: "1px solid rgba(57,255,20,0.25)",
+              borderRadius: 6, padding: "8px 10px", boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
+            }}
+          >
+            <p style={{ fontSize: "0.66rem", color: "var(--text)", margin: "0 0 5px", lineHeight: 1.4 }}>{g.intro}</p>
+            <ul style={{ margin: 0, paddingLeft: 14 }}>
+              {g.puntos.map((pt, i) => (
+                <li key={i} style={{ fontSize: "0.62rem", color: "var(--text-dim)", lineHeight: 1.5 }}>{pt}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const ScoreSelect = ({ name, value, onChange }) => (
@@ -962,17 +1006,31 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     </div>
                   ))}
                 </div>
-                <p
+                <div
+                  className="rounded mb-3"
                   style={{
-                    fontSize: "0.62rem",
-                    color: "var(--text-dim)",
-                    marginBottom: "0.5rem",
+                    background: "rgba(57,255,20,0.04)",
+                    border: "1px solid rgba(57,255,20,0.15)",
+                    padding: "10px 12px",
                   }}
                 >
-                  Escala de calificación: 1 = muy bajo, 3 = aceptable, 5 =
-                  excelente. Dejá "— Sin calificar —" si no podés evaluar ese
-                  ítem.
-                </p>
+                  <p style={{ fontSize: "0.66rem", color: "var(--phosphor)", fontWeight: 700, margin: "0 0 6px" }}>
+                    {RECORDATORIO_ESCALA}
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 8px" }}>
+                    {ESCALA_GUIA.flatMap((e) => [
+                      <span key={`n${e.n}`} style={{ fontSize: "0.62rem", color: "var(--text)", fontWeight: 700 }}>
+                        {e.n} · {e.nivel}
+                      </span>,
+                      <span key={`d${e.n}`} style={{ fontSize: "0.6rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
+                        {e.def}
+                      </span>,
+                    ])}
+                  </div>
+                  <p style={{ fontSize: "0.6rem", color: "var(--text-dim)", margin: "6px 0 0" }}>
+                    Dejá "— Sin calificar —" si no pudiste observar el ítem.
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 gap-4 mb-4">
                   <div>
                     <p
@@ -992,15 +1050,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                         ["d3_comprende_prioridades", "Comprende prioridades"],
                       ].map(([k, l]) => (
                         <div key={k}>
-                          <label
-                            className="font-metric block mb-1"
-                            style={{
-                              fontSize: "0.6rem",
-                              color: "var(--text-dim)",
-                            }}
-                          >
-                            {l.toUpperCase()}
-                          </label>
+                          <LabelCriterio campo={k} texto={l} />
                           <ScoreSelect
                             name={k}
                             value={evalForm[k]}
@@ -1030,15 +1080,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                         ["e5_evita_conflictos", "Evita conflictos"],
                       ].map(([k, l]) => (
                         <div key={k}>
-                          <label
-                            className="font-metric block mb-1"
-                            style={{
-                              fontSize: "0.6rem",
-                              color: "var(--text-dim)",
-                            }}
-                          >
-                            {l.toUpperCase()}
-                          </label>
+                          <LabelCriterio campo={k} texto={l} />
                           <ScoreSelect
                             name={k}
                             value={evalForm[k]}
@@ -1066,15 +1108,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                         ["p3_uniforme", "Uniforme"],
                       ].map(([k, l]) => (
                         <div key={k}>
-                          <label
-                            className="font-metric block mb-1"
-                            style={{
-                              fontSize: "0.6rem",
-                              color: "var(--text-dim)",
-                            }}
-                          >
-                            {l.toUpperCase()}
-                          </label>
+                          <LabelCriterio campo={k} texto={l} />
                           <ScoreSelect
                             name={k}
                             value={evalForm[k]}
