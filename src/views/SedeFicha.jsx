@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { fmtFecha } from '../lib/dateUtils'
 import { Pencil, Plus, X, Save, MapPin, Phone, User, Building2, Download, Edit, Pause, Play } from 'lucide-react'
 import RegistroModal from '../components/RegistroModal'
+import TelefonosUtilesSede from '../components/TelefonosUtilesSede'
 import { generarInformeSedePDF } from '../lib/sedeReportPdf'
 import DocumentacionChecklist from '../components/DocumentacionChecklist'
 import { SEDE_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
@@ -516,6 +517,10 @@ export default function SedeFicha({ onNavigate, focusId }) {
                 <KpiCard label="NCs activas"       val={kpis.ncs}      color={kpiColor(kpis.ncs,1,3)} sub="" onClick={()=>onNavigate && onNavigate('noConformidades')} />
                 <KpiCard label="Personal asignado" val={kpis.personal} color={kpis.personal>0?'#39FF14':'#FF2A2A'} sub="" onClick={()=>onNavigate && onNavigate('sedeResponsables')} />
                 <KpiCard label="Activos"           val={kpis.activos}  color="#9ca3af" sub="" onClick={()=>onNavigate && onNavigate('mntActivos')} />
+              </div>
+
+              <div style={{ marginBottom:14 }}>
+                <TelefonosUtilesSede sedeId={sede.id} />
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns: capas.length > 0 ? 'minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1.5fr)', gap:10 }}>

@@ -2131,6 +2131,42 @@ export async function getKPIsMantenimiento(sedeId = null, sedeIds = null) {
 // ═══════════════════════════════════════════════════════════
 // SEDE CONTACTOS (responsables por sede)
 // ═══════════════════════════════════════════════════════════
+// Teléfonos útiles de una sede: responsables cargados (auto) + contactos del
+// directorio fijados a esa sede (manual). Devuelve forma unificada para UI.
+export async function getTelefonosUtilesSede(sedeId) {
+  if (!sedeId) return [];
+  const [resp, { data: dir }] = await Promise.all([
+    getSedeContactos(sedeId),
+    db().from("directorio_contactos").select("*").eq("sede_id", sedeId).eq("activo", true).order("orden"),
+  ]);
+  const soloDigitos = (t) => String(t || "").replace(/[^\d]/g, "");
+  const deResp = (resp || [])
+    .filter((r) => r.contactos)
+    .map((r) => ({
+      id: `resp-${r.id}`,
+      nombre: r.contactos.nombre,
+      rol: r.rol || r.contactos.cargo || "Responsable",
+      telefono: r.contactos.telefono,
+      tel: soloDigitos(r.contactos.telefono),
+      wa: soloDigitos(r.contactos.telefono),
+      email: r.contactos.email,
+      icono: "👤",
+      origen: "responsable",
+    }));
+  const deDir = (dir || []).map((c) => ({
+    id: `dir-${c.id}`,
+    nombre: c.nombre,
+    rol: c.descripcion || "Contacto",
+    telefono: c.telefono,
+    tel: c.tel || soloDigitos(c.telefono),
+    wa: c.wa || soloDigitos(c.telefono),
+    email: c.email,
+    icono: c.icono || "📇",
+    origen: "directorio",
+  }));
+  return [...deResp, ...deDir].filter((c) => c.telefono || c.email);
+}
+
 export async function getSedeContactos(sedeId) {
   const { data, error } = await db()
     .from("sede_contactos")

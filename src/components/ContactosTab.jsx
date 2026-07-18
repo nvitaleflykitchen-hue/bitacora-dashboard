@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
-import { getDirectorio, saveDirectorioContacto, removeDirectorioContacto, getPerfiles } from '../lib/queries'
+import { getDirectorio, saveDirectorioContacto, removeDirectorioContacto, getPerfiles, getSedes } from '../lib/queries'
 import { confirmar } from '../lib/feedback'
 
 // ─── Labels por módulo ────────────────────────────────────────────────────────
@@ -84,7 +84,7 @@ function ContactCard({ c, canEdit, onEdit, onDelete, perfilesMap }) {
 }
 
 // ─── Modal Agregar / Editar ───────────────────────────────────────────────────
-function ContactoModal({ contacto, modulo, perfiles, onClose, onSaved }) {
+function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) {
   const [form, setForm] = useState({
     modulo,
     nombre:      contacto?.nombre      || '',
@@ -95,6 +95,7 @@ function ContactoModal({ contacto, modulo, perfiles, onClose, onSaved }) {
     email:       contacto?.email       || '',
     icono:       contacto?.icono       || '📞',
     perfil_id:   contacto?.perfil_id   || '',
+    sede_id:     contacto?.sede_id     || '',
     orden:       contacto?.orden       ?? 0,
   })
   const [saving, setSaving] = useState(false)
@@ -122,6 +123,7 @@ function ContactoModal({ contacto, modulo, perfiles, onClose, onSaved }) {
         id: contacto?.id,
         ...form,
         perfil_id: form.perfil_id || null,
+        sede_id: form.sede_id ? Number(form.sede_id) : null,
         orden: Number(form.orden) || 0,
       })
       onSaved()
@@ -228,6 +230,18 @@ function ContactoModal({ contacto, modulo, perfiles, onClose, onSaved }) {
             </p>
           </div>
 
+          {/* Sede (opcional): fija el contacto como teléfono útil de una sede */}
+          <div style={{ marginBottom:'1.25rem' }}>
+            <label style={labelStyle}>FIJAR A UNA SEDE (opcional)</label>
+            <select style={{ ...inputStyle, cursor:'pointer' }} value={form.sede_id} onChange={e => set('sede_id', e.target.value)}>
+              <option value="">— Contacto general (todas) —</option>
+              {(sedes || []).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+            <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', marginTop:3 }}>
+              Si elegís una sede, aparece en "Teléfonos útiles" de esa sede.
+            </p>
+          </div>
+
           {err && <p style={{ color:'#ff6b6b', fontSize:'0.75rem', marginBottom:'0.75rem' }}>{err}</p>}
 
           <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
@@ -257,6 +271,7 @@ export default function ContactosTab({ modulo }) {
   const [contactos, setContactos] = useState([])
   const [perfiles, setPerfiles] = useState([])
   const [perfilesMap, setPerfilesMap] = useState({})
+  const [sedes, setSedes] = useState([])
   const [loading, setLoading] = useState(true)
   const [dbError, setDbError] = useState(null)
   const [editing, setEditing] = useState(null) // null | 'new' | {contacto}
@@ -284,6 +299,7 @@ export default function ContactosTab({ modulo }) {
       for (const p of list || []) map[p.id] = p
       setPerfilesMap(map)
     }).catch(() => {})
+    getSedes().then(s => setSedes(s || [])).catch(() => {})
   }, [canEdit])
 
   const handleDelete = async (id) => {
@@ -369,6 +385,7 @@ export default function ContactosTab({ modulo }) {
           contacto={editing === 'new' ? null : editing}
           modulo={modulo}
           perfiles={perfiles}
+          sedes={sedes}
           onClose={() => setEditing(null)}
           onSaved={handleSaved}
         />
