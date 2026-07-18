@@ -211,16 +211,16 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
 
   return (
     <div className="modal-overlay">
-      <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px' }}>
+      <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
         <div className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
+          style={{ borderBottom:'1px solid rgba(57,255,20,0.08)', flexShrink:0 }}>
           <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>{tareaEditar ? 'Editar tarea' : 'Nueva Tarea'}</h2>
           <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}>
             <X size={15} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4" style={{ overflowY:'auto', flex:1, minHeight:0 }}>
           <div>
             <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
               Título *
