@@ -83,12 +83,7 @@ Deno.serve(async req => {
     const ids = [...recipientIds]
     if (!ids.length) return json({ sent:0, recipients:0 })
 
-    const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY')
-    const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')
-    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@flykitchen.com.ar'
-    if (!vapidPublic || !vapidPrivate) throw new Error('Faltan secretos VAPID en la Edge Function')
-    webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
-
+    // 1) Notificacion in-app: SIEMPRE se guarda. No depende del push.
     const dedupeBase = `${event.module}:${event.entityType}:${event.entityId}:${event.priority}`
     const rows = ids.map(destinatario_id => ({
       destinatario_id,
@@ -104,30 +99,44 @@ Deno.serve(async req => {
     const { error:insertError } = await admin.schema('bitacora').from('notificaciones').insert(rows)
     if (insertError && insertError.code !== '23505') throw insertError
 
-    const { data:subscriptions } = await admin.schema('bitacora').from('push_subscriptions')
-      .select('*').in('user_id', ids).eq('active', true)
+    // 2) Push web: best-effort. Un problema de VAPID/suscripciones nunca debe
+    //    devolver 500 ni tumbar la notificacion in-app (que ya quedo guardada).
     let sent = 0
-    const payload = JSON.stringify({
-      title:event.title, body:event.body, url:event.url,
-      tag:dedupeBase, dedupe_key:dedupeBase, requireInteraction:true,
-    })
-    for (const sub of subscriptions || []) {
-      try {
-        await webpush.sendNotification({
-          endpoint:sub.endpoint,
-          keys:{ p256dh:sub.p256dh, auth:sub.auth_key },
-        }, payload)
-        sent++
-      } catch (error) {
-        if ([404,410].includes(error?.statusCode)) {
-          await admin.schema('bitacora').from('push_subscriptions')
-            .update({ active:false, updated_at:new Date().toISOString() }).eq('id', sub.id)
-        } else console.error('push-send', error)
+    let pushError:string | null = null
+    try {
+      const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY')
+      const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')
+      const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@flykitchen.com.ar'
+      if (!vapidPublic || !vapidPrivate) throw new Error('Faltan secretos VAPID en la Edge Function')
+      webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
+
+      const { data:subscriptions } = await admin.schema('bitacora').from('push_subscriptions')
+        .select('*').in('user_id', ids).eq('active', true)
+      const payload = JSON.stringify({
+        title:event.title, body:event.body, url:event.url,
+        tag:dedupeBase, dedupe_key:dedupeBase, requireInteraction:true,
+      })
+      for (const sub of subscriptions || []) {
+        try {
+          await webpush.sendNotification({
+            endpoint:sub.endpoint,
+            keys:{ p256dh:sub.p256dh, auth:sub.auth_key },
+          }, payload)
+          sent++
+        } catch (error) {
+          if ([404,410].includes(error?.statusCode)) {
+            await admin.schema('bitacora').from('push_subscriptions')
+              .update({ active:false, updated_at:new Date().toISOString() }).eq('id', sub.id)
+          } else console.error('push-send', error)
+        }
       }
+      await admin.schema('bitacora').from('notificaciones')
+        .update({ enviada_at:new Date().toISOString() }).in('dedupe_key', rows.map(r=>r.dedupe_key))
+    } catch (error) {
+      pushError = error?.message || String(error)
+      console.error('push-block', error)
     }
-    await admin.schema('bitacora').from('notificaciones')
-      .update({ enviada_at:new Date().toISOString() }).in('dedupe_key', rows.map(r=>r.dedupe_key))
-    return json({ sent, recipients:ids.length })
+    return json({ sent, recipients:ids.length, ...(pushError ? { pushError } : {}) })
   } catch (error) {
     console.error(error)
     return json({ error:error.message || 'Error interno' }, 500)
