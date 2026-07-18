@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { es } from 'date-fns/locale'
-import { getSedes, getRegistrosBySede, getCategoriasCONNovedad } from '../lib/queries'
+import { getSedes, getRegistrosBySede, getCategoriasCONNovedad, getRegistroById } from '../lib/queries'
 import RegistroModal from '../components/RegistroModal'
 import PageHeader from '../components/PageHeader'
 import { fmtFechaReporte, fmtHoraReporte } from '../lib/dateUtils'
@@ -52,38 +52,43 @@ export default function PorSede({ focusId, focusSedeId }) {
   }, [sedeId, dias])
 
   useEffect(() => { load() }, [load])
+
+  // Abre un registro por id: primero busca en la lista cargada; si no está
+  // (otra sede u older que el filtro de dias), lo trae directo por id.
+  const abrirRegistroPorId = useCallback(async (id) => {
+    const enLista = registros.find(r => String(r.id) === String(id))
+    if (enLista) { setSelRegistro(enLista); return }
+    try {
+      const reg = await getRegistroById(id)
+      if (reg) setSelRegistro(reg)
+    } catch (e) { console.error(e) }
+  }, [registros])
+
   useEffect(() => {
     if (!focusId || loading) return
-    const target = registros.find(registro => String(registro.id) === String(focusId))
-    if (target) setSelRegistro(target)
-  }, [focusId, loading, registros])
+    abrirRegistroPorId(focusId)
+  }, [focusId, loading, abrirRegistroPorId])
 
   // Deep-link desde notificación de comentario en un reporte
   useEffect(() => {
     const handler = (e) => {
       const { tipo, id } = e.detail || {}
       if (tipo !== 'registro' || !id) return
-      const target = registros.find(r => String(r.id) === String(id))
-      if (target) {
-        setSelRegistro(target)
-        delete window.__pendingDeepLink
-      }
+      abrirRegistroPorId(id)
+      delete window.__pendingDeepLink
     }
     window.addEventListener('bitacora:deeplink', handler)
     return () => window.removeEventListener('bitacora:deeplink', handler)
-  }, [registros])
+  }, [abrirRegistroPorId])
 
-  // Consumir deep-link pendiente después de cargar registros
+  // Consumir deep-link pendiente al montar
   useEffect(() => {
     const dl = window.__pendingDeepLink
-    if (dl?.tipo === 'registro' && dl?.id && registros.length > 0) {
-      const target = registros.find(r => String(r.id) === String(dl.id))
-      if (target) {
-        setSelRegistro(target)
-        delete window.__pendingDeepLink
-      }
+    if (dl?.tipo === 'registro' && dl?.id) {
+      abrirRegistroPorId(dl.id)
+      delete window.__pendingDeepLink
     }
-  }, [registros])
+  }, [abrirRegistroPorId])
 
   const sedeSel   = sedes.find(s => String(s.id) === String(sedeId))
   const sinNov    = registros.filter(r => r.estado_general === 'Sin novedades').length
