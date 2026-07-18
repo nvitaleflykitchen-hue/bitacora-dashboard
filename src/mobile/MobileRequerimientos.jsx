@@ -44,8 +44,6 @@ function RequerimientoCard({ r, canManage, onUpdate }) {
     }
   }
 
-  const itemsCount = r.items ? (typeof r.items === 'string' ? JSON.parse(r.items).length : r.items.length) : 0
-
   return (
     <div style={{
       background: 'var(--surface)', borderRadius: 10, padding: '1rem', marginBottom: '0.75rem',
@@ -53,12 +51,17 @@ function RequerimientoCard({ r, canManage, onUpdate }) {
     }}>
       <div className="flex justify-between items-start mb-2">
         <div style={{ flex: 1, marginRight: '0.5rem' }}>
-          <p style={{ color: 'var(--text)', fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.3 }}>
-            Requerimiento #{r.id}
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+            #{r.numero || r.id} · {r.sedes?.nombre || r.sede_nombre || 'Sede central'}
           </p>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>
-            {r.sedes?.nombre || 'Sede central'}
+          <p style={{ color: 'var(--text)', fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.3, marginTop: 2 }}>
+            {r.descripcion || 'Sin descripción'}
           </p>
+          {(r.cantidad || r.unidad_medida) && (
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.72rem', marginTop: 2 }}>
+              Cantidad: {r.cantidad || '—'} {r.unidad_medida || ''}
+            </p>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1">
           <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: 4, background: `${ESTADO_COLOR[r.estado] || '#777'}22`, color: ESTADO_COLOR[r.estado] || '#999', fontWeight: 700 }}>
@@ -71,9 +74,11 @@ function RequerimientoCard({ r, canManage, onUpdate }) {
       </div>
 
       <div className="flex items-center justify-between mb-2">
-        <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>
-          {itemsCount} ítem{itemsCount !== 1 ? 's' : ''} solicitados
-        </span>
+        {r.fecha_necesidad && (
+          <span style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>
+            Necesita: {format(new Date(r.fecha_necesidad), "d MMM", { locale: es })}
+          </span>
+        )}
         {r.enviado_at && (
           <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem' }}>
             Enviado: {format(new Date(r.enviado_at), "d MMM", { locale: es })}
@@ -83,12 +88,45 @@ function RequerimientoCard({ r, canManage, onUpdate }) {
 
       <div className="flex justify-between items-center mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-1 font-metric" style={{ color: 'var(--phosphor)', fontSize: '0.7rem', background: 'none', border: 'none' }}>
-          {expanded ? 'Ocultar ítems' : 'Ver ítems'} <ChevronDown size={14} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+          {expanded ? 'Ocultar detalle' : 'Ver detalle'} <ChevronDown size={14} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
         </button>
       </div>
 
       {expanded && (
         <div className="mt-3">
+          {(() => {
+            const filas = [
+              ['Justificación', r.justificacion],
+              ['Función', r.funcion],
+              ['Sector / Máquina', r.sector_maquina],
+              ['Período de consumo', r.periodo_consumo],
+              ['Tipo de compra', r.tipo_compra],
+              ['Proveedor sugerido', r.proveedor_sugerido],
+              ['Solicitante', r.solicitante],
+              ['Comprador', r.comprador_nombre],
+              ['Proveedor elegido', r.proveedor_seleccionado],
+              ['N° orden de compra', r.orden_compra_numero],
+              ['Comentarios', r.comentarios],
+            ].filter(([, v]) => v)
+            if (!filas.length) return null
+            return (
+              <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: '0.6rem 0.75rem', marginBottom: '0.75rem' }}>
+                {filas.map(([label, valor]) => (
+                  <div key={label} style={{ marginBottom: '0.5rem' }}>
+                    <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>{label}</p>
+                    <p style={{ fontSize: '0.76rem', color: 'var(--text)', margin: '2px 0 0', lineHeight: 1.4, whiteSpace: 'pre-line' }}>{valor}</p>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {r.imagen_url && (
+            <a href={r.imagen_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', fontSize: '0.72rem', color: 'var(--phosphor)', marginBottom: '0.75rem' }}>
+              Ver imagen / evidencia
+            </a>
+          )}
+
           {r.observaciones && (
             <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: 4, marginBottom: '0.75rem' }}>
               <strong>Nota:</strong> {r.observaciones}
