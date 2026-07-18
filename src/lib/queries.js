@@ -2909,6 +2909,48 @@ export async function autoEscalarTickets() {
 // ─── COMENTARIOS POR REGISTRO ─────────────────────────────────────────────────
 // entidadTipo: 'ticket' | 'tarea' | 'escalamiento' | 'no_conformidad'
 
+// ─── CRONOGRAMA DE LIMPIEZA ───────────────────────────────────────────────────
+export async function getCronogramaLimpieza(sedeId) {
+  const { data, error } = await db().from("limpieza_cronograma")
+    .select("*").eq("sede_id", sedeId).eq("activo", true).order("frecuencia").order("dia_semana");
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateCronogramaItem(id, cambios) {
+  const { error } = await db().from("limpieza_cronograma")
+    .update({ ...cambios, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+// Qué limpieza está pendiente HOY para una sede (diaria/semanal por día fijo/quincenal).
+export async function getLimpiezaPendienteHoy(sedeId) {
+  const hoy = new Date();
+  const hoyISO = hoy.toISOString().slice(0, 10);
+  const diaSemana = hoy.getDay() === 0 ? 7 : hoy.getDay(); // 1=lun … 7=dom
+  const [{ data: crono }, { data: hechos }] = await Promise.all([
+    db().from("limpieza_cronograma").select("*").eq("sede_id", sedeId).eq("activo", true),
+    db().from("checklists").select("tipo,fecha,created_at")
+      .eq("sede_id", sedeId).like("tipo", "limpieza_%")
+      .order("created_at", { ascending: false }).limit(60),
+  ]);
+  const ultimo = (tipo) => (hechos || []).find(h => h.tipo === tipo);
+  const diariaHoy = (hechos || []).some(h => h.tipo === "limpieza_diaria" && h.fecha === hoyISO);
+
+  const semanalHoy = (crono || []).filter(c => c.frecuencia === "semanal" && c.dia_semana === diaSemana).map(c => c.item_texto);
+
+  const ultQuincenal = ultimo("limpieza_quincenal");
+  const diasQuincenal = ultQuincenal ? Math.floor((Date.now() - new Date(ultQuincenal.created_at)) / 86400000) : 999;
+  const quincenalVence = diasQuincenal >= 14;
+
+  return {
+    diariaPendiente: !diariaHoy,
+    semanalItems: semanalHoy,
+    quincenalVence,
+    diasSinQuincenal: ultQuincenal ? diasQuincenal : null,
+  };
+}
+
 // ─── REACCIONES DE COMENTARIOS ────────────────────────────────────────────────
 export async function getReacciones(comentarioIds) {
   if (!comentarioIds?.length) return [];

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getMisRegistrosHoy, getMisTareas, getDirectorio } from '../lib/queries'
+import { getMisRegistrosHoy, getMisTareas, getDirectorio, getLimpiezaPendienteHoy } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -77,8 +77,37 @@ const ESTADO_STYLE = {
   'Operación condicionada': { bg: 'rgba(255,42,42,0.12)',  color: '#FF2A2A', label: 'Op. Condicionada' },
 }
 
+function LimpiezaHoyBanner({ sedeId }) {
+  const [data, setData] = useState(null)
+  useEffect(() => {
+    if (!sedeId) return
+    getLimpiezaPendienteHoy(sedeId).then(setData).catch(() => {})
+  }, [sedeId])
+  if (!data) return null
+  const hayAlgo = data.diariaPendiente || data.semanalItems.length > 0 || data.quincenalVence
+  if (!hayAlgo) return null
+  return (
+    <div style={{ background:'rgba(57,255,20,0.06)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10, padding:'0.85rem 1rem', marginBottom:'1rem' }}>
+      <p style={{ color:'var(--phosphor)', fontWeight:700, fontSize:'0.72rem', letterSpacing:'0.04em', margin:'0 0 6px' }}>🧽 LIMPIEZA DE HOY</p>
+      {data.diariaPendiente && (
+        <p style={{ color:'var(--text)', fontSize:'0.78rem', margin:'2px 0', lineHeight:1.4 }}>• Control diario pendiente</p>
+      )}
+      {data.semanalItems.length > 0 && (
+        <p style={{ color:'var(--text)', fontSize:'0.78rem', margin:'2px 0', lineHeight:1.4 }}>
+          • Semanal de hoy: {data.semanalItems.join(', ')}
+        </p>
+      )}
+      {data.quincenalVence && (
+        <p style={{ color:'#F59E0B', fontSize:'0.78rem', margin:'2px 0', lineHeight:1.4 }}>
+          • Quincenal pendiente{data.diasSinQuincenal ? ` (${data.diasSinQuincenal} días sin hacer)` : ''}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function MobileHome({ onNuevoReporte, onOpenSearch }) {
-  const { perfil } = useAuth()
+  const { perfil, allowedSedeIds } = useAuth()
   const [registros, setRegistros] = useState([])
   const [tareas, setTareas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -106,6 +135,8 @@ export default function MobileHome({ onNuevoReporte, onOpenSearch }) {
           Hola, {nombre}
         </h1>
       </div>
+
+      {(allowedSedeIds === null || allowedSedeIds?.includes(3)) && <LimpiezaHoyBanner sedeId={3} />}
 
       {onOpenSearch && (
         <button

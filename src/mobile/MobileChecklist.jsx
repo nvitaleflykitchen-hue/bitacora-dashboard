@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getChecklistItems, getChecklistHoy, createChecklist, getSedes } from '../lib/queries'
+import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
 import { ChevronLeft, CheckSquare, Square, Check } from 'lucide-react'
 import { ELPIDIO_TORRES_SEDE_ID, ELPIDIO_TURNO_INFO, CHECKLIST_REEMPLAZO_POR_SEDE, CHECKLIST_EXTRA_POR_SEDE } from '../data/checklistSedeTemplates'
@@ -19,6 +20,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
   const [items,     setItems]     = useState([])      // template items
   const [checks,    setChecks]    = useState({})      // { item_id: true/false }
   const [obs,       setObs]       = useState('')
+  const [fotos,     setFotos]     = useState([])
   const [yaHecho,   setYaHecho]   = useState(null)    // checklist existente de hoy
   const [loading,   setLoading]   = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -88,10 +90,15 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
       toast.warn('Contanos brevemente qué ocurrió en los puntos no cumplidos.')
       return
     }
+    // Evidencia fotográfica obligatoria ante desvío (ISO 22000 · respaldo del registro)
+    if (limpiezaCfg && noCumplidos > 0 && fotos.length === 0) {
+      toast.warn('Adjuntá al menos una foto como evidencia del desvío.')
+      return
+    }
     setLoading(true)
     const sedeSel = sedes.find(s => s.id === sedeId)
     try {
-      await createChecklist({
+      const creado = await createChecklist({
         sede_id:        sedeId,
         sede_nombre:    sedeSel?.nombre || '',
         tipo,
@@ -104,6 +111,9 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
         items_total:    totalCount,
         observaciones:  obs || null,
       })
+      if (fotos.length && creado?.id) {
+        await Promise.allSettled(fotos.map(f => uploadAdjunto('checklist', creado.id, f, perfil?.nombre || 'operador')))
+      }
       setSubmitted(true)
     } catch (e) {
       console.error(e)
@@ -320,6 +330,21 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
                 opacity: yaHecho ? 0.6 : 1,
               }}
             />
+          </div>
+        )}
+
+        {/* Evidencia fotográfica */}
+        {limpiezaCfg && !yaHecho && items.length > 0 && (
+          <div style={{ marginBottom:'1rem' }}>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.4rem' }}>
+              Evidencia fotográfica {noCumplidos > 0 ? '(obligatoria ante desvío)' : '(recomendada)'}
+            </p>
+            <input type="file" accept="image/*" capture="environment" multiple
+              onChange={e => setFotos(Array.from(e.target.files || []))}
+              style={{ width:'100%', fontSize:'0.8rem', color:'var(--text-dim)' }} />
+            {fotos.length > 0 && (
+              <p style={{ color:'var(--phosphor)', fontSize:'0.7rem', marginTop:4 }}>{fotos.length} foto(s) lista(s) para adjuntar</p>
+            )}
           </div>
         )}
       </div>
