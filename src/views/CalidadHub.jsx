@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import WorkspaceTabs from '../components/WorkspaceTabs'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
+import ContactosTab from '../components/ContactosTab'
 import NoConformidades from './NoConformidades'
 import CAPA from './CAPA'
 import Indicadores from './Indicadores'
@@ -15,11 +16,18 @@ const TABS = [
   { id:'auditorias', label:'Auditorías internas' },
   { id:'comedores', label:'Comedores' },
   { id:'indicadores', label:'Indicadores' },
+  { id:'contactos', label:'Contactos' },
 ]
 
 export default function CalidadHub({ onNavigate }) {
   const [activeTab, setActiveTab] = useState('iso9001')
-  const ActiveView = activeTab === 'iso9001' ? ISO9001Dashboard : activeTab === 'capa' ? CAPA : activeTab === 'auditorias' ? AuditoriasInternas : activeTab === 'indicadores' ? Indicadores : activeTab === 'comedores' ? ComedoresMetricas : NoConformidades
+  const ActiveView = activeTab === 'iso9001' ? ISO9001Dashboard
+    : activeTab === 'capa' ? CAPA
+    : activeTab === 'auditorias' ? AuditoriasInternas
+    : activeTab === 'indicadores' ? Indicadores
+    : activeTab === 'comedores' ? ComedoresMetricas
+    : activeTab === 'contactos' ? () => <ContactosTab modulo="calidad" />
+    : NoConformidades
 
   return (
     <WorkspaceTabs title="Calidad" subtitle="Auditorías, no conformidades, acciones e indicadores" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} rightSlot={<ContactosQuickBtn modulo="calidad" />}>
