@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getChecklistItems, getChecklistHoy, createChecklist, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { ChevronLeft, CheckSquare, Square, Check } from 'lucide-react'
-import { ELPIDIO_TORRES_SEDE_ID, ELPIDIO_TURNO_INFO } from '../data/checklistSedeTemplates'
+import { ELPIDIO_TORRES_SEDE_ID, ELPIDIO_TURNO_INFO, CHECKLIST_TIPOS_POR_SEDE } from '../data/checklistSedeTemplates'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
@@ -47,7 +47,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
         setObs(existente.observaciones || '')
       } else {
         const init = {}
-        tmpl.forEach(i => { init[i.id] = Number(sedeId) === ELPIDIO_TORRES_SEDE_ID ? null : false })
+        tmpl.forEach(i => { init[i.id] = CHECKLIST_TIPOS_POR_SEDE[Number(sedeId)] ? null : false })
         setChecks(init)
       }
     }).finally(() => setLoadingItems(false))
@@ -63,22 +63,24 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
     setChecks(prev => ({ ...prev, [id]: estado }))
   }
 
+  const sedeCfg = CHECKLIST_TIPOS_POR_SEDE[Number(sedeId)] || null
   const esPilotoElpidio = Number(sedeId) === ELPIDIO_TORRES_SEDE_ID
+  const tresEstados = !!sedeCfg   // sedes con config usan cumplido/no_cumplido/no_aplica + foto/obs
   const valores = Object.values(checks)
   const okCount    = valores.filter(v => v === true || v === 'cumplido').length
-  const answeredCount = esPilotoElpidio ? valores.filter(Boolean).length : okCount
+  const answeredCount = tresEstados ? valores.filter(Boolean).length : okCount
   const noCumplidos = valores.filter(v => v === 'no_cumplido').length
   const totalCount = items.length
-  const aplicables = esPilotoElpidio ? valores.filter(v => v !== 'no_aplica').length : totalCount
+  const aplicables = tresEstados ? valores.filter(v => v !== 'no_aplica').length : totalCount
   const pct        = aplicables > 0 ? Math.round((okCount / aplicables) * 100) : 0
 
   const handleSubmit = async () => {
     if (!sedeId || !tipo) return
-    if (esPilotoElpidio && answeredCount < totalCount) {
+    if (tresEstados && answeredCount < totalCount) {
       toast.warn('Completá todos los puntos antes de enviar el checklist.')
       return
     }
-    if (esPilotoElpidio && noCumplidos > 0 && !obs.trim()) {
+    if (tresEstados && noCumplidos > 0 && !obs.trim()) {
       toast.warn('Contanos brevemente qué ocurrió en los puntos no cumplidos.')
       return
     }
@@ -89,7 +91,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
         sede_id:        sedeId,
         sede_nombre:    sedeSel?.nombre || '',
         tipo,
-        turno:          esPilotoElpidio ? (tipo === 'apertura' ? 'Mañana' : 'Tarde') : null,
+        turno:          esPilotoElpidio ? (tipo === 'apertura' ? 'Mañana' : 'Tarde') : (sedeCfg?.[tipo]?.turno || null),
         fecha:          new Date().toISOString().slice(0, 10),
         operador_id:    perfil?.id   || null,
         operador_nombre: perfil?.nombre || '',
@@ -146,7 +148,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
 
   // ── Selector de tipo ──
   if (!tipo) {
-    const selectorInfo = Number(sedeId) === ELPIDIO_TORRES_SEDE_ID ? ELPIDIO_TURNO_INFO : TIPO_LABELS
+    const selectorInfo = sedeCfg || TIPO_LABELS
     return (
       <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
         <div style={{ padding:'0.85rem 1rem', display:'flex', alignItems:'center', gap:'0.75rem', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -187,7 +189,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
     )
   }
 
-  const tipoInfo = esPilotoElpidio ? ELPIDIO_TURNO_INFO[tipo] : TIPO_LABELS[tipo]
+  const tipoInfo = sedeCfg ? sedeCfg[tipo] : TIPO_LABELS[tipo]
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
@@ -198,7 +200,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
         </button>
         <div style={{ flex:1 }}>
           <h2 style={{ color:'var(--text)', fontWeight:700, fontSize:'1rem', margin:0 }}>
-            {tipoInfo.emoji} {esPilotoElpidio ? tipoInfo.label : `Checklist de ${tipoInfo.label}`}
+            {tipoInfo.emoji} {sedeCfg ? tipoInfo.label : `Checklist de ${tipoInfo.label}`}
           </h2>
           {yaHecho && (
             <p style={{ color:'var(--warn)', fontSize:'0.65rem', marginTop:2 }}>Ya completado hoy · {yaHecho.items_ok}/{yaHecho.items_total} ítems</p>
@@ -235,6 +237,13 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
             <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', lineHeight:1.4, marginTop:5 }}>Nair y equipo: dejen en Observaciones cualquier duda o sugerencia. Al finalizar la semana revisamos todas las mejoras juntas.</p>
           </div>
         )}
+        {sedeCfg && !esPilotoElpidio && (
+          <div style={{ background:`${tipoInfo.color}14`, border:`1px solid ${tipoInfo.color}40`, borderRadius:8, padding:'0.75rem', marginBottom:'0.85rem' }}>
+            <p style={{ color:tipoInfo.color, fontWeight:700, fontSize:'0.72rem', marginBottom:3 }}>{tipoInfo.horario} · {tipoInfo.label.toUpperCase()}</p>
+            <p style={{ color:'var(--text)', fontSize:'0.76rem', lineHeight:1.4 }}>{tipoInfo.rutina}</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', lineHeight:1.4, marginTop:5 }}>La foto es obligatoria ante cualquier desvío. Si algo requiere seguimiento, registralo también como tarea.</p>
+          </div>
+        )}
         {loadingItems ? (
           <div style={{ display:'flex', justifyContent:'center', paddingTop:'3rem' }}>
             <div style={{ width:24, height:24, borderRadius:'50%', border:'2px solid var(--phosphor)', borderTopColor:'transparent', animation:'spin 0.8s linear infinite' }} />
@@ -250,7 +259,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
               {catItems.map(item => {
                 const estado = checks[item.id]
                 const checked = estado === true || estado === 'cumplido'
-                if (esPilotoElpidio) return (
+                if (tresEstados) return (
                   <div key={item.id} style={{ padding:'0.75rem 0.85rem', borderRadius:8, marginBottom:'0.45rem', background:'var(--surface)', border:`1.5px solid ${estado === 'no_cumplido' ? '#FF2A2A55' : checked ? `${tipoInfo.color}44` : 'rgba(255,255,255,0.07)'}` }}>
                     <p style={{ color:'var(--text)', fontSize:'0.83rem', lineHeight:1.4, marginBottom:8 }}>{item.texto}</p>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:5 }}>
@@ -320,7 +329,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
             color: '#0A0A0E', fontWeight:800, fontSize:'1rem',
             border:'none', cursor: loading || !sedeId ? 'not-allowed' : 'pointer',
           }}>
-            {loading ? 'Guardando...' : `Enviar checklist (${esPilotoElpidio ? answeredCount : okCount}/${totalCount})`}
+            {loading ? 'Guardando...' : `Enviar checklist (${tresEstados ? answeredCount : okCount}/${totalCount})`}
           </button>
         </div>
       )}

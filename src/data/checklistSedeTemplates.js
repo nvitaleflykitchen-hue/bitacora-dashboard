@@ -55,3 +55,64 @@ export const ELPIDIO_TURNO_INFO = {
     rutina: 'Meriendas y colaciones · limpieza programada · postre del día siguiente · preparación y servicio de la cena · orden final.',
   },
 }
+
+// ─── COMEDOR LIBERTAD · CRONOGRAMA DE LIMPIEZA (ISO FK) ───────────────────────
+// Origen: Planilla de control REG-LIB-LIM-001/002/003 v2 (28/04/2026).
+// Modelo mobile: cada sector = 1 ítem con estado cumplido/no_cumplido/no_aplica,
+// evidencia fotográfica y observaciones obligatorias ante desvío. Los desvíos
+// con seguimiento se cargan además como tarea (REG-004).
+export const LIBERTAD_SEDE_ID = 3
+
+const litem = (tipo, cat, texto, orden) => ({
+  id: `libertad-${tipo}-${orden}`,
+  tipo, categoria: cat, texto, orden, activo: true, sede_id: LIBERTAD_SEDE_ID,
+})
+
+const LIB_DIARIA = [
+  'Mesadas', 'Pisos', 'Anafe', 'Horno', 'Freidora', 'Baño frío / lunchonera',
+  'Puertas y manijas', 'Tachos de basura', 'Elementos de cocina',
+  'Heladera depósito', 'Freezer depósito', 'Freezer externo salón',
+  'Campanas (control visible)',
+].map((t, i) => litem('limpieza_diaria', 'Control diario', t, i + 1))
+
+const LIB_SEMANAL = [
+  'Mesadas (patas y bordes inferiores)', 'Puertas, marcos y manijas',
+  'Anafe (parrillas, quemadores y base)', 'Azulejos sector cocción',
+  'Horno (interior, exterior y base)', 'Freidora (equipo, canastos y base)',
+  'Depósito (heladera, freezer y estantería secos)', 'Freezer externo del salón',
+  'Campana 1 (exterior)', 'Campana 2 (exterior)', 'Filtros campanas 1 y 2',
+  'Baño frío / lunchonera', 'Elementos de cocina',
+].map((t, i) => litem('limpieza_semanal', 'Limpieza profunda semanal', t, i + 1))
+
+const LIB_QUINCENAL = [
+  'Ángulos del techo', 'Campanas – revisión profunda', 'Azulejos generales',
+  'Sectores bajos y rincones', 'Sector fuegos – difícil acceso',
+  'Sector mesa fría – difícil acceso', 'Depósito – sectores altos',
+].map((t, i) => litem('limpieza_quincenal', 'Limpieza quincenal / difícil acceso', t, i + 1))
+
+CHECKLIST_SEDE_TEMPLATES[LIBERTAD_SEDE_ID] = {
+  limpieza_diaria: LIB_DIARIA,
+  limpieza_semanal: LIB_SEMANAL,
+  limpieza_quincenal: LIB_QUINCENAL,
+}
+
+export const LIBERTAD_LIMPIEZA_INFO = {
+  limpieza_diaria: {
+    label: 'Limpieza diaria', emoji: '🧽', color: '#39FF14', turno: 'Diario',
+    horario: 'REG-LIB-LIM-001', rutina: 'Control diario de sectores (mesadas, anafe, horno, freidora, campanas, depósito). Marcá cada sector y adjuntá foto.',
+  },
+  limpieza_semanal: {
+    label: 'Limpieza semanal', emoji: '🧴', color: '#60A5FA', turno: 'Semanal',
+    horario: 'REG-LIB-LIM-002', rutina: 'Limpieza profunda semanal. Indicá lo realizado y si algún ítem requiere mantenimiento técnico.',
+  },
+  limpieza_quincenal: {
+    label: 'Limpieza quincenal', emoji: '🪣', color: '#A78BFA', turno: 'Quincenal',
+    horario: 'REG-LIB-LIM-003', rutina: 'Puntos de difícil acceso y limpieza profunda quincenal. Registrá fecha real y desvíos.',
+  },
+}
+
+// Config genérica: qué variantes de checklist tiene cada sede (para el selector).
+export const CHECKLIST_TIPOS_POR_SEDE = {
+  [ELPIDIO_TORRES_SEDE_ID]: ELPIDIO_TURNO_INFO,
+  [LIBERTAD_SEDE_ID]: LIBERTAD_LIMPIEZA_INFO,
+}
