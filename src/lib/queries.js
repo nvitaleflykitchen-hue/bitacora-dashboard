@@ -869,6 +869,9 @@ export async function crearAnuncio({
   cuerpo,
   prioridad = "media",
   sedeIds = null,
+  roles = null,
+  areas = null,
+  perfilIds = null,
   url = null,
 }) {
   const { data, error } = await supabase.functions.invoke(
@@ -880,6 +883,9 @@ export async function crearAnuncio({
         cuerpo,
         prioridad,
         sede_ids: sedeIds,
+        roles,
+        areas,
+        perfil_ids: perfilIds,
         url,
       },
     },

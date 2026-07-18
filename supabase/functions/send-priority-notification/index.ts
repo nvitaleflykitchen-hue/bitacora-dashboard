@@ -14,6 +14,9 @@ type EventInput = {
   cuerpo?:string
   prioridad?:string
   sede_ids?:Array<string | number>
+  roles?:string[]
+  perfil_ids?:string[]
+  areas?:string[]
   url?:string | null
 }
 
@@ -143,7 +146,10 @@ async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:st
     const sedeIds = Array.isArray(input?.sede_ids)
       ? [...new Set(input.sede_ids.filter(Boolean).map(id => String(id)))]
       : []
-    const recipientUserIds = await resolveAnuncioRecipients(admin, sedeIds)
+    const roles = Array.isArray(input?.roles) ? [...new Set(input.roles.filter(Boolean).map(String))] : []
+    const perfilIds = Array.isArray(input?.perfil_ids) ? [...new Set(input.perfil_ids.filter(Boolean).map(String))] : []
+    const areas = Array.isArray(input?.areas) ? [...new Set(input.areas.filter(Boolean).map(String))] : []
+    const recipientUserIds = await resolveAnuncioRecipients(admin, { sedeIds, roles, perfilIds, areas })
     return { module, entityType:'anuncio', entityId:crypto.randomUUID(), priority,
       recipientUserIds, excludeUserId:null, title, body, url:input?.url || '/?view=tablon' }
   }
@@ -207,25 +213,52 @@ async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:st
   return null
 }
 
-async function resolveAnuncioRecipients(admin:any, sedeIds:string[]) {
+async function resolveAnuncioRecipients(admin:any, opts:{ sedeIds:string[], roles:string[], perfilIds:string[], areas:string[] }) {
+  const { sedeIds, roles, perfilIds, areas } = opts
   const { data:profiles } = await admin.schema('bitacora').from('perfiles')
     .select('id,rol,sede_ids,grupo_id').eq('activo', true)
-  if (!sedeIds.length) return (profiles || []).map((profile:any) => profile.id)
+  const all = profiles || []
+  const activeIds = new Set(all.map((p:any) => String(p.id)))
 
-  const { data:sedes } = await admin.schema('bitacora').from('sedes')
-    .select('id,grupo_id').in('id', sedeIds)
-  const targetSedes = new Set(sedeIds.map(String))
-  const targetGrupos = new Set((sedes || []).map((sede:any) => sede.grupo_id).filter(Boolean).map(String))
+  // Sin ningun filtro = "Todas": todos los usuarios activos
+  if (!sedeIds.length && !roles.length && !perfilIds.length && !areas.length) {
+    return all.map((p:any) => p.id)
+  }
 
-  return (profiles || [])
-    .filter((profile:any) => {
-      const role = String(profile.rol || '').toLowerCase()
-      if (['admin', 'editor'].includes(role)) return true
-      if (role === 'grupo' && profile.grupo_id && targetGrupos.has(String(profile.grupo_id))) return true
-      const scopedSedes = Array.isArray(profile.sede_ids) ? profile.sede_ids.map(String) : []
-      return scopedSedes.some((id:string) => targetSedes.has(id))
-    })
-    .map((profile:any) => profile.id)
+  const recipients = new Set<string>()
+  // admin/editor siempre reciben los anuncios
+  for (const p of all) {
+    if (['admin','editor'].includes(String(p.rol || '').toLowerCase())) recipients.add(p.id)
+  }
+  // Por sede / grupo
+  if (sedeIds.length) {
+    const { data:sedes } = await admin.schema('bitacora').from('sedes').select('id,grupo_id').in('id', sedeIds)
+    const targetSedes = new Set(sedeIds.map(String))
+    const targetGrupos = new Set((sedes || []).map((s:any) => s.grupo_id).filter(Boolean).map(String))
+    for (const p of all) {
+      const role = String(p.rol || '').toLowerCase()
+      if (role === 'grupo' && p.grupo_id && targetGrupos.has(String(p.grupo_id))) recipients.add(p.id)
+      const scoped = Array.isArray(p.sede_ids) ? p.sede_ids.map(String) : []
+      if (scoped.some((id:string) => targetSedes.has(id))) recipients.add(p.id)
+    }
+  }
+  // Por rol (areas que mapean a rol: flota, mnt_editor, encargado, etc.)
+  if (roles.length) {
+    const roleSet = new Set(roles.map((r:string) => r.toLowerCase()))
+    for (const p of all) {
+      if (roleSet.has(String(p.rol || '').toLowerCase())) recipients.add(p.id)
+    }
+  }
+  // Area Compras: personas con permiso de compras
+  if (areas.includes('compras')) {
+    const { data:permisos } = await admin.schema('bitacora').from('perfil_permisos')
+      .select('perfil_id').eq('modulo', 'compras').eq('activo', true)
+    for (const pp of permisos || []) if (activeIds.has(String(pp.perfil_id))) recipients.add(pp.perfil_id)
+  }
+  // Personas especificas
+  for (const id of perfilIds) if (activeIds.has(String(id))) recipients.add(id)
+
+  return [...recipients]
 }
 
 async function resolveComentarioParent(admin:any, entidadTipo:string, entidadId:string) {

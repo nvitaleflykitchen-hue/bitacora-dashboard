@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getAnuncios, crearAnuncio, marcarAnunciosLeidos, getSedes, getGrupos } from '../lib/queries'
+import { getAnuncios, crearAnuncio, marcarAnunciosLeidos, getSedes, getGrupos, getPerfiles } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import AdjuntosPanel from '../components/AdjuntosPanel'
@@ -169,6 +169,12 @@ function NuevoAnuncioModal({ sedes, grupos, onClose, onSaved }) {
   const [alcance, setAlcance]         = useState('todas')
   const [sedeIdsSel, setSedeIdsSel]   = useState([])
   const [grupoIdsSel, setGrupoIdsSel] = useState([])
+  const [areasSel, setAreasSel]       = useState([])   // keys de AREAS
+  const [perfilIdsSel, setPerfilIdsSel] = useState([])
+  const [perfiles, setPerfiles]       = useState([])
+  useEffect(() => { getPerfiles().then(list => setPerfiles((list || []).filter(p => p.activo !== false))).catch(() => {}) }, [])
+  const toggleArea = (k) => setAreasSel(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k])
+  const togglePerfil = (id) => setPerfilIdsSel(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   const [saving, setSaving]           = useState(false)
   const [err, setErr]                 = useState(null)
   // Paso 2: después de publicar, mostrar adjuntos
@@ -184,15 +190,21 @@ function NuevoAnuncioModal({ sedes, grupos, onClose, onSaved }) {
     if (!cuerpo.trim()) { setErr('Mensaje requerido'); return }
     if (alcance === 'sedes' && !sedeIdsSel.length) { setErr('Seleccioná al menos una sede'); return }
     if (alcance === 'grupos' && !grupoIdsSel.length) { setErr('Seleccioná al menos un grupo'); return }
-    let sedeIds = null
+    if (alcance === 'areas' && !areasSel.length && !perfilIdsSel.length) { setErr('Elegí al menos un área o una persona'); return }
+    let sedeIds = null, roles = null, areas = null, perfilIds = null
     if (alcance === 'sedes') sedeIds = sedeIdsSel
     if (alcance === 'grupos') {
       sedeIds = sedeIdsDeGrupos(grupoIdsSel)
       if (!sedeIds.length) { setErr('El/los grupo(s) seleccionados no tienen sedes activas'); return }
     }
+    if (alcance === 'areas') {
+      roles = areasSel.filter(k => k !== 'compras')
+      areas = areasSel.includes('compras') ? ['compras'] : []
+      perfilIds = perfilIdsSel
+    }
     setSaving(true); setErr(null)
     try {
-      await crearAnuncio({ titulo: titulo.trim(), cuerpo: cuerpo.trim(), prioridad, sedeIds })
+      await crearAnuncio({ titulo: titulo.trim(), cuerpo: cuerpo.trim(), prioridad, sedeIds, roles, areas, perfilIds })
       // Buscar el entidad_id del anuncio recién creado para poder adjuntar archivos
       const recientes = await getAnuncios(1).catch(() => [])
       const entidadId = recientes[0]?.entidad_id || null
@@ -278,6 +290,12 @@ function NuevoAnuncioModal({ sedes, grupos, onClose, onSaved }) {
                 color: alcance === 'sedes' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
               Sedes específicas
             </button>
+            <button onClick={() => setAlcance('areas')}
+              style={{ flex: 1, padding: '0.5rem', borderRadius: 2, fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                background: alcance === 'areas' ? 'rgba(57,255,20,0.15)' : 'rgba(255,255,255,0.03)',
+                color: alcance === 'areas' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
+              Áreas / equipos
+            </button>
           </div>
           {alcance === 'grupos' && (
             grupos.length === 0 ? (
@@ -305,6 +323,33 @@ function NuevoAnuncioModal({ sedes, grupos, onClose, onSaved }) {
                   {s.nombre}
                 </button>
               ))}
+            </div>
+          )}
+          {alcance === 'areas' && (
+            <div style={{ padding: '0.5rem', background: 'var(--bg)', borderRadius: 2 }}>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Áreas</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.7rem' }}>
+                {[['compras','Compras'],['mnt_editor','Mantenimiento'],['flota','Flota'],['encargado','Encargados'],['grupo','Supervisores de grupo']].map(([k, label]) => (
+                  <button key={k} onClick={() => toggleArea(k)}
+                    style={{ padding: '0.3rem 0.6rem', borderRadius: 2, fontSize: '0.68rem', fontWeight: 600, border: '1px solid rgba(57,255,20,0.15)', cursor: 'pointer',
+                      background: areasSel.includes(k) ? 'rgba(57,255,20,0.2)' : 'transparent',
+                      color: areasSel.includes(k) ? 'var(--phosphor)' : 'var(--text-dim)' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Personas específicas (Calidad, RRHH, etc.)</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: 130, overflowY: 'auto' }}>
+                {perfiles.map(pf => (
+                  <button key={pf.id} onClick={() => togglePerfil(pf.id)}
+                    style={{ padding: '0.3rem 0.6rem', borderRadius: 2, fontSize: '0.66rem', fontWeight: 600, border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer',
+                      background: perfilIdsSel.includes(pf.id) ? 'rgba(57,255,20,0.2)' : 'transparent',
+                      color: perfilIdsSel.includes(pf.id) ? 'var(--phosphor)' : 'var(--text-dim)' }}>
+                    {pf.nombre} {pf.rol ? `· ${pf.rol}` : ''}
+                  </button>
+                ))}
+              </div>
+              <p style={{ color: 'rgba(57,255,20,0.4)', fontSize: '0.6rem', marginTop: 6 }}>Admin y editor siempre reciben los anuncios.</p>
             </div>
           )}
         </div>
