@@ -5,6 +5,7 @@ import { toast } from "../lib/feedback";
 import { mensajeError } from "../lib/errores";
 import SkeletonTable from "../components/SkeletonTable";
 import EmptyState from "../components/EmptyState";
+import CronogramaLimpiezaConfig from "../components/CronogramaLimpiezaConfig";
 import { ClipboardCheck, ChevronDown, ChevronUp, Check, X, Minus } from "lucide-react";
 
 // Vista de checklists enviados (encargados/operarios) para supervisión.
@@ -138,6 +139,8 @@ export default function ChecklistsView() {
           </select>
         </div>
       </div>
+
+      {sedeId && <CronogramaLimpiezaConfig sedeId={Number(sedeId)} />}
 
       {!loading && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
