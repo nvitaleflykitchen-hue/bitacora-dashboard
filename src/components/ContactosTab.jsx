@@ -138,7 +138,7 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
 
   return (
     <>
-      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:90, background:'rgba(0,0,0,0.6)' }} />
+      <div style={{ position:'fixed', inset:0, zIndex:90, background:'rgba(0,0,0,0.6)' }} />
       <div style={{
         position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:91,
         width:'min(520px, 94vw)', maxHeight:'90vh', overflowY:'auto',
@@ -217,7 +217,25 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
           {/* Perfil vinculado */}
           <div style={{ marginBottom:'1.25rem' }}>
             <label style={labelStyle}>USUARIO DEL SISTEMA (opcional)</label>
-            <select style={{ ...inputStyle, cursor:'pointer' }} value={form.perfil_id} onChange={e => set('perfil_id', e.target.value)}>
+            <select style={{ ...inputStyle, cursor:'pointer' }} value={form.perfil_id} onChange={e => {
+              const id = e.target.value
+              const p = perfiles.find(x => String(x.id) === String(id))
+              setForm(f => {
+                const next = { ...f, perfil_id: id }
+                // Autocompletar campos vacíos con los datos del usuario elegido
+                if (p) {
+                  const nom = `${p.nombre || ''} ${p.apellido || ''}`.trim()
+                  if (!f.nombre.trim() && nom) next.nombre = nom
+                  if (!f.email.trim() && p.email) next.email = p.email
+                  if (!f.telefono.trim() && p.telefono) {
+                    next.telefono = p.telefono
+                    next.tel = autoTel(p.telefono)
+                    next.wa = autoTel(p.telefono)
+                  }
+                }
+                return next
+              })
+            }}>
               <option value="">— Sin vincular —</option>
               {perfiles.map(p => (
                 <option key={p.id} value={p.id}>
@@ -226,7 +244,7 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
               ))}
             </select>
             <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', marginTop:3 }}>
-              Vinculá este contacto a un usuario ya cargado en el sistema
+              Elegí un usuario ya registrado y se completan nombre, email y teléfono automáticamente.
             </p>
           </div>
 
