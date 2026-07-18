@@ -111,8 +111,13 @@ export const LIBERTAD_LIMPIEZA_INFO = {
   },
 }
 
-// Config genérica: qué variantes de checklist tiene cada sede (para el selector).
-export const CHECKLIST_TIPOS_POR_SEDE = {
+// Sedes cuyo checklist ES el operativo (reemplazan apertura/cierre por sus turnos).
+export const CHECKLIST_REEMPLAZO_POR_SEDE = {
   [ELPIDIO_TORRES_SEDE_ID]: ELPIDIO_TURNO_INFO,
+}
+
+// Checklists ADICIONALES que corren EN PARALELO al operativo (no lo reemplazan).
+// Libertad: cronograma de limpieza junto a su checklist operativo normal.
+export const CHECKLIST_EXTRA_POR_SEDE = {
   [LIBERTAD_SEDE_ID]: LIBERTAD_LIMPIEZA_INFO,
 }
