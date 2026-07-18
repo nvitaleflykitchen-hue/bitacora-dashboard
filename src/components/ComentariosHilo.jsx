@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { MessageSquare, Send, Trash2 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { getComentarios, crearComentario, eliminarComentario, getPersonasMencionables } from '../lib/queries'
+import { getComentarios, crearComentario, eliminarComentario, getPersonasMencionables, getReacciones, toggleReaccion } from '../lib/queries'
 import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
+const EMOJIS_RAPIDOS = ['👍', '✅', '👀', '🙌']
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const personaNombre = persona => `${persona?.nombre || ''} ${persona?.apellido || ''}`.trim().replace(/\s+/g, ' ')
 const unique = values => [...new Set(values.filter(Boolean).map(String))]
@@ -46,13 +47,32 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
   const listRef = useRef()
   const textareaRef = useRef()
 
+  const [reacciones, setReacciones] = useState([])
+
   const load = useCallback(async () => {
     if (!entidadId) return
     try {
-      setComentarios(await getComentarios(entidadTipo, entidadId))
+      const coms = await getComentarios(entidadTipo, entidadId)
+      setComentarios(coms)
+      const ids = coms.map(c => c.id)
+      setReacciones(ids.length ? await getReacciones(ids) : [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [entidadTipo, entidadId])
+
+  const reaccionar = async (comentarioId, emoji) => {
+    // Optimista: reflejar el toggle al instante
+    const yaEsta = reacciones.some(r => r.comentario_id === comentarioId && r.usuario_id === user?.id && r.emoji === emoji)
+    setReacciones(prev => yaEsta
+      ? prev.filter(r => !(r.comentario_id === comentarioId && r.usuario_id === user?.id && r.emoji === emoji))
+      : [...prev, { id: `tmp-${Date.now()}`, comentario_id: comentarioId, usuario_id: user?.id, usuario_nombre: perfil?.nombre, emoji }])
+    try {
+      await toggleReaccion({ comentarioId, usuarioId: user?.id, usuarioNombre: perfil?.nombre || perfil?.email, emoji })
+    } catch (e) {
+      toast.error(mensajeError(e))
+      load()
+    }
+  }
 
   useEffect(() => {
     load()
@@ -231,6 +251,44 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
               <p style={{ color:'var(--text)', fontSize:'0.74rem', marginTop:3, lineHeight:1.4, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
                 <MentionText text={c.texto} />
               </p>
+              {(() => {
+                const rc = reacciones.filter(r => r.comentario_id === c.id)
+                const porEmoji = {}
+                rc.forEach(r => { (porEmoji[r.emoji] = porEmoji[r.emoji] || []).push(r) })
+                return (
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:5, alignItems:'center' }}>
+                    {Object.entries(porEmoji).map(([emoji, lista]) => {
+                      const mia = lista.some(r => r.usuario_id === user?.id)
+                      const nombres = lista.map(r => r.usuario_nombre).filter(Boolean).join(', ')
+                      return (
+                        <button key={emoji} onClick={() => reaccionar(c.id, emoji)} title={nombres}
+                          style={{
+                            display:'flex', alignItems:'center', gap:3, padding:'1px 7px', borderRadius:10, cursor:'pointer',
+                            fontSize:'0.72rem', lineHeight:1.6,
+                            background: mia ? 'rgba(57,255,20,0.12)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${mia ? 'rgba(57,255,20,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                            color:'var(--text)',
+                          }}>
+                          {emoji} <span style={{ fontSize:'0.62rem', color:'var(--text-dim)' }}>{lista.length}</span>
+                        </button>
+                      )
+                    })}
+                    <span style={{ display:'flex', gap:2, marginLeft: rc.length ? 4 : 0 }}>
+                      {EMOJIS_RAPIDOS.map(emoji => (
+                        <button key={emoji} onClick={() => reaccionar(c.id, emoji)} title="Reaccionar"
+                          style={{
+                            padding:'1px 5px', borderRadius:8, cursor:'pointer', fontSize:'0.72rem', opacity:0.5,
+                            background:'transparent', border:'1px solid transparent',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                          onMouseLeave={e => { e.currentTarget.style.opacity = 0.5; e.currentTarget.style.background = 'transparent' }}>
+                          {emoji}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                )
+              })()}
             </div>
           )
         })}

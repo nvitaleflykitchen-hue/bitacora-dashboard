@@ -28,6 +28,10 @@ export default function NotificationCenter({ onNavigate }) {
     requerimiento:  'requerimientos',
     capa:           'calidadHub',
     registro:       'sedesHub',
+    tarea:          'tareas',
+    escalamiento:   'escalamientos',
+    anuncio:        'tablon',
+    lote_preventivo:'mantenimientoHub',
   }
 
   const openItem = async item => {

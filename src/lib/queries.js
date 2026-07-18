@@ -2909,6 +2909,38 @@ export async function autoEscalarTickets() {
 // ─── COMENTARIOS POR REGISTRO ─────────────────────────────────────────────────
 // entidadTipo: 'ticket' | 'tarea' | 'escalamiento' | 'no_conformidad'
 
+// ─── REACCIONES DE COMENTARIOS ────────────────────────────────────────────────
+export async function getReacciones(comentarioIds) {
+  if (!comentarioIds?.length) return [];
+  const { data, error } = await db()
+    .from("comentario_reacciones")
+    .select("*")
+    .in("comentario_id", comentarioIds);
+  if (error) throw error;
+  return data || [];
+}
+
+// Alterna una reacción del usuario actual (agrega si no está, quita si ya está).
+export async function toggleReaccion({ comentarioId, usuarioId, usuarioNombre, emoji }) {
+  const { data: existente } = await db()
+    .from("comentario_reacciones")
+    .select("id")
+    .eq("comentario_id", comentarioId)
+    .eq("usuario_id", usuarioId)
+    .eq("emoji", emoji)
+    .maybeSingle();
+  if (existente?.id) {
+    const { error } = await db().from("comentario_reacciones").delete().eq("id", existente.id);
+    if (error) throw error;
+    return { accion: "quitada" };
+  }
+  const { error } = await db().from("comentario_reacciones").insert({
+    comentario_id: comentarioId, usuario_id: usuarioId, usuario_nombre: usuarioNombre, emoji,
+  });
+  if (error) throw error;
+  return { accion: "agregada" };
+}
+
 export async function getComentarios(entidadTipo, entidadId) {
   if (!entidadId) return [];
   const { data, error } = await db()
