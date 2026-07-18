@@ -253,7 +253,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     const text = textoHistorialPersonal(persona, h);
     if (channel === "whatsapp") {
       window.open(
-        `https://wa.me/?text=${encodeURIComponent(text)}`,
+        `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`,
         "_blank",
         "noopener,noreferrer",
       );
@@ -2236,7 +2236,7 @@ ${form.horario || "[Completar]"}
 📅 Fecha de apertura de la búsqueda:
 ${formatDate(form.fecha_apertura)}
 
-⚠️ Urgencia / Prioridad:
+❗ Urgencia / Prioridad:
 ${form.urgencia || "[Completar]"}
 
 📆 Período de necesidad:
@@ -2248,7 +2248,7 @@ ${form.motivo || "[Completar]"}
 👤 Cantidad de personas solicitadas:
 ${form.cantidad || "[Completar]"}
 
-🧾 Modalidad de contratación:
+📃 Modalidad de contratación:
 ${form.modalidad || "[Completar]"}
 
 📋 Tareas principales del puesto:
@@ -2263,7 +2263,7 @@ ${form.experiencia || "[Completar]"}
 📄 Documentación / credenciales necesarias:
 ${form.documentacion || "[Completar]"}
 
-🧑‍💼 Responsable solicitante:
+🙋 Responsable solicitante:
 ${form.responsable || "[Completar]"}
 
 📞 Contacto para coordinación:
@@ -2274,7 +2274,7 @@ ${form.observaciones || "[Completar]"}`;
 
   const subject = `Solicitud de personal${form.puesto ? ` - ${form.puesto}` : ""}${selectedSede?.nombre ? ` - ${selectedSede.nombre}` : ""}`;
   const mailHref = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const whatsappHref = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
 
   const copyText = async () => {
     try {

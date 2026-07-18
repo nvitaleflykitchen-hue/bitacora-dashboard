@@ -330,7 +330,7 @@ ${solicitud.horario || '[Completar]'}
 📅 Fecha de apertura de la búsqueda:
 ${formatDate(solicitud.fecha_apertura)}
 
-⚠️ Urgencia / Prioridad:
+❗ Urgencia / Prioridad:
 ${urgency}
 
 📆 Período de necesidad:
@@ -342,7 +342,7 @@ ${solicitud.motivo || '[Completar]'}
 👤 Cantidad de personas solicitadas:
 ${cantidad}
 
-🧾 Modalidad de contratación:
+📃 Modalidad de contratación:
 ${solicitud.modalidad || '[Completar]'}
 
 📋 Tareas principales del puesto:
@@ -357,7 +357,7 @@ ${solicitud.experiencia || '[Completar]'}
 📄 Documentación / credenciales necesarias:
 ${solicitud.documentacion || '[Completar]'}
 
-🧑‍💼 Responsable solicitante:
+🙋 Responsable solicitante:
 ${solicitud.responsable || '[Completar]'}
 
 📞 Contacto para coordinación:
@@ -372,7 +372,7 @@ function SolicitudModal({ initial, sedes, onClose, onSaved }) {
   const [form, setForm] = useState({ ...EMPTY_SOLICITUD, ...(initial || {}) })
   const [saving, setSaving] = useState(false)
   const text = buildWhatsappText(form, sedes)
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(text)}`
+  const whatsappHref = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
