@@ -95,7 +95,7 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
     email:       contacto?.email       || '',
     icono:       contacto?.icono       || '📞',
     perfil_id:   contacto?.perfil_id   || '',
-    sede_id:     contacto?.sede_id     || '',
+    sede_ids:    Array.isArray(contacto?.sede_ids) ? contacto.sede_ids : (contacto?.sede_id ? [contacto.sede_id] : []),
     orden:       contacto?.orden       ?? 0,
   })
   const [saving, setSaving] = useState(false)
@@ -123,7 +123,8 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
         id: contacto?.id,
         ...form,
         perfil_id: form.perfil_id || null,
-        sede_id: form.sede_id ? Number(form.sede_id) : null,
+        sede_ids: form.sede_ids,
+        sede_id: form.sede_ids[0] || null,
         orden: Number(form.orden) || 0,
       })
       onSaved()
@@ -248,15 +249,24 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
             </p>
           </div>
 
-          {/* Sede (opcional): fija el contacto como teléfono útil de una sede */}
+          {/* Sedes (opcional, multiselección): teléfono útil de esas sedes */}
           <div style={{ marginBottom:'1.25rem' }}>
-            <label style={labelStyle}>FIJAR A UNA SEDE (opcional)</label>
-            <select style={{ ...inputStyle, cursor:'pointer' }} value={form.sede_id} onChange={e => set('sede_id', e.target.value)}>
-              <option value="">— Contacto general (todas) —</option>
-              {(sedes || []).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
+            <label style={labelStyle}>FIJAR A SEDES (opcional · podés elegir varias)</label>
+            <div style={{ maxHeight:160, overflowY:'auto', border:'1px solid rgba(255,255,255,0.1)', borderRadius:4, padding:'0.4rem 0.6rem' }}>
+              {(sedes || []).length === 0 && <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', margin:0 }}>Sin sedes</p>}
+              {(sedes || []).map(s => {
+                const marcada = form.sede_ids.includes(s.id)
+                return (
+                  <label key={s.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'3px 0', cursor:'pointer', fontSize:'0.78rem', color:'var(--text)' }}>
+                    <input type="checkbox" checked={marcada} style={{ accentColor:'var(--phosphor)' }}
+                      onChange={() => setForm(f => ({ ...f, sede_ids: marcada ? f.sede_ids.filter(id => id !== s.id) : [...f.sede_ids, s.id] }))} />
+                    {s.nombre}
+                  </label>
+                )
+              })}
+            </div>
             <p style={{ color:'rgba(57,255,20,0.4)', fontSize:'0.6rem', marginTop:3 }}>
-              Si elegís una sede, aparece en "Teléfonos útiles" de esa sede.
+              Aparece en "Teléfonos útiles" de cada sede marcada. Sin marcar ninguna = contacto general.
             </p>
           </div>
 

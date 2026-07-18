@@ -2137,7 +2137,7 @@ export async function getTelefonosUtilesSede(sedeId) {
   if (!sedeId) return [];
   const [resp, { data: dir }] = await Promise.all([
     getSedeContactos(sedeId),
-    db().from("directorio_contactos").select("*").eq("sede_id", sedeId).eq("activo", true).order("orden"),
+    db().from("directorio_contactos").select("*").eq("activo", true).or(`sede_ids.cs.{${sedeId}},sede_id.eq.${sedeId}`).order("orden"),
   ]);
   const soloDigitos = (t) => String(t || "").replace(/[^\d]/g, "");
   const deResp = (resp || [])
