@@ -67,11 +67,7 @@ const blobToDataUrl = blob => new Promise((resolve, reject) => {
 async function imageData(url) {
   const response = await fetch(url)
   if (!response.ok) throw new Error('No se pudo cargar una imagen de la credencial.')
-  const blob = await response.blob()
-  // Si el archivo no esta publicado, el servidor devuelve el index.html de la app
-  // con status 200. Sin este control jsPDF falla con "files of type 'UNKNOWN'".
-  if (!blob.type.startsWith('image/')) throw new Error(`No se encontró la imagen ${url}. Avisá a sistemas.`)
-  return blobToDataUrl(blob)
+  return blobToDataUrl(await response.blob())
 }
 
 export async function descargarCredencialPdf(persona, credencial) {

@@ -3014,25 +3014,28 @@ export async function autoEscalarTickets() {
 
     const fechaHoy = new Date().toISOString().slice(0, 10);
 
-    // Un solo upsert con todas las filas: antes se hacian hasta 20 escrituras
-    // sueltas en cada carga de pagina (y cada 5 min, por cada usuario).
-    const filas = tickets.map((t) => ({
-      tipo: "Mantenimiento",
-      descripcion: `Ticket ${t.prioridad === "critica" ? "crítico" : "vencido"}: ${t.descripcion}`,
-      sede_id: t.sede_id || null,
-      sede_nombre: t.sede || "",
-      reportante: "Sistema",
-      fecha_reporte: fechaHoy,
-      estado: "Pendiente",
-      registro_id: null,
-    }));
-
-    await db()
-      .from("escalamientos")
-      .upsert(filas, {
-        onConflict: "tipo,descripcion,fecha_reporte,sede_id",
-        ignoreDuplicates: true,
-      });
+    await Promise.all(
+      tickets.map((t) =>
+        db()
+          .from("escalamientos")
+          .upsert(
+            {
+              tipo: "Mantenimiento",
+              descripcion: `Ticket ${t.prioridad === "critica" ? "crítico" : "vencido"}: ${t.descripcion}`,
+              sede_id: t.sede_id || null,
+              sede_nombre: t.sede || "",
+              reportante: "Sistema",
+              fecha_reporte: fechaHoy,
+              estado: "Pendiente",
+              registro_id: null,
+            },
+            {
+              onConflict: "tipo,descripcion,fecha_reporte,sede_id",
+              ignoreDuplicates: true,
+            },
+          ),
+      ),
+    );
   } catch (err) {
     console.error("[autoEscalarTickets]", err);
   }
