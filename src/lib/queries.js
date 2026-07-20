@@ -328,7 +328,7 @@ export async function getCapa(filtros = {}) {
   let query = db()
     .from("capa")
     .select(
-      "*, no_conformidades(codigo, descripcion, sede_nombre), sedes(id, nombre)",
+      "*, no_conformidades(codigo, descripcion, sede_nombre), sedes(id, nombre), perfiles:responsable_id(id, nombre, email, telefono), delegado:delegado_a_id(id, nombre, email, telefono)",
     )
     .order("codigo", { ascending: true });
   if (filtros.tipo) query = query.eq("tipo", filtros.tipo);
@@ -347,19 +347,32 @@ export async function getCapa(filtros = {}) {
 export async function createCapa(payload) {
   const anio = new Date().getFullYear();
   const prefijo = payload.tipo === "Preventiva" ? "PA" : "CA";
-  const { count } = await db()
+  const patron = `${prefijo}-${anio}-%`;
+  const { data: existentes, error: selectError } = await db()
     .from("capa")
-    .select("*", { count: "exact", head: true })
-    .like("codigo", `${prefijo}-${anio}-%`);
-  const nro = String((count || 0) + 1).padStart(3, "0");
-  const codigo = `${prefijo}-${anio}-${nro}`;
-  const { data, error } = await db()
-    .from("capa")
-    .insert({ ...payload, codigo })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+    .select("codigo")
+    .like("codigo", patron);
+  if (selectError) throw selectError;
+
+  // No usar COUNT+1: si existen huecos puede producir un código duplicado.
+  // Se parte del máximo real y se reintenta ante altas concurrentes.
+  let siguiente = (existentes || []).reduce((max, item) => {
+    const numero = Number(String(item.codigo || '').split('-').at(-1));
+    return Number.isFinite(numero) ? Math.max(max, numero) : max;
+  }, 0) + 1;
+
+  for (let intento = 0; intento < 5; intento += 1, siguiente += 1) {
+    const codigo = `${prefijo}-${anio}-${String(siguiente).padStart(3, "0")}`;
+    const { data, error } = await db()
+      .from("capa")
+      .insert({ ...payload, codigo })
+      .select()
+      .single();
+    if (!error) return data;
+    if (error.code !== "23505") throw error;
+  }
+
+  throw new Error("No se pudo reservar un código único para la acción. Reintentá en unos segundos.");
 }
 
 export async function updateCapa(id, payload) {
@@ -495,24 +508,67 @@ export async function getCapaPlan(auditoria_codigo) {
   if (!auditoria_codigo) return null;
   const { data, error } = await db()
     .from("capa_planes")
-    .select("*")
+    .select("*, perfiles:responsable_id(id,nombre,email,telefono)")
     .eq("auditoria_codigo", auditoria_codigo)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  if (!data) return null;
+  const { data: miembros, error: miembrosError } = await db()
+    .from("capa_plan_miembros")
+    .select("perfil_id")
+    .eq("plan_id", data.id);
+  if (miembrosError) throw miembrosError;
+  return { ...data, colaborador_ids: (miembros || []).map((m) => m.perfil_id) };
 }
 
 export async function upsertCapaPlan(payload) {
+  const { colaborador_ids = [], ...planPayload } = payload;
   const { data, error } = await db()
     .from("capa_planes")
     .upsert(
-      { ...payload, updated_at: new Date().toISOString() },
+      { ...planPayload, updated_at: new Date().toISOString() },
       { onConflict: "auditoria_codigo" },
     )
     .select()
     .single();
   if (error) throw error;
-  return data;
+  const deseados = [...new Set(colaborador_ids.filter(Boolean))]
+    .filter((id) => id !== data.responsable_id && id !== data.supervisor_id);
+  const { data: actuales, error: actualesError } = await db()
+    .from("capa_plan_miembros").select("perfil_id").eq("plan_id", data.id);
+  if (actualesError) throw actualesError;
+  const existentes = (actuales || []).map((m) => m.perfil_id);
+  const quitar = existentes.filter((id) => !deseados.includes(id));
+  const agregar = deseados.filter((id) => !existentes.includes(id));
+  if (quitar.length) {
+    const { error: deleteError } = await db().from("capa_plan_miembros")
+      .delete().eq("plan_id", data.id).in("perfil_id", quitar);
+    if (deleteError) throw deleteError;
+  }
+  if (agregar.length) {
+    const { error: insertError } = await db().from("capa_plan_miembros")
+      .insert(agregar.map((perfil_id) => ({ plan_id: data.id, perfil_id })));
+    if (insertError) throw insertError;
+  }
+  return { ...data, colaborador_ids: deseados };
+}
+
+export async function deleteCapaProject(plan) {
+  if (!plan?.id || !plan?.auditoria_codigo) throw new Error("No se encontrÃ³ el proyecto.");
+  const { data: acciones, error: accionesError } = await db()
+    .from("capa").select("id").eq("auditoria_codigo", plan.auditoria_codigo);
+  if (accionesError) throw accionesError;
+  const ids = (acciones || []).map((a) => String(a.id));
+  if (ids.length) {
+    const { count, error: adjuntosError } = await db().from("adjuntos")
+      .select("id", { count: "exact", head: true }).eq("entity_type", "capa").in("entity_id", ids);
+    if (adjuntosError) throw adjuntosError;
+    if (count > 0) throw new Error("El proyecto tiene evidencias adjuntas. Quitalas antes de eliminarlo para no perder documentaciÃ³n.");
+    const { error: accionesDeleteError } = await db().from("capa").delete().in("id", ids);
+    if (accionesDeleteError) throw accionesDeleteError;
+  }
+  const { error } = await db().from("capa_planes").delete().eq("id", plan.id);
+  if (error) throw error;
 }
 
 // ─── INDICADORES POR SEDE ─────────────────────────────────────────────────────
@@ -1839,9 +1895,15 @@ export async function getActivos(filtros = {}) {
   return enrichAuditRowsWithReporters(rows, registros || []);
 }
 export async function upsertActivo(payload) {
+  // El código interno se genera en Postgres. En altas evitamos enviar un valor
+  // vacío para que todos los canales (desktop, mobile y Compras) sigan la misma regla.
+  const activo = { ...payload };
+  if (!activo.id && !String(activo.codigo_interno || '').trim()) {
+    delete activo.codigo_interno;
+  }
   const { data, error } = await supabase
     .from("mnt_activos")
-    .upsert({ ...payload, updated_at: new Date().toISOString() })
+    .upsert({ ...activo, updated_at: new Date().toISOString() })
     .select()
     .single();
   if (error) throw error;
@@ -2256,7 +2318,7 @@ export async function deleteSedeContacto(id) {
 export async function getRequerimientos(filtros = {}) {
   let q = db()
     .from("requerimientos")
-    .select("*, sedes(nombre)")
+    .select("*, sedes(nombre), compras_entregas(estado, avisado_at, retirado_at, retirado_nombre)")
     .order("created_at", { ascending: false });
   if (filtros.estado) q = q.eq("estado", filtros.estado);
   if (filtros.urgencia) q = q.eq("urgencia", filtros.urgencia);
@@ -2264,7 +2326,10 @@ export async function getRequerimientos(filtros = {}) {
   else if (filtros.sedeId) q = q.eq("sede_id", filtros.sedeId);
   const { data, error } = await q;
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    ...row,
+    entrega_estado: row.compras_entregas?.estado || null,
+  }));
 }
 
 export async function createRequerimiento(payload) {
@@ -2299,6 +2364,34 @@ export async function updateRequerimiento(id, payload) {
       priority: data.urgencia,
     });
   }
+  return data;
+}
+
+export async function crearEntregaCompras({ sedeId, requerimientoIds, contactoId = null }) {
+  const { data, error } = await supabase.rpc("crear_entrega_compras", {
+    p_sede_id: Number(sedeId),
+    p_requerimiento_ids: requerimientoIds.map(Number),
+    p_contacto_id: contactoId || null,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function registrarAvisoEntregaCompras(entregaId) {
+  const { data, error } = await supabase.rpc("registrar_aviso_entrega_compras", {
+    p_entrega_id: entregaId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function confirmarEntregaCompras({ entregaId, items, observaciones = null }) {
+  const { data, error } = await supabase.rpc("confirmar_entrega_compras", {
+    p_entrega_id: entregaId,
+    p_items: items,
+    p_observaciones: observaciones || null,
+  });
+  if (error) throw error;
   return data;
 }
 
@@ -2921,28 +3014,25 @@ export async function autoEscalarTickets() {
 
     const fechaHoy = new Date().toISOString().slice(0, 10);
 
-    await Promise.all(
-      tickets.map((t) =>
-        db()
-          .from("escalamientos")
-          .upsert(
-            {
-              tipo: "Mantenimiento",
-              descripcion: `Ticket ${t.prioridad === "critica" ? "crítico" : "vencido"}: ${t.descripcion}`,
-              sede_id: t.sede_id || null,
-              sede_nombre: t.sede || "",
-              reportante: "Sistema",
-              fecha_reporte: fechaHoy,
-              estado: "Pendiente",
-              registro_id: null,
-            },
-            {
-              onConflict: "tipo,descripcion,fecha_reporte,sede_id",
-              ignoreDuplicates: true,
-            },
-          ),
-      ),
-    );
+    // Un solo upsert con todas las filas: antes se hacian hasta 20 escrituras
+    // sueltas en cada carga de pagina (y cada 5 min, por cada usuario).
+    const filas = tickets.map((t) => ({
+      tipo: "Mantenimiento",
+      descripcion: `Ticket ${t.prioridad === "critica" ? "crítico" : "vencido"}: ${t.descripcion}`,
+      sede_id: t.sede_id || null,
+      sede_nombre: t.sede || "",
+      reportante: "Sistema",
+      fecha_reporte: fechaHoy,
+      estado: "Pendiente",
+      registro_id: null,
+    }));
+
+    await db()
+      .from("escalamientos")
+      .upsert(filas, {
+        onConflict: "tipo,descripcion,fecha_reporte,sede_id",
+        ignoreDuplicates: true,
+      });
   } catch (err) {
     console.error("[autoEscalarTickets]", err);
   }
