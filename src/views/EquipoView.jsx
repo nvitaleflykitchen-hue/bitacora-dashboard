@@ -3126,7 +3126,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
         ) : tab === "organigrama" ? (
           <OrganigramaView onNavigate={onNavigate} />
         ) : tab === "vacaciones" ? (
-          <VacacionesPanel personas={personas} canManage={canManage} />
+          <VacacionesPanel personas={personas} sedes={sedes} canManage={canManage} />
         ) : tab === "duplicados" ? (
           <div className="max-w-5xl space-y-4">
             <div className="glass p-4">

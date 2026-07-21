@@ -685,7 +685,7 @@ export default function MobilePersonal() {
             )
           })
         ) : view === 'vacaciones' ? (
-          <VacacionesPanel personas={personas} canManage={canManage} compact />
+          <VacacionesPanel personas={personas} sedes={sedes} canManage={canManage} compact />
         ) : view === 'bajas' ? (
           bajas.length === 0 ? <p style={{ color:'var(--text-dim)', textAlign:'center', marginTop:'2rem' }}>No hay bajas registradas.</p> : bajas.map(p => (
             <div key={p.id} style={{ background:'var(--surface)', borderRadius:10, padding:'0.85rem', marginBottom:'0.6rem', display:'flex', gap:10, alignItems:'center' }}>

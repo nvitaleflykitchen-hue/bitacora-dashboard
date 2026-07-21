@@ -8,12 +8,13 @@ const STATUS = {
   rechazado: '#ff4444', cancelado: '#94a3b8', utilizado: '#a78bfa'
 }
 
-export default function VacacionesPanel({ personas = [], canManage = false, compact = false }) {
+export default function VacacionesPanel({ personas = [], sedes = [], canManage = false, compact = false }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
   const [showForm, setShowForm] = useState(false)
+  const [sedeFilter, setSedeFilter] = useState('')
   const [form, setForm] = useState({ persona_id:'', fecha_desde:'', fecha_hasta:'', reemplazo_persona_id:'', observaciones:'' })
 
   const load = useCallback(async () => {
@@ -26,6 +27,11 @@ export default function VacacionesPanel({ personas = [], canManage = false, comp
   useEffect(() => { load() }, [load])
 
   const personaById = useMemo(() => new Map(personas.map(p => [p.id, p])), [personas])
+  const visibleItems = useMemo(() => items.filter(item => {
+    if (!sedeFilter) return true
+    const sedeIds = personaById.get(item.persona_id)?.sede_ids || []
+    return sedeFilter === 'sin-sede' ? sedeIds.length === 0 : sedeIds.includes(Number(sedeFilter))
+  }), [items, personaById, sedeFilter])
   const overlap = (a, b) => a.fecha_desde <= b.fecha_hasta && a.fecha_hasta >= b.fecha_desde
   const conflictsFor = item => {
     const person = personaById.get(item.persona_id)
@@ -68,11 +74,18 @@ export default function VacacionesPanel({ personas = [], canManage = false, comp
     load()
   }
 
-  const upcoming = items.filter(i => !['rechazado','cancelado'].includes(i.estado))
+  const upcoming = visibleItems.filter(i => !['rechazado','cancelado'].includes(i.estado))
   return <div className="space-y-3">
     <div className="flex items-center justify-between gap-3 flex-wrap">
       <div><h2 className="font-title font-bold" style={{color:'var(--phosphor)'}}>Vacaciones y coberturas</h2><p style={{fontSize:'.72rem',color:'var(--text-dim)'}}>{upcoming.length} períodos vigentes o pendientes</p></div>
-      <button className="btn-primary" onClick={() => setShowForm(v => !v)}>+ Nueva solicitud</button>
+      <div className="flex items-center gap-2 flex-wrap">
+        <select className="input-dark" aria-label="Filtrar vacaciones por sede" value={sedeFilter} onChange={e => setSedeFilter(e.target.value)}>
+          <option value="">Todas las sedes</option>
+          {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          <option value="sin-sede">Sin sede asignada</option>
+        </select>
+        <button className="btn-primary" onClick={() => setShowForm(v => !v)}>+ Nueva solicitud</button>
+      </div>
     </div>
     {showForm && <div className="glass p-4 grid gap-3" style={{gridTemplateColumns:compact?'1fr':'repeat(2,minmax(0,1fr))'}}>
       <select className="input-dark" value={form.persona_id} onChange={e=>setForm(f=>({...f,persona_id:e.target.value,reemplazo_persona_id:''}))}><option value="">Persona...</option>{personas.map(p=><option key={p.id} value={p.id}>{p.nombre} {p.apellido||''}</option>)}</select>
@@ -82,8 +95,8 @@ export default function VacacionesPanel({ personas = [], canManage = false, comp
       <textarea className="input-dark" placeholder="Observaciones" value={form.observaciones} onChange={e=>setForm(f=>({...f,observaciones:e.target.value}))} style={{gridColumn:'1 / -1'}}/>
       <div className="flex gap-2"><button className="btn-primary" disabled={saving} onClick={save}>{saving ? 'Guardando...' : 'Solicitar'}</button><button className="btn-ghost" disabled={saving} onClick={()=>setShowForm(false)}>Cancelar</button></div>
     </div>}
-    {loading ? <p style={{color:'var(--text-dim)'}}>Cargando...</p> : items.length===0 ? <div className="glass p-8 text-center" style={{color:'var(--text-dim)'}}>Todavía no hay vacaciones registradas.</div> :
-      <div className={compact?'space-y-2':'grid grid-cols-1 xl:grid-cols-2 gap-3'}>{items.map(i=>{
+    {loading ? <p style={{color:'var(--text-dim)'}}>Cargando...</p> : visibleItems.length===0 ? <div className="glass p-8 text-center" style={{color:'var(--text-dim)'}}>{items.length ? 'No hay vacaciones para la sede seleccionada.' : 'Todavía no hay vacaciones registradas.'}</div> :
+      <div className={compact?'space-y-2':'grid grid-cols-1 xl:grid-cols-2 gap-3'}>{visibleItems.map(i=>{
         const p=personaById.get(i.persona_id), r=personaById.get(i.reemplazo_persona_id), conflicts=conflictsFor(i)
         return <div key={i.id} className="glass p-4" style={{borderLeft:`3px solid ${STATUS[i.estado]||'#94a3b8'}`}}>
           <div className="flex justify-between gap-3"><div><p className="font-title font-bold">{p?`${p.nombre} ${p.apellido||''}`:'Persona'}</p><p style={{fontSize:'.7rem',color:'var(--text-dim)'}}>{i.fecha_desde} → {i.fecha_hasta}{i.dias_solicitados ? ` · ${i.dias_solicitados} días` : ''}</p></div><span className="font-metric" style={{fontSize:'.62rem',color:STATUS[i.estado],textTransform:'uppercase'}}>{i.estado}</span></div>
