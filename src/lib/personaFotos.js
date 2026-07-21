@@ -23,21 +23,22 @@ export function personaFotoThumbPath(storagePath) {
   return storagePath.replace(/\.[^./]+$/, '-thumb.webp')
 }
 
-function signedUrl(storagePath) {
-  const cached = signedUrlCache.get(storagePath)
+function signedUrl(storagePath, transform = null) {
+  const cacheKey = transform ? `${storagePath}:${JSON.stringify(transform)}` : storagePath
+  const cached = signedUrlCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) return cached.promise
   const promise = supabase.storage
     .from(PERSONA_FOTOS_BUCKET)
-    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS)
+    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS, transform ? { transform } : undefined)
     .then(({ data, error }) => {
       if (error) throw error
       return data?.signedUrl || null
     })
     .catch(error => {
-      signedUrlCache.delete(storagePath)
+      signedUrlCache.delete(cacheKey)
       throw error
     })
-  signedUrlCache.set(storagePath, { promise, expiresAt:Date.now() + SIGNED_URL_CACHE_MS })
+  signedUrlCache.set(cacheKey, { promise, expiresAt:Date.now() + SIGNED_URL_CACHE_MS })
   return promise
 }
 
@@ -50,9 +51,8 @@ export async function getPersonaFotoUrl(storagePath) {
 export async function getPersonaFotoUrls(storagePath) {
   if (!storagePath) return { thumbnail:null, original:null }
   if (/^https?:\/\//i.test(storagePath)) return { thumbnail:null, original:storagePath }
-  const thumbPath = personaFotoThumbPath(storagePath)
   const [thumbnail, original] = await Promise.all([
-    signedUrl(thumbPath),
+    signedUrl(storagePath, { width:PERSONA_FOTO_THUMB_SIZE, height:PERSONA_FOTO_THUMB_SIZE, resize:'cover', quality:70 }),
     signedUrl(storagePath),
   ])
   return { thumbnail, original }
