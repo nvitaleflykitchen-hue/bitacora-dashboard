@@ -68,7 +68,7 @@ function estadoPeriodoPrueba(persona, hoy = new Date()) {
   const inicioHoy = new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
   return { ingreso, vencimiento, diasRestantes:Math.round((vencimiento-inicioHoy)/86400000) };
 }
-function colorPeriodoPrueba(dias) { if (dias<0 || dias<=15) return "#ff4444"; if (dias<=30) return "#f59e0b"; return "#39FF14"; }
+function colorPeriodoPrueba(dias) { if (dias<=15) return "#ff4444"; if (dias<=30) return "#f97316"; if (dias<=60) return "#facc15"; return "#39FF14"; }
 function textoPeriodoPrueba(dias) { if (dias<0) return `Vencido hace ${Math.abs(dias)} día${Math.abs(dias)===1?"":"s"}`; if (dias===0) return "Vence hoy"; return `Vence en ${dias} día${dias===1?"":"s"}`; }
 
 // ──────────────────────────────────────────────
@@ -3339,6 +3339,9 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                     >
                       {personasSede.map((p) => {
                         const score = Math.min(5, p.puntaje_promedio || 0);
+                        const periodoPrueba = estadoPeriodoPrueba(p);
+                        const mostrarPeriodoPrueba = periodoPrueba && periodoPrueba.diasRestantes >= -30 && periodoPrueba.diasRestantes <= PERIODO_PRUEBA_DIAS;
+                        const periodoColor = mostrarPeriodoPrueba ? colorPeriodoPrueba(periodoPrueba.diasRestantes) : null;
                         const evalColor = score
                           ? RESULTADO_COLOR[p.resultado_global] || "var(--text)"
                           : "var(--text-dim)";
@@ -3348,10 +3351,12 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                             onClick={() => setSelectedId(p.id)}
                             className="glass p-4 rounded cursor-pointer transition-colors relative group hover:border-phosphor/30"
                             style={{
+                              border: periodoColor ? `2px solid ${periodoColor}` : undefined,
+                              boxShadow: periodoColor ? `0 0 0 1px ${periodoColor}22, 0 0 14px ${periodoColor}12` : undefined,
                               borderLeft:
                                 p.incidentes > 0
                                   ? "2px solid #ff4444"
-                                  : "2px solid transparent",
+                                  : periodoColor ? `2px solid ${periodoColor}` : "2px solid transparent",
                             }}
                           >
                             <div className="flex justify-between items-start mb-2">
@@ -3380,6 +3385,12 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                                 style={{ color: "var(--phosphor)" }}
                               />
                             </div>
+                            {mostrarPeriodoPrueba && (
+                              <div className="flex items-center justify-between mt-3 px-2 py-1.5 rounded" style={{ background:`${periodoColor}12`, border:`1px solid ${periodoColor}44` }}>
+                                <span className="font-metric" style={{ color:periodoColor, fontSize:'.62rem' }}>PERÍODO DE PRUEBA</span>
+                                <span className="font-title font-bold" style={{ color:periodoColor, fontSize:'.72rem' }}>{textoPeriodoPrueba(periodoPrueba.diasRestantes)}</span>
+                              </div>
+                            )}
                             {(p.telefono || p.email) && (
                               <div className="flex items-center gap-2 mt-2" onClick={(event) => event.stopPropagation()}>
                                 {p.telefono && (

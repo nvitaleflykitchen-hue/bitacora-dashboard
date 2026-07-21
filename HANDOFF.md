@@ -265,3 +265,9 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - Se cruzó la planilla de períodos de prueba: 9 fichas faltantes creadas y 3 fichas completadas; 14 personas no-Planta verificadas.
 - Equipo incorpora una pestaña administrativa con cuenta regresiva de 180 días desde el ingreso; excluye Planta Córdoba y conserva vencidos por 30 días.
 - Autorizado para publicar por Nicolás.
+
+### 2026-07-21 — Semáforo visual del período de prueba
+
+- Las tarjetas de la vista `Equipo > Lista` muestran marco y rótulo con la cuenta regresiva.
+- Escala: verde >60 días, amarillo 31–60, naranja 16–30 y rojo <=15 o vencido.
+- Verificado con ESLint y build; autorizado para publicar.
