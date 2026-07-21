@@ -5,6 +5,7 @@ import { ROLE_LABELS } from '../lib/access'
 import DashboardGlobal from './DashboardGlobal'
 import SedeEncargadoView from './SedeEncargadoView'
 import { getDirectorio } from '../lib/queries'
+import MiGestionPanel from '../components/MiGestionPanel'
 
 const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
 const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
@@ -204,6 +205,7 @@ export default function InicioRol({ onNavigate, onOpenSearch }) {
           ))}
         </div>
       </section>
+      <MiGestionPanel onNavigate={onNavigate} />
       <ContactosSection />
       <Dashboard onNavigate={onNavigate} />
     </div>

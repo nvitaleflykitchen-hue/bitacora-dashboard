@@ -275,7 +275,8 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | requiere_escalamiento | boolean | NO | `false` |
 | motivo_escalamiento / escalado_a | text | YES | — |
 | link_evidencia | text | YES | — |
-| op1_producidos / op1_servidos / op1_sobrante / op2_producidos / op2_servidos / op2_sobrante / vegetariano_producidos / vegetariano_servidos / vegetariano_sobrante / ensalada_producidos / ensalada_sobrante / postre_producidos / postre_sobrante | integer | YES | — (conteo de producción, servicio y sobrante de comedor) |
+| op1_producidos / op1_servidos / op1_sobrante / op2_producidos / op2_servidos / op2_sobrante / vegetariano_producidos / vegetariano_servidos / vegetariano_sobrante / ensalada_producidos / ensalada_sobrante / postre_producidos / postre_sobrante | integer | YES | — (conteo de producción, servicio y sobrante total de comedor) |
+| op1_sobrante_reutilizable / op1_sobrante_descarte / op2_sobrante_reutilizable / op2_sobrante_descarte / vegetariano_sobrante_reutilizable / vegetariano_sobrante_descarte / ensalada_sobrante_reutilizable / ensalada_sobrante_descarte / postre_sobrante_reutilizable / postre_sobrante_descarte | integer | YES | — (discriminación en raciones; `*_sobrante` conserva el total y los registros anteriores quedan sin discriminar) |
 | created_at | timestamptz | NO | `now()` |
 | tipo | text | YES | — |
 
@@ -320,6 +321,9 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | 🔗 no_conformidad_id | bigint | YES | → `no_conformidades.id` |
 | descripcion | text | NO | — |
 | responsable | text | YES | — |
+| 🔗 responsable_id | uuid | YES | → `perfiles.id` (`ON DELETE SET NULL`; aplicado 2026-07-20) |
+| prioridad | text | NO | `'Media'`; `Alta`, `Media`, `Baja` |
+| subtareas | jsonb | NO | `'[]'`; pasos operativos de la acción |
 | fecha_limite | date | YES | — |
 | fecha_cierre | timestamptz | YES | — |
 | estado | text | NO | `'Pendiente'` |
@@ -329,6 +333,17 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | created_at / updated_at | timestamptz | YES | `now()` |
 | 🔗 sede_id | bigint | YES | → `sedes.id` |
 | sede_nombre / auditoria_codigo / notas | text | YES | — |
+
+**capa_planes** (cabecera de proyecto para un conjunto de acciones CAPA)
+| Columna | Tipo | Nulo | Default |
+|---|---|---|---|
+| 🔑 id | uuid | NO | `gen_random_uuid()` |
+| auditoria_codigo | text | NO | Código que agrupa las acciones del proyecto |
+| titulo / objetivo / alcance / origen | text | YES | — |
+| 🔗 responsable_id | uuid | YES | → `perfiles.id` (`ON DELETE SET NULL`; aplicado 2026-07-20) |
+| created_at / updated_at | timestamptz | YES | `now()` |
+
+La migración aplicada agrega un trigger de asignación que inserta notificaciones personales deduplicadas. No modifica `GRANT`, RLS ni políticas existentes.
 
 **tareas**
 | Columna | Tipo | Nulo | Default |
@@ -375,6 +390,14 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | observacion_aprobacion | text | YES | — |
 | sla_dias | integer | YES | —; se congela al enviar a Compras |
 | historial_estados | jsonb | NO | `'[]'` (después de aplicar la migración) |
+| destino_inventario | text | NO | `'insumo'`; `activo`, `insumo`, `no_inventariable` (aplicado 2026-07-20) |
+| categoria_inventario | text | YES | Categoría sugerida para el alta automática |
+| 🔗 entrega_id | uuid | YES | → `compras_entregas.id` |
+| inventario_tipo / inventario_id | text / uuid | YES | Resultado generado al confirmar el retiro |
+
+**compras_entregas** *(aplicado y verificado el 2026-07-20)*
+
+Agrupa todos los requerimientos `Recibido` de una sede, registra preparación y aviso, y conserva la aceptación autenticada de custodia (`retirado_por`, nombre y fecha). El RPC transaccional `confirmar_entrega_compras` genera activos o movimientos de stock antes de marcar los requerimientos como `Cumplido`. SQL aplicado: `supabase/security/20260720_compras_entregas_inventario_REVIEW.sql`. Verificación: flujo integral ejecutado dentro de `BEGIN…ROLLBACK`, sin persistir datos de prueba.
 
 **push_subscriptions / notificaciones** *(propuesta local pendiente de aprobación y migración)*
 
@@ -477,7 +500,7 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | Columna | Tipo | Nulo | Default |
 |---|---|---|---|
 | 🔑 id | uuid | NO | `gen_random_uuid()` |
-| codigo_interno | text | YES | — (UNIQUE) |
+| codigo_interno | text | YES | Automático por trigger si llega vacío (UNIQUE) |
 | tipo | text | NO | — (incluye subtipo `VEHICULO` para flota) |
 | nombre / marca / modelo / numero_serie / categoria / sede / responsable | text | YES/NO | — |
 | estado | text | YES | `'operativo'` |
@@ -714,12 +737,18 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | apellido / dni / legajo / puesto / area | text | YES | — |
 | sede_ids | integer[] | YES | `'{}'` |
 | telefono / email | text | YES | — |
-| fecha_ingreso / fecha_baja | date | YES | — |
+| fecha_ingreso / fecha_baja | date | YES | Fecha de ingreso y último día trabajado/programado |
+| motivo_baja | text | YES | `renuncia`, `despido`, `fin_contrato`, `jubilacion`, `fallecimiento`, `otro` |
+| observaciones_baja | text | YES | Notas internas del egreso |
 | activo | boolean | YES | `true` |
 | descripcion_puesto | text | YES | — |
 | procesos | ARRAY | YES | — |
 | foto_url | text | YES | — |
 | created_at / updated_at | timestamptz | YES | `now()` |
+
+`foto_url` almacena la ruta interna del objeto en el bucket privado `fotos-personal`
+(`personas/{persona_id}/perfil-{timestamp}.{ext}`). La aplicación genera una URL
+firmada temporal al mostrar la imagen; los registros sin foto usan iniciales.
 
 **evaluaciones** (evaluación de desempeño, escala probablemente 1-5 en cada campo `smallint`, no verificado el rango exacto)
 | Columna | Tipo | Nulo | Default |

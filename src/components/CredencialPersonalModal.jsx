@@ -1,0 +1,56 @@
+import { useEffect, useMemo, useState } from 'react'
+import QRCode from 'qrcode'
+import { BadgeCheck, Download, RefreshCw, ShieldX, X } from 'lucide-react'
+import { format } from 'date-fns'
+import { useAuth } from '../lib/auth'
+import { getPersonaFotoUrl } from '../lib/personaFotos'
+import { actualizarPrivacidadCredencial, cambiarEstadoCredencial, categoriaCredencial, descargarCredencialPdf, emitirCredencial, fechaVencimientoCredencial, getCredencialPersona, urlValidacionCredencial } from '../lib/credenciales'
+import { mensajeError } from '../lib/errores'
+import { confirmar, toast } from '../lib/feedback'
+
+const GRUPOS=['','A+','A-','B+','B-','AB+','AB-','O+','O-']
+
+export default function CredencialPersonalModal({ persona, sedes, onClose }) {
+  const { user }=useAuth()
+  const [credencial,setCredencial]=useState(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false)
+  const [foto,setFoto]=useState(null),[qr,setQr]=useState(null),[grupo,setGrupo]=useState('')
+  const [fotoX,setFotoX]=useState(50),[fotoY,setFotoY]=useState(50),[fotoZoom,setFotoZoom]=useState(1)
+  const [compartirTelefono,setCompartirTelefono]=useState(false),[compartirEmail,setCompartirEmail]=useState(false)
+  const sedeNombre=useMemo(()=>{const values=(persona.sede_ids||[]).map(id=>sedes.find(s=>String(s.id)===String(id))?.nombre).filter(Boolean);return values.length?values.join(' / '):'Administración Central'},[persona.sede_ids,sedes])
+  const nombre=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase(),category=categoriaCredencial(persona)
+  const vencimiento=credencial?.fecha_vencimiento||fechaVencimientoCredencial()
+  const load=async()=>{setLoading(true);try{const value=await getCredencialPersona(persona.id);setCredencial(value);setCompartirTelefono(Boolean(value?.compartir_telefono));setCompartirEmail(Boolean(value?.compartir_email));setGrupo(value?.grupo_sanguineo||'');setFotoX(Number(value?.foto_pos_x??50));setFotoY(Number(value?.foto_pos_y??50));setFotoZoom(Number(value?.foto_zoom??1))}catch(e){toast.error(mensajeError(e))}finally{setLoading(false)}}
+  useEffect(()=>{load()},[persona.id])
+  useEffect(()=>{if(persona.foto_url)getPersonaFotoUrl(persona.foto_url).then(setFoto).catch(()=>{});if(credencial?.token)QRCode.toDataURL(urlValidacionCredencial(credencial.token),{width:500,margin:1}).then(setQr)},[persona.foto_url,credencial?.token])
+  const emitir=async()=>{if(!persona.foto_url)return toast.warn('La persona necesita una fotografía antes de emitir la credencial.');if(credencial?.estado==='activa'&&!(await confirmar({titulo:'Reemitir credencial',mensaje:'La credencial actual quedará anulada y su QR dejará de ser válido.',confirmText:'Reemitir'})))return;setBusy(true);try{setCredencial(await emitirCredencial({persona,sedeNombre,userId:user.id,anterior:credencial,compartirTelefono,compartirEmail,grupoSanguineo:grupo,fotoX,fotoY,fotoZoom}));toast.ok('Credencial emitida por dos años.')}catch(e){toast.error(mensajeError(e))}finally{setBusy(false)}}
+  const guardarDatos=async()=>{setBusy(true);try{setCredencial(await actualizarPrivacidadCredencial(credencial.id,compartirTelefono,compartirEmail,grupo,fotoX,fotoY,fotoZoom));toast.ok('Datos y encuadre actualizados.')}catch(e){toast.error(mensajeError(e))}finally{setBusy(false)}}
+  const invalidar=async estado=>{if(!(await confirmar({titulo:estado==='extraviada'?'Registrar extravío':'Anular credencial',mensaje:'El QR dejará de validar esta credencial inmediatamente.',peligro:true,confirmText:estado==='extraviada'?'Marcar extraviada':'Anular'})))return;setBusy(true);try{setCredencial(await cambiarEstadoCredencial(credencial.id,estado,estado==='extraviada'?'Extravío informado':'Anulada por administración'));toast.ok('Credencial invalidada.')}catch(e){toast.error(mensajeError(e))}finally{setBusy(false)}}
+  const activa=credencial?.estado==='activa'
+  const fotoStyle={width:'100%',height:'100%',objectFit:'cover',objectPosition:`${fotoX}% ${fotoY}%`,transform:`scale(${fotoZoom})`,transformOrigin:`${fotoX}% ${fotoY}%`}
+
+  return <div className="modal-overlay"><div className="glass hud-corner fade-in" style={{width:'min(1180px,97vw)',maxHeight:'95vh',overflowY:'auto',padding:22}}>
+    <header className="flex items-center justify-between mb-5"><div><h2 className="font-title font-bold" style={{color:'var(--text)'}}>Credencial aeroportuaria</h2><p style={{color:'var(--text-dim)',fontSize:'.7rem'}}>CR80 · emisión exclusiva para administradores · vigencia de 2 años</p></div><button className="btn-ghost" onClick={onClose}><X size={16}/></button></header>
+    {loading?<p>Cargando…</p>:<div style={{display:'grid',gridTemplateColumns:'minmax(520px,1.35fr) minmax(300px,.65fr)',gap:24}}>
+      <div style={{display:'flex',gap:18,alignItems:'flex-start',justifyContent:'center',flexWrap:'wrap'}}>
+        <div style={card}>
+          <div style={{height:46,padding:'3px 12px',display:'flex',justifyContent:'center'}}><img src="/fly-kitchen-credencial.png" style={{maxWidth:'100%',height:40,objectFit:'contain'}}/></div>
+          <div style={{height:218,display:'grid',gridTemplateColumns:'1fr 39px'}}><div style={{overflow:'hidden',background:'#dfe3e8',position:'relative'}}>{foto&&<img src={foto} style={fotoStyle}/>}</div><div style={{background:'#eb6600',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,lineHeight:1.05}}>{category.split('').map(x=><span key={x}>{x}</span>)}</div></div>
+          <div style={{padding:'7px 12px 4px',height:121,display:'flex',flexDirection:'column',gap:2,boxSizing:'border-box'}}><strong style={{fontSize:18,lineHeight:1.05}}>{nombre}</strong>{persona.dni&&<strong style={{fontSize:10.5}}>DNI {persona.dni}</strong>}<strong style={{fontSize:11.5}}>FLY KITCHEN S.A.</strong><b style={{fontSize:9.5,color:'#d75b00',lineHeight:1.1}}>{(persona.puesto||'SIN PUESTO').toUpperCase()}</b><div style={{display:'flex',alignItems:'end',justifyContent:'space-between',marginTop:'auto'}}><span style={{fontSize:8}}>{sedeNombre.toUpperCase()}</span>{grupo&&<b style={{fontSize:11,color:'#d75b00'}}>{grupo}</b>}</div></div>
+          <div style={expiry}>VENCE&nbsp; {format(new Date(`${vencimiento}T12:00:00`),'dd·MM·yyyy')}</div>
+        </div>
+        <div style={card}><div style={{height:66,padding:'8px 16px',display:'flex',justifyContent:'center'}}><img src="/fly-kitchen-credencial.png" style={{maxWidth:'100%',height:50,objectFit:'contain'}}/></div>{qr?<img src={qr} style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174}}/>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:'9px 5px',fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:'15px 12px',fontSize:9,lineHeight:1.55}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>
+      </div>
+      <section><div className="glass rounded p-4 mb-3"><p className="font-metric text-xs" style={{color:'var(--text-dim)'}}>ESTADO</p><div className="flex items-center gap-2 mt-2">{activa?<BadgeCheck color="var(--phosphor)"/>:<ShieldX color="var(--alert)"/>}<strong style={{color:activa?'var(--phosphor)':'var(--alert)'}}>{credencial?credencial.estado.toUpperCase():'SIN EMITIR'}</strong></div>{credencial&&<p style={{fontSize:'.68rem',color:'var(--text-dim)',marginTop:10}}>Emitida {format(new Date(`${credencial.fecha_emision}T12:00:00`),'dd/MM/yyyy')} · vence {format(new Date(`${credencial.fecha_vencimiento}T12:00:00`),'dd/MM/yyyy')}</p>}</div>
+        <div className="glass rounded p-4 mb-3"><p className="font-metric text-xs mb-3" style={{color:'var(--text-dim)'}}>ENCUADRE DE LA FOTO</p><CropControl label="Horizontal" value={fotoX} min={0} max={100} onChange={setFotoX}/><CropControl label="Vertical" value={fotoY} min={0} max={100} onChange={setFotoY}/><CropControl label="Zoom" value={fotoZoom} min={1} max={1.8} step={.05} onChange={setFotoZoom}/><button className="btn-ghost w-full mt-2" onClick={()=>{setFotoX(50);setFotoY(50);setFotoZoom(1)}}>Centrar automáticamente</button><p style={{fontSize:'.6rem',color:'var(--text-dim)',marginTop:6}}>El encuadre se conserva en la credencial y en el PDF.</p></div>
+        <div className="glass rounded p-4 mb-3"><label className="font-metric text-xs block mb-2" style={{color:'var(--text-dim)'}}>GRUPO SANGUÍNEO (OPCIONAL)</label><select className="input-dark" value={grupo} onChange={e=>setGrupo(e.target.value)}>{GRUPOS.map(value=><option key={value} value={value}>{value||'— No imprimir —'}</option>)}</select><p style={{fontSize:'.6rem',color:'var(--text-dim)',marginTop:6}}>En la credencial se imprime solamente el valor, por ejemplo A+.</p></div>
+        <div className="glass rounded p-4 mb-3"><p className="font-metric text-xs mb-3" style={{color:'var(--text-dim)'}}>CONTACTO DISPONIBLE EN EL QR</p><label className="flex items-center gap-2 mb-2" style={{fontSize:'.72rem'}}><input type="checkbox" checked={compartirTelefono} onChange={e=>setCompartirTelefono(e.target.checked)}/> Compartir teléfono laboral</label><label className="flex items-center gap-2" style={{fontSize:'.72rem'}}><input type="checkbox" checked={compartirEmail} onChange={e=>setCompartirEmail(e.target.checked)}/> Compartir correo laboral</label>{credencial&&<button className="btn-ghost mt-3 w-full" disabled={busy} onClick={guardarDatos}>Guardar datos y encuadre</button>}</div>
+        <div className="flex flex-col gap-2"><button className="btn-primary flex items-center justify-center gap-2" disabled={busy} onClick={emitir}><RefreshCw size={14}/>{credencial?'Reemitir por 2 años':'Emitir credencial'}</button>{activa&&<button className="btn-ghost flex items-center justify-center gap-2" disabled={busy} onClick={()=>descargarCredencialPdf(persona,credencial).catch(e=>toast.error(mensajeError(e)))}><Download size={14}/>Descargar PDF CR80</button>}{activa&&<><button className="btn-ghost" disabled={busy} onClick={()=>invalidar('extraviada')}>Informar extravío</button><button className="btn-ghost" style={{color:'var(--alert)'}} disabled={busy} onClick={()=>invalidar('anulada')}>Anular credencial</button></>}</div>
+      </section>
+    </div>}
+  </div></div>
+}
+
+function CropControl({label,value,onChange,min,max,step=1}){return <label style={{display:'grid',gridTemplateColumns:'68px 1fr 42px',gap:8,alignItems:'center',fontSize:'.65rem',marginBottom:8}}><span>{label}</span><input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))}/><span style={{textAlign:'right',color:'var(--text-dim)'}}>{label==='Zoom'?`${Math.round(value*100)}%`:Math.round(value)}</span></label>}
+
+const card={width:270,height:428,background:'#fafafa',color:'#151515',borderRadius:18,border:'1px solid #d8d8d8',overflow:'hidden',display:'flex',flexDirection:'column',textAlign:'left',boxShadow:'0 14px 38px rgba(0,0,0,.25)',flexShrink:0}
+const expiry={height:43,marginTop:'auto',background:'#eb6600',color:'#fff',fontSize:18,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',letterSpacing:'.02em'}

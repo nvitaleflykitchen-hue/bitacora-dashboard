@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
-import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles, getRegistroById } from '../lib/queries'
+import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles, getRegistroById, getAllSedeContactos, crearEntregaCompras, registrarAvisoEntregaCompras, confirmarEntregaCompras } from '../lib/queries'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
-import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save, FileText } from 'lucide-react'
+import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save, FileText, PackageCheck } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import RegistroModal from '../components/RegistroModal'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { fmtFecha } from '../lib/dateUtils'
 import { confirmar, pedirTexto, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import { agruparRecibidosPorSede, buildRetiroMessage, DESTINOS_INVENTARIO, whatsappRetiroHref } from '../lib/comprasEntrega'
 
 const ESTADOS   = ['Pendiente','Observado','Aprobado','Enviado','En compra','Recibido','Cumplido','Rechazado','Cancelado']
 const KANBAN_ACTIVOS = ['Pendiente','Aprobado','Enviado','En compra','Recibido']
@@ -271,6 +272,8 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
     fecha_compromiso:  req?.fecha_compromiso   || '',
     observacion_aprobacion:req?.observacion_aprobacion || '',
     enviado_a:         req?.enviado_a          || emailCompras || '',
+    destino_inventario:req?.destino_inventario || 'insumo',
+    categoria_inventario:req?.categoria_inventario || '',
   })
   const [saving, setSaving] = useState(false)
   const [justCreated, setJustCreated] = useState(false)
@@ -400,6 +403,19 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
                 <option value="prueba">Prueba</option>
                 <option value="unica">Única</option>
               </select>
+            </div>
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div>
+              <label style={L}>Destino al entregar</label>
+              <select disabled={contenidoBloqueado} className="input-dark" value={form.destino_inventario} onChange={e=>set('destino_inventario',e.target.value)}>
+                {DESTINOS_INVENTARIO.map(d=><option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={L}>{form.destino_inventario === 'activo' ? 'Categoría del equipo' : 'Categoría de inventario'}</label>
+              <input disabled={contenidoBloqueado || form.destino_inventario === 'no_inventariable'} className="input-dark" value={form.categoria_inventario} onChange={e=>set('categoria_inventario',e.target.value)} placeholder={form.destino_inventario === 'activo' ? 'Ej: Termotanque' : 'Ej: Herramientas'}/>
             </div>
           </div>
 
@@ -647,6 +663,8 @@ export default function Requerimientos({ focusId }) {
   const [sedes, setSedes]     = useState([])
   const [contactos, setContactos] = useState([])
   const [perfiles, setPerfiles] = useState([])
+  const [sedeContactos, setSedeContactos] = useState([])
+  const [processingEntrega, setProcessingEntrega] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editReq, setEditReq]  = useState(null)
@@ -662,11 +680,11 @@ export default function Requerimientos({ focusId }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [r, s, c, p] = await Promise.all([
+      const [r, s, c, p, sc] = await Promise.all([
         getRequerimientos({ estado: filtroEstado||undefined, urgencia: filtroUrgencia||undefined, sedeIds: allowedSedeIds||undefined, sedeId: filtroSede||undefined }),
-        getSedes(allowedSedeIds), getContactos(), getPerfiles()
+        getSedes(allowedSedeIds), getContactos(), getPerfiles(), getAllSedeContactos(allowedSedeIds)
       ])
-      setReqs(r); setSedes(s); setContactos(c); setPerfiles(p)
+      setReqs(r); setSedes(s); setContactos(c); setPerfiles(p); setSedeContactos(sc)
     } catch(e) { console.error(e) }
     finally { setLoading(false) }
   }, [filtroEstado, filtroUrgencia, filtroSede, allowedSedeIds])
@@ -731,6 +749,37 @@ export default function Requerimientos({ focusId }) {
     } catch (e) { toast.error('No se pudo registrar el envío: ' + mensajeError(e)) }
   }
 
+  const handleAvisarRetiro = async (grupo) => {
+    const candidatos = sedeContactos.filter(c=>String(c.sede_id)===String(grupo.sedeId) && c.contactos?.telefono)
+    const responsable = candidatos.find(c=>/responsable|encargad|supervisor/i.test(`${c.rol} ${c.contactos?.cargo}`)) || candidatos[0]
+    if (!responsable) {
+      toast.warn('La sede no tiene un responsable con teléfono cargado.')
+      return
+    }
+    setProcessingEntrega(`aviso-${grupo.sedeId}`)
+    try {
+      const entregaId = await crearEntregaCompras({ sedeId:grupo.sedeId, requerimientoIds:grupo.requerimientos.map(r=>r.id), contactoId:responsable.contacto_id || responsable.contactos?.id })
+      const mensaje = buildRetiroMessage({ sedeNombre:grupo.sedeNombre, responsableNombre:responsable.contactos.nombre, requerimientos:grupo.requerimientos })
+      window.open(whatsappRetiroHref(responsable.contactos.telefono, mensaje), '_blank', 'noopener,noreferrer')
+      if (await confirmar({ titulo:'Aviso de retiro', mensaje:'¿Confirmás que abriste/enviaste el aviso al responsable? Esto dejará trazabilidad del aviso.', confirmText:'Registrar aviso' })) {
+        await registrarAvisoEntregaCompras(entregaId)
+      }
+      await load()
+    } catch (e) { toast.error('No se pudo preparar el retiro: ' + mensajeError(e)) }
+    finally { setProcessingEntrega(null) }
+  }
+
+  const handleConfirmarRetiro = async (entregaId, items) => {
+    if (!await confirmar({ titulo:'Aceptar custodia', mensaje:'Confirmás que retiraste todos los elementos del lote. Se incorporarán automáticamente al inventario de la sede y los pedidos pasarán a Cumplido.', confirmText:'Confirmar retiro' })) return
+    setProcessingEntrega(`confirmar-${entregaId}`)
+    try {
+      await confirmarEntregaCompras({ entregaId, items:items.map(r=>({ requerimiento_id:r.id, cantidad:Number(r.cantidad || 1) })) })
+      toast.ok('Retiro confirmado e inventario actualizado.')
+      await load()
+    } catch (e) { toast.error('No se pudo confirmar el retiro: ' + mensajeError(e)) }
+    finally { setProcessingEntrega(null) }
+  }
+
   const byEstado = ESTADOS.reduce((acc, e) => {
     acc[e] = reqs.filter(r=>r.estado===e)
     return acc
@@ -764,6 +813,10 @@ export default function Requerimientos({ focusId }) {
         .map(persona=>[persona.nombre.trim().toLocaleLowerCase(), persona])
     ).values()
   ).sort((a,b)=>a.nombre.localeCompare(b.nombre, 'es'))
+  const recibidosSinLote = agruparRecibidosPorSede(reqs)
+  const lotesActivos = Array.from(new Map(
+    reqs.filter(r=>r.entrega_id && r.estado==='Recibido').map(r=>[r.entrega_id, { entregaId:r.entrega_id, estado:r.entrega_estado, sedeNombre:r.sedes?.nombre || r.sede_nombre, items:reqs.filter(x=>x.entrega_id===r.entrega_id && x.estado==='Recibido') }])
+  ).values())
 
   return (
     <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem', display:'flex', flexDirection:'column', gap:16 }}>
@@ -903,6 +956,15 @@ export default function Requerimientos({ focusId }) {
       </div>
 
       {/* Kanban */}
+      {(recibidosSinLote.length > 0 || lotesActivos.length > 0) && (
+        <section style={{ padding:'12px', border:'1px solid rgba(45,212,191,.25)', background:'rgba(45,212,191,.045)', borderRadius:5 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:9, color:'#2DD4BF', fontSize:'.68rem', fontWeight:800 }}><PackageCheck size={14}/> RETIROS Y CUSTODIA</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {recibidosSinLote.map(g=><button key={g.sedeId} className="btn-ghost" disabled={!!processingEntrega} onClick={()=>handleAvisarRetiro(g)} style={{ color:'#2DD4BF' }}><MessageCircle size={12}/> Avisar retiro · {g.sedeNombre} ({g.requerimientos.length})</button>)}
+            {lotesActivos.map(l=><button key={l.entregaId} className="btn-primary" disabled={!!processingEntrega || l.estado==='preparado'} onClick={()=>handleConfirmarRetiro(l.entregaId,l.items)} title={l.estado==='preparado'?'Compras todavía no registró el aviso':'Aceptar la custodia del lote'}><PackageCheck size={12}/> Confirmar retiro · {l.sedeNombre} ({l.items.length})</button>)}
+          </div>
+        </section>
+      )}
       <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginBottom:-8 }}>
         <button
           title={filtroSede ? 'Reporte de eficiencia PDF de la sede filtrada' : 'Reporte de eficiencia PDF general'}

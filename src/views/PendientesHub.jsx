@@ -59,6 +59,7 @@ const isDueSoon = item => {
 }
 
 const isMine = (item, perfil) => {
+  if (item.ownerId && perfil?.id) return String(item.ownerId) === String(perfil.id)
   const owner = normalize(item.owner)
   return owner && owner === normalize(perfil?.nombre)
 }
@@ -91,6 +92,7 @@ const actionLabel = item => {
   if (item.module === 'Compra') return 'Revisar compra'
   if (item.module === 'Mantenimiento') return 'Ver ticket'
   if (item.module === 'Escalamiento') return 'Gestionar'
+  if (item.module === 'CAPA') return 'Abrir acciÃ³n'
   return 'Resolver'
 }
 

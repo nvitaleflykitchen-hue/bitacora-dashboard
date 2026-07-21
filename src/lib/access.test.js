@@ -12,8 +12,8 @@ describe('matriz de acceso', () => {
   // (6 operacionales + flotaHub + calidadHub + equipo). Antes de agregar
   // flotaHub ya eran 8, por lo que el límite histórico de "siete" estaba
   // desactualizado independientemente de este cambio.
-  it.each(ROLES)('limita el menú principal de %s a nueve accesos', rol => {
-    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(9)
+  it.each(ROLES)('limita el menú principal de %s a diez accesos', rol => {
+    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(10)
   })
 
   it('deja al consultor en modo lectura', () => {

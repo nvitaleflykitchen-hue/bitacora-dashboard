@@ -26,12 +26,16 @@ import {
   HelpCircle,
   ShieldX,
   Clock3,
+  CreditCard,
 } from "lucide-react";
 import OrganigramaView from "./OrganigramaView";
 import AdjuntosPanel from "../components/AdjuntosPanel";
 import ContactosTab from "../components/ContactosTab";
 import DocumentacionChecklist from "../components/DocumentacionChecklist";
 import PersonaFormularios from "../components/PersonaFormularios";
+import { PersonaAvatar, PersonaFotoEditor } from "../components/PersonaAvatar";
+import CredencialPersonalModal from "../components/CredencialPersonalModal";
+import VacacionesPanel from "../components/VacacionesPanel";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
 import {
@@ -60,6 +64,8 @@ import {
 function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   const { can, perfil, user } = useAuth();
   const canManage = can("equipo", "manage");
+  const canManageCredentials = perfil?.rol === "admin";
+  const [showCredential, setShowCredential] = useState(false);
   const canRequestAnulacion = ["admin", "editor", "grupo", "encargado"].includes(
     perfil?.rol,
   );
@@ -579,6 +585,9 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {canManageCredentials && showCredential && (
+        <CredencialPersonalModal persona={persona} sedes={sedes} onClose={() => setShowCredential(false)} />
+      )}
       {canManage && showEditPersona && (
         <PersonaModal
           persona={persona}
@@ -589,6 +598,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
             setShowEditPersona(false);
             load();
           }}
+          onPhotoChanged={load}
         />
       )}
 
@@ -604,6 +614,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
         >
           ← Volver
         </button>
+        <PersonaAvatar persona={persona} size={76} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h1
@@ -641,6 +652,11 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
+          {canManageCredentials && (
+            <button onClick={() => setShowCredential(true)} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:"0.7rem" }}>
+              <CreditCard size={13} /> Credencial
+            </button>
+          )}
           {persona.telefono && (
             <a
               href={`tel:${phoneDigits}`}
@@ -650,6 +666,11 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
               <Phone size={12} /> Llamar
             </a>
           )}
+          {!persona.telefono && (
+            <span className="btn-ghost flex items-center gap-1.5 opacity-40" title="Cargá un teléfono para habilitar la llamada">
+              <Phone size={12} /> Llamar
+            </span>
+          )}
           {waLink && (
             <a
               href={waLink}
@@ -658,8 +679,13 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
               className="btn-primary flex items-center gap-1.5"
               style={{ fontSize: "0.7rem", textDecoration: "none" }}
             >
-              <Phone size={12} /> WhatsApp
+              <MessageCircle size={12} /> Mensaje
             </a>
+          )}
+          {!waLink && (
+            <span className="btn-ghost flex items-center gap-1.5 opacity-40" title="Cargá un teléfono para habilitar WhatsApp">
+              <MessageCircle size={12} /> Mensaje
+            </span>
           )}
           {mailLink && (
             <a
@@ -669,6 +695,11 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
             >
               <Mail size={12} /> Email
             </a>
+          )}
+          {!mailLink && (
+            <span className="btn-ghost flex items-center gap-1.5 opacity-40" title="Cargá un email para habilitarlo">
+              <Mail size={12} /> Email
+            </span>
           )}
         </div>
       </div>
@@ -777,6 +808,14 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     persona.fecha_ingreso
                       ? fmtFechaLarga(persona.fecha_ingreso)
                       : null,
+                  ],
+                  [
+                    "Baja programada",
+                    persona.fecha_baja ? fmtFechaLarga(persona.fecha_baja) : null,
+                  ],
+                  [
+                    "Motivo de baja",
+                    persona.motivo_baja ? persona.motivo_baja.replaceAll("_", " ") : null,
                   ],
                 ].map(([l, v]) =>
                   v ? (
@@ -1898,7 +1937,9 @@ function PersonaModal({
   requireSede = false,
   onClose,
   onSaved,
+  onPhotoChanged,
 }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     nombre: persona?.nombre || "",
     apellido: persona?.apellido || "",
@@ -1909,6 +1950,9 @@ function PersonaModal({
     telefono: persona?.telefono || "",
     email: persona?.email || "",
     fecha_ingreso: persona?.fecha_ingreso || "",
+    fecha_baja: persona?.fecha_baja || "",
+    motivo_baja: persona?.motivo_baja || "",
+    observaciones_baja: persona?.observaciones_baja || "",
     descripcion_puesto: persona?.descripcion_puesto || "",
     procesos_raw: persona?.procesos ? persona.procesos.join("\n") : "",
     sede_ids: persona?.sede_ids || defaultSedeIds,
@@ -1919,12 +1963,17 @@ function PersonaModal({
 
   const handleDelete = async () => {
     if (!persona?.id) return;
+    if (!form.fecha_baja) return toast.warn("Indicá la fecha de baja.");
+    if (!form.motivo_baja) return toast.warn("Seleccioná el motivo de la baja.");
+    const esProgramada = form.fecha_baja > new Date().toISOString().slice(0, 10);
     if (
       !(await confirmar({
-        titulo: "Eliminar persona",
-        mensaje: "Esta acción ocultará su perfil del equipo (baja lógica).",
+        titulo: esProgramada ? "Programar baja laboral" : "Registrar baja laboral",
+        mensaje: esProgramada
+          ? "La ficha seguirá activa hasta que se confirme la baja en la fecha indicada."
+          : "La persona pasará al Historial de bajas y conservará toda su información.",
         peligro: true,
-        confirmText: "Eliminar",
+        confirmText: esProgramada ? "Programar baja" : "Confirmar baja",
       }))
     )
       return;
@@ -1932,13 +1981,30 @@ function PersonaModal({
     const res = await supabase
       .schema("equipo")
       .from("personas")
-      .update({ activo: false })
+      .update({
+        activo: esProgramada,
+        fecha_baja: form.fecha_baja,
+        motivo_baja: form.motivo_baja,
+        observaciones_baja: form.observaciones_baja.trim() || null,
+        baja_registrada_at: esProgramada ? null : new Date().toISOString(),
+        baja_registrada_por: esProgramada ? null : user?.id || null,
+      })
       .eq("id", persona.id);
     setSaving(false);
     if (res.error) {
-      toast.error("Error al eliminar: " + mensajeError(res.error));
+      toast.error("Error al registrar la baja: " + mensajeError(res.error));
       return;
     }
+    if (!esProgramada) {
+      await supabase.schema("equipo").from("historial_personal").insert({
+        persona_id: persona.id,
+        tipo: "otro",
+        fecha: form.fecha_baja,
+        descripcion: `Baja laboral: ${form.motivo_baja.replaceAll("_", " ")}${form.observaciones_baja.trim() ? `. ${form.observaciones_baja.trim()}` : ""}`,
+        registrado_por: user?.email || "Sistema",
+      });
+    }
+    toast.success(esProgramada ? "Baja programada." : "Baja registrada.");
     onSaved();
   };
 
@@ -1960,6 +2026,32 @@ function PersonaModal({
     if (requireSede && !form.sede_ids.length)
       return toast.warn("Seleccioná la sede de la persona.");
     setSaving(true);
+    const { data: activos, error: duplicateCheckError } = await supabase
+      .schema("equipo")
+      .from("personas")
+      .select("id,nombre,apellido,puesto,dni,legajo")
+      .eq("activo", true)
+      .is("duplicado_de", null);
+    if (duplicateCheckError) {
+      setSaving(false);
+      return toast.error("No se pudo verificar si la persona ya existe.");
+    }
+    const normalizar = (valor) => (valor || "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const nombreIngresado = normalizar(`${form.nombre} ${form.apellido}`);
+    const existente = (activos || []).find((p) =>
+      p.id !== persona?.id && (
+        normalizar(`${p.nombre} ${p.apellido || ""}`) === nombreIngresado ||
+        (form.dni.trim() && p.dni?.trim() === form.dni.trim()) ||
+        (form.legajo.trim() && p.legajo?.trim() === form.legajo.trim())
+      )
+    );
+    if (existente) {
+      setSaving(false);
+      return toast.warn(
+        `${existente.nombre} ${existente.apellido || ""} ya está activo en el equipo${existente.puesto ? ` como ${existente.puesto}` : ""}. Abrí su ficha en lugar de crear otra.`,
+      );
+    }
     const procesos = form.procesos_raw
       .split("\n")
       .map((s) => s.trim())
@@ -1974,6 +2066,9 @@ function PersonaModal({
       telefono: form.telefono.trim() || null,
       email: form.email.trim() || null,
       fecha_ingreso: form.fecha_ingreso || null,
+      fecha_baja: form.fecha_baja || null,
+      motivo_baja: form.motivo_baja || null,
+      observaciones_baja: form.observaciones_baja.trim() || null,
       descripcion_puesto: form.descripcion_puesto.trim() || null,
       procesos: procesos.length ? procesos : null,
       sede_ids: form.sede_ids.length ? form.sede_ids : null,
@@ -2022,6 +2117,7 @@ function PersonaModal({
             <X size={13} />
           </button>
         </div>
+        {persona && <PersonaFotoEditor persona={persona} onChanged={onPhotoChanged} />}
         <div className="grid grid-cols-2 gap-3 mb-3">
           {[
             ["nombre", "Nombre *", "Ej: Juan"],
@@ -2081,7 +2177,7 @@ function PersonaModal({
             onChange={handleSelectSede}
             style={{ fontSize: "0.75rem", height: 34 }}
           >
-            {!requireSede && <option value="">Sin sede/grupo asignado</option>}
+            {!requireSede && <option value="">Equipo central (sin sede)</option>}
             {grupos.length > 0 && (
               <optgroup label="Grupos">
                 {grupos.map((g) => (
@@ -2132,6 +2228,31 @@ function PersonaModal({
             style={{ fontSize: "0.75rem", resize: "vertical" }}
           />
         </div>
+        {persona?.id && (
+          <div className="glass p-3 mb-4" style={{ borderColor: "rgba(245,158,11,0.25)" }}>
+            <p className="font-metric mb-2" style={{ fontSize: "0.65rem", color: "#f59e0b" }}>BAJA LABORAL</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="font-metric block mb-1" style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}>ÚLTIMO DÍA TRABAJADO</label>
+                <input type="date" className="input-dark w-full" value={form.fecha_baja} onChange={(e) => set("fecha_baja", e.target.value)} />
+              </div>
+              <div>
+                <label className="font-metric block mb-1" style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}>MOTIVO</label>
+                <select className="input-dark w-full" value={form.motivo_baja} onChange={(e) => set("motivo_baja", e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  <option value="renuncia">Renuncia</option>
+                  <option value="despido">Despido</option>
+                  <option value="fin_contrato">Fin de contrato</option>
+                  <option value="jubilacion">Jubilación</option>
+                  <option value="fallecimiento">Fallecimiento</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+            </div>
+            <textarea className="input-dark w-full" rows={2} placeholder="Observaciones internas del egreso" value={form.observaciones_baja} onChange={(e) => set("observaciones_baja", e.target.value)} />
+            <p style={{ fontSize: "0.62rem", color: "var(--text-dim)", marginTop: 6 }}>Guardar permite programar la fecha. “Registrar baja” mueve a la persona al historial.</p>
+          </div>
+        )}
         <div className="flex gap-2 mt-4 justify-between">
           <div className="flex gap-2">
             <button
@@ -2157,7 +2278,7 @@ function PersonaModal({
               className="btn-ghost text-red-500 hover:bg-red-500/10"
               style={{ fontSize: "0.72rem" }}
             >
-              Eliminar
+              Registrar baja
             </button>
           )}
         </div>
@@ -2569,11 +2690,13 @@ ${form.observaciones || "[Completar]"}`;
 }
 
 export default function EquipoView({ onNavigate, focusId, focusType }) {
-  const { can, allowedSedeIds, perfil } = useAuth();
+  const { can, allowedSedeIds, perfil, user } = useAuth();
   const isQualityOnly = isQualityOnlyProfile(perfil);
   const isSafetyOnly = isSafetyOnlyProfile(perfil);
   const canManage = can("equipo", "manage") && !isSafetyOnly;
   const [personas, setPersonas] = useState([]);
+  const [bajas, setBajas] = useState([]);
+  const [duplicados, setDuplicados] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [grupos, setGrupos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2590,8 +2713,9 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
 
   const load = async () => {
     setLoading(true);
-    const [pRes, sRes, gRes] = await Promise.all([
+    const [pRes, bajasRes, sRes, gRes, candidatosDuplicadosRes] = await Promise.all([
       supabase.from("v_personas").select("*").order("nombre"),
+      supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,area,sede_ids,fecha_ingreso,fecha_baja,motivo_baja,observaciones_baja,foto_url,baja_registrada_at,motivo_reactivacion").eq("activo", false).is("duplicado_de", null).not("fecha_baja", "is", null).not("motivo_baja", "is", null).order("fecha_baja", { ascending: false }),
       supabase
         .schema("bitacora")
         .from("sedes")
@@ -2604,6 +2728,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
         .select("id, nombre")
         .eq("activo", true)
         .order("nombre"),
+      supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,email,telefono,sede_ids,activo,duplicado_de").is("duplicado_de", null),
     ]);
     const todasSedes = sRes.data || [];
     // Roles territoriales (grupo/encargado/sede) solo ven y gestionan su(s) sede(s) asignada(s)
@@ -2633,10 +2758,48 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
       ? personasTerritoriales.filter((p) => isQualityTeamPerson(p, perfil))
       : personasTerritoriales;
     setPersonas(personasPermitidas);
+    const bajasTerritoriales = allowedSedeIds === null
+      ? bajasRes.data || []
+      : (bajasRes.data || []).filter((p) => p.sede_ids?.some((id) => allowedSedeIds.includes(id)));
+    setBajas(isQualityOnly ? [] : bajasTerritoriales);
+    const porNombre = new Map();
+    for (const persona of candidatosDuplicadosRes.data || []) {
+      const clave = `${persona.nombre || ""} ${persona.apellido || ""}`
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+      if (!clave) continue;
+      porNombre.set(clave, [...(porNombre.get(clave) || []), persona]);
+    }
+    setDuplicados([...porNombre.values()].filter((grupo) => grupo.length > 1));
     setSedes(sedesPermitidas);
     setGrupos(gruposPermitidos);
     setLoading(false);
     hasLoadedOnce.current = true;
+  };
+
+  const reactivarPersona = async (persona) => {
+    const motivo = window.prompt("Motivo de la reactivación (obligatorio):");
+    if (!motivo?.trim()) return;
+    if (!(await confirmar({ titulo: "Reactivar persona", mensaje: "La ficha volverá al equipo activo y la reactivación quedará registrada.", confirmText: "Reactivar" }))) return;
+    const ahora = new Date().toISOString();
+    const { error } = await supabase.schema("equipo").from("personas").update({
+      activo: true,
+      fecha_baja: null,
+      motivo_baja: null,
+      observaciones_baja: null,
+      reactivada_at: ahora,
+      reactivada_por: user?.id || null,
+      motivo_reactivacion: motivo.trim(),
+    }).eq("id", persona.id);
+    if (error) return toast.error("No se pudo reactivar: " + mensajeError(error));
+    await supabase.schema("equipo").from("historial_personal").insert({
+      persona_id: persona.id,
+      tipo: "otro",
+      fecha: ahora.slice(0, 10),
+      descripcion: `Reactivación laboral: ${motivo.trim()}`,
+      registrado_por: user?.email || "Sistema",
+    });
+    toast.success("Persona reactivada.");
+    load();
   };
 
   // Only re-fetch when auth-relevant fields change, not on every perfil object reference change
@@ -2697,6 +2860,17 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
       .toLowerCase()
       .includes(q);
   });
+
+  const statsPersonas = sedeFilter
+    ? personas.filter((p) =>
+        sedeFilter === "unassigned"
+          ? !p.sede_ids || p.sede_ids.length === 0
+          : p.sede_ids?.includes(Number(sedeFilter)),
+      )
+    : personas;
+  const statsPersonasEvaluadas = statsPersonas.filter(
+    (p) => Number(p.puntaje_promedio || 0) > 0,
+  );
 
   const ranking = [...personas].sort(
     (a, b) => (b.puntos_total || 0) - (a.puntos_total || 0),
@@ -2778,7 +2952,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             className="font-metric"
             style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}
           >
-            {personas.length} personas activas
+            {statsPersonas.length} personas activas
           </p>
         </div>
         {!isQualityOnly && (
@@ -2816,25 +2990,25 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
         style={{ borderBottom: "1px solid rgba(57,255,20,0.06)" }}
       >
         {[
-          { label: "PERSONAS", value: personas.length },
+          { label: "PERSONAS", value: statsPersonas.length },
           {
             label: "PUNTAJE PROM.",
-            value: personas.length
+            value: statsPersonasEvaluadas.length
               ? (
-                  personas.reduce(
+                  statsPersonasEvaluadas.reduce(
                     (s, p) => s + Math.min(5, p.puntaje_promedio || 0),
                     0,
-                  ) / personas.length
+                  ) / statsPersonasEvaluadas.length
                 ).toFixed(1)
               : "—",
           },
           {
             label: "LOGROS TOTALES",
-            value: personas.reduce((s, p) => s + (p.logros_count || 0), 0),
+            value: statsPersonas.reduce((s, p) => s + (p.logros_count || 0), 0),
           },
           {
             label: "CON INCIDENTES",
-            value: personas.filter((p) => (p.incidentes || 0) > 0).length,
+            value: statsPersonas.filter((p) => (p.incidentes || 0) > 0).length,
           },
         ].map((k) => (
           <div
@@ -2872,6 +3046,9 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             ["lista", "LISTA"],
             ["ranking", "RANKING"],
             ["organigrama", "ORGANIGRAMA"],
+            ["vacaciones", "VACACIONES"],
+            ["bajas", `HISTORIAL DE BAJAS (${bajas.length})`],
+            ...(canManage ? [["duplicados", `DUPLICADOS (${duplicados.length})`]] : []),
             ["reclutamiento", "SELECCIÓN"],
             ["contactos", "CONTACTOS"],
           ].map(([id, label]) => (
@@ -2948,6 +3125,61 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
           />
         ) : tab === "organigrama" ? (
           <OrganigramaView onNavigate={onNavigate} />
+        ) : tab === "vacaciones" ? (
+          <VacacionesPanel personas={personas} canManage={canManage} />
+        ) : tab === "duplicados" ? (
+          <div className="max-w-5xl space-y-4">
+            <div className="glass p-4">
+              <p className="font-title font-bold" style={{ color: "var(--phosphor)" }}>REVISIÓN DE POSIBLES DUPLICADOS</p>
+              <p style={{ fontSize: "0.76rem", color: "var(--text-dim)", marginTop: 4 }}>Se comparan nombres normalizados. La consolidación nunca elimina una ficha ni su historial.</p>
+            </div>
+            {duplicados.length === 0 ? <div className="glass p-8 text-center" style={{ color: "var(--text-dim)" }}>No hay coincidencias pendientes.</div> :
+              duplicados.map((grupo) => (
+                <div key={grupo.map((p) => p.id).join("-")} className="glass p-4">
+                  <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
+                    {grupo.map((p) => (
+                      <div key={p.id} className="p-3" style={{ border: "1px solid rgba(57,255,20,0.15)", borderRadius: 6 }}>
+                        <p className="font-title font-bold">{p.nombre} {p.apellido || ""}</p>
+                        <p style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{p.puesto || "Sin puesto"} · {p.activo ? "ACTIVA" : "INACTIVA"}</p>
+                        <p style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 6 }}>{p.email || "Sin email"}{p.telefono ? ` · ${p.telefono}` : ""}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: "0.68rem", color: "#f59e0b", marginTop: 10 }}>Requiere revisión humana antes de consolidar porque ambas fichas contienen datos diferentes.</p>
+                </div>
+              ))}
+          </div>
+        ) : tab === "bajas" ? (
+          <div className="max-w-5xl space-y-3">
+            {personas.filter((p) => p.fecha_baja).length > 0 && (
+              <div className="glass p-4" style={{ borderColor: "rgba(245,158,11,0.35)" }}>
+                <p className="font-title font-bold" style={{ color: "#f59e0b" }}>BAJAS PROGRAMADAS</p>
+                {personas.filter((p) => p.fecha_baja).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between mt-2">
+                    <span>{p.nombre} {p.apellido || ""}</span>
+                    <span className="font-metric" style={{ fontSize: "0.68rem" }}>{fmtFechaLarga(p.fecha_baja)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {bajas.length === 0 ? (
+              <div className="glass p-8 text-center" style={{ color: "var(--text-dim)" }}>No hay bajas registradas.</div>
+            ) : bajas.map((p) => (
+              <div key={p.id} className="glass p-4 flex items-center gap-4">
+                <PersonaAvatar persona={p} size={48} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-title font-bold" style={{ color: "var(--text)" }}>{p.nombre} {p.apellido || ""}</p>
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>{p.puesto || "Sin puesto"}{p.area ? ` · ${p.area}` : ""}</p>
+                  {p.observaciones_baja && <p style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 5 }}>{p.observaciones_baja}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="font-metric" style={{ fontSize: "0.68rem", color: "#f59e0b" }}>{(p.motivo_baja || "otro").replaceAll("_", " ").toUpperCase()}</p>
+                  <p style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>{p.fecha_baja ? fmtFechaLarga(p.fecha_baja) : "Fecha no informada"}</p>
+                  {canManage && <button className="btn-ghost mt-2" onClick={() => reactivarPersona(p)}>REACTIVAR</button>}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : loading && !hasLoadedOnce.current ? (
           <div className="flex items-center justify-center h-40">
             <Loader2
@@ -2962,7 +3194,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             style={{ alignItems: "flex-start" }}
           >
             {/* Columnas por Sede */}
-            {[{ id: "unassigned", nombre: "Sin Escala Asignada" }, ...sedes]
+            {[{ id: "unassigned", nombre: "Equipo central" }, ...sedes]
               .filter((s) =>
                 sedeFilter
                   ? s.id === Number(sedeFilter) ||
@@ -2985,11 +3217,14 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                 )
                   return null; // Hide empty ones when filtered
 
+                const personasSedeEvaluadas = personasSede.filter(
+                  (p) => Number(p.puntaje_promedio || 0) > 0,
+                );
                 const avgSede =
-                  personasSede.reduce(
+                  personasSedeEvaluadas.reduce(
                     (acc, p) => acc + Math.min(5, p.puntaje_promedio || 0),
                     0,
-                  ) / (personasSede.length || 1);
+                  ) / (personasSedeEvaluadas.length || 1);
                 const incSede = personasSede.filter(
                   (p) => (p.incidentes || 0) > 0,
                 ).length;
@@ -2999,7 +3234,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                     key={sede.id}
                     className="flex-shrink-0 flex flex-col gap-3"
                     style={{
-                      width: 320,
+                      width: sedeFilter ? "100%" : 320,
                       background: "rgba(255,255,255,0.02)",
                       padding: "12px",
                       borderRadius: 8,
@@ -3041,7 +3276,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                               color: "var(--phosphor)",
                             }}
                           >
-                            {avgSede.toFixed(1)}
+                            {personasSedeEvaluadas.length ? avgSede.toFixed(1) : "—"}
                           </p>
                           <p
                             className="font-metric"
@@ -3077,7 +3312,9 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                     )}
                     {/* Tarjetas */}
                     <div
-                      className="flex flex-col gap-3 overflow-y-auto"
+                      className={sedeFilter
+                        ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 overflow-y-auto"
+                        : "flex flex-col gap-3 overflow-y-auto"}
                       style={{ maxHeight: "calc(100vh - 280px)" }}
                     >
                       {personasSede.map((p) => {
@@ -3098,7 +3335,9 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                             }}
                           >
                             <div className="flex justify-between items-start mb-2">
-                              <div>
+                              <div className="flex items-center gap-3">
+                                <PersonaAvatar persona={p} size={44} />
+                                <div>
                                 <h3
                                   className="font-title font-bold text-base group-hover:text-[var(--phosphor)] transition-colors"
                                   style={{ color: "var(--text)" }}
@@ -3113,6 +3352,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                                 >
                                   {p.puesto || "Sin puesto"}
                                 </p>
+                                </div>
                               </div>
                               <ChevronRight
                                 size={16}
@@ -3120,6 +3360,47 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                                 style={{ color: "var(--phosphor)" }}
                               />
                             </div>
+                            {(p.telefono || p.email) && (
+                              <div className="flex items-center gap-2 mt-2" onClick={(event) => event.stopPropagation()}>
+                                {p.telefono && (
+                                  <a
+                                    href={`tel:${p.telefono.replace(/\D/g, "")}`}
+                                    className="btn-ghost p-1.5"
+                                    title="Llamar"
+                                    aria-label={`Llamar a ${p.nombre}`}
+                                  >
+                                    <Phone size={13} />
+                                  </a>
+                                )}
+                                {p.telefono && (
+                                  <a
+                                    href={`https://wa.me/${(() => {
+                                      const digits = p.telefono.replace(/\D/g, "").replace(/^0+/, "");
+                                      if (digits.startsWith("549")) return digits;
+                                      if (digits.startsWith("54")) return `549${digits.slice(2).replace(/^9/, "")}`;
+                                      return `549${digits.replace(/^9/, "")}`;
+                                    })()}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-ghost p-1.5"
+                                    title="Enviar mensaje por WhatsApp"
+                                    aria-label={`Enviar mensaje a ${p.nombre}`}
+                                  >
+                                    <MessageCircle size={13} />
+                                  </a>
+                                )}
+                                {p.email && (
+                                  <a
+                                    href={`mailto:${p.email.trim()}`}
+                                    className="btn-ghost p-1.5"
+                                    title="Enviar email"
+                                    aria-label={`Enviar email a ${p.nombre}`}
+                                  >
+                                    <Mail size={13} />
+                                  </a>
+                                )}
+                              </div>
+                            )}
                             <div
                               className="flex items-center justify-between mt-3 pt-3"
                               style={{

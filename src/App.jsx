@@ -28,6 +28,7 @@ const Escalamientos = lazy(() => import('./views/Escalamientos'))
 const Calendario = lazy(() => import('./views/Calendario'))
 const NoConformidades = lazy(() => import('./views/NoConformidades'))
 const CAPA = lazy(() => import('./views/CAPA'))
+const ProyectosGestion = lazy(() => import('./views/ProyectosGestion'))
 const Indicadores = lazy(() => import('./views/Indicadores'))
 const Tareas = lazy(() => import('./views/Tareas'))
 const Usuarios = lazy(() => import('./views/Usuarios'))
@@ -51,6 +52,7 @@ const SedeFicha = lazy(() => import('./views/SedeFicha'))
 const VuelosPlantilla = lazy(() => import('./views/VuelosPlantilla'))
 const EquipoView = lazy(() => import('./views/EquipoView'))
 const SedeEncargadoView = lazy(() => import('./views/SedeEncargadoView'))
+const CredencialVerificacion = lazy(() => import('./views/CredencialVerificacion'))
 
 const ALL_VIEWS = {
   inicio:          InicioRol,
@@ -67,6 +69,7 @@ const ALL_VIEWS = {
   calendario:      Calendario,
   noConformidades: NoConformidades,
   capa:            CAPA,
+  proyectosGestion: ProyectosGestion,
   indicadores:     Indicadores,
   tareas:          Tareas,
   usuarios:        Usuarios,
@@ -341,6 +344,13 @@ function AppInner() {
 }
 
 export default function App() {
+  const credencialToken = new URLSearchParams(window.location.search).get('credencial')
+  if (credencialToken) return (
+    <Suspense fallback={<LoadingScreen />}>
+      <CredencialVerificacion token={credencialToken} />
+      <FeedbackHost />
+    </Suspense>
+  )
   return (
     <AuthProvider>
       <AppInner />

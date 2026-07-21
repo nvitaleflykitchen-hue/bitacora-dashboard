@@ -5,6 +5,8 @@ import { useAuth } from '../lib/auth'
 import { isQualityOnlyProfile, isQualityTeamPerson, isSafetyOnlyProfile } from '../lib/access'
 import { fmtFechaLarga } from '../lib/dateUtils'
 import PersonaFormularios from '../components/PersonaFormularios'
+import { PersonaAvatar, PersonaFotoEditor } from '../components/PersonaAvatar'
+import VacacionesPanel from '../components/VacacionesPanel'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star } from 'lucide-react'
 import { toast } from '../lib/feedback'
@@ -262,6 +264,21 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
     if (!form.nombre.trim()) { toast.warn('El nombre es obligatorio.'); return }
     if (requireSede && !form.sede_ids.length) { toast.warn('Seleccioná la sede de la persona.'); return }
     setSaving(true)
+    const { data: activos, error: checkError } = await supabase.schema('equipo').from('personas')
+      .select('id,nombre,apellido,puesto,dni,legajo').eq('activo', true).is('duplicado_de', null)
+    if (checkError) { setSaving(false); toast.error('No se pudo verificar si la persona ya existe.'); return }
+    const norm = valor => (valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+    const nombreIngresado = norm(`${form.nombre} ${form.apellido}`)
+    const existente = (activos || []).find(p =>
+      norm(`${p.nombre} ${p.apellido || ''}`) === nombreIngresado ||
+      (form.dni.trim() && p.dni?.trim() === form.dni.trim()) ||
+      (form.legajo.trim() && p.legajo?.trim() === form.legajo.trim())
+    )
+    if (existente) {
+      setSaving(false)
+      toast.warn(`${existente.nombre} ${existente.apellido || ''} ya está activo en el equipo${existente.puesto ? ` como ${existente.puesto}` : ''}. Abrí su ficha.`)
+      return
+    }
     const { error } = await supabase.schema('equipo').from('personas').insert({
       nombre: form.nombre.trim(),
       apellido: form.apellido.trim() || null,
@@ -296,7 +313,7 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
         <input type="date" className="input-dark w-full" value={form.fecha_ingreso} onChange={e => set('fecha_ingreso', e.target.value)} style={{ marginBottom: 16 }} />
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede {requireSede?'*':''}</label>
         <select className="input-dark w-full" value={form.sede_ids[0]||''} onChange={e=>set('sede_ids',e.target.value?[Number(e.target.value)]:[])} style={{marginBottom:16}}>
-          {!requireSede&&<option value="">Sin sede asignada</option>}
+          {!requireSede&&<option value="">Equipo central (sin sede)</option>}
           {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
         <button onClick={submit} disabled={saving} className="btn-primary w-full" style={{ padding: '0.75rem' }}>
@@ -380,8 +397,14 @@ function PersonaFicha({ personaId, canManage, onBack }) {
         <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--phosphor)', fontSize: '0.75rem', fontWeight: 600, marginBottom: 10 }}>
           <ChevronLeft size={15} /> Equipo
         </button>
-        <h1 style={{ color: 'var(--text)', fontSize: '1.15rem', fontWeight: 700 }}>{persona.nombre} {persona.apellido || ''}</h1>
-        <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: 2 }}>{persona.puesto || '—'}{persona.area ? ` · ${persona.area}` : ''}</p>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <PersonaAvatar persona={persona} size={64} />
+          <div style={{ minWidth:0 }}>
+            <h1 style={{ color: 'var(--text)', fontSize: '1.15rem', fontWeight: 700 }}>{persona.nombre} {persona.apellido || ''}</h1>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: 2 }}>{persona.puesto || '—'}{persona.area ? ` · ${persona.area}` : ''}</p>
+          </div>
+        </div>
+        {canManage && <PersonaFotoEditor persona={persona} compact showAvatar={false} onChanged={load} />}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--phosphor)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
           {mailLink && <a href={mailLink} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text)', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, textDecoration: 'none' }}><Mail size={11} /> Email</a>}
@@ -541,11 +564,12 @@ function PersonaFicha({ personaId, canManage, onBack }) {
 }
 
 export default function MobilePersonal() {
-  const { can, perfil, allowedSedeIds } = useAuth()
+  const { can, perfil, allowedSedeIds, user } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
   const isSafetyOnly = isSafetyOnlyProfile(perfil)
   const canManage = can('equipo', 'manage') && !isQualityOnly && !isSafetyOnly
   const [personas, setPersonas] = useState([])
+  const [bajas, setBajas] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [view, setView] = useState('lista') // 'lista' | 'ranking'
@@ -557,10 +581,13 @@ export default function MobilePersonal() {
 
   const load = useCallback(() => {
     setLoading(true)
-    supabase.from('v_personas').select('*').order('nombre')
-      .then(r => {
+    Promise.all([
+      supabase.from('v_personas').select('*').order('nombre'),
+      supabase.schema('equipo').from('personas').select('id,nombre,apellido,puesto,area,fecha_baja,motivo_baja,observaciones_baja,foto_url').eq('activo', false).is('duplicado_de', null).not('fecha_baja', 'is', null).not('motivo_baja', 'is', null).order('fecha_baja', { ascending:false })
+    ]).then(([r, bajasRes]) => {
         const data = r.data || []
         setPersonas(isQualityOnly ? data.filter(p => isQualityTeamPerson(p, perfil)) : data)
+        setBajas(isQualityOnly ? [] : (bajasRes.data || []))
       })
       .finally(() => setLoading(false))
   }, [isQualityOnly, perfil])
@@ -572,8 +599,26 @@ export default function MobilePersonal() {
     return <PersonaFicha personaId={selectedId} canManage={canManage} onBack={() => { setSelectedId(null); load() }} />
   }
 
+  const reactivar = async (persona) => {
+    const motivo = window.prompt('Motivo de la reactivación (obligatorio):')
+    if (!motivo?.trim() || !window.confirm('¿Confirmar reactivación?')) return
+    const ahora = new Date().toISOString()
+    const { error } = await supabase.schema('equipo').from('personas').update({
+      activo:true, fecha_baja:null, motivo_baja:null, observaciones_baja:null,
+      reactivada_at:ahora, reactivada_por:user?.id || null, motivo_reactivacion:motivo.trim()
+    }).eq('id', persona.id)
+    if (error) return toast.error('No se pudo reactivar: ' + mensajeError(error))
+    await supabase.schema('equipo').from('historial_personal').insert({
+      persona_id:persona.id, tipo:'otro', fecha:ahora.slice(0,10),
+      descripcion:`Reactivación laboral: ${motivo.trim()}`, registrado_por:user?.email || 'Sistema'
+    })
+    toast.success('Persona reactivada.')
+    load()
+  }
+
   const filtered = personas.filter(p => {
-    if (selectedSede && p.sede_id !== selectedSede.id) return false
+    if (selectedSede?.id === 'central' && (p.sede_ids?.length || p.sede_id)) return false
+    if (selectedSede && selectedSede.id !== 'central' && !p.sede_ids?.includes(selectedSede.id) && p.sede_id !== selectedSede.id) return false
     if (!search) return true
     const q = search.toLowerCase()
     return (p.nombre + ' ' + (p.apellido || '') + ' ' + (p.legajo || '') + ' ' + (p.puesto || '') + ' ' + (p.area || '')).toLowerCase().includes(q)
@@ -591,6 +636,10 @@ export default function MobilePersonal() {
           <button onClick={() => setView('ranking')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'ranking' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'ranking' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
             <Star size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Ranking
           </button>
+          {!isQualityOnly && <button onClick={() => setView('bajas')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'bajas' ? 'rgba(245,158,11,0.15)' : 'transparent', color: view === 'bajas' ? '#F59E0B' : 'var(--text-dim)' }}>
+            Bajas ({bajas.length})
+          </button>}
+          {!isQualityOnly && <button onClick={() => setView('vacaciones')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'vacaciones' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'vacaciones' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Vacaciones</button>}
         </div>
         {view === 'lista' && (
           <>
@@ -598,9 +647,10 @@ export default function MobilePersonal() {
               <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
               <input className="input-dark w-full" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 30 }} />
             </div>
-            {sedes.length > 1 && (
+            {(sedes.length > 0 || personas.some(p => !p.sede_ids?.length && !p.sede_id)) && (
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }} className="hide-scrollbar">
                 <SedePill label="Todas" active={!selectedSede} onClick={() => setSelectedSede(null)} />
+                {personas.some(p => !p.sede_ids?.length && !p.sede_id) && <SedePill label="Equipo central" active={selectedSede?.id === 'central'} onClick={() => setSelectedSede({ id: 'central', nombre: 'Equipo central' })} />}
                 {sedes.map(s => <SedePill key={s.id} label={s.nombre} active={selectedSede?.id === s.id} onClick={() => setSelectedSede(s)} />)}
               </div>
             )}
@@ -620,6 +670,7 @@ export default function MobilePersonal() {
             const res = puntaje > 0 ? getResultado(puntaje) : null
             return (
               <button key={p.id} onClick={() => setSelectedId(p.id)} style={{ width: '100%', textAlign: 'left', background: 'var(--surface)', border: 'none', borderRadius: 10, padding: '0.85rem', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <PersonaAvatar persona={p} size={42} />
                 <div style={{ flex: 1 }}>
                   <p style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.85rem' }}>{p.nombre} {p.apellido || ''}</p>
                   <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem', marginTop: 2 }}>{p.puesto || '—'}</p>
@@ -633,6 +684,16 @@ export default function MobilePersonal() {
               </button>
             )
           })
+        ) : view === 'vacaciones' ? (
+          <VacacionesPanel personas={personas} canManage={canManage} compact />
+        ) : view === 'bajas' ? (
+          bajas.length === 0 ? <p style={{ color:'var(--text-dim)', textAlign:'center', marginTop:'2rem' }}>No hay bajas registradas.</p> : bajas.map(p => (
+            <div key={p.id} style={{ background:'var(--surface)', borderRadius:10, padding:'0.85rem', marginBottom:'0.6rem', display:'flex', gap:10, alignItems:'center' }}>
+              <PersonaAvatar persona={p} size={42} />
+              <div style={{ flex:1 }}><p style={{ color:'var(--text)', fontWeight:600 }}>{p.nombre} {p.apellido || ''}</p><p style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>{p.puesto || 'Sin puesto'}</p></div>
+              <div style={{ textAlign:'right' }}><p style={{ color:'#F59E0B', fontSize:'0.62rem', textTransform:'uppercase' }}>{(p.motivo_baja || 'otro').replaceAll('_',' ')}</p><p style={{ color:'var(--text-dim)', fontSize:'0.62rem' }}>{p.fecha_baja || 'Sin fecha'}</p>{canManage && <button className="btn-ghost" style={{ marginTop:6, fontSize:'0.6rem' }} onClick={() => reactivar(p)}>REACTIVAR</button>}</div>
+            </div>
+          ))
         ) : (
           ranking.map((p, i) => {
             const puntaje = p.puntaje_promedio || 0

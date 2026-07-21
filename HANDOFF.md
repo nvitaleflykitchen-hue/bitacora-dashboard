@@ -5,6 +5,26 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-21 · Codex — miniaturas de fotos de personal
+
+### Implementado localmente
+
+- `src/lib/personaFotos.js` genera al subir cada foto una miniatura WebP cuadrada de 256 px y la almacena junto al original con sufijo `-thumb.webp`.
+- El original se conserva para credenciales, PDF y edición; la eliminación o reemplazo retira original y miniatura.
+- Las URLs firmadas se reutilizan durante 55 minutos para evitar solicitudes repetidas.
+- `src/components/PersonaAvatar.jsx` usa miniatura, carga diferida, decodificación asíncrona y fallback automático al original para fotos antiguas.
+- `src/lib/personaFotos.test.js` cubre la convención de rutas de miniaturas.
+
+### Verificación
+
+- `npm run check`: lint 0 errores/11 advertencias preexistentes; 16 archivos y 59 tests aprobados; build Vite aprobado.
+- No se cambió esquema, grants, RLS ni policies. No se escribió en Supabase.
+- Sin commit, push o deploy.
+
+### Pendiente
+
+- Las fotos existentes siguen cargando el original hasta generar sus miniaturas. Hacer un backfill controlado después de publicar el código, sin reemplazar los originales.
+
 ## 2026-07-20 · Codex — flujo de aprobación disciplinaria aplicado en Supabase
 
 ### Implementado localmente

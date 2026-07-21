@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, isPast, isToday, differenceInDays } from 'date-fns'
-import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan } from '../lib/queries'
-import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil } from 'lucide-react'
+import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan, deleteCapaProject, getPerfiles } from '../lib/queries'
+import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil, Trash2 } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import PageHeader from '../components/PageHeader'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
 import { generarInformeCapaPDF } from '../lib/capaReportPdf'
+import { gestionHealth, isGestionProjectAction } from '../lib/gestionProjects'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
 const ESTADOS_CAPA = ['Pendiente','En ejecución','Completada','Verificada']
 const TIPOS_CAPA   = ['Correctiva','Preventiva']
+const responsableNombre = capa => capa?.perfiles?.nombre || capa?.responsable || ''
 
 const COL_CONFIG = {
   'Pendiente':    { label:'Pendiente',    color:'rgba(255,255,255,0.2)', accent:'rgba(255,255,255,0.15)' },
@@ -37,14 +39,24 @@ function estadoChip(estado) {
   return <span className="chip chip-gray">{estado}</span>
 }
 
-function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
+function codigoProyectoGestion(nombre) {
+  const slug = String(nombre || 'PROYECTO')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'PROYECTO'
+  const fecha = format(new Date(), 'yyyy-MM-dd')
+  const sufijo = crypto.randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()
+  return `FK-GEST-${slug}-${fecha}-${sufijo}`
+}
+
+function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode = 'quality' }) {
   const { user, perfil } = useAuth()
   const [loading, setLoading] = useState(false)
   const [archivos, setArchivos] = useState([])
+  const [nombreProyecto, setNombreProyecto] = useState('')
   const [form, setForm] = useState({
     tipo: 'Correctiva', no_conformidad_id: '', descripcion: '',
-    responsable: '', fecha_limite: '', estado: 'Pendiente', evidencia: '',
-    sede_id: '', auditoria_codigo: '',
+    responsable: '', responsable_id:'', prioridad:'Media', fecha_limite: '', estado: 'Pendiente', evidencia: '',
+    sede_id: '', auditoria_codigo: '', supervisor_id: '', colaborador_ids: [],
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -58,15 +70,33 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
     e.preventDefault()
     setLoading(true)
     try {
+      const esGestion = mode === 'gestion'
+      const codigoProyecto = esGestion ? codigoProyectoGestion(nombreProyecto) : (form.auditoria_codigo || null)
       const created = await createCapa({
         ...form,
         sede_id: form.sede_id || null,
-        no_conformidad_id: form.no_conformidad_id || null,
+        sede_nombre: form.sede_nombre || (esGestion ? 'Gestión' : null),
+        no_conformidad_id: esGestion ? null : (form.no_conformidad_id || null),
         fecha_limite: form.fecha_limite || null,
+        responsable_id: form.responsable_id || null,
         evidencia: form.evidencia || null,
-        auditoria_codigo: form.auditoria_codigo || null,
-        created_by: perfil?.nombre || user?.email,
+        auditoria_codigo: codigoProyecto,
+        created_by: user?.id || null,
       })
+      if (esGestion) {
+        await upsertCapaPlan({
+          auditoria_codigo: codigoProyecto,
+          sede_id: form.sede_id || null,
+          sede_nombre: form.sede_nombre || 'Gestión',
+          objetivo: nombreProyecto.trim(),
+          titulo: nombreProyecto.trim(),
+          responsable_id: form.responsable_id || null,
+          supervisor_id: form.supervisor_id || null,
+          colaborador_ids: form.colaborador_ids,
+          elaboro: perfil?.nombre || user?.email || null,
+          created_by: user?.id || null,
+        })
+      }
       if (archivos.length > 0 && created?.id) {
         await Promise.all(archivos.map(f => uploadAdjunto('capa', created.id, f)))
       }
@@ -82,24 +112,31 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
     <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px', maxHeight:'90vh', overflowY:'auto' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
-          <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Nueva Acción CAPA</h2>
+          <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>{mode === 'gestion' ? 'Nuevo proyecto de gestión' : 'Nueva Acción CAPA'}</h2>
           <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {mode === 'gestion' && (
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Nombre del proyecto *</label>
+              <input required className="input-dark" value={nombreProyecto} onChange={e => setNombreProyecto(e.target.value)} placeholder="Ej: Estandarización operativa de escalas" />
+              <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:5 }}>El código único se asigna automáticamente al crear el proyecto.</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Unidad / Sede *</label>
-              <select required className="input-dark" value={form.sede_id} onChange={e => handleSedeChange(e.target.value)}>
-                <option value="">— Seleccionar —</option>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>{mode === 'gestion' ? 'Unidad / Sede' : 'Unidad / Sede *'}</label>
+              <select required={mode !== 'gestion'} className="input-dark" value={form.sede_id} onChange={e => handleSedeChange(e.target.value)}>
+                <option value="">{mode === 'gestion' ? '— General / varias sedes —' : '— Seleccionar —'}</option>
                 {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
             </div>
-            <div>
+            {mode !== 'gestion' && <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Cód. Auditoría</label>
               <input className="input-dark" value={form.auditoria_codigo}
                 onChange={e => set('auditoria_codigo', e.target.value)}
                 placeholder="Ej: FK-AUD-HOS-001" />
-            </div>
+            </div>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -108,7 +145,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
                 {TIPOS_CAPA.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <div>
+            {mode !== 'gestion' && <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>No Conformidad</label>
               <select className="input-dark" value={form.no_conformidad_id} onChange={e => set('no_conformidad_id', e.target.value)}>
                 <option value="">— Sin asociar —</option>
@@ -116,23 +153,52 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
                   <option key={nc.id} value={nc.id}>{nc.codigo} — {nc.descripcion?.slice(0,40)}</option>
                 ))}
               </select>
-            </div>
+            </div>}
           </div>
           <div>
-            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Descripción *</label>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>{mode === 'gestion' ? 'Primera acción / resultado esperado *' : 'Descripción *'}</label>
             <textarea required className="input-dark" rows={3} value={form.descripcion}
-              onChange={e => set('descripcion', e.target.value)} placeholder="Descripción de la acción..."
+              onChange={e => set('descripcion', e.target.value)} placeholder={mode === 'gestion' ? 'Qué debe hacerse, con un resultado verificable...' : 'Descripción de la acción...'}
               style={{ resize:'vertical' }} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Responsable</label>
-              <input className="input-dark" value={form.responsable} onChange={e => set('responsable', e.target.value)} placeholder="Ej: Carlos Pérez" />
+              <select required={mode === 'gestion'} className="input-dark" value={form.responsable_id} onChange={e => {
+                const selected = perfiles.find(p => p.id === e.target.value)
+                setForm(f => ({ ...f, responsable_id:e.target.value, responsable:selected?.nombre || '' }))
+              }}>
+                <option value="">— Sin asignar —</option>
+                {perfiles.map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
+              </select>
             </div>
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Fecha límite</label>
-              <input type="date" className="input-dark" value={form.fecha_limite} onChange={e => set('fecha_limite', e.target.value)} />
+              <input required={mode === 'gestion'} type="date" className="input-dark" value={form.fecha_limite} onChange={e => set('fecha_limite', e.target.value)} />
             </div>
+          </div>
+          {mode === 'gestion' && <>
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Supervisor</label>
+              <select className="input-dark" value={form.supervisor_id} onChange={e=>set('supervisor_id',e.target.value)}>
+                <option value="">— Sin supervisor —</option>
+                {perfiles.filter(p=>p.id !== form.responsable_id).map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Colaboradores</label>
+              <select multiple className="input-dark" style={{ minHeight:90 }} value={form.colaborador_ids}
+                onChange={e=>set('colaborador_ids', Array.from(e.target.selectedOptions, o=>o.value))}>
+                {perfiles.filter(p=>p.id !== form.responsable_id && p.id !== form.supervisor_id).map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
+              </select>
+              <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:5 }}>Usá Ctrl para seleccionar más de uno. El responsable ejecuta; el supervisor controla.</p>
+            </div>
+          </>}
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Prioridad</label>
+            <select className="input-dark" value={form.prioridad} onChange={e=>set('prioridad',e.target.value)}>
+              {['Alta','Media','Baja'].map(p=><option key={p}>{p}</option>)}
+            </select>
           </div>
           <div>
             <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Evidencia (URL)</label>
@@ -145,7 +211,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
           <div className="flex justify-end gap-3 pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
             <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Guardando...' : 'Crear acción'}
+              {loading ? 'Guardando...' : (mode === 'gestion' ? 'Crear proyecto' : 'Crear acción')}
             </button>
           </div>
         </form>
@@ -154,13 +220,23 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes }) {
   )
 }
 
-function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
+function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfiles = [], mode = 'quality' }) {
+  const { perfil } = useAuth()
   const [estado, setEstado]           = useState(c.estado)
   const [notas, setNotas]             = useState(c.notas || '')
   const [saving, setSaving]           = useState(false)
   const [savingNotas, setSavingNotas] = useState(false)
   const [savingEficacia, setSavingEficacia] = useState(false)
   const [notasSaved, setNotasSaved]   = useState(false)
+  const [subtareas, setSubtareas]     = useState(Array.isArray(c.subtareas) ? c.subtareas : [])
+  const [nuevaSubtarea, setNuevaSubtarea] = useState('')
+  const [savingSubtareas, setSavingSubtareas] = useState(false)
+  const [gestion, setGestion] = useState({
+    estado:c.gestion_estado || 'Sin aceptar', delegado_a_id:c.delegado_a_id || '',
+    fecha_compromiso:c.fecha_compromiso || c.fecha_limite || '', proximo_paso:c.proximo_paso || '',
+    bloqueo_motivo:c.bloqueo_motivo || '',
+  })
+  const [savingGestion, setSavingGestion] = useState(false)
 
   const handleSaveEstado = async () => {
     setSaving(true)
@@ -199,6 +275,54 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
     finally { setSavingEficacia(false) }
   }
 
+  const saveSubtareas = async next => {
+    setSavingSubtareas(true)
+    try {
+      await updateCapa(c.id, { subtareas:next })
+      setSubtareas(next); c.subtareas=next; onReload?.()
+    } catch (e) { toast.error(mensajeError(e)) }
+    finally { setSavingSubtareas(false) }
+  }
+
+  const addSubtarea = async () => {
+    const texto=nuevaSubtarea.trim()
+    if (!texto) return
+    await saveSubtareas([...subtareas,{ id:crypto.randomUUID(), texto, completada:false }])
+    setNuevaSubtarea('')
+  }
+
+  const saveGestion = async () => {
+    if (gestion.estado === 'Delegada' && !gestion.delegado_a_id) return toast.error('Elegí quién ejecutará la acción.')
+    if (gestion.estado === 'Bloqueada' && !gestion.bloqueo_motivo.trim()) return toast.error('Indicá el motivo del bloqueo.')
+    if (!gestion.proximo_paso.trim() && !['Bloqueada','Cumplida'].includes(gestion.estado)) return toast.error('Indicá el próximo paso concreto.')
+    setSavingGestion(true)
+    try {
+      const now = new Date().toISOString()
+      const evento = {
+        fecha:now, tipo:gestion.estado, por_id:perfil?.id || null, por:perfil?.nombre || 'Usuario',
+        delegado_a_id:gestion.delegado_a_id || null, proximo_paso:gestion.proximo_paso || null,
+        bloqueo_motivo:gestion.estado === 'Bloqueada' ? gestion.bloqueo_motivo : null,
+      }
+      const payload = {
+        gestion_estado:gestion.estado,
+        delegado_a_id:gestion.estado === 'Delegada' ? gestion.delegado_a_id : null,
+        fecha_compromiso:gestion.fecha_compromiso || null,
+        proximo_paso:gestion.proximo_paso.trim() || null,
+        bloqueo_motivo:gestion.estado === 'Bloqueada' ? gestion.bloqueo_motivo.trim() : null,
+        aceptado_at:gestion.estado !== 'Sin aceptar' ? (c.aceptado_at || now) : null,
+        ultima_gestion_at:now,
+        gestion_historial:[...(Array.isArray(c.gestion_historial) ? c.gestion_historial : []), evento],
+      }
+      if (gestion.estado === 'Aceptada' && c.estado === 'Pendiente') payload.estado = 'En ejecución'
+      if (gestion.estado === 'Cumplida') { payload.estado='Completada'; payload.fecha_cierre=now.slice(0,10) }
+      await updateCapa(c.id,payload)
+      Object.assign(c,payload)
+      toast.ok(gestion.estado === 'Delegada' ? 'Delegación registrada; la responsabilidad principal se conserva.' : 'Gestión actualizada.')
+      onReload?.()
+    } catch (e) { toast.error(mensajeError(e)) }
+    finally { setSavingGestion(false) }
+  }
+
   return (
     <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-md rounded" style={{ borderRadius:'3px', maxHeight:'92vh', overflowY:'auto' }}>
@@ -225,9 +349,35 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
 
           <p style={{ color:'var(--text)', fontSize:'0.82rem', lineHeight:1.5 }}>{c.descripcion}</p>
 
-          {c.responsable && (
+          {mode === 'gestion' && (() => {
+            const health=gestionHealth(c)
+            const color=health.level==='critical'?'var(--alert)':health.level==='warning'?'var(--warn)':'var(--phosphor)'
+            return <div className="rounded px-3 py-3 space-y-2" style={{ background:'rgba(250,204,21,.035)', border:'1px solid rgba(250,204,21,.16)' }}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-metric" style={{ color:'var(--warn)', fontSize:'.64rem' }}>COMPROMISO DE GESTIÓN</p>
+                <span className="chip" style={{ color,borderColor:color,fontSize:'.58rem' }}>{health.label}</span>
+              </div>
+              <p style={{ color:'var(--text-dim)', fontSize:'.67rem' }}>El responsable principal conserva la rendición de cuentas aunque delegue la ejecución.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <select className="input-dark" value={gestion.estado} disabled={!canWrite} onChange={e=>setGestion(g=>({...g,estado:e.target.value}))}>
+                  {['Sin aceptar','Aceptada','Delegada','Bloqueada','Cumplida'].map(x=><option key={x}>{x}</option>)}
+                </select>
+                <input type="date" className="input-dark" value={gestion.fecha_compromiso} disabled={!canWrite} onChange={e=>setGestion(g=>({...g,fecha_compromiso:e.target.value}))}/>
+              </div>
+              {gestion.estado === 'Delegada' && <select className="input-dark w-full" value={gestion.delegado_a_id} disabled={!canWrite} onChange={e=>setGestion(g=>({...g,delegado_a_id:e.target.value}))}>
+                <option value="">Elegir ejecutor delegado…</option>
+                {perfiles.filter(p=>p.id!==c.responsable_id).map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>}
+              <textarea className="input-dark w-full" rows={2} value={gestion.proximo_paso} disabled={!canWrite} onChange={e=>setGestion(g=>({...g,proximo_paso:e.target.value}))} placeholder="Próximo paso concreto…"/>
+              {gestion.estado === 'Bloqueada' && <textarea className="input-dark w-full" rows={2} value={gestion.bloqueo_motivo} disabled={!canWrite} onChange={e=>setGestion(g=>({...g,bloqueo_motivo:e.target.value}))} placeholder="Motivo del bloqueo y quién debe intervenir…"/>}
+              {c.delegado?.nombre && <p style={{ color:'var(--text-dim)',fontSize:'.68rem' }}>Ejecutor actual: <span style={{ color:'var(--text)' }}>{c.delegado.nombre}</span></p>}
+              {canWrite && <button type="button" className="btn-primary w-full" disabled={savingGestion} onClick={saveGestion}>{savingGestion?'Guardando…':'Registrar compromiso / avance'}</button>}
+            </div>
+          })()}
+
+          {responsableNombre(c) && (
             <p style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>
-              <span style={{ color:'var(--phosphor)' }}>Responsable:</span> {c.responsable}
+              <span style={{ color:'var(--phosphor)' }}>Responsable:</span> {responsableNombre(c)}
             </p>
           )}
           {c.fecha_limite && (
@@ -241,6 +391,24 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
               <a href={c.evidencia} target="_blank" rel="noreferrer" style={{ color:'#60A5FA' }}>{c.evidencia.slice(0,50)}…</a>
             </p>
           )}
+
+          <div className="rounded px-3 py-3" style={{ background:'rgba(96,165,250,.04)', border:'1px solid rgba(96,165,250,.14)' }}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="font-metric" style={{ color:'#60A5FA', fontSize:'.64rem' }}>SUBTAREAS OPERATIVAS · {subtareas.filter(s=>s.completada).length}/{subtareas.length}</p>
+              {savingSubtareas && <span style={{ color:'var(--text-dim)', fontSize:'.62rem' }}>Guardando…</span>}
+            </div>
+            <div className="space-y-1">
+              {subtareas.map(s=><label key={s.id} className="flex items-start gap-2" style={{ color:s.completada?'var(--text-dim)':'var(--text)', fontSize:'.72rem' }}>
+                <input type="checkbox" disabled={!canWrite || savingSubtareas} checked={Boolean(s.completada)} onChange={()=>saveSubtareas(subtareas.map(x=>x.id===s.id?{...x,completada:!x.completada}:x))}/>
+                <span style={{ textDecoration:s.completada?'line-through':'none' }}>{s.texto}</span>
+              </label>)}
+              {!subtareas.length && <p style={{ color:'var(--text-dim)', fontSize:'.68rem' }}>Sin pasos operativos cargados.</p>}
+            </div>
+            {canWrite && <div className="flex gap-2 mt-2">
+              <input className="input-dark" value={nuevaSubtarea} onChange={e=>setNuevaSubtarea(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addSubtarea()}}} placeholder="Agregar paso concreto…"/>
+              <button type="button" className="btn-ghost" disabled={savingSubtareas} onClick={addSubtarea}>Agregar</button>
+            </div>}
+          </div>
 
           <div className="rounded px-3 py-2" style={{ background:'rgba(57,255,20,0.035)', border:'1px solid rgba(57,255,20,0.12)' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
@@ -328,7 +496,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload }) {
   )
 }
 
-function CapaKanban({ items, canWrite, onEstadoChange, onReload, focusId }) {
+function CapaKanban({ items, perfiles, canWrite, onEstadoChange, onReload, focusId, mode = 'quality' }) {
   const [detail, setDetail] = useState(null)
   useEffect(() => {
     if (focusId) setDetail(items.find(item => String(item.id) === String(focusId)) || null)
@@ -414,13 +582,15 @@ function CapaKanban({ items, canWrite, onEstadoChange, onReload, focusId }) {
           onEstadoChange={async (id, estado) => { await onEstadoChange(id, estado); onReload() }}
           onClose={() => setDetail(null)}
           onReload={onReload}
+          perfiles={perfiles}
+          mode={mode}
         />
       )}
     </div>
   )
 }
 
-function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSaved }) {
+function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, perfiles, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     empresa_prestataria: plan?.empresa_prestataria || '',
@@ -430,6 +600,10 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSa
     objetivo: plan?.objetivo || '',
     alcance: plan?.alcance || '',
     cumplimiento_informado: plan?.cumplimiento_informado ?? '',
+    responsable_id: plan?.responsable_id || '',
+    titulo: plan?.titulo || plan?.objetivo || '',
+    supervisor_id: plan?.supervisor_id || '',
+    colaborador_ids: plan?.colaborador_ids || [],
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -444,6 +618,8 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSa
         ...form,
         fecha_auditoria: form.fecha_auditoria || null,
         cumplimiento_informado: form.cumplimiento_informado === '' ? null : Number(form.cumplimiento_informado),
+        responsable_id: form.responsable_id || null,
+        supervisor_id: form.supervisor_id || null,
       })
       onSaved(saved)
     } catch (err) {
@@ -462,8 +638,12 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSa
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', lineHeight:1.5 }}>
-            Estos datos se completan una vez por plan y se reutilizan cada vez que se descarga el informe PDF.
+            Definí una sola persona responsable, un supervisor que controle el avance y los colaboradores que participan.
           </p>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Nombre del proyecto *</label>
+            <input required className="input-dark" value={form.titulo} onChange={e => set('titulo', e.target.value)} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Empresa prestataria</label>
@@ -473,6 +653,28 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSa
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Responsable del comedor</label>
               <input className="input-dark" value={form.responsable_comedor} onChange={e => set('responsable_comedor', e.target.value)} />
             </div>
+          </div>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Responsable principal</label>
+            <select className="input-dark" value={form.responsable_id} onChange={e=>set('responsable_id',e.target.value)}>
+              <option value="">— Sin responsable general —</option>
+              {perfiles.map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Supervisor</label>
+            <select className="input-dark" value={form.supervisor_id} onChange={e=>set('supervisor_id',e.target.value)}>
+              <option value="">— Sin supervisor —</option>
+              {perfiles.filter(p=>p.id !== form.responsable_id).map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Colaboradores</label>
+            <select multiple className="input-dark" style={{ minHeight:100 }} value={form.colaborador_ids}
+              onChange={e=>set('colaborador_ids', Array.from(e.target.selectedOptions, o=>o.value))}>
+              {perfiles.filter(p=>p.id !== form.responsable_id && p.id !== form.supervisor_id).map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
+            </select>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:5 }}>Usá Ctrl para seleccionar varias personas.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -506,7 +708,7 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, onClose, onSa
   )
 }
 
-function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
+function CapaAuditoria({ items, perfiles, canWrite, onEstadoChange, onReload, focusId, mode = 'quality' }) {
   const [detail, setDetail] = useState(null)
   const [expandidos, setExpandidos] = useState({})
   const [planes, setPlanes] = useState({})
@@ -516,6 +718,18 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
   useEffect(() => {
     if (focusId) setDetail(items.find(item => String(item.id) === String(focusId)) || null)
   }, [focusId, items])
+
+  useEffect(() => {
+    if (mode !== 'gestion') return
+    const codigos = [...new Set(items.map(item => item.auditoria_codigo).filter(Boolean))]
+      .filter(codigo => planes[codigo] === undefined)
+    if (!codigos.length) return
+    let cancelled = false
+    Promise.all(codigos.map(async codigo => [codigo, await getCapaPlan(codigo)]))
+      .then(entries => { if (!cancelled) setPlanes(prev => ({ ...prev, ...Object.fromEntries(entries) })) })
+      .catch(console.error)
+    return () => { cancelled = true }
+  }, [items, mode]) // Los planes ya cargados quedan cacheados en el estado local.
 
   // Agrupar por auditoria_codigo + sede
   const grupos = {}
@@ -563,6 +777,20 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
     setEditingPlan({ grupo, plan })
   }
 
+  const handleEliminarPlan = async (grupo) => {
+    const plan = await ensurePlan(grupo.auditoria_codigo)
+    if (!plan) return toast.error('No se encontró el proyecto.')
+    if (!window.confirm(`¿Eliminar el proyecto "${plan.titulo || plan.objetivo || grupo.auditoria_codigo}" y todas sus acciones?`)) return
+    try {
+      await deleteCapaProject(plan)
+      toast.success('Proyecto eliminado.')
+      setPlanes(prev => { const next = { ...prev }; delete next[grupo.auditoria_codigo]; return next })
+      onReload()
+    } catch (e) {
+      toast.error('No se pudo eliminar: ' + mensajeError(e))
+    }
+  }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
       {Object.entries(grupos).map(([key, grupo]) => {
@@ -573,6 +801,9 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
           i.fecha_limite && isPast(new Date(i.fecha_limite)) && !isToday(new Date(i.fecha_limite))
           && !['Completada','Verificada'].includes(i.estado)
         ).length
+        const responsables = [...new Set(grupo.items.map(responsableNombre).filter(Boolean))]
+        const abiertasConFecha = grupo.items.filter(i => i.fecha_limite && !['Completada','Verificada'].includes(i.estado)).sort((a,b)=>String(a.fecha_limite).localeCompare(String(b.fecha_limite)))
+        const proximoVencimiento = abiertasConFecha[0]?.fecha_limite || null
         const expanded = expandidos[key] !== false // expanded by default
 
         const pctColor = pct === 100 ? 'var(--phosphor)' : pct >= 50 ? '#60a5fa' : 'var(--warn)'
@@ -590,17 +821,29 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
             >
               <div style={{ flex:1, minWidth:200 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                  <span className="chip chip-blue" style={{ fontSize:'0.56rem' }}>{mode === 'gestion' ? 'PROYECTO DE GESTIÓN' : 'PROYECTO CAPA'}</span>
                   <span className="font-metric" style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--phosphor)' }}>
-                    {grupo.auditoria_codigo || 'Sin código de auditoría'}
+                    {(mode === 'gestion' && (planes[grupo.auditoria_codigo]?.titulo || planes[grupo.auditoria_codigo]?.objetivo)) || grupo.auditoria_codigo || 'Sin código de auditoría'}
                   </span>
                   <span style={{ fontSize:'0.7rem', color:'var(--text-dim)' }}>· {grupo.sede_nombre}</span>
                   {vencidas > 0 && (
                     <span className="chip chip-red" style={{ fontSize:'0.6rem' }}>⚠ {vencidas} vencida{vencidas > 1 ? 's' : ''}</span>
                   )}
                 </div>
+                {mode === 'gestion' && planes[grupo.auditoria_codigo]?.objetivo && (
+                  <p className="font-metric" style={{ color:'var(--text-dim)', fontSize:'0.56rem', marginBottom:3 }}>{grupo.auditoria_codigo}</p>
+                )}
                 <span style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>
                   {cerradas} de {total} completadas
+                  {responsables.length > 0 && ` · Responsable${responsables.length > 1 ? 's' : ''}: ${responsables.join(', ')}`}
+                  {proximoVencimiento && ` · Próximo vencimiento: ${format(new Date(proximoVencimiento), 'dd/MM')}`}
                 </span>
+                {mode === 'gestion' && planes[grupo.auditoria_codigo] && (
+                  <div style={{ fontSize:'0.62rem', color:'var(--text-dim)', marginTop:4 }}>
+                    {planes[grupo.auditoria_codigo].supervisor_id && `Supervisor: ${perfiles.find(p=>p.id===planes[grupo.auditoria_codigo].supervisor_id)?.nombre || 'Asignado'}`}
+                    {planes[grupo.auditoria_codigo].colaborador_ids?.length > 0 && ` · Colaboradores: ${planes[grupo.auditoria_codigo].colaborador_ids.map(id=>perfiles.find(p=>p.id===id)?.nombre).filter(Boolean).join(', ')}`}
+                  </div>
+                )}
               </div>
 
               {/* Barra de progreso */}
@@ -641,6 +884,12 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
                   <button onClick={() => handleEditarPlan(grupo)} className="btn-ghost flex items-center gap-1"
                     style={{ padding:'0.25rem 0.5rem', fontSize:'0.62rem' }} title="Datos del plan (cabecera del informe)">
                     <Pencil size={11} /> Datos del plan
+                  </button>
+                )}
+                {canWrite && mode === 'gestion' && grupo.auditoria_codigo && (
+                  <button onClick={() => handleEliminarPlan(grupo)} className="btn-ghost flex items-center gap-1"
+                    style={{ padding:'0.25rem 0.5rem', fontSize:'0.62rem', color:'var(--alert)' }} title="Eliminar proyecto">
+                    <Trash2 size={11} /> Eliminar
                   </button>
                 )}
                 <button onClick={() => handleDescargarInforme(grupo)}
@@ -686,7 +935,7 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
                         {c.descripcion}
                       </p>
                       <span style={{ fontSize:'0.62rem', color:'var(--text-dim)', minWidth:90, textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {c.responsable || '—'}
+                        {responsableNombre(c) || '—'}
                       </span>
                       <span style={{ fontSize:'0.62rem', color: vencida ? 'var(--alert)' : 'var(--text-dim)', minWidth:50, textAlign:'right', flexShrink:0 }}>
                         {c.fecha_limite ? format(new Date(c.fecha_limite), 'dd/MM') : '—'}
@@ -707,6 +956,8 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
           onEstadoChange={async (id, estado) => { await onEstadoChange(id, estado); onReload() }}
           onClose={() => setDetail(null)}
           onReload={onReload}
+          perfiles={perfiles}
+          mode={mode}
         />
       )}
 
@@ -716,6 +967,7 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
           sedeId={editingPlan.grupo.sede_id}
           sedeNombre={editingPlan.grupo.sede_nombre}
           plan={editingPlan.plan}
+          perfiles={perfiles}
           onClose={() => setEditingPlan(null)}
           onSaved={(saved) => {
             setPlanes(prev => ({ ...prev, [editingPlan.grupo.auditoria_codigo]: saved }))
@@ -727,11 +979,12 @@ function CapaAuditoria({ items, canWrite, onEstadoChange, onReload, focusId }) {
   )
 }
 
-export default function CAPA({ focusId }) {
+export default function CAPA({ focusId, mode = 'quality' }) {
   const { allowedSedeIds, can } = useAuth()
   const [items, setItems]     = useState([])
   const [ncs, setNcs]         = useState([])
   const [sedes, setSedes]     = useState([])
+  const [perfiles, setPerfiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [filtroTipo, setFiltroTipo]             = useState('')
@@ -746,7 +999,7 @@ export default function CAPA({ focusId }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [data, ncData, sedesData] = await Promise.all([
+      const [data, ncData, sedesData, perfilesData] = await Promise.all([
         getCapa({
           sedeIds: allowedSedeIds || undefined,
           tipo: filtroTipo || undefined,
@@ -757,18 +1010,22 @@ export default function CAPA({ focusId }) {
         }),
         getNoConformidades({ estado: 'Abierta', sedeIds: allowedSedeIds || undefined }),
         getSedes(allowedSedeIds),
+        getPerfiles(),
       ])
       const hasSedeScope = Array.isArray(allowedSedeIds) && allowedSedeIds.length > 0
-      const dataFilt = hasSedeScope
+      const scopedData = hasSedeScope
         ? data.filter(item => allowedSedeIds.includes(item.sede_id))
         : data
+      const dataFilt = scopedData.filter(item => mode === 'gestion'
+        ? isGestionProjectAction(item)
+        : !isGestionProjectAction(item))
       const sedesFilt = hasSedeScope
         ? sedesData.filter(s => allowedSedeIds.includes(s.id))
         : sedesData
-      setItems(dataFilt); setNcs(ncData); setSedes(sedesFilt)
+      setItems(dataFilt); setNcs(ncData); setSedes(sedesFilt); setPerfiles((perfilesData || []).filter(p=>p.activo))
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [filtroTipo, filtroEstado, filtroResp, filtroSede, filtroAuditoria, allowedSedeIds])
+  }, [filtroTipo, filtroEstado, filtroResp, filtroSede, filtroAuditoria, allowedSedeIds, mode])
 
   useEffect(() => { load() }, [load])
 
@@ -796,8 +1053,8 @@ export default function CAPA({ focusId }) {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 fade-in">
-      <PageHeader title="CAPA" subtitle={<>
-        Acciones Correctivas y Preventivas · ISO 9001
+      <PageHeader title={mode === 'gestion' ? 'Proyectos de Gestión' : 'CAPA'} subtitle={<>
+        {mode === 'gestion' ? 'Planes de acción, responsables y seguimiento' : 'Acciones Correctivas y Preventivas · ISO 9001'}
         {filtroAuditoria && (
           <span style={{ color:'var(--phosphor)', marginLeft:6 }}>— {filtroAuditoria}</span>
         )}
@@ -828,7 +1085,7 @@ export default function CAPA({ focusId }) {
           </button>
           {canWrite && (
             <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-1.5">
-              <Plus size={12} /> Nueva acción
+              <Plus size={12} /> {mode === 'gestion' ? 'Nuevo proyecto' : 'Nueva acción'}
             </button>
           )}
         </div>
@@ -849,7 +1106,7 @@ export default function CAPA({ focusId }) {
       {/* Filtros */}
       <div className="glass rounded p-3 flex flex-wrap gap-3" style={{ borderRadius:'3px' }}>
         <div>
-          <label className="font-metric text-xs tracking-wider uppercase mb-1 block" style={{ color:'var(--phosphor)', opacity:0.8 }}>Auditoría / Plan CAPA</label>
+          <label className="font-metric text-xs tracking-wider uppercase mb-1 block" style={{ color:'var(--phosphor)', opacity:0.8 }}>{mode === 'gestion' ? 'Proyecto / Plan de acción' : 'Auditoría / Plan CAPA'}</label>
           <select className="input-dark" style={{ minWidth:170 }} value={filtroAuditoria} onChange={e => setFiltroAuditoria(e.target.value)}>
             <option value="">Todas</option>
             {auditorias.map(a => <option key={a} value={a}>{a}</option>)}
@@ -889,9 +1146,9 @@ export default function CAPA({ focusId }) {
           <div className="w-7 h-7 rounded-full border-2 animate-spin" style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
         </div>
       ) : vista === 'auditoria' ? (
-        <CapaAuditoria items={items} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} />
+        <CapaAuditoria items={items} perfiles={perfiles} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
       ) : vista === 'kanban' ? (
-        <CapaKanban items={items} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} />
+        <CapaKanban items={items} perfiles={perfiles} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
       ) : (
         <div className="glass rounded overflow-hidden" style={{ borderRadius:'3px' }}>
           <div className="overflow-x-auto">
@@ -935,7 +1192,7 @@ export default function CAPA({ focusId }) {
                       ) : estadoChip(c.estado)}
                     </td>
                     <td>{vencimientoChip(c.fecha_limite, c.estado) || estadoChip(c.estado)}</td>
-                    <td className="hidden lg:table-cell" style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{c.responsable || '—'}</td>
+                    <td className="hidden lg:table-cell" style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{responsableNombre(c) || '—'}</td>
                     <td>
                       {canWrite && editingId !== c.id && (
                         <button onClick={() => { setEditingId(c.id); setEditEstado(c.estado) }}
@@ -945,7 +1202,7 @@ export default function CAPA({ focusId }) {
                   </tr>
                 ))}
                 {items.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-10" style={{ color:'var(--text-dim)' }}>Sin acciones CAPA registradas</td></tr>
+                  <tr><td colSpan={9} className="text-center py-10" style={{ color:'var(--text-dim)' }}>{mode === 'gestion' ? 'Sin proyectos de gestión registrados' : 'Sin acciones CAPA registradas'}</td></tr>
                 )}
               </tbody>
             </table>
@@ -955,7 +1212,8 @@ export default function CAPA({ focusId }) {
 
       {showForm && (
         <CAPAForm
-          noConformidades={ncs} sedes={sedes}
+          noConformidades={ncs} sedes={sedes} perfiles={perfiles}
+          mode={mode}
           onClose={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); load() }}
         />

@@ -46,8 +46,9 @@ function CategoriaCard({ categoria }) {
         <div>
           <p className="font-title font-bold text-sm" style={{ color:'var(--text)' }}>{categoria.label}</p>
           <p className="text-xs mt-1" style={{ color:'var(--text-dim)' }}>
-            {fmt(categoria.servido)} servidas · {fmt(categoria.sobrante)} sobrantes
+            {fmt(categoria.servido)} servidas · {fmt(categoria.reutilizable)} reutilizables · {fmt(categoria.descarte)} descarte
           </p>
+          {categoria.sinDiscriminar > 0 && <p className="text-xs mt-1" style={{ color:'var(--warn)' }}>{fmt(categoria.sinDiscriminar)} sobrantes históricos sin discriminar</p>}
         </div>
         <span className="font-metric font-bold text-lg" style={{ color }}>{categoria.pctSobrante}%</span>
       </div>
@@ -87,7 +88,7 @@ export default function ComedoresMetricas() {
       .slice(0, 25)
   }, [datos, sedeFilter])
 
-  const global = datos?.global || { producido:0, servido:0, sobrante:0, pctSobrante:0, pctServido:0, registros:0, comedores:0 }
+  const global = datos?.global || { producido:0, servido:0, sobrante:0, reutilizable:0, descarte:0, sinDiscriminar:0, pctSobrante:0, pctServido:0, pctDescarte:0, pctReutilizado:0, registros:0, comedores:0 }
   const sobranteColor = pctColor(global.pctSobrante)
 
   return (
@@ -122,10 +123,13 @@ export default function ComedoresMetricas() {
       {error && <div className="rounded p-3" role="alert" style={{ color:'var(--alert)', border:'1px solid rgba(255,42,42,0.25)' }}>{error}</div>}
 
       {!loading && (
-        <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <Kpi label="Producido" value={fmt(global.producido)} />
           <Kpi label="Servido / vendido" value={fmt(global.servido)} sub={`${global.pctServido}% sobre producido`} />
           <Kpi label="Sobrante" value={fmt(global.sobrante)} color={sobranteColor} sub={`${global.pctSobrante}% sobre producido`} />
+          <Kpi label="Reutilizable" value={fmt(global.reutilizable)} sub={`${global.pctReutilizado}% del sobrante total`} />
+          <Kpi label="Descarte" value={fmt(global.descarte)} color="var(--alert)" sub={`${global.pctDescarte}% sobre producido`} />
+          <Kpi label="Sin discriminar" value={fmt(global.sinDiscriminar)} color="var(--warn)" sub="Reportes anteriores" />
           <Kpi label="Comedores" value={fmt(global.comedores)} />
           <Kpi label="Reportes con raciones" value={fmt(global.registros)} />
         </div>
@@ -170,7 +174,10 @@ export default function ComedoresMetricas() {
                     <th>Comedor</th>
                     <th>Producido</th>
                     <th>Servido / vendido</th>
-                    <th>Sobrante</th>
+                    <th>Reutilizable</th>
+                    <th>Descarte</th>
+                    <th>Sin discriminar</th>
+                    <th>Sobrante total</th>
                     <th>% Sobrante</th>
                     <th>Reportes</th>
                     <th>Último reporte</th>
@@ -184,6 +191,9 @@ export default function ComedoresMetricas() {
                         <td style={{ color:'var(--text)', fontWeight:600 }}>{sede.sedeNombre}</td>
                         <td className="font-metric" style={{ color:'var(--text-dim)' }}>{fmt(sede.producido)}</td>
                         <td className="font-metric" style={{ color:'var(--text-dim)' }}>{fmt(sede.servido)}</td>
+                        <td className="font-metric" style={{ color:'var(--phosphor)' }}>{fmt(sede.reutilizable)}</td>
+                        <td className="font-metric" style={{ color:'var(--alert)' }}>{fmt(sede.descarte)}</td>
+                        <td className="font-metric" style={{ color:'var(--warn)' }}>{fmt(sede.sinDiscriminar)}</td>
                         <td className="font-metric" style={{ color }}>{fmt(sede.sobrante)}</td>
                         <td>
                           <div className="flex items-center gap-2">
@@ -216,7 +226,10 @@ export default function ComedoresMetricas() {
                     <th>Turno</th>
                     <th>Producido</th>
                     <th>Servido</th>
-                    <th>Sobrante</th>
+                    <th>Reutilizable</th>
+                    <th>Descarte</th>
+                    <th>Sin discriminar</th>
+                    <th>Sobrante total</th>
                     <th>%</th>
                   </tr>
                 </thead>
@@ -230,6 +243,9 @@ export default function ComedoresMetricas() {
                         <td style={{ color:'var(--text-dim)' }}>{item.turno}</td>
                         <td className="font-metric" style={{ color:'var(--text-dim)' }}>{fmt(item.producido)}</td>
                         <td className="font-metric" style={{ color:'var(--text-dim)' }}>{fmt(item.servido)}</td>
+                        <td className="font-metric" style={{ color:'var(--phosphor)' }}>{fmt(item.reutilizable)}</td>
+                        <td className="font-metric" style={{ color:'var(--alert)' }}>{fmt(item.descarte)}</td>
+                        <td className="font-metric" style={{ color:'var(--warn)' }}>{fmt(item.sinDiscriminar)}</td>
                         <td className="font-metric" style={{ color }}>{fmt(item.sobrante)}</td>
                         <td className="font-metric" style={{ color }}>{item.pctSobrante}%</td>
                       </tr>

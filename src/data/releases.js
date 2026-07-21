@@ -1,7 +1,32 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.5.0";
+export const APP_VERSION = "2.6.0";
 
 export const RELEASES = [
+  {
+    version: "2.6.0",
+    date: "2026-07-19",
+    title: "Mejoras acumuladas de operación y comunicación",
+    functions: [
+      "Equipo incorpora bajas laborales programadas, motivo y observaciones, sin borrar la ficha ni su historial; las bajas confirmadas quedan disponibles en una sección independiente.",
+      "Los checklists vuelven a enviarse correctamente e incorporan una vista de supervisión y responsables por sede.",
+      "Las notificaciones tienen un panel renovado, navegan al elemento relacionado y los comentarios admiten reacciones con emojis.",
+      "El Tablón permite dirigir publicaciones por sedes, áreas, equipos o personas; un fallo de notificación push ya no impide publicar el anuncio.",
+      "Nuevo cronograma de limpieza por sede, con configuración, aviso de la tarea del día y evidencia fotográfica; el piloto de Comedor Libertad funciona en paralelo al operativo.",
+      "Los contactos rápidos pueden administrarse por sede, abarcar varias sedes y autocompletarse desde usuarios; Calidad incorpora su propia pestaña editable de Contactos.",
+      "Las auditorías finalizadas cuentan con una vista de lectura y las evaluaciones incorporan una guía dentro del formulario.",
+      "Compras mobile muestra el detalle real del requerimiento y los formularios de tareas conservan visibles sus acciones mediante desplazamiento.",
+      "Se corrigieron la apertura de registros desde notificaciones y el texto con emojis al compartir candidatos por WhatsApp.",
+    ],
+    problem: "Las mejoras incorporadas después de la versión 2.5.0 no estaban reunidas en Actualizaciones, y varios flujos necesitaban una navegación más directa, mejor segmentación y mayor tolerancia ante errores secundarios.",
+    affectedUsers: "Usuarios de Operaciones, responsables de sede, Calidad, Compras, Mantenimiento, RR. HH. y administradores, tanto en escritorio como en mobile.",
+    usage: "Consultá esta ficha como resumen general. Para operar cada mejora, ingresá al módulo correspondiente: Checklists, Notificaciones, Tablón, Limpieza, Contactos, Calidad, Compras o Equipo.",
+    examples: [
+      "Publicar un aviso dirigido a un área o persona sin que un error de push cancele la publicación.",
+      "Consultar la limpieza prevista para hoy, completarla y adjuntar la evidencia fotográfica.",
+      "Abrir una notificación y llegar directamente al registro, tarea o elemento que la originó.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.5.0",
     date: "2026-07-14",

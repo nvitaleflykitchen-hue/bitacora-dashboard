@@ -15,6 +15,7 @@ import {
   Wrench, Users, Menu, X, LogOut, KeyRound,
   Users2, ShoppingCart, Shield, ClipboardCheck, Megaphone, Plus, Truck,
   Sparkles, Activity, Scale,
+  FolderKanban,
 } from 'lucide-react'
 import { APP_NAME, APP_VERSION } from '../data/releases'
 
@@ -43,7 +44,13 @@ function NavItem({ id, label, icon: Icon, active, onClick }) {
 
 function ExternalNavItem({ label, icon: Icon, href, onOpen }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" onClick={onOpen} className="nav-item w-full text-left">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onOpen}
+      className="nav-item w-full text-left"
+    >
       <Icon size={13} style={{ flexShrink:0 }} />
       <span>{label}</span>
     </a>
@@ -138,6 +145,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
     announcement: Megaphone,
     updates: Sparkles,
     pending: ClipboardCheck,
+    projects: FolderKanban,
     sites: Building2,
     purchases: ShoppingCart,
     maintenance: Wrench,
@@ -192,7 +200,12 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
         {canUseDisciplinaryNotebook && (
           <>
             <SectionLabel>GESTIÓN DISCIPLINARIA</SectionLabel>
-            <ExternalNavItem label="Control disciplinario" icon={Scale} href={DISCIPLINARY_NOTEBOOK_URL} onOpen={() => setMobileOpen(false)} />
+            <ExternalNavItem
+              label="Control disciplinario"
+              icon={Scale}
+              href={DISCIPLINARY_NOTEBOOK_URL}
+              onOpen={() => setMobileOpen(false)}
+            />
           </>
         )}
 

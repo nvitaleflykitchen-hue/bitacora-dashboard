@@ -328,7 +328,7 @@ export async function getCapa(filtros = {}) {
   let query = db()
     .from("capa")
     .select(
-      "*, no_conformidades(codigo, descripcion, sede_nombre), sedes(id, nombre), perfiles:responsable_id(id, nombre, email, telefono), delegado:delegado_a_id(id, nombre, email, telefono)",
+      "*, no_conformidades(codigo, descripcion, sede_nombre), sedes(id, nombre)",
     )
     .order("codigo", { ascending: true });
   if (filtros.tipo) query = query.eq("tipo", filtros.tipo);
@@ -347,32 +347,19 @@ export async function getCapa(filtros = {}) {
 export async function createCapa(payload) {
   const anio = new Date().getFullYear();
   const prefijo = payload.tipo === "Preventiva" ? "PA" : "CA";
-  const patron = `${prefijo}-${anio}-%`;
-  const { data: existentes, error: selectError } = await db()
+  const { count } = await db()
     .from("capa")
-    .select("codigo")
-    .like("codigo", patron);
-  if (selectError) throw selectError;
-
-  // No usar COUNT+1: si existen huecos puede producir un código duplicado.
-  // Se parte del máximo real y se reintenta ante altas concurrentes.
-  let siguiente = (existentes || []).reduce((max, item) => {
-    const numero = Number(String(item.codigo || '').split('-').at(-1));
-    return Number.isFinite(numero) ? Math.max(max, numero) : max;
-  }, 0) + 1;
-
-  for (let intento = 0; intento < 5; intento += 1, siguiente += 1) {
-    const codigo = `${prefijo}-${anio}-${String(siguiente).padStart(3, "0")}`;
-    const { data, error } = await db()
-      .from("capa")
-      .insert({ ...payload, codigo })
-      .select()
-      .single();
-    if (!error) return data;
-    if (error.code !== "23505") throw error;
-  }
-
-  throw new Error("No se pudo reservar un código único para la acción. Reintentá en unos segundos.");
+    .select("*", { count: "exact", head: true })
+    .like("codigo", `${prefijo}-${anio}-%`);
+  const nro = String((count || 0) + 1).padStart(3, "0");
+  const codigo = `${prefijo}-${anio}-${nro}`;
+  const { data, error } = await db()
+    .from("capa")
+    .insert({ ...payload, codigo })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function updateCapa(id, payload) {
@@ -508,67 +495,42 @@ export async function getCapaPlan(auditoria_codigo) {
   if (!auditoria_codigo) return null;
   const { data, error } = await db()
     .from("capa_planes")
-    .select("*, perfiles:responsable_id(id,nombre,email,telefono)")
+    .select("*")
     .eq("auditoria_codigo", auditoria_codigo)
     .maybeSingle();
   if (error) throw error;
-  if (!data) return null;
-  const { data: miembros, error: miembrosError } = await db()
-    .from("capa_plan_miembros")
-    .select("perfil_id")
-    .eq("plan_id", data.id);
-  if (miembrosError) throw miembrosError;
-  return { ...data, colaborador_ids: (miembros || []).map((m) => m.perfil_id) };
+  return data;
 }
 
 export async function upsertCapaPlan(payload) {
-  const { colaborador_ids = [], ...planPayload } = payload;
   const { data, error } = await db()
     .from("capa_planes")
     .upsert(
-      { ...planPayload, updated_at: new Date().toISOString() },
+      { ...payload, updated_at: new Date().toISOString() },
       { onConflict: "auditoria_codigo" },
     )
     .select()
     .single();
   if (error) throw error;
-  const deseados = [...new Set(colaborador_ids.filter(Boolean))]
-    .filter((id) => id !== data.responsable_id && id !== data.supervisor_id);
-  const { data: actuales, error: actualesError } = await db()
-    .from("capa_plan_miembros").select("perfil_id").eq("plan_id", data.id);
-  if (actualesError) throw actualesError;
-  const existentes = (actuales || []).map((m) => m.perfil_id);
-  const quitar = existentes.filter((id) => !deseados.includes(id));
-  const agregar = deseados.filter((id) => !existentes.includes(id));
-  if (quitar.length) {
-    const { error: deleteError } = await db().from("capa_plan_miembros")
-      .delete().eq("plan_id", data.id).in("perfil_id", quitar);
-    if (deleteError) throw deleteError;
-  }
-  if (agregar.length) {
-    const { error: insertError } = await db().from("capa_plan_miembros")
-      .insert(agregar.map((perfil_id) => ({ plan_id: data.id, perfil_id })));
-    if (insertError) throw insertError;
-  }
-  return { ...data, colaborador_ids: deseados };
+  return data;
 }
 
 export async function deleteCapaProject(plan) {
-  if (!plan?.id || !plan?.auditoria_codigo) throw new Error("No se encontrÃ³ el proyecto.");
-  const { data: acciones, error: accionesError } = await db()
-    .from("capa").select("id").eq("auditoria_codigo", plan.auditoria_codigo);
-  if (accionesError) throw accionesError;
-  const ids = (acciones || []).map((a) => String(a.id));
-  if (ids.length) {
-    const { count, error: adjuntosError } = await db().from("adjuntos")
-      .select("id", { count: "exact", head: true }).eq("entity_type", "capa").in("entity_id", ids);
-    if (adjuntosError) throw adjuntosError;
-    if (count > 0) throw new Error("El proyecto tiene evidencias adjuntas. Quitalas antes de eliminarlo para no perder documentaciÃ³n.");
-    const { error: accionesDeleteError } = await db().from("capa").delete().in("id", ids);
-    if (accionesDeleteError) throw accionesDeleteError;
+  if (!plan?.id || !plan?.auditoria_codigo) {
+    throw new Error("El proyecto no tiene un identificador válido.");
   }
-  const { error } = await db().from("capa_planes").delete().eq("id", plan.id);
-  if (error) throw error;
+  const { error: actionsError } = await db()
+    .from("capa")
+    .delete()
+    .eq("auditoria_codigo", plan.auditoria_codigo);
+  if (actionsError) throw actionsError;
+
+  const { error: planError } = await db()
+    .from("capa_planes")
+    .delete()
+    .eq("id", plan.id)
+    .eq("auditoria_codigo", plan.auditoria_codigo);
+  if (planError) throw planError;
 }
 
 // ─── INDICADORES POR SEDE ─────────────────────────────────────────────────────
@@ -1895,15 +1857,9 @@ export async function getActivos(filtros = {}) {
   return enrichAuditRowsWithReporters(rows, registros || []);
 }
 export async function upsertActivo(payload) {
-  // El código interno se genera en Postgres. En altas evitamos enviar un valor
-  // vacío para que todos los canales (desktop, mobile y Compras) sigan la misma regla.
-  const activo = { ...payload };
-  if (!activo.id && !String(activo.codigo_interno || '').trim()) {
-    delete activo.codigo_interno;
-  }
   const { data, error } = await supabase
     .from("mnt_activos")
-    .upsert({ ...activo, updated_at: new Date().toISOString() })
+    .upsert({ ...payload, updated_at: new Date().toISOString() })
     .select()
     .single();
   if (error) throw error;
@@ -2318,7 +2274,7 @@ export async function deleteSedeContacto(id) {
 export async function getRequerimientos(filtros = {}) {
   let q = db()
     .from("requerimientos")
-    .select("*, sedes(nombre), compras_entregas(estado, avisado_at, retirado_at, retirado_nombre)")
+    .select("*, sedes(nombre)")
     .order("created_at", { ascending: false });
   if (filtros.estado) q = q.eq("estado", filtros.estado);
   if (filtros.urgencia) q = q.eq("urgencia", filtros.urgencia);
@@ -2326,10 +2282,7 @@ export async function getRequerimientos(filtros = {}) {
   else if (filtros.sedeId) q = q.eq("sede_id", filtros.sedeId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []).map((row) => ({
-    ...row,
-    entrega_estado: row.compras_entregas?.estado || null,
-  }));
+  return data ?? [];
 }
 
 export async function createRequerimiento(payload) {
@@ -2368,9 +2321,13 @@ export async function updateRequerimiento(id, payload) {
 }
 
 export async function crearEntregaCompras({ sedeId, requerimientoIds, contactoId = null }) {
+  const ids = (requerimientoIds || []).map(Number).filter(Number.isInteger);
+  if (!Number.isInteger(Number(sedeId)) || !ids.length) {
+    throw new Error("La sede y los requerimientos del retiro son obligatorios.");
+  }
   const { data, error } = await supabase.rpc("crear_entrega_compras", {
     p_sede_id: Number(sedeId),
-    p_requerimiento_ids: requerimientoIds.map(Number),
+    p_requerimiento_ids: ids,
     p_contacto_id: contactoId || null,
   });
   if (error) throw error;
@@ -2378,6 +2335,7 @@ export async function crearEntregaCompras({ sedeId, requerimientoIds, contactoId
 }
 
 export async function registrarAvisoEntregaCompras(entregaId) {
+  if (!entregaId) throw new Error("Falta el identificador del retiro.");
   const { data, error } = await supabase.rpc("registrar_aviso_entrega_compras", {
     p_entrega_id: entregaId,
   });
@@ -2386,6 +2344,9 @@ export async function registrarAvisoEntregaCompras(entregaId) {
 }
 
 export async function confirmarEntregaCompras({ entregaId, items, observaciones = null }) {
+  if (!entregaId || !Array.isArray(items) || !items.length) {
+    throw new Error("El retiro y sus artículos son obligatorios.");
+  }
   const { data, error } = await supabase.rpc("confirmar_entrega_compras", {
     p_entrega_id: entregaId,
     p_items: items,

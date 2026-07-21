@@ -348,7 +348,18 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW_S}><label style={LABEL_S}>Código interno</label><input value={form.codigo_interno||''} onChange={e=>set('codigo_interno',e.target.value)} style={INPUT_S} /></div>
+              <div style={ROW_S}>
+                <label style={LABEL_S}>Código interno</label>
+                <input
+                  value={form.codigo_interno || 'Se asignará automáticamente al guardar'}
+                  readOnly
+                  aria-readonly="true"
+                  style={{ ...INPUT_S, color: form.codigo_interno ? 'var(--text)' : 'var(--text-dim)', cursor:'default' }}
+                />
+                <p style={{ color:'var(--text-dim)', fontSize:'0.58rem', margin:'0.3rem 0 0' }}>
+                  Identificador único administrado por el sistema.
+                </p>
+              </div>
               <div style={ROW_S}><label style={LABEL_S}>Marca</label><input value={form.marca||''} onChange={e=>set('marca',e.target.value)} style={INPUT_S} /></div>
               <div style={ROW_S}><label style={LABEL_S}>Modelo</label><input value={form.modelo||''} onChange={e=>set('modelo',e.target.value)} style={INPUT_S} /></div>
             </div>

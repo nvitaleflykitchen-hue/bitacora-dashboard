@@ -76,6 +76,42 @@ function SectionLabel({ children }) {
 }
 
 function RacionCard({ title, fields }) {
+  const sobrantes = fields.filter(field => field.label === 'Reutilizable' || field.label === 'Descarte')
+  const principales = fields.filter(field => !sobrantes.includes(field))
+  const renderFields = items => (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
+      gap: '0.45rem',
+    }}>
+      {items.map(({ label, val, set }) => (
+        <label key={label} style={{ minWidth: 0 }}>
+          <span style={{
+            display: 'block', fontSize: '0.6rem', color: 'var(--text-dim)',
+            marginBottom: '0.3rem', textTransform: 'uppercase',
+            letterSpacing: '0.04em', textAlign: 'center',
+          }}>
+            {label}
+          </span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            value={val}
+            onChange={e => set(e.target.value)}
+            placeholder="0"
+            style={{
+              width: '100%', padding: '0.65rem 0.3rem', borderRadius: 8,
+              boxSizing: 'border-box', background: 'var(--bg)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'var(--text)', fontSize: '1rem', textAlign: 'center',
+            }}
+          />
+        </label>
+      ))}
+    </div>
+  )
+
   return (
     <div style={{
       padding: '0.75rem', borderRadius: 10,
@@ -87,39 +123,24 @@ function RacionCard({ title, fields }) {
       }}>
         {title}
       </p>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${fields.length}, minmax(0, 1fr))`,
-        gap: '0.45rem',
+      {renderFields(principales)}
+      <p style={{
+        color: 'var(--text-dim)', fontSize: '0.58rem', margin:'0.65rem 0 0.35rem',
+        textTransform:'uppercase', letterSpacing:'0.06em',
       }}>
-        {fields.map(({ label, val, set }) => (
-          <label key={label} style={{ minWidth: 0 }}>
-            <span style={{
-              display: 'block', fontSize: '0.6rem', color: 'var(--text-dim)',
-              marginBottom: '0.3rem', textTransform: 'uppercase',
-              letterSpacing: '0.04em', textAlign: 'center',
-            }}>
-              {label}
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              value={val}
-              onChange={e => set(e.target.value)}
-              placeholder="0"
-              style={{
-                width: '100%', padding: '0.65rem 0.3rem', borderRadius: 8,
-                boxSizing: 'border-box', background: 'var(--bg)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: 'var(--text)', fontSize: '1rem', textAlign: 'center',
-              }}
-            />
-          </label>
-        ))}
-      </div>
+        Sobrante (raciones)
+      </p>
+      {renderFields(sobrantes)}
     </div>
   )
+}
+
+const parseRacion = value => value === '' ? null : Number.parseInt(value, 10)
+const sumarSobrante = (reutilizable, descarte) => {
+  const valores = [parseRacion(reutilizable), parseRacion(descarte)]
+  return valores.every(value => value == null)
+    ? null
+    : valores.reduce((total, value) => total + (value || 0), 0)
 }
 
 // ── Módulo card ───────────────────────────────────────────────────────────────
@@ -686,17 +707,22 @@ export default function MobileReporte({ onBack, onSuccess }) {
   // Raciones (solo Comedores)
   const [op1Prod,      setOp1Prod]      = useState('')
   const [op1Serv,      setOp1Serv]      = useState('')
-  const [op1Sobrante,  setOp1Sobrante]  = useState('')
+  const [op1Reutilizable, setOp1Reutilizable] = useState('')
+  const [op1Descarte,     setOp1Descarte]     = useState('')
   const [op2Prod,      setOp2Prod]      = useState('')
   const [op2Serv,      setOp2Serv]      = useState('')
-  const [op2Sobrante,  setOp2Sobrante]  = useState('')
+  const [op2Reutilizable, setOp2Reutilizable] = useState('')
+  const [op2Descarte,     setOp2Descarte]     = useState('')
   const [vegProd,      setVegProd]      = useState('')
   const [vegServ,      setVegServ]      = useState('')
-  const [vegSobrante,  setVegSobrante]  = useState('')
+  const [vegReutilizable, setVegReutilizable] = useState('')
+  const [vegDescarte,     setVegDescarte]     = useState('')
   const [ensaladaProd,     setEnsaladaProd]     = useState('')
-  const [ensaladaSobrante, setEnsaladaSobrante] = useState('')
+  const [ensaladaReutilizable, setEnsaladaReutilizable] = useState('')
+  const [ensaladaDescarte,     setEnsaladaDescarte]     = useState('')
   const [postreProd,       setPostreProd]       = useState('')
-  const [postreSobrante,   setPostreSobrante]   = useState('')
+  const [postreReutilizable, setPostreReutilizable] = useState('')
+  const [postreDescarte,     setPostreDescarte]     = useState('')
 
   // Adjuntos (fotos/documentos) — se cargan en el form y se suben recién al enviar
   const [archivos, setArchivos] = useState([]) // [{ id, file, preview }]
@@ -867,6 +893,24 @@ export default function MobileReporte({ onBack, onSuccess }) {
       if (!v.vuelo_codigo.trim()) { setError('Completá el código de cada vuelo no listado'); return }
       if (!v.descripcion.trim()) { setError('Completá la descripción de cada vuelo no listado'); return }
     }
+    if (sedeSel?.tipo === 'Comedor') {
+      const raciones = [
+        { nombre:'Opción 1', producidas:op1Prod, servidas:op1Serv, reutilizable:op1Reutilizable, descarte:op1Descarte },
+        { nombre:'Opción 2', producidas:op2Prod, servidas:op2Serv, reutilizable:op2Reutilizable, descarte:op2Descarte },
+        { nombre:'Vegetariano', producidas:vegProd, servidas:vegServ, reutilizable:vegReutilizable, descarte:vegDescarte },
+        { nombre:'Ensalada', producidas:ensaladaProd, servidas:null, reutilizable:ensaladaReutilizable, descarte:ensaladaDescarte },
+        { nombre:'Postre', producidas:postreProd, servidas:null, reutilizable:postreReutilizable, descarte:postreDescarte },
+      ]
+      for (const item of raciones) {
+        const producidas = parseRacion(item.producidas) || 0
+        const servidas = parseRacion(item.servidas) || 0
+        const sobrante = sumarSobrante(item.reutilizable, item.descarte) || 0
+        if (servidas + sobrante > producidas) {
+          setError(`En "${item.nombre}", servidas + reutilizable + descarte no puede superar las raciones producidas`)
+          return
+        }
+      }
+    }
     setLoading(true); setError(null)
     try {
       const dupId = await checkDuplicado()
@@ -922,19 +966,29 @@ export default function MobileReporte({ onBack, onSuccess }) {
       }
       // Raciones (solo Comedores)
       if (sedeSel?.tipo === 'Comedor') {
-        payload.op1_producidos          = op1Prod      ? parseInt(op1Prod)      : null
-        payload.op1_servidos            = op1Serv      ? parseInt(op1Serv)      : null
-        payload.op1_sobrante            = op1Sobrante      ? parseInt(op1Sobrante)      : null
-        payload.op2_producidos          = op2Prod      ? parseInt(op2Prod)      : null
-        payload.op2_servidos            = op2Serv      ? parseInt(op2Serv)      : null
-        payload.op2_sobrante            = op2Sobrante  ? parseInt(op2Sobrante) : null
-        payload.vegetariano_producidos  = vegProd      ? parseInt(vegProd)      : null
-        payload.vegetariano_servidos    = vegServ      ? parseInt(vegServ)      : null
-        payload.vegetariano_sobrante    = vegSobrante      ? parseInt(vegSobrante)      : null
-        payload.ensalada_producidos     = ensaladaProd ? parseInt(ensaladaProd) : null
-        payload.ensalada_sobrante       = ensaladaSobrante ? parseInt(ensaladaSobrante) : null
-        payload.postre_producidos       = postreProd   ? parseInt(postreProd)   : null
-        payload.postre_sobrante         = postreSobrante   ? parseInt(postreSobrante)   : null
+        payload.op1_producidos             = parseRacion(op1Prod)
+        payload.op1_servidos               = parseRacion(op1Serv)
+        payload.op1_sobrante_reutilizable  = parseRacion(op1Reutilizable)
+        payload.op1_sobrante_descarte      = parseRacion(op1Descarte)
+        payload.op1_sobrante               = sumarSobrante(op1Reutilizable, op1Descarte)
+        payload.op2_producidos             = parseRacion(op2Prod)
+        payload.op2_servidos               = parseRacion(op2Serv)
+        payload.op2_sobrante_reutilizable  = parseRacion(op2Reutilizable)
+        payload.op2_sobrante_descarte      = parseRacion(op2Descarte)
+        payload.op2_sobrante               = sumarSobrante(op2Reutilizable, op2Descarte)
+        payload.vegetariano_producidos     = parseRacion(vegProd)
+        payload.vegetariano_servidos       = parseRacion(vegServ)
+        payload.vegetariano_sobrante_reutilizable = parseRacion(vegReutilizable)
+        payload.vegetariano_sobrante_descarte     = parseRacion(vegDescarte)
+        payload.vegetariano_sobrante       = sumarSobrante(vegReutilizable, vegDescarte)
+        payload.ensalada_producidos        = parseRacion(ensaladaProd)
+        payload.ensalada_sobrante_reutilizable = parseRacion(ensaladaReutilizable)
+        payload.ensalada_sobrante_descarte     = parseRacion(ensaladaDescarte)
+        payload.ensalada_sobrante          = sumarSobrante(ensaladaReutilizable, ensaladaDescarte)
+        payload.postre_producidos          = parseRacion(postreProd)
+        payload.postre_sobrante_reutilizable = parseRacion(postreReutilizable)
+        payload.postre_sobrante_descarte     = parseRacion(postreDescarte)
+        payload.postre_sobrante            = sumarSobrante(postreReutilizable, postreDescarte)
       }
       let registroId
       if (reutilizandoReporte) {
@@ -1411,31 +1465,36 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
           <div style={{ marginBottom: '1.25rem' }}>
             <SectionLabel>Raciones del turno (opcional)</SectionLabel>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem', lineHeight: 1.4, marginTop: '-0.3rem', marginBottom: '0.6rem' }}>
-              Cada menú está agrupado por opción. Sobrante son las porciones que quedaron sin servir al final del turno.
+              Registrá las raciones producidas y servidas. Dividí el sobrante entre reutilizable y descarte.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
               <RacionCard title="Opción 1" fields={[
                 { label: 'Producidas', val: op1Prod, set: setOp1Prod },
                 { label: 'Servidas', val: op1Serv, set: setOp1Serv },
-                { label: 'Sobrante', val: op1Sobrante, set: setOp1Sobrante },
+                { label: 'Reutilizable', val: op1Reutilizable, set: setOp1Reutilizable },
+                { label: 'Descarte', val: op1Descarte, set: setOp1Descarte },
               ]} />
               <RacionCard title="Opción 2" fields={[
                 { label: 'Producidas', val: op2Prod, set: setOp2Prod },
                 { label: 'Servidas', val: op2Serv, set: setOp2Serv },
-                { label: 'Sobrante', val: op2Sobrante, set: setOp2Sobrante },
+                { label: 'Reutilizable', val: op2Reutilizable, set: setOp2Reutilizable },
+                { label: 'Descarte', val: op2Descarte, set: setOp2Descarte },
               ]} />
               <RacionCard title="Vegetariano" fields={[
                 { label: 'Producidas', val: vegProd, set: setVegProd },
                 { label: 'Servidas', val: vegServ, set: setVegServ },
-                { label: 'Sobrante', val: vegSobrante, set: setVegSobrante },
+                { label: 'Reutilizable', val: vegReutilizable, set: setVegReutilizable },
+                { label: 'Descarte', val: vegDescarte, set: setVegDescarte },
               ]} />
               <RacionCard title="Ensalada" fields={[
                 { label: 'Producidas', val: ensaladaProd, set: setEnsaladaProd },
-                { label: 'Sobrante', val: ensaladaSobrante, set: setEnsaladaSobrante },
+                { label: 'Reutilizable', val: ensaladaReutilizable, set: setEnsaladaReutilizable },
+                { label: 'Descarte', val: ensaladaDescarte, set: setEnsaladaDescarte },
               ]} />
               <RacionCard title="Postre" fields={[
                 { label: 'Producidas', val: postreProd, set: setPostreProd },
-                { label: 'Sobrante', val: postreSobrante, set: setPostreSobrante },
+                { label: 'Reutilizable', val: postreReutilizable, set: setPostreReutilizable },
+                { label: 'Descarte', val: postreDescarte, set: setPostreDescarte },
               ]} />
             </div>
           </div>

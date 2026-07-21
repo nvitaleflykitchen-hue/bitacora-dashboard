@@ -30,6 +30,9 @@ describe('buildComedoresMetricas', () => {
     expect(result.global.producido).toBe(210)
     expect(result.global.servido).toBe(174)
     expect(result.global.sobrante).toBe(36)
+    expect(result.global.sinDiscriminar).toBe(36)
+    expect(result.global.reutilizable).toBe(0)
+    expect(result.global.descarte).toBe(0)
     expect(result.global.pctSobrante).toBe(17.1)
     expect(result.global.comedores).toBe(1)
     expect(result.porSede[0]).toMatchObject({
@@ -60,5 +63,41 @@ describe('buildComedoresMetricas', () => {
     expect(result.global.servido).toBe(41)
     expect(result.global.sobrante).toBe(37)
     expect(result.global.pctSobrante).toBe(47.4)
+    expect(result.global.sinDiscriminar).toBe(37)
+  })
+
+  it('discrimina reutilizable y descarte sin reinterpretar el total histórico', () => {
+    const result = buildComedoresMetricas([
+      {
+        id: 3,
+        sede_id: 30,
+        sede_nombre: 'Comedor Norte',
+        fecha_reporte: '2026-07-17T15:00:00Z',
+        turno: 'Tarde',
+        sedes: { id: 30, nombre: 'Comedor Norte', tipo: 'Comedor' },
+        op1_producidos: 100,
+        op1_servidos: 80,
+        op1_sobrante: 20,
+        op1_sobrante_reutilizable: 12,
+        op1_sobrante_descarte: 8,
+      },
+    ])
+
+    expect(result.global).toMatchObject({
+      producido: 100,
+      servido: 80,
+      sobrante: 20,
+      reutilizable: 12,
+      descarte: 8,
+      sinDiscriminar: 0,
+      pctDescarte: 8,
+      pctReutilizado: 60,
+    })
+    expect(result.movimientos[0].categorias.op1).toMatchObject({
+      sobrante: 20,
+      reutilizable: 12,
+      descarte: 8,
+      sinDiscriminar: 0,
+    })
   })
 })

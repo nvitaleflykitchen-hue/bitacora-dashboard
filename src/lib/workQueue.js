@@ -1,15 +1,22 @@
-import { getEscalamientosItems, getRequerimientos, getTareas, getTickets } from './queries'
+import { getCapa, getEscalamientosItems, getRequerimientos, getTareas, getTickets } from './queries'
 import { canSeeQualityTask, isQualityOnlyProfile } from './access'
+import { isGestionProjectAction } from './gestionProjects'
 
 const CACHE_TTL_MS = 30_000
 const cache = new Map()
 
-export function normalizeWorkItems({ tareas = [], escalamientos = [], tickets = [], compras = [] }) {
+export function normalizeWorkItems({ tareas = [], capas = [], escalamientos = [], tickets = [], compras = [] }) {
   const items = [
     ...tareas.map(item => ({
       id:`tarea-${item.id}`, module:'Tarea', title:item.titulo, status:item.estado,
       site:item.sede_nombre || item.sedes?.nombre, owner:item.responsable, priority:item.prioridad,
-      date:item.fecha_limite || item.created_at, target:'tareas',
+      date:item.fecha_limite || item.created_at, target:'tareas', ownerId:item.responsable_id || null,
+    })),
+    ...capas.filter(item => !['Completada','Verificada'].includes(item.estado)).map(item => ({
+      id:`capa-${item.id}`, module:isGestionProjectAction(item) ? 'Proyecto' : 'CAPA', title:item.descripcion, status:item.estado,
+      site:item.sede_nombre || item.sedes?.nombre, owner:item.perfiles?.nombre || item.responsable,
+      ownerId:item.responsable_id || null, priority:item.prioridad || 'Media',
+      date:item.fecha_limite || item.created_at, target:isGestionProjectAction(item) ? 'proyectosGestion' : 'capa', project:item.auditoria_codigo,
     })),
     ...escalamientos.filter(item => item.estado !== 'Resuelto').map(item => ({
       id:`escalamiento-${item.id}`, module:'Escalamiento', title:item.descripcion, status:item.estado,
@@ -38,20 +45,21 @@ export async function getWorkQueue({ sedeIds, perfil, rol, force = false } = {})
   if (!force && cached && Date.now() - cached.createdAt < CACHE_TTL_MS) return cached.data
 
   const scope = sedeIds || undefined
-  const [tareas, escalamientos, tickets, compras] = await Promise.all([
+  const [tareas, capas, escalamientos, tickets, compras] = await Promise.all([
     getTareas({ sedeIds:scope }),
+    getCapa({ sedeIds:scope }),
     getEscalamientosItems({ sedeIds:scope }),
     getTickets({ sedeIds:scope }),
     getRequerimientos({ sedeIds:scope }),
   ])
   if (isQualityOnlyProfile(perfil)) {
     const scopedTareas = (tareas || []).filter(tarea => canSeeQualityTask(tarea, perfil))
-    const data = normalizeWorkItems({ tareas: scopedTareas })
+    const data = normalizeWorkItems({ tareas: scopedTareas, capas })
     cache.set(cacheKey, { createdAt:Date.now(), data })
     return data
   }
 
-  const all = normalizeWorkItems({ tareas, escalamientos, tickets, compras })
+  const all = normalizeWorkItems({ tareas, capas, escalamientos, tickets, compras })
   const data = rol === 'consultor' || !perfil?.nombre
     ? all
     : all.filter(item => !item.owner || item.owner === perfil.nombre || item.module !== 'Tarea')

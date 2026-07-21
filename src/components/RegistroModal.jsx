@@ -302,7 +302,12 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
             || registro.op1_sobrante != null || registro.op2_producidos != null
             || registro.op2_servidos != null || registro.op2_sobrante != null
             || registro.vegetariano_sobrante != null
-            || registro.ensalada_sobrante != null || registro.postre_sobrante != null) && (
+            || registro.ensalada_sobrante != null || registro.postre_sobrante != null
+            || registro.op1_sobrante_reutilizable != null || registro.op1_sobrante_descarte != null
+            || registro.op2_sobrante_reutilizable != null || registro.op2_sobrante_descarte != null
+            || registro.vegetariano_sobrante_reutilizable != null || registro.vegetariano_sobrante_descarte != null
+            || registro.ensalada_sobrante_reutilizable != null || registro.ensalada_sobrante_descarte != null
+            || registro.postre_sobrante_reutilizable != null || registro.postre_sobrante_descarte != null) && (
             <div>
               <p className="font-metric text-xs mb-2 tracking-wider" style={{ color:'var(--phosphor)', opacity:0.7 }}>
                 PRODUCCIÓN / RACIONES
@@ -325,16 +330,29 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
                   </div>
                 ))}
                 {[
-                  { label:'Op.1 sobr.',     val: registro.op1_sobrante },
-                  { label:'Op.2 sobr.',     val: registro.op2_sobrante },
-                  { label:'Veg. sobr.',     val: registro.vegetariano_sobrante },
-                  { label:'Ensalada sobr.', val: registro.ensalada_sobrante },
-                  { label:'Postre sobr.',   val: registro.postre_sobrante },
+                  { label:'Op.1 reutilizable', val: registro.op1_sobrante_reutilizable, tipo:'reutilizable' },
+                  { label:'Op.1 descarte', val: registro.op1_sobrante_descarte, tipo:'descarte' },
+                  { label:'Op.2 reutilizable', val: registro.op2_sobrante_reutilizable, tipo:'reutilizable' },
+                  { label:'Op.2 descarte', val: registro.op2_sobrante_descarte, tipo:'descarte' },
+                  { label:'Veg. reutilizable', val: registro.vegetariano_sobrante_reutilizable, tipo:'reutilizable' },
+                  { label:'Veg. descarte', val: registro.vegetariano_sobrante_descarte, tipo:'descarte' },
+                  { label:'Ensalada reutilizable', val: registro.ensalada_sobrante_reutilizable, tipo:'reutilizable' },
+                  { label:'Ensalada descarte', val: registro.ensalada_sobrante_descarte, tipo:'descarte' },
+                  { label:'Postre reutilizable', val: registro.postre_sobrante_reutilizable, tipo:'reutilizable' },
+                  { label:'Postre descarte', val: registro.postre_sobrante_descarte, tipo:'descarte' },
+                  { label: registro.op1_sobrante_reutilizable == null && registro.op1_sobrante_descarte == null ? 'Op.1 sobr. sin discriminar' : 'Op.1 sobr. total', val: registro.op1_sobrante, tipo:'total' },
+                  { label: registro.op2_sobrante_reutilizable == null && registro.op2_sobrante_descarte == null ? 'Op.2 sobr. sin discriminar' : 'Op.2 sobr. total', val: registro.op2_sobrante, tipo:'total' },
+                  { label: registro.vegetariano_sobrante_reutilizable == null && registro.vegetariano_sobrante_descarte == null ? 'Veg. sobr. sin discriminar' : 'Veg. sobr. total', val: registro.vegetariano_sobrante, tipo:'total' },
+                  { label: registro.ensalada_sobrante_reutilizable == null && registro.ensalada_sobrante_descarte == null ? 'Ensalada sobr. sin discriminar' : 'Ensalada sobr. total', val: registro.ensalada_sobrante, tipo:'total' },
+                  { label: registro.postre_sobrante_reutilizable == null && registro.postre_sobrante_descarte == null ? 'Postre sobr. sin discriminar' : 'Postre sobr. total', val: registro.postre_sobrante, tipo:'total' },
                 ].filter(x => x.val != null).map(x => (
                   <div key={x.label} className="rounded p-2.5"
-                    style={{ background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.15)' }}>
+                    style={{
+                      background: x.tipo === 'reutilizable' ? 'rgba(57,255,20,0.04)' : 'rgba(245,158,11,0.06)',
+                      border: x.tipo === 'descarte' ? '1px solid rgba(255,42,42,0.2)' : x.tipo === 'reutilizable' ? '1px solid rgba(57,255,20,0.12)' : '1px solid rgba(245,158,11,0.15)',
+                    }}>
                     <p className="font-metric text-xs" style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{x.label}</p>
-                    <p className="font-metric font-bold text-lg" style={{ color:'#F59E0B' }}>{x.val}</p>
+                    <p className="font-metric font-bold text-lg" style={{ color:x.tipo === 'reutilizable' ? 'var(--phosphor)' : x.tipo === 'descarte' ? 'var(--alert)' : '#F59E0B' }}>{x.val}</p>
                   </div>
                 ))}
               </div>

@@ -89,6 +89,14 @@ Estos son los únicos valores que Postgres acepta para cada campo de estado/clas
 | `tickets.tipo` | `correctivo`, `preventivo` |
 | `tickets.prioridad` | `baja`, `media`, `alta`, `critica` |
 | `tickets.estado` | `abierto`, `aprobado`, `en_progreso`, `resuelto`, `rechazado` |
+
+### Identificación de activos
+
+- `codigo_interno` es asignado automáticamente por la base al dar de alta un activo o al guardar por primera vez un activo histórico sin código.
+- Formatos: `FK-EQ-000001` para equipos, `FK-IN-000001` para instalaciones y `FK-VH-000001` para vehículos. Cada tipo mantiene su propia secuencia.
+- El código identifica al activo durante toda su vida útil: no incluye la sede y no cambia si el activo se traslada.
+- Los códigos históricos ya cargados se conservan. La restricción `UNIQUE` continúa siendo la última garantía contra duplicados.
+- Las secuencias garantizan unicidad bajo concurrencia, no numeración sin saltos; una operación cancelada puede consumir un número.
 | `tickets.oc_estado` | `sin_oc`, `pendiente`, `emitida`, `aprobada` |
 | `tickets.presupuesto_estado` | `sin_presupuesto`, `pendiente_aprobacion`, `aprobado`, `rechazado` |
 | `ticket_costos.tipo` | `mano_obra`, `repuesto`, `servicio_externo`, `traslado`, `otros` |
@@ -151,6 +159,10 @@ Flujo aprobado por el usuario el 2026-06-19:
 - `Enviado` inicia el reloj principal sólo después de que el usuario confirma que efectivamente envió el correo a Compras.
 - Una vez alcanzado `Enviado`, los datos originales del pedido quedan bloqueados en la UI (sede, solicitante, descripción, cantidad, justificación, urgencia, necesidad y comentarios). Sólo pueden cambiar el estado del proceso, la fecha de compromiso y la documentación adjunta. `Cumplido`, `Rechazado` y `Cancelado` son estados terminales. Esta inmutabilidad todavía es una regla del frontend, no una restricción de base/RLS.
 - `Recibido` significa recepción física; `Cumplido` significa entrega y validación final por la sede.
+- Los requerimientos se clasifican antes del envío con `destino_inventario`: `activo`, `insumo` o `no_inventariable`.
+- Los artículos `Recibido` se agrupan por sede en un lote de retiro. Compras abre un único WhatsApp al responsable de la sede y registra el aviso; el lote no puede confirmarse antes de estar avisado.
+- `Cumplido` se produce al aceptar el retiro y la custodia con una sesión autenticada. La misma transacción crea los activos, crea/incrementa los insumos y registra sus movimientos. Si falla cualquier alta, no se confirma la custodia ni se cierra ningún requerimiento.
+- La primera versión confirma cantidades completas. Los retiros parciales quedan fuera de alcance para evitar diferencias silenciosas de stock.
 - SLA inicial por urgencia, medido en días hábiles: alta 3, media 7, baja 15. El valor se copia a `sla_dias` al enviar para preservar la medición aunque luego cambie la urgencia.
 - KPI principal: días hábiles entre `enviado_at` y `cumplido_at`. También se calculan mediana, porcentaje dentro de SLA, vencidos activos, tiempo medio de aprobación, tasa de observados, mayor antigüedad abierta y cumplidos del mes.
 
@@ -164,6 +176,15 @@ Flujo aprobado por el usuario el 2026-06-19:
 
 - `no_conformidades.estado` sigue el ciclo `Abierta → En proceso → Cerrada/Verificada` (ISO 9001, según la sección del menú "CALIDAD (ISO 9001)" en `Sidebar.jsx`).
 - `capa.tipo` distingue acción `Correctiva` de `Preventiva`, con su propio ciclo `Pendiente → En ejecución → Completada → Verificada`.
+- **Calidad > CAPA** queda reservado para acciones correctivas o preventivas originadas en no conformidades, auditorías o incumplimientos formales.
+- Los planes operativos con código `FK-GEST-*`, como el plan de escalas de Miguel, se muestran en **Gestión > Proyectos** y no aparecen en Calidad. Sus acciones conservan códigos, estados, fechas y evidencias históricas.
+- Un proyecto puede tener un responsable general y cada acción su responsable autenticado. Las acciones admiten subtareas sin duplicarse como tareas genéricas.
+- Las acciones abiertas aparecen en **Mis pendientes** y **Mi gestión** con la etiqueta `Proyecto`; al seleccionarlas abren Proyectos de Gestión.
+- Asignar el plan histórico genera un único aviso agrupado, evitando una alerta por cada acción.
+- Toda acción de proyecto utiliza el Protocolo de Gestión de Compromisos: `Sin aceptar`, `Aceptada`, `Delegada`, `Bloqueada` o `Cumplida`. Esta situación operativa no reemplaza el estado auditable de la acción.
+- Delegar asigna un ejecutor, pero conserva al responsable principal hasta que revise el resultado y cierre la acción. La delegación genera una notificación personal al ejecutor.
+- Aceptar o informar avance exige un próximo paso concreto; bloquear exige el motivo y quién debe intervenir; cada movimiento queda en `gestion_historial` con fecha y usuario.
+- Los compromisos sin aceptar durante 2 días y las acciones sin movimiento durante 3 o 7 días se señalan visualmente para seguimiento. Los avisos externos programados requieren un canal de email/push activo y se implementan por separado.
 - No se encontró ninguna relación de `CHECK`/trigger que obligue a que una `no_conformidad` tenga un `capa` asociado antes de cerrarse, ni viceversa — la relación entre ambos módulos (si existe) es por convención de uso, no forzada por la base.
 
 ## 8. Notificaciones prioritarias al celular (implementación local pendiente de activar)

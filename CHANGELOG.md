@@ -1,5 +1,15 @@
 # Historial de cambios — Fly Gestión
 
+## 2.6.0 — 2026-07-19
+
+- Bloque acumulativo de mejoras incorporadas después de la versión 2.5.0.
+- Checklists con envío corregido, supervisión y responsables por sede.
+- Panel de notificaciones renovado, navegación al elemento relacionado y reacciones en comentarios.
+- Publicaciones del Tablón segmentadas por sedes, áreas, equipos o personas, con notificación push tolerante a fallos.
+- Cronograma de limpieza configurable por sede, aviso diario y evidencia fotográfica.
+- Contactos rápidos multisede y sección editable de Contactos en Calidad.
+- Mejoras de lectura de auditorías, evaluaciones, Compras mobile, tareas y reclutamiento por WhatsApp.
+
 ## 2.2.2 — 2026-07-14
 
 - Las menciones `@usuario` en comentarios de registros ahora generan una notificación interna para el usuario mencionado.

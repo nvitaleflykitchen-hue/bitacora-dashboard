@@ -153,7 +153,17 @@ function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated }) {
                 <option value="baja">Baja</option>
               </select>
             </div>
-            <Field label="Código interno" value={{ val: form.codigo_interno || '', set: v => set('codigo_interno', v), ph: 'Ej: EQ-014' }} />
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Código interno</label>
+              <input
+                className="input-dark w-full"
+                value={form.codigo_interno || 'Se asignará automáticamente al guardar'}
+                readOnly
+                aria-readonly="true"
+                style={{ color: form.codigo_interno ? 'var(--text)' : 'var(--text-dim)' }}
+              />
+              <p style={{ fontSize: '0.58rem', color: 'var(--text-dim)', marginTop: 4 }}>Identificador único administrado por el sistema.</p>
+            </div>
             <Field label="Marca" value={{ val: form.marca || '', set: v => set('marca', v), ph: 'Ej: Rational' }} />
             <Field label="Modelo" value={{ val: form.modelo || '', set: v => set('modelo', v), ph: 'Ej: CPC 101' }} />
             <Field label="Categoría" value={{ val: form.categoria || '', set: v => set('categoria', v), ph: 'Ej: HORNO' }} />

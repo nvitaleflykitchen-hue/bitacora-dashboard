@@ -143,6 +143,7 @@ export const PRIMARY_NAV = [
   { id:'inicio', label:'Inicio', icon:'home', roles:ALL_OPERATIONAL_ROLES },
   { id:'tablon', label:'Tablón', icon:'announcement', roles:ALL_OPERATIONAL_ROLES },
   { id:'pendientes', label:'Pendientes', icon:'pending', roles:ALL_OPERATIONAL_ROLES },
+  { id:'proyectosGestion', label:'Proyectos', icon:'projects', roles:new Set(['admin','editor','consultor','grupo','encargado']) },
   { id:'sedesHub', label:'Sedes', icon:'sites', roles:ALL_OPERATIONAL_ROLES },
   { id:'requerimientos', label:'Compras', icon:'purchases', roles:ALL_OPERATIONAL_ROLES },
   { id:'mantenimientoHub', label:'Mantenimiento', icon:'maintenance', roles:MANTENIMIENTO_ROLES },
@@ -156,6 +157,7 @@ const VIEW_ROLES = {
   tablon: ALL_OPERATIONAL_ROLES,
   actualizaciones: ALL_OPERATIONAL_ROLES,
   pendientes: ALL_OPERATIONAL_ROLES,
+  proyectosGestion: new Set(['admin','editor','consultor','grupo','encargado']),
   sedesHub: ALL_OPERATIONAL_ROLES,
   requerimientos: ALL_OPERATIONAL_ROLES,
   mantenimientoHub: MANTENIMIENTO_ROLES,
@@ -210,6 +212,7 @@ export function getPrimaryNav(rol, perfil = null) {
 const VIEW_SECTIONS = {
   dashboard:'inicio', sedeEncargado:'inicio',
   tareas:'pendientes', escalamientos:'pendientes', calendario:'pendientes',
+  proyectosGestion:'proyectosGestion',
   sede:'sedesHub', sedeFicha:'sedesHub', sedeResponsables:'sedesHub', vuelosPlantilla:'sedesHub',
   mntDashboard:'mantenimientoHub', mntTickets:'mantenimientoHub', mntActivos:'mantenimientoHub',
   mntPlanes:'mantenimientoHub', mntProveedores:'mantenimientoHub', mntMatafuegos:'mantenimientoHub',

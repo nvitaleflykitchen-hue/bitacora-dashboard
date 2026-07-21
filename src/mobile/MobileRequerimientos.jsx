@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getRequerimientos, updateRequerimiento, getSedes } from '../lib/queries'
+import { getRequerimientos, updateRequerimiento, getSedes, confirmarEntregaCompras } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { isQualityOnlyProfile } from '../lib/access'
 import { ShoppingCart, ChevronDown, FileText } from 'lucide-react'
@@ -25,13 +25,13 @@ function SedePill({ label, active, onClick }) {
 
 import { REQ_ESTADO_COLOR as ESTADO_COLOR } from '../lib/estados'
 import SkeletonTable from '../components/SkeletonTable'
-import { toast } from '../lib/feedback'
+import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { generarReporteEficienciaCompras } from '../lib/comprasEficienciaPdf'
 
 const URGENCIA_COLOR = { baja: '#39FF14', media: '#F59E0B', alta: '#FF2A2A' }
 
-function RequerimientoCard({ r, canManage, onUpdate }) {
+function RequerimientoCard({ r, canManage, onUpdate, onConfirmarRetiro }) {
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -133,12 +133,15 @@ function RequerimientoCard({ r, canManage, onUpdate }) {
             </p>
           )}
 
-          {canManage && !['Cumplido', 'Rechazado'].includes(r.estado) && (
+          {r.estado === 'Recibido' && r.entrega_id && r.entrega_estado === 'avisado' && (
             <div className="flex gap-2 mt-2 pt-2 border-t border-white/5">
-              <button disabled={saving} onClick={() => cambiarEstado('Cumplido')} className="btn-primary flex-1 py-2 text-xs" style={{ background: 'rgba(57,255,20,0.1)', color: 'var(--phosphor)', border: '1px solid rgba(57,255,20,0.2)', padding: '0.4rem', borderRadius: 4 }}>
-                {saving ? 'Guardando...' : 'Marcar Cumplido'}
+              <button disabled={saving} onClick={() => onConfirmarRetiro(r)} className="btn-primary flex-1 py-2 text-xs" style={{ background: 'rgba(57,255,20,0.1)', color: 'var(--phosphor)', border: '1px solid rgba(57,255,20,0.2)', padding: '0.4rem', borderRadius: 4 }}>
+                Confirmar retiro y custodia
               </button>
             </div>
+          )}
+          {canManage && r.estado !== 'Recibido' && !['Cumplido','Rechazado','Cancelado'].includes(r.estado) && (
+            <p style={{ color:'var(--text-dim)', fontSize:'.68rem' }}>El cierre se habilita después de la recepción y aceptación del retiro.</p>
           )}
         </div>
       )}
@@ -175,6 +178,16 @@ export default function MobileRequerimientos() {
   const handleUpdate = async (id, payload) => {
     await updateRequerimiento(id, payload)
     setReqs(prev => prev.map(r => r.id === id ? { ...r, ...payload } : r))
+  }
+
+  const handleConfirmarRetiro = async (req) => {
+    const items = reqs.filter(r=>r.entrega_id===req.entrega_id && r.estado==='Recibido')
+    if (!await confirmar({ titulo:'Aceptar custodia', mensaje:`Confirmás el retiro de ${items.length} artículo(s). El inventario de la sede se actualizará automáticamente.`, confirmText:'Confirmar retiro' })) return
+    try {
+      await confirmarEntregaCompras({ entregaId:req.entrega_id, items:items.map(r=>({ requerimiento_id:r.id, cantidad:Number(r.cantidad || 1) })) })
+      toast.ok('Retiro confirmado e inventario actualizado.')
+      load()
+    } catch (e) { toast.error('No se pudo confirmar: ' + mensajeError(e)) }
   }
 
   const filtrados = reqs.filter(r => {
@@ -226,7 +239,7 @@ export default function MobileRequerimientos() {
             <p style={{ color: 'var(--text)', fontSize: '0.9rem' }}>Sin requerimientos {filtro === 'activos' ? 'activos' : ''}{selectedSede ? ` en ${selectedSede.nombre}` : ''}</p>
           </div>
         ) : filtrados.map(r => (
-          <RequerimientoCard key={r.id} r={r} canManage={canManage} onUpdate={handleUpdate} />
+          <RequerimientoCard key={r.id} r={r} canManage={canManage} onUpdate={handleUpdate} onConfirmarRetiro={handleConfirmarRetiro} />
         ))}
       </div>
     </div>

@@ -5,6 +5,8 @@ const RACION_CATEGORIAS = [
     producido: 'op1_producidos',
     servido: 'op1_servidos',
     sobrante: 'op1_sobrante',
+    reutilizable: 'op1_sobrante_reutilizable',
+    descarte: 'op1_sobrante_descarte',
   },
   {
     key: 'op2',
@@ -12,6 +14,8 @@ const RACION_CATEGORIAS = [
     producido: 'op2_producidos',
     servido: 'op2_servidos',
     sobrante: 'op2_sobrante',
+    reutilizable: 'op2_sobrante_reutilizable',
+    descarte: 'op2_sobrante_descarte',
   },
   {
     key: 'vegetariano',
@@ -19,18 +23,24 @@ const RACION_CATEGORIAS = [
     producido: 'vegetariano_producidos',
     servido: 'vegetariano_servidos',
     sobrante: 'vegetariano_sobrante',
+    reutilizable: 'vegetariano_sobrante_reutilizable',
+    descarte: 'vegetariano_sobrante_descarte',
   },
   {
     key: 'ensalada',
     label: 'Ensalada',
     producido: 'ensalada_producidos',
     sobrante: 'ensalada_sobrante',
+    reutilizable: 'ensalada_sobrante_reutilizable',
+    descarte: 'ensalada_sobrante_descarte',
   },
   {
     key: 'postre',
     label: 'Postre',
     producido: 'postre_producidos',
     sobrante: 'postre_sobrante',
+    reutilizable: 'postre_sobrante_reutilizable',
+    descarte: 'postre_sobrante_descarte',
   },
 ]
 
@@ -42,7 +52,9 @@ const toNumber = value => {
 const hasRaciones = registro => RACION_CATEGORIAS.some(cat => (
   toNumber(registro?.[cat.producido]) > 0 ||
   toNumber(registro?.[cat.servido]) > 0 ||
-  toNumber(registro?.[cat.sobrante]) > 0
+  toNumber(registro?.[cat.sobrante]) > 0 ||
+  toNumber(registro?.[cat.reutilizable]) > 0 ||
+  toNumber(registro?.[cat.descarte]) > 0
 ))
 
 const isComedor = registro => {
@@ -55,11 +67,25 @@ const emptyTotals = () => ({
   producido: 0,
   servido: 0,
   sobrante: 0,
+  reutilizable: 0,
+  descarte: 0,
+  sinDiscriminar: 0,
 })
 
 function getRacionValues(cat, registro) {
   const producido = toNumber(registro?.[cat.producido])
   const sobranteCargado = toNumber(registro?.[cat.sobrante])
+  const discriminado = registro?.[cat.reutilizable] != null || registro?.[cat.descarte] != null
+  const reutilizable = discriminado ? toNumber(registro?.[cat.reutilizable]) : 0
+  const descarte = discriminado ? toNumber(registro?.[cat.descarte]) : 0
+
+  if (discriminado) {
+    const sobrante = reutilizable + descarte
+    const servido = cat.servido && registro?.[cat.servido] != null
+      ? toNumber(registro?.[cat.servido])
+      : Math.max(0, producido - sobrante)
+    return { producido, servido, sobrante, reutilizable, descarte, sinDiscriminar:0 }
+  }
 
   if (cat.servido) {
     const servidoCargado = toNumber(registro?.[cat.servido])
@@ -68,6 +94,9 @@ function getRacionValues(cat, registro) {
         producido,
         servido: servidoCargado,
         sobrante: Math.max(0, producido - servidoCargado),
+        reutilizable:0,
+        descarte:0,
+        sinDiscriminar:Math.max(0, producido - servidoCargado),
       }
     }
     if (sobranteCargado > 0) {
@@ -75,32 +104,43 @@ function getRacionValues(cat, registro) {
         producido,
         servido: Math.max(0, producido - sobranteCargado),
         sobrante: sobranteCargado,
+        reutilizable:0,
+        descarte:0,
+        sinDiscriminar:sobranteCargado,
       }
     }
-    return { producido, servido: 0, sobrante: 0 }
+    return { producido, servido: 0, sobrante: 0, reutilizable:0, descarte:0, sinDiscriminar:0 }
   }
 
   return {
     producido,
     servido: Math.max(0, producido - sobranteCargado),
     sobrante: sobranteCargado,
+    reutilizable:0,
+    descarte:0,
+    sinDiscriminar:sobranteCargado,
   }
 }
 
 function addRegistroToTotals(totals, registro) {
   RACION_CATEGORIAS.forEach(cat => {
-    const { producido, servido, sobrante } = getRacionValues(cat, registro)
+    const { producido, servido, sobrante, reutilizable, descarte, sinDiscriminar } = getRacionValues(cat, registro)
 
     totals.producido += producido
     totals.servido += servido
     totals.sobrante += sobrante
+    totals.reutilizable += reutilizable
+    totals.descarte += descarte
+    totals.sinDiscriminar += sinDiscriminar
   })
 }
 
 function withPercentages(row) {
   const pctSobrante = row.producido > 0 ? Math.round((row.sobrante / row.producido) * 1000) / 10 : 0
   const pctServido = row.producido > 0 ? Math.round((row.servido / row.producido) * 1000) / 10 : 0
-  return { ...row, pctSobrante, pctServido }
+  const pctDescarte = row.producido > 0 ? Math.round((row.descarte / row.producido) * 1000) / 10 : 0
+  const pctReutilizado = row.sobrante > 0 ? Math.round((row.reutilizable / row.sobrante) * 1000) / 10 : 0
+  return { ...row, pctSobrante, pctServido, pctDescarte, pctReutilizado }
 }
 
 export function buildComedoresMetricas(registros = []) {
@@ -121,17 +161,23 @@ export function buildComedoresMetricas(registros = []) {
     }
 
     RACION_CATEGORIAS.forEach(cat => {
-      const { producido, servido, sobrante } = getRacionValues(cat, registro)
+      const { producido, servido, sobrante, reutilizable, descarte, sinDiscriminar } = getRacionValues(cat, registro)
 
       row.producido += producido
       row.servido += servido
       row.sobrante += sobrante
-      row.categorias[cat.key] = { label: cat.label, producido, servido, sobrante }
+      row.reutilizable += reutilizable
+      row.descarte += descarte
+      row.sinDiscriminar += sinDiscriminar
+      row.categorias[cat.key] = { label: cat.label, producido, servido, sobrante, reutilizable, descarte, sinDiscriminar }
 
       const categoria = porCategoriaMap.get(cat.key)
       categoria.producido += producido
       categoria.servido += servido
       categoria.sobrante += sobrante
+      categoria.reutilizable += reutilizable
+      categoria.descarte += descarte
+      categoria.sinDiscriminar += sinDiscriminar
     })
 
     addRegistroToTotals(global, registro)
@@ -151,6 +197,9 @@ export function buildComedoresMetricas(registros = []) {
     sede.producido += row.producido
     sede.servido += row.servido
     sede.sobrante += row.sobrante
+    sede.reutilizable += row.reutilizable
+    sede.descarte += row.descarte
+    sede.sinDiscriminar += row.sinDiscriminar
     if (!sede.ultimoReporte || new Date(row.fecha) > new Date(sede.ultimoReporte)) sede.ultimoReporte = row.fecha
 
     return withPercentages(row)
