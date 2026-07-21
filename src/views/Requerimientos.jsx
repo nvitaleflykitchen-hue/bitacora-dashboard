@@ -275,18 +275,6 @@ function buildEmailBody(req, sedes) {
   )
 }
 
-function buildObservationEmail(req, comentario, autorizante, sedes) {
-  const detalle = decodeURIComponent(buildEmailBody({ ...req, observacion_aprobacion:null }, sedes))
-  return encodeURIComponent(
-    `REQUERIMIENTO OBSERVADO — ACCIÓN REQUERIDA\n` +
-    `========================================\n\n` +
-    `Autorizante: ${autorizante || 'No informado'}\n` +
-    `Observación:\n${comentario}\n\n` +
-    `Por favor, corregí o completá la información solicitada y reenviá el requerimiento para aprobación.\n\n` +
-    `----------------------------------------\n\n${detalle}`
-  )
-}
-
 function shareRequerimiento(req, sedes, channel) {
   const subject = encodeURIComponent(`[Requerimiento #${req.numero || req.id || 'nuevo'}] ${req.descripcion?.substring(0, 50) || 'Compra'}`)
   const body = buildEmailBody(req, sedes)
@@ -796,12 +784,9 @@ export default function Requerimientos({ focusId }) {
         console.warn('[requerimientos] La observación se guardó pero falló la mención:', notificationError)
         toast.warn('La observación se guardó, pero no se pudo enviar la mención.')
       }
-      const solicitante = solicitantes.find(s=>s.nombre===req.solicitante)
-      const destino = solicitante?.email || ''
-      const subject = encodeURIComponent(`[ACCIÓN REQUERIDA] Requerimiento #${req.numero||req.id} observado`)
-      const body = buildObservationEmail({ ...req, ...payload }, comentario, perfil?.nombre || perfil?.email, sedes)
-      window.open(`mailto:${destino}?subject=${subject}&body=${body}`, '_blank')
-      if (!destino) toast.ok('Se abrió el correo, pero el solicitante no tiene un email registrado. Completá el destinatario manualmente.')
+      toast.success(mentionedUserIds.length
+        ? 'Requerimiento observado. Se notificó al usuario mencionado dentro de Fly Gestión.'
+        : 'Requerimiento observado. La observación quedó registrada en Fly Gestión.')
     } catch (error) {
       toast.error('No se pudo observar el requerimiento: ' + mensajeError(error))
       await load()

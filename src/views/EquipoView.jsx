@@ -58,6 +58,19 @@ import {
   textoEvaluacionPersonal,
 } from "../lib/evaluacionPersonalPdf";
 
+const PERIODO_PRUEBA_DIAS = 180;
+const PLANTA_CORDOBA_SEDE_ID = 24;
+function estadoPeriodoPrueba(persona, hoy = new Date()) {
+  if (!persona?.fecha_ingreso || persona.sede_ids?.includes(PLANTA_CORDOBA_SEDE_ID)) return null;
+  const ingreso = new Date(`${persona.fecha_ingreso}T00:00:00`);
+  if (Number.isNaN(ingreso.getTime())) return null;
+  const vencimiento = new Date(ingreso); vencimiento.setDate(vencimiento.getDate()+PERIODO_PRUEBA_DIAS);
+  const inicioHoy = new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+  return { ingreso, vencimiento, diasRestantes:Math.round((vencimiento-inicioHoy)/86400000) };
+}
+function colorPeriodoPrueba(dias) { if (dias<0 || dias<=15) return "#ff4444"; if (dias<=30) return "#f59e0b"; return "#39FF14"; }
+function textoPeriodoPrueba(dias) { if (dias<0) return `Vencido hace ${Math.abs(dias)} día${Math.abs(dias)===1?"":"s"}`; if (dias===0) return "Vence hoy"; return `Vence en ${dias} día${dias===1?"":"s"}`; }
+
 // ──────────────────────────────────────────────
 // PersonaFicha — vista interna de ficha individual
 // ──────────────────────────────────────────────
@@ -2875,6 +2888,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
   const ranking = [...personas].sort(
     (a, b) => (b.puntos_total || 0) - (a.puntos_total || 0),
   );
+  const periodosPrueba = personas.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=-30 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
 
   const RESULTADO_COLOR = {
     Bajo: "#ff4444",
@@ -3047,6 +3061,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             ["ranking", "RANKING"],
             ["organigrama", "ORGANIGRAMA"],
             ["vacaciones", "VACACIONES"],
+            ...(canManage ? [["periodo-prueba", `PERÍODO DE PRUEBA (${periodosPrueba.length})`]] : []),
             ["bajas", `HISTORIAL DE BAJAS (${bajas.length})`],
             ...(canManage ? [["duplicados", `DUPLICADOS (${duplicados.length})`]] : []),
             ["reclutamiento", "SELECCIÓN"],
@@ -3127,6 +3142,11 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
           <OrganigramaView onNavigate={onNavigate} />
         ) : tab === "vacaciones" ? (
           <VacacionesPanel personas={personas} sedes={sedes} canManage={canManage} />
+        ) : tab === "periodo-prueba" ? (
+          <div className="max-w-5xl space-y-3">
+            <div className="glass p-4 flex items-center justify-between gap-4"><div><p className="font-title font-bold" style={{color:"var(--phosphor)"}}>PERÍODOS DE PRUEBA · 180 DÍAS</p><p style={{color:"var(--text-dim)",fontSize:'.72rem',marginTop:4}}>Cuenta regresiva automática desde la fecha de ingreso. Planta Córdoba no se incluye.</p></div><div className="text-right"><p className="font-title font-bold text-xl" style={{color:"var(--phosphor)"}}>{periodosPrueba.filter(({periodo})=>periodo.diasRestantes>=0).length}</p><p className="font-metric" style={{color:"var(--text-dim)",fontSize:'.58rem'}}>VIGENTES</p></div></div>
+            {periodosPrueba.length===0 ? <div className="glass p-8 text-center" style={{color:"var(--text-dim)"}}>No hay personas dentro del período de prueba.</div> : periodosPrueba.map(({persona,periodo})=>{const sedeNombres=sedes.filter(s=>persona.sede_ids?.includes(s.id)).map(s=>s.nombre).join(' · ')||'Sin sede';const color=colorPeriodoPrueba(periodo.diasRestantes);return <button key={persona.id} onClick={()=>setSelectedId(persona.id)} className="glass w-full p-4 flex items-center gap-4 text-left" style={{borderLeft:`4px solid ${color}`}}><PersonaAvatar persona={persona} size={44}/><div className="flex-1 min-w-0"><p className="font-title font-bold" style={{color:'var(--text)'}}>{persona.nombre} {persona.apellido||''}</p><p style={{color:'var(--text-dim)',fontSize:'.7rem'}}>Legajo {persona.legajo||'sin cargar'} · {sedeNombres}</p><p style={{color:'var(--text-dim)',fontSize:'.66rem',marginTop:4}}>Ingreso: {fmtFechaLarga(persona.fecha_ingreso)} · Fin de prueba: {fmtFechaLarga(periodo.vencimiento.toISOString().slice(0,10))}</p></div><div className="text-right"><p className="font-title font-bold" style={{color,fontSize:'1rem'}}>{textoPeriodoPrueba(periodo.diasRestantes)}</p><p className="font-metric" style={{color:'var(--text-dim)',fontSize:'.58rem',marginTop:3}}>180 DÍAS</p></div><ChevronRight size={16} style={{color:'var(--text-dim)'}}/></button>})}
+          </div>
         ) : tab === "duplicados" ? (
           <div className="max-w-5xl space-y-4">
             <div className="glass p-4">

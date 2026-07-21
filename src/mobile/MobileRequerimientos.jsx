@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getRequerimientos, updateRequerimiento, getSedes, confirmarEntregaCompras } from '../lib/queries'
+import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, confirmarEntregaCompras } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { isQualityOnlyProfile } from '../lib/access'
-import { ShoppingCart, ChevronDown, FileText } from 'lucide-react'
+import { ShoppingCart, ChevronDown, FileText, Plus, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -30,6 +30,38 @@ import { mensajeError } from '../lib/errores'
 import { generarReporteEficienciaCompras } from '../lib/comprasEficienciaPdf'
 
 const URGENCIA_COLOR = { baja: '#39FF14', media: '#F59E0B', alta: '#FF2A2A' }
+
+function NuevoRequerimientoMobile({ sedes, perfil, sedeInicial, onClose, onSaved }) {
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ sede_id:sedeInicial?.id || (sedes.length===1 ? sedes[0].id : ''), descripcion:'', cantidad:'', unidad_medida:'unidad', urgencia:'media', fecha_necesidad:'', justificacion:'', tipo_compra:'' })
+  const set = (key,value) => setForm(prev=>({...prev,[key]:value}))
+  const labelStyle = { display:'block', color:'var(--text-dim)', fontSize:'.64rem', fontWeight:700, marginBottom:5, textTransform:'uppercase' }
+  const submit = async event => {
+    event.preventDefault()
+    if (!form.sede_id) return toast.warn('Seleccioná una sede.')
+    if (!form.descripcion.trim()) return toast.warn('Describí qué necesitás comprar.')
+    if (!form.justificacion.trim()) return toast.warn('Indicá para qué se necesita la compra.')
+    setSaving(true)
+    try {
+      const sede=sedes.find(item=>String(item.id)===String(form.sede_id))
+      await createRequerimiento({...form,sede_id:form.sede_id,sede_nombre:sede?.nombre||null,solicitante:perfil?.nombre||perfil?.email||'Usuario',cantidad:form.cantidad?Number(form.cantidad):null,fecha_necesidad:form.fecha_necesidad||null,estado:'Pendiente'})
+      toast.ok('Solicitud de compra creada.'); await onSaved(); onClose()
+    } catch(error) { toast.error('No se pudo crear la solicitud: '+mensajeError(error)) }
+    finally { setSaving(false) }
+  }
+  return <div className="modal-overlay" style={{zIndex:90,alignItems:'flex-end'}}><form onSubmit={submit} style={{width:'100%',maxHeight:'92vh',overflowY:'auto',background:'var(--surface)',borderRadius:'16px 16px 0 0',padding:'1rem'}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}><div><h2 style={{color:'var(--text)',fontSize:'1rem',fontWeight:800}}>Nueva solicitud de compra</h2><p style={{color:'var(--text-dim)',fontSize:'.68rem',marginTop:3}}>Se enviará pendiente de aprobación.</p></div><button type="button" onClick={onClose} className="btn-ghost" style={{padding:7}}><X size={17}/></button></div>
+    <div style={{display:'flex',flexDirection:'column',gap:12}}>
+      <div><label style={labelStyle}>Sede *</label><select className="input-dark w-full" value={form.sede_id} onChange={e=>set('sede_id',e.target.value)}><option value="">Seleccionar sede</option>{sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div>
+      <div><label style={labelStyle}>Qué se necesita *</label><textarea rows={3} className="input-dark w-full" value={form.descripcion} onChange={e=>set('descripcion',e.target.value)} placeholder="Producto, insumo o servicio"/></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><div><label style={labelStyle}>Cantidad</label><input type="number" min="0" step="any" className="input-dark w-full" value={form.cantidad} onChange={e=>set('cantidad',e.target.value)}/></div><div><label style={labelStyle}>Unidad</label><input className="input-dark w-full" value={form.unidad_medida} onChange={e=>set('unidad_medida',e.target.value)} placeholder="unidad, kg..."/></div></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><div><label style={labelStyle}>Urgencia</label><select className="input-dark w-full" value={form.urgencia} onChange={e=>set('urgencia',e.target.value)}><option value="baja">Baja</option><option value="media">Media</option><option value="alta">Alta</option></select></div><div><label style={labelStyle}>Fecha necesaria</label><input type="date" className="input-dark w-full" value={form.fecha_necesidad} onChange={e=>set('fecha_necesidad',e.target.value)}/></div></div>
+      <div><label style={labelStyle}>Tipo de compra</label><input className="input-dark w-full" value={form.tipo_compra} onChange={e=>set('tipo_compra',e.target.value)} placeholder="Insumo, reparación, servicio..."/></div>
+      <div><label style={labelStyle}>Justificación *</label><textarea rows={3} className="input-dark w-full" value={form.justificacion} onChange={e=>set('justificacion',e.target.value)} placeholder="Para qué se necesita y qué ocurre si no se compra"/></div>
+      <button type="submit" disabled={saving} className="btn-primary" style={{width:'100%',padding:'.85rem',justifyContent:'center'}}>{saving?'Guardando...':'Crear solicitud'}</button>
+    </div>
+  </form></div>
+}
 
 function RequerimientoCard({ r, canManage, onUpdate, onConfirmarRetiro }) {
   const [expanded, setExpanded] = useState(false)
@@ -152,11 +184,13 @@ function RequerimientoCard({ r, canManage, onUpdate, onConfirmarRetiro }) {
 export default function MobileRequerimientos() {
   const { allowedSedeIds, can, rol, perfil } = useAuth()
   const canManage = (can('compras', 'manage') || ['admin','editor','encargado'].includes(rol)) && !isQualityOnlyProfile(perfil)
+  const canRequest = (can('compras', 'request') || canManage) && !isQualityOnlyProfile(perfil)
   const [reqs, setReqs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('activos')
   const [sedes, setSedes] = useState([])
   const [selectedSede, setSelectedSede] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -198,6 +232,13 @@ export default function MobileRequerimientos() {
 
   return (
     <div className="mobile-scroll" style={{ padding: '1.25rem 1rem 1rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {showCreate && <NuevoRequerimientoMobile
+        sedes={sedes}
+        perfil={perfil}
+        sedeInicial={selectedSede}
+        onClose={()=>setShowCreate(false)}
+        onSaved={load}
+      />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
         <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700 }}>Compras</h1>
 
@@ -218,6 +259,8 @@ export default function MobileRequerimientos() {
           <button onClick={() => setFiltro('todos')} style={{ padding: '0.3rem 0.6rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none', background: filtro === 'todos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: filtro === 'todos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Todos</button>
         </div>
       </div>
+
+      {canRequest && <button onClick={()=>setShowCreate(true)} className="btn-primary" style={{width:'100%',padding:'.75rem',justifyContent:'center',marginBottom:12,flexShrink:0}}><Plus size={16}/> Nueva solicitud</button>}
 
       {/* Filtro de sede — solo si hay 2+ sedes */}
       {sedes.length > 1 && (

@@ -251,3 +251,17 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
   respuesta (mirar los logs de la Edge Function).
 - **`cron-preventivos`** viene devolviendo 400. Sin revisar.
 - **Escalamientos:** ~106 pendientes sin triage.
+
+### 2026-07-21 — Observaciones de Compras dentro de la plataforma
+
+- Se eliminó la apertura automática de correo al marcar un requerimiento como `Observado`.
+- La observación queda registrada en Fly Gestión y el usuario seleccionado con `@` recibe la notificación interna existente.
+- Verificado: lint sin errores, 59 tests aprobados y build de producción correcto.
+- Pendiente de publicación: requiere autorización explícita de Nicolás.
+
+### 2026-07-21 — Compras móvil y período de prueba
+
+- Compras móvil incorpora `Nueva solicitud` con sede, descripción, cantidad, urgencia, fecha necesaria y justificación.
+- Se cruzó la planilla de períodos de prueba: 9 fichas faltantes creadas y 3 fichas completadas; 14 personas no-Planta verificadas.
+- Equipo incorpora una pestaña administrativa con cuenta regresiva de 180 días desde el ingreso; excluye Planta Córdoba y conserva vencidos por 30 días.
+- Autorizado para publicar por Nicolás.
