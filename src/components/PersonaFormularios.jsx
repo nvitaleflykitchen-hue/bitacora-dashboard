@@ -1,224 +1,204 @@
-import { useState } from "react";
-import { Download, FileText } from "lucide-react";
-import { useAuth } from "../lib/auth";
-import { supabase } from "../lib/supabase";
+import { useCallback, useEffect, useState } from 'react'
+import { Check, Download, FileText, ShieldAlert, X } from 'lucide-react'
+import { useAuth } from '../lib/auth'
+import { apercibimientoFilename, createApercibimientoPdf } from '../lib/apercibimientoPdf'
 import {
-  apercibimientoFilename,
-  createApercibimientoPdf,
-} from "../lib/apercibimientoPdf";
-import { confirmar, toast } from "../lib/feedback";
-import { mensajeError } from "../lib/errores";
+  canCreateDisciplinaryRequest,
+  canReviewDisciplinaryRequest,
+  createDisciplinaryRequest,
+  disciplinaryStatusMeta,
+  listDisciplinaryRequests,
+  notifyDisciplinaryRequest,
+  reviewDisciplinaryRequest,
+} from '../lib/disciplinaryWorkflow'
+import { confirmar, toast } from '../lib/feedback'
+import { mensajeError } from '../lib/errores'
 
 function localToday() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+  const now = new Date()
+  const offset = now.getTimezoneOffset() * 60_000
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10)
 }
 
-export default function PersonaFormularios({
-  persona,
-  compact = false,
-  onRegistered,
-}) {
-  const { perfil } = useAuth();
-  const [fecha, setFecha] = useState(localToday);
-  const [motivo, setMotivo] = useState("");
-  const [saving, setSaving] = useState(false);
+function StatusChip({ estado }) {
+  const meta = disciplinaryStatusMeta(estado)
+  return (
+    <span style={{ color:meta.color, border:`1px solid ${meta.color}55`, background:`${meta.color}12`, borderRadius:999, padding:'0.2rem 0.5rem', fontSize:'0.6rem', fontWeight:700 }}>
+      {meta.label}
+    </span>
+  )
+}
 
-  const generate = async () => {
-    if (!motivo.trim()) {
-      toast.warn("Ingresá el motivo del apercibimiento.");
-      return;
-    }
+export default function PersonaFormularios({ persona, compact = false, onRegistered }) {
+  const { user, rol } = useAuth()
+  const [fecha, setFecha] = useState(localToday)
+  const [hechos, setHechos] = useState('')
+  const [descargo, setDescargo] = useState('')
+  const [evidencia, setEvidencia] = useState('')
+  const [fundamento, setFundamento] = useState('')
+  const [textoPropuesto, setTextoPropuesto] = useState('')
+  const [urgente, setUrgente] = useState(false)
+  const [medidaPreventiva, setMedidaPreventiva] = useState('')
+  const [requests, setRequests] = useState([])
+  const [reviewNotes, setReviewNotes] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-    const form = { fecha, motivo: motivo.trim() };
-    const pdf = createApercibimientoPdf(persona, form);
+  const canCreate = canCreateDisciplinaryRequest(rol)
+  const canReview = canReviewDisciplinaryRequest(rol)
 
-    setSaving(true);
-    const { data: existente, error: checkError } = await supabase
-      .schema("equipo")
-      .from("historial_personal")
-      .select("id,descripcion")
-      .eq("persona_id", persona.id)
-      .eq("tipo", "apercibimiento")
-      .eq("fecha", fecha)
-      .limit(1)
-      .maybeSingle();
-    if (checkError) {
-      setSaving(false);
-      toast.error(
-        `No se pudo verificar si ya existe: ${mensajeError(checkError)}`,
-      );
-      return;
-    }
-    if (existente) {
-      setSaving(false);
-      const descargar = await confirmar({
-        titulo: "Apercibimiento ya registrado",
-        mensaje:
-          "Ya existe un apercibimiento para esta persona en la misma fecha. Para evitar una doble carga, podés descargar nuevamente el documento sin crear otro registro.",
-        confirmText: "Descargar sin duplicar",
-        cancelText: "Volver y revisar",
-      });
-      if (descargar) pdf.save(apercibimientoFilename(persona, fecha));
-      return;
-    }
-    const { data, error } = await supabase
-      .schema("equipo")
-      .from("historial_personal")
-      .insert({
-        persona_id: persona.id,
-        tipo: "apercibimiento",
-        fecha,
-        descripcion: form.motivo,
-        registrado_por: perfil?.nombre || perfil?.email || null,
-      })
-      .select("id")
-      .single();
-    setSaving(false);
-
+  const load = useCallback(async () => {
+    if (!persona?.id || !canCreate) return
+    setLoading(true)
+    const { data, error } = await listDisciplinaryRequests(persona.id)
+    setLoading(false)
     if (error) {
-      toast.error(
-        `No se pudo registrar el apercibimiento: ${mensajeError(error)}`,
-      );
-      return;
+      toast.error(`No se pudieron cargar las solicitudes disciplinarias: ${mensajeError(error)}`)
+      return
     }
+    setRequests(data || [])
+  }, [persona?.id, canCreate])
 
-    pdf.save(apercibimientoFilename(persona, fecha));
-    setMotivo("");
-    onRegistered?.(data);
-  };
+  useEffect(() => { load() }, [load])
 
-  const fieldStyle = compact ? { marginBottom: 10 } : {};
-  const labelStyle = {
-    display: "block",
-    marginBottom: 4,
-    color: "var(--text-dim)",
-    fontSize: "0.62rem",
-    textTransform: "uppercase",
-  };
+  const submit = async () => {
+    if (hechos.trim().length < 10) return toast.warn('Describí los hechos con al menos 10 caracteres.')
+    if (urgente && medidaPreventiva.trim().length < 10) return toast.warn('Detallá la medida preventiva inmediata adoptada.')
+    setSaving(true)
+    const { error } = await createDisciplinaryRequest({
+      persona_id: persona.id,
+      fecha_hecho: fecha,
+      hechos: hechos.trim(),
+      descargo_trabajador: descargo.trim() || null,
+      testigos_evidencia: evidencia.trim() || null,
+      fundamento_legal: fundamento.trim() || null,
+      texto_propuesto: textoPropuesto.trim() || null,
+      urgente,
+      medida_preventiva: urgente ? medidaPreventiva.trim() : null,
+    })
+    setSaving(false)
+    if (error) return toast.error(`No se pudo enviar a aprobación: ${mensajeError(error)}`)
+    setHechos(''); setDescargo(''); setEvidencia(''); setFundamento(''); setTextoPropuesto(''); setUrgente(false); setMedidaPreventiva('')
+    toast.success(urgente ? 'Medida preventiva registrada y enviada a revisión.' : 'Apercibimiento enviado a aprobación.')
+    await load()
+  }
+
+  const review = async (request, approved) => {
+    const action = approved ? 'aprobar' : 'rechazar'
+    const ok = await confirmar({
+      titulo: approved ? 'Aprobar apercibimiento' : 'Rechazar solicitud',
+      mensaje: `¿Confirmás que querés ${action} esta solicitud?`,
+      confirmText: approved ? 'Aprobar' : 'Rechazar',
+      cancelText: 'Volver',
+      danger: !approved,
+    })
+    if (!ok) return
+    setSaving(true)
+    const { error } = await reviewDisciplinaryRequest(request.id, approved, user.id, reviewNotes[request.id])
+    setSaving(false)
+    if (error) return toast.error(`No se pudo ${action}: ${mensajeError(error)}`)
+    toast.success(approved ? 'Apercibimiento aprobado.' : 'Solicitud rechazada.')
+    await load()
+  }
+
+  const download = request => {
+    const pdf = createApercibimientoPdf(persona, { fecha:request.fecha_hecho, motivo:request.hechos })
+    pdf.save(apercibimientoFilename(persona, request.fecha_hecho))
+  }
+
+  const markNotified = async request => {
+    const ok = await confirmar({
+      titulo: 'Confirmar notificación',
+      mensaje: 'Confirmá únicamente después de entregar el apercibimiento al trabajador. Esta acción crea el antecedente formal en su historial.',
+      confirmText: 'Fue notificado',
+      cancelText: 'Todavía no',
+    })
+    if (!ok) return
+    setSaving(true)
+    const { data, error } = await notifyDisciplinaryRequest(request.id)
+    setSaving(false)
+    if (error) return toast.error(`No se pudo registrar la notificación: ${mensajeError(error)}`)
+    toast.success('Apercibimiento notificado y registrado en el historial.')
+    onRegistered?.({ id:data })
+    await load()
+  }
+
+  if (!canCreate) {
+    return <p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>El control disciplinario está disponible únicamente para administradores y encargados.</p>
+  }
+
+  const labelStyle = { display:'block', marginBottom:4, color:'var(--text-dim)', fontSize:'0.62rem', textTransform:'uppercase' }
+  const inputBlock = { marginBottom:compact ? 10 : 12 }
 
   return (
-    <div
-      className={compact ? "" : "glass p-5"}
-      style={compact ? undefined : { maxWidth: 900 }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 16,
-        }}
-      >
-        <FileText size={18} style={{ color: "var(--phosphor)" }} />
+    <div className={compact ? '' : 'glass p-5'} style={compact ? undefined : { maxWidth:900 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+        <FileText size={18} style={{ color:'var(--phosphor)' }} />
         <div>
-          <p
-            style={{
-              color: "var(--text)",
-              fontSize: "0.86rem",
-              fontWeight: 700,
-            }}
-          >
-            Formulario de apercibimiento
-          </p>
-          <p style={{ color: "var(--text-dim)", fontSize: "0.68rem" }}>
-            Completa los datos, descarga el PDF y lo registra en el historial.
-          </p>
+          <p style={{ color:'var(--text)', fontSize:'0.86rem', fontWeight:700 }}>Solicitud de apercibimiento</p>
+          <p style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>El encargado documenta el hecho. Un administrador debe aprobarlo antes de la notificación.</p>
         </div>
       </div>
 
-      <div
-        className={compact ? "" : "grid grid-cols-3 gap-3"}
-        style={compact ? undefined : { marginBottom: 12 }}
-      >
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Empleado</label>
-          <input
-            className="input-dark w-full"
-            value={`${persona.nombre} ${persona.apellido || ""}`.trim()}
-            readOnly
-          />
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>N.º de legajo</label>
-          <input
-            className="input-dark w-full"
-            value={persona.legajo || "Sin cargar"}
-            readOnly
-          />
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>DNI</label>
-          <input
-            className="input-dark w-full"
-            value={persona.dni || "Sin cargar"}
-            readOnly
-          />
-        </div>
+      <div className={compact ? '' : 'grid grid-cols-3 gap-3'} style={inputBlock}>
+        <div><label style={labelStyle}>Empleado</label><input className="input-dark w-full" value={`${persona.nombre} ${persona.apellido || ''}`.trim()} readOnly /></div>
+        <div><label style={labelStyle}>Legajo</label><input className="input-dark w-full" value={persona.legajo || 'Sin cargar'} readOnly /></div>
+        <div><label style={labelStyle}>Fecha del hecho *</label><input type="date" className="input-dark w-full" value={fecha} onChange={event => setFecha(event.target.value)} /></div>
       </div>
 
-      <div
-        className={compact ? "" : "grid grid-cols-3 gap-3"}
-        style={compact ? undefined : { marginBottom: 12 }}
-      >
-        <div style={fieldStyle}>
-          <label
-            htmlFor={`apercibimiento-fecha-${persona.id}`}
-            style={labelStyle}
-          >
-            Fecha *
-          </label>
-          <input
-            id={`apercibimiento-fecha-${persona.id}`}
-            type="date"
-            className="input-dark w-full"
-            value={fecha}
-            onChange={(event) => setFecha(event.target.value)}
-          />
-        </div>
-        <div className={compact ? "" : "col-span-2"} style={fieldStyle}>
-          <label
-            htmlFor={`apercibimiento-motivo-${persona.id}`}
-            style={labelStyle}
-          >
-            Motivo *
-          </label>
-          <textarea
-            id={`apercibimiento-motivo-${persona.id}`}
-            className="input-dark w-full"
-            rows={compact ? 5 : 4}
-            value={motivo}
-            onChange={(event) => setMotivo(event.target.value)}
-            placeholder="Describí el hecho que motiva el apercibimiento."
-            style={{ resize: "vertical" }}
-          />
-        </div>
+      <div style={inputBlock}><label style={labelStyle}>Descripción objetiva de los hechos *</label><textarea className="input-dark w-full" rows={4} value={hechos} onChange={event => setHechos(event.target.value)} placeholder="Qué ocurrió, cuándo, dónde y qué instrucción se incumplió." /></div>
+      <div className={compact ? '' : 'grid grid-cols-2 gap-3'} style={inputBlock}>
+        <div><label style={labelStyle}>Descargo del trabajador</label><textarea className="input-dark w-full" rows={3} value={descargo} onChange={event => setDescargo(event.target.value)} placeholder="Versión o explicación brindada por el trabajador." /></div>
+        <div><label style={labelStyle}>Testigos y evidencia</label><textarea className="input-dark w-full" rows={3} value={evidencia} onChange={event => setEvidencia(event.target.value)} placeholder="Personas presentes, fotos, registros o documentos." /></div>
+      </div>
+      <div className={compact ? '' : 'grid grid-cols-2 gap-3'} style={inputBlock}>
+        <div><label style={labelStyle}>Fundamento legal sugerido</label><textarea className="input-dark w-full" rows={3} value={fundamento} onChange={event => setFundamento(event.target.value)} placeholder="Podés pegar aquí el análisis de NotebookLM." /></div>
+        <div><label style={labelStyle}>Texto propuesto</label><textarea className="input-dark w-full" rows={3} value={textoPropuesto} onChange={event => setTextoPropuesto(event.target.value)} placeholder="Borrador sugerido por NotebookLM (opcional)." /></div>
       </div>
 
-      {(!persona.legajo || !persona.dni) && (
-        <p style={{ color: "#f59e0b", fontSize: "0.68rem", marginBottom: 12 }}>
-          {!persona.legajo && !persona.dni
-            ? "Faltan el legajo y el DNI. Podés generar el PDF, pero esos campos quedarán vacíos."
-            : `Falta ${!persona.legajo ? "el legajo" : "el DNI"}. Ese campo quedará vacío en el PDF.`}
-        </p>
-      )}
+      <label style={{ display:'flex', alignItems:'flex-start', gap:8, color:'var(--text)', fontSize:'0.72rem', marginBottom:urgente ? 10 : 16 }}>
+        <input type="checkbox" checked={urgente} onChange={event => setUrgente(event.target.checked)} />
+        <span><strong>Hubo una medida preventiva urgente</strong><br /><span style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>Registra la acción inmediata para controlar el riesgo; no constituye una sanción.</span></span>
+      </label>
+      {urgente && <div style={inputBlock}><label style={labelStyle}>Medida preventiva adoptada *</label><textarea className="input-dark w-full" rows={3} value={medidaPreventiva} onChange={event => setMedidaPreventiva(event.target.value)} placeholder="Ej.: se retiró al trabajador de la tarea y se le indicó colocarse el uniforme reglamentario." /></div>}
 
-      <button
-        type="button"
-        onClick={generate}
-        disabled={saving || !fecha || !motivo.trim()}
-        className="btn-primary"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: "0.72rem",
-        }}
-      >
-        <Download size={13} />{" "}
-        {saving ? "Registrando..." : "Generar PDF y registrar"}
+      <button type="button" onClick={submit} disabled={saving || !fecha || hechos.trim().length < 10} className="btn-primary" style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.72rem' }}>
+        <ShieldAlert size={13} /> {saving ? 'Guardando...' : 'Enviar a aprobación'}
       </button>
+
+      <div style={{ marginTop:24, borderTop:'1px solid rgba(255,255,255,0.08)', paddingTop:16 }}>
+        <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.78rem', marginBottom:10 }}>Solicitudes de esta persona</p>
+        {loading && <p style={{ color:'var(--text-dim)', fontSize:'0.7rem' }}>Cargando…</p>}
+        {!loading && requests.length === 0 && <p style={{ color:'var(--text-dim)', fontSize:'0.7rem' }}>No hay solicitudes disciplinarias.</p>}
+        {requests.map(request => (
+          <div key={request.id} style={{ background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:6, padding:12, marginBottom:10 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:8, alignItems:'center', marginBottom:8 }}>
+              <span style={{ color:'var(--text)', fontSize:'0.7rem', fontWeight:700 }}>{request.fecha_hecho}</span>
+              <StatusChip estado={request.estado} />
+            </div>
+            <p style={{ color:'var(--text)', fontSize:'0.72rem', whiteSpace:'pre-wrap' }}>{request.hechos}</p>
+            {request.urgente && <p style={{ color:'#f59e0b', fontSize:'0.66rem', marginTop:8 }}><strong>Medida preventiva:</strong> {request.medida_preventiva}</p>}
+            {request.revision_observaciones && <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginTop:8 }}><strong>Revisión:</strong> {request.revision_observaciones}</p>}
+
+            {canReview && request.estado === 'pendiente_aprobacion' && (
+              <div style={{ marginTop:10 }}>
+                <textarea className="input-dark w-full" rows={2} value={reviewNotes[request.id] || ''} onChange={event => setReviewNotes(notes => ({ ...notes, [request.id]:event.target.value }))} placeholder="Observaciones de revisión (opcional)." />
+                <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                  <button className="btn-primary" disabled={saving} onClick={() => review(request, true)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem' }}><Check size={12} /> Aprobar</button>
+                  <button className="btn-ghost" disabled={saving} onClick={() => review(request, false)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem', color:'#ff5050' }}><X size={12} /> Rechazar</button>
+                </div>
+              </div>
+            )}
+
+            {canReview && request.estado === 'aprobado' && (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:10 }}>
+                <button className="btn-ghost" onClick={() => download(request)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem' }}><Download size={12} /> Descargar PDF</button>
+                <button className="btn-primary" disabled={saving} onClick={() => markNotified(request)} style={{ fontSize:'0.68rem' }}>Confirmar notificación</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
-  );
+  )
 }

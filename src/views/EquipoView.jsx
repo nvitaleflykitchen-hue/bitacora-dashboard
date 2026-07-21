@@ -102,7 +102,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   };
   const [evalForm, setEvalForm] = useState(EVAL_INICIAL);
   const [histForm, setHistForm] = useState({
-    tipo: "apercibimiento",
+    tipo: perfil?.rol === "admin" ? "apercibimiento" : "reconocimiento",
     fecha: new Date().toISOString().split("T")[0],
     descripcion: "",
     dias_suspension: "",
@@ -426,6 +426,13 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   };
 
   const saveHistorial = async () => {
+    if (
+      ["apercibimiento", "suspension", "llamado_atencion"].includes(histForm.tipo) &&
+      perfil?.rol !== "admin"
+    ) {
+      toast.warn("Las sanciones deben enviarse desde Formularios para aprobación de un administrador.");
+      return;
+    }
     setSaving(true);
     const payload = {
       persona_id: personaId,
@@ -460,7 +467,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     }
     setShowHistorialForm(false);
     setHistForm({
-      tipo: "apercibimiento",
+      tipo: perfil?.rol === "admin" ? "apercibimiento" : "reconocimiento",
       fecha: new Date().toISOString().split("T")[0],
       descripcion: "",
       dias_suspension: "",
@@ -1451,11 +1458,9 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                       }
                       style={{ fontSize: "0.75rem" }}
                     >
-                      <option value="apercibimiento">Apercibimiento</option>
-                      <option value="suspension">Suspensión</option>
-                      <option value="llamado_atencion">
-                        Llamado de atención
-                      </option>
+                      {perfil?.rol === "admin" && <option value="apercibimiento">Apercibimiento</option>}
+                      {perfil?.rol === "admin" && <option value="suspension">Suspensión</option>}
+                      {perfil?.rol === "admin" && <option value="llamado_atencion">Llamado de atención</option>}
                       <option value="reconocimiento">Reconocimiento</option>
                       <option value="logro">Logro</option>
                       <option value="otro">Otro</option>

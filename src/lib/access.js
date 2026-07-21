@@ -19,6 +19,8 @@ const ALL_OPERATIONAL_ROLES = new Set(ROLES.filter(r => r !== 'operario'))
 // edificios/equipos: se excluye puntualmente de mantenimientoHub.
 const MANTENIMIENTO_ROLES = new Set([...ALL_OPERATIONAL_ROLES].filter(r => r !== 'flota'))
 const STAFF_ROLES = new Set(['admin', 'editor', 'grupo', 'encargado'])
+const DISCIPLINARY_NOTEBOOK_ROLES = new Set(['admin', 'encargado'])
+export const DISCIPLINARY_NOTEBOOK_URL = 'https://notebooklm.google.com/notebook/91ef1c43-02d9-4140-ab99-1ae3178a299d'
 const QUALITY_ONLY_EMAILS = new Set(['tecnica@flykitchen.com.ar'])
 const SAFETY_ONLY_EMAILS = new Set(['rrhh.higieneyseguridad.emp@gmail.com'])
 const SAFETY_ONLY_NAV = new Set(['tablon', 'pendientes', 'sedesHub', 'requerimientos', 'mantenimientoHub', 'calidadHub', 'equipo'])
@@ -287,4 +289,8 @@ export function getDefaultView(rol, perfil = null) {
 
 export function isStaffRole(rol) {
   return STAFF_ROLES.has(rol)
+}
+
+export function canAccessDisciplinaryNotebook(rol) {
+  return DISCIPLINARY_NOTEBOOK_ROLES.has(rol)
 }

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { ROLES, canAccessView, canSeeQualityTask, canWrite, getDefaultView, getPrimaryNav, isQualityTeamPerson } from './access'
+import { ROLES, canAccessDisciplinaryNotebook, canAccessView, canSeeQualityTask, canWrite, getDefaultView, getPrimaryNav, isQualityTeamPerson } from './access'
 
 describe('matriz de acceso', () => {
+  it('restringe el cuaderno disciplinario a administradores y encargados', () => {
+    expect(canAccessDisciplinaryNotebook('admin')).toBe(true)
+    expect(canAccessDisciplinaryNotebook('encargado')).toBe(true)
+    expect(ROLES.filter(rol => !['admin', 'encargado'].includes(rol)).every(rol => !canAccessDisciplinaryNotebook(rol))).toBe(true)
+  })
+
   // Tope real hoy: admin/editor/consultor/grupo/encargado ven 9 accesos
   // (6 operacionales + flotaHub + calidadHub + equipo). Antes de agregar
   // flotaHub ya eran 8, por lo que el límite histórico de "siete" estaba

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ClipboardCheck, ClipboardList, Users, Wrench, BarChart3, Megaphone, Phone, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
+import { ClipboardCheck, ClipboardList, Users, Wrench, BarChart3, Megaphone, Phone, ChevronRight, ChevronLeft, Sparkles, Scale } from 'lucide-react'
 import MobileCapa from './MobileCapa'
 import MobilePersonal from './MobilePersonal'
 import MobileMantenimiento from './MobileMantenimiento'
@@ -8,7 +8,7 @@ import MobileTablon from './MobileTablon'
 import MobileContactos from './MobileContactos'
 import MobileActualizaciones from './MobileActualizaciones'
 import { useAuth } from '../lib/auth'
-import { canAccessView } from '../lib/access'
+import { DISCIPLINARY_NOTEBOOK_URL, canAccessDisciplinaryNotebook, canAccessView } from '../lib/access'
 import MobileFlota from './MobileFlota'
 import { useBackHandler } from '../lib/backStack'
 import AuditoriasInternas from '../views/AuditoriasInternas'
@@ -23,6 +23,7 @@ const MODULES = [
   { key: 'tablon',        label: 'Tablón',        sub: 'Anuncios operativos',               icon: Megaphone,     ready: true,  view: 'tablon' },
   { key: 'actualizaciones', label: 'Actualizaciones', sub: 'Versiones y nuevas funciones',  icon: Sparkles,      ready: true,  view: 'actualizaciones' },
   { key: 'contactos',     label: 'Directorio',    sub: 'Teléfonos importantes',            icon: Phone,         ready: true,  view: 'inicio' },
+  { key: 'disciplinario', label: 'Control disciplinario', sub: 'Asesor legal y redacción de sanciones', icon: Scale, ready: true, external: true },
 ]
 
 function ModuleCard({ mod, onOpen }) {
@@ -66,9 +67,18 @@ export default function MobileMas({ initialModule = null }) {
   const [active, setActive] = useState(initialModule)
   useBackHandler(() => setActive(null), !!active)
   const visibleModules = MODULES.filter(m =>
-    canAccessView(rol, m.view, perfil) &&
+    (m.external ? canAccessDisciplinaryNotebook(rol) : canAccessView(rol, m.view, perfil)) &&
     (rol !== 'mnt_editor' || ['mantenimiento', 'actualizaciones', 'contactos'].includes(m.key))
   )
+
+  const openModule = (key) => {
+    const mod = visibleModules.find(item => item.key === key)
+    if (mod?.external) {
+      window.open(DISCIPLINARY_NOTEBOOK_URL, '_blank', 'noopener,noreferrer')
+      return
+    }
+    setActive(key)
+  }
 
   if (active) {
     const mod = visibleModules.find(m => m.key === active)
@@ -116,7 +126,7 @@ export default function MobileMas({ initialModule = null }) {
       {visibleModules.length === 0 ? (
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>No hay módulos adicionales para tu rol.</p>
       ) : (
-        visibleModules.map(m => <ModuleCard key={m.key} mod={m} onOpen={setActive} />)
+        visibleModules.map(m => <ModuleCard key={m.key} mod={m} onOpen={openModule} />)
       )}
     </div>
   )

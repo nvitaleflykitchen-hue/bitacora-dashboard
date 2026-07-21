@@ -196,12 +196,18 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
 }
 
 function QuickHistorialModal({ personaId, onClose, onSaved }) {
-  const [form, setForm] = useState({ tipo: 'apercibimiento', fecha: new Date().toISOString().slice(0, 10), descripcion: '', dias_suspension: '', registrado_por: '' })
+  const { rol } = useAuth()
+  const tiposDisponibles = rol === 'admin' ? TIPOS_HISTORIAL : TIPOS_HISTORIAL.filter(([tipo]) => !['apercibimiento', 'suspension', 'llamado_atencion'].includes(tipo))
+  const [form, setForm] = useState({ tipo: rol === 'admin' ? 'apercibimiento' : 'reconocimiento', fecha: new Date().toISOString().slice(0, 10), descripcion: '', dias_suspension: '', registrado_por: '' })
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const submit = async () => {
     if (!form.descripcion.trim()) { toast.warn('La descripción es obligatoria.'); return }
+    if (['apercibimiento', 'suspension', 'llamado_atencion'].includes(form.tipo) && rol !== 'admin') {
+      toast.warn('Las sanciones deben enviarse desde Formularios para aprobación de un administrador.')
+      return
+    }
     setSaving(true)
     const { error } = await supabase.schema('equipo').from('historial_personal').insert({
       persona_id: personaId,
@@ -225,7 +231,7 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
         </div>
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Tipo *</label>
         <select className="input-dark w-full" value={form.tipo} onChange={e => set('tipo', e.target.value)} style={{ marginBottom: 12 }}>
-          {TIPOS_HISTORIAL.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          {tiposDisponibles.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fecha *</label>
         <input type="date" className="input-dark w-full" value={form.fecha} onChange={e => set('fecha', e.target.value)} style={{ marginBottom: 12 }} />
