@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
@@ -11,6 +11,8 @@ const STATUS = {
 export default function VacacionesPanel({ personas = [], canManage = false, compact = false }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ persona_id:'', fecha_desde:'', fecha_hasta:'', reemplazo_persona_id:'', observaciones:'' })
 
@@ -33,8 +35,14 @@ export default function VacacionesPanel({ personas = [], canManage = false, comp
   }
 
   const save = async () => {
+    if (savingRef.current) return
     if (!form.persona_id || !form.fecha_desde || !form.fecha_hasta) return toast.warn('Completá persona y fechas.')
     if (form.fecha_hasta < form.fecha_desde) return toast.warn('La fecha hasta no puede ser anterior.')
+    const duplicate = items.some(item => item.persona_id === form.persona_id && item.fecha_desde === form.fecha_desde && item.fecha_hasta === form.fecha_hasta && ['solicitado','aprobado'].includes(item.estado))
+    if (duplicate) return toast.warn('Ya existe una solicitud activa para esa persona y esas fechas.')
+    savingRef.current = true
+    setSaving(true)
+    try {
     // solicitado_por es obligatorio: la policy de INSERT exige que sea el usuario actual
     const { data:{ user } } = await supabase.auth.getUser()
     if (!user) return toast.error('Tu sesión venció. Volvé a iniciar sesión para enviar la solicitud.')
@@ -44,8 +52,13 @@ export default function VacacionesPanel({ personas = [], canManage = false, comp
       fecha_hasta: form.fecha_hasta, dias_solicitados: dias, reemplazo_persona_id: form.reemplazo_persona_id || null,
       observaciones: form.observaciones.trim() || null, estado:'solicitado', solicitado_por: user.id
     })
+    if (error?.code === '23505') return toast.warn('Esa solicitud ya fue registrada.')
     if (error) return toast.error('No se pudo registrar: ' + mensajeError(error))
     toast.success('Solicitud registrada.'); setShowForm(false); setForm({ persona_id:'', fecha_desde:'', fecha_hasta:'', reemplazo_persona_id:'', observaciones:'' }); load()
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
   }
 
   const decide = async (id, estado) => {
@@ -67,7 +80,7 @@ export default function VacacionesPanel({ personas = [], canManage = false, comp
       <input type="date" className="input-dark" value={form.fecha_desde} onChange={e=>setForm(f=>({...f,fecha_desde:e.target.value}))}/>
       <input type="date" className="input-dark" value={form.fecha_hasta} onChange={e=>setForm(f=>({...f,fecha_hasta:e.target.value}))}/>
       <textarea className="input-dark" placeholder="Observaciones" value={form.observaciones} onChange={e=>setForm(f=>({...f,observaciones:e.target.value}))} style={{gridColumn:'1 / -1'}}/>
-      <div className="flex gap-2"><button className="btn-primary" onClick={save}>Solicitar</button><button className="btn-ghost" onClick={()=>setShowForm(false)}>Cancelar</button></div>
+      <div className="flex gap-2"><button className="btn-primary" disabled={saving} onClick={save}>{saving ? 'Guardando...' : 'Solicitar'}</button><button className="btn-ghost" disabled={saving} onClick={()=>setShowForm(false)}>Cancelar</button></div>
     </div>}
     {loading ? <p style={{color:'var(--text-dim)'}}>Cargando...</p> : items.length===0 ? <div className="glass p-8 text-center" style={{color:'var(--text-dim)'}}>Todavía no hay vacaciones registradas.</div> :
       <div className={compact?'space-y-2':'grid grid-cols-1 xl:grid-cols-2 gap-3'}>{items.map(i=>{
