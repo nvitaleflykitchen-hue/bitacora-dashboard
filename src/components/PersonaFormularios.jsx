@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Download, FileText, ShieldAlert, X } from 'lucide-react'
+import { BookOpen, Check, Download, FileText, ShieldAlert, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { DISCIPLINARY_NOTEBOOK_URL } from '../lib/access'
 import { apercibimientoFilename, createApercibimientoPdf } from '../lib/apercibimientoPdf'
 import {
   canCreateDisciplinaryRequest,
@@ -65,7 +66,7 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
     if (hechos.trim().length < 10) return toast.warn('Describí los hechos con al menos 10 caracteres.')
     if (urgente && medidaPreventiva.trim().length < 10) return toast.warn('Detallá la medida preventiva inmediata adoptada.')
     setSaving(true)
-    const { error } = await createDisciplinaryRequest({
+    const { data:created, error } = await createDisciplinaryRequest({
       persona_id: persona.id,
       fecha_hecho: fecha,
       hechos: hechos.trim(),
@@ -76,10 +77,14 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
       urgente,
       medida_preventiva: urgente ? medidaPreventiva.trim() : null,
     })
+    if (error) { setSaving(false); return toast.error(`No se pudo registrar el apercibimiento: ${mensajeError(error)}`) }
+    if (rol === 'admin') {
+      const { error:approvalError } = await reviewDisciplinaryRequest(created.id, true, user.id, 'Aprobación automática por administrador creador.')
+      if (approvalError) { setSaving(false); await load(); return toast.error(`El apercibimiento se guardó, pero no pudo aprobarse automáticamente: ${mensajeError(approvalError)}`) }
+    }
     setSaving(false)
-    if (error) return toast.error(`No se pudo enviar a aprobación: ${mensajeError(error)}`)
     setHechos(''); setDescargo(''); setEvidencia(''); setFundamento(''); setTextoPropuesto(''); setUrgente(false); setMedidaPreventiva('')
-    toast.success(urgente ? 'Medida preventiva registrada y enviada a revisión.' : 'Apercibimiento enviado a aprobación.')
+    toast.success(rol === 'admin' ? 'Apercibimiento creado y aprobado.' : (urgente ? 'Medida preventiva registrada y enviada a revisión.' : 'Apercibimiento enviado a aprobación.'))
     await load()
   }
 
@@ -136,8 +141,18 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
         <FileText size={18} style={{ color:'var(--phosphor)' }} />
         <div>
           <p style={{ color:'var(--text)', fontSize:'0.86rem', fontWeight:700 }}>Solicitud de apercibimiento</p>
-          <p style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>El encargado documenta el hecho. Un administrador debe aprobarlo antes de la notificación.</p>
+          <p style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>{rol === 'admin' ? 'Como administrador, el apercibimiento queda aprobado al crearlo.' : 'El encargado documenta el hecho. Un administrador debe aprobarlo antes de la notificación.'}</p>
         </div>
+      </div>
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:16, padding:'12px 14px', border:'1px solid rgba(57,255,20,0.18)', borderRadius:6, background:'rgba(57,255,20,0.04)' }}>
+        <div>
+          <p style={{ color:'var(--text)', fontSize:'0.74rem', fontWeight:700 }}>Consulta del Reglamento Interno</p>
+          <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginTop:2 }}>Abrí el cuaderno para analizar el caso antes de proponer el apercibimiento.</p>
+        </div>
+        <a href={DISCIPLINARY_NOTEBOOK_URL} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.68rem', whiteSpace:'nowrap' }}>
+          <BookOpen size={13} /> Consultar cuaderno
+        </a>
       </div>
 
       <div className={compact ? '' : 'grid grid-cols-3 gap-3'} style={inputBlock}>
@@ -163,7 +178,7 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
       {urgente && <div style={inputBlock}><label style={labelStyle}>Medida preventiva adoptada *</label><textarea className="input-dark w-full" rows={3} value={medidaPreventiva} onChange={event => setMedidaPreventiva(event.target.value)} placeholder="Ej.: se retiró al trabajador de la tarea y se le indicó colocarse el uniforme reglamentario." /></div>}
 
       <button type="button" onClick={submit} disabled={saving || !fecha || hechos.trim().length < 10} className="btn-primary" style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.72rem' }}>
-        <ShieldAlert size={13} /> {saving ? 'Guardando...' : 'Enviar a aprobación'}
+        <ShieldAlert size={13} /> {saving ? 'Guardando...' : (rol === 'admin' ? 'Crear y aprobar' : 'Enviar a aprobación')}
       </button>
 
       <div style={{ marginTop:24, borderTop:'1px solid rgba(255,255,255,0.08)', paddingTop:16 }}>

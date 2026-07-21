@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../lib/auth'
-import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles, getRegistroById, getAllSedeContactos, crearEntregaCompras, registrarAvisoEntregaCompras, confirmarEntregaCompras } from '../lib/queries'
+import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles, getRegistroById, getAllSedeContactos, crearEntregaCompras, registrarAvisoEntregaCompras, confirmarEntregaCompras, crearComentario } from '../lib/queries'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
 import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save, FileText, PackageCheck } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
@@ -22,6 +22,58 @@ const ESTADO_TIMESTAMP = {
   Observado:'observado_at', Aprobado:'aprobado_at', Enviado:'enviado_at',
   'En compra':'compra_iniciada_at', Recibido:'recibido_at', Cumplido:'cumplido_at',
   Rechazado:'rechazado_at', Cancelado:'cancelado_at',
+}
+
+const normalizar = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+function ObservationModal({ personas, onClose, onConfirm }) {
+  const [texto, setTexto] = useState('')
+  const [caret, setCaret] = useState(0)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const textareaRef = useRef(null)
+  const before = texto.slice(0, caret)
+  const mentionStart = before.lastIndexOf('@')
+  const mentionQuery = mentionStart >= 0 && (mentionStart === 0 || /\s/.test(before[mentionStart - 1])) ? before.slice(mentionStart + 1) : null
+  const options = useMemo(() => {
+    if (mentionQuery === null || /[\n\r,.;:!?()[\]{}]/.test(mentionQuery)) return []
+    const terms = normalizar(mentionQuery).split(/\s+/).filter(Boolean)
+    return personas.filter(persona => {
+      const searchable = normalizar(`${persona.nombre || ''} ${persona.email || ''} ${persona.rol || ''}`)
+      return terms.every(term => searchable.includes(term))
+    }).slice(0, 7)
+  }, [mentionQuery, personas])
+
+  const insertMention = persona => {
+    const mention = `@${persona.nombre}`
+    const next = `${texto.slice(0, mentionStart)}${mention} ${texto.slice(caret).replace(/^\s+/, '')}`
+    const nextCaret = mentionStart + mention.length + 1
+    setTexto(next); setCaret(nextCaret); setSelectedIndex(0)
+    requestAnimationFrame(() => { textareaRef.current?.focus(); textareaRef.current?.setSelectionRange(nextCaret, nextCaret) })
+  }
+  const submit = () => {
+    const value = texto.trim()
+    if (!value) return
+    const mentionedIds = personas.filter(persona => value.includes(`@${persona.nombre}`)).map(persona => persona.id)
+    onConfirm(value, [...new Set(mentionedIds)])
+  }
+  return <div className="modal-overlay" style={{ zIndex:80 }}>
+    <div className="glass fade-in" style={{ width:'min(500px,calc(100vw - 28px))', padding:'1.35rem', position:'relative' }}>
+      <p style={{ color:'var(--text)', fontWeight:700, fontSize:'.86rem' }}>Observar requerimiento</p>
+      <p style={{ color:'var(--text-dim)', fontSize:'.68rem', margin:'5px 0 12px' }}>Indicá qué debe corregirse. Escribí @ para mencionar y notificar a un usuario.</p>
+      <div style={{ position:'relative' }}>
+        <textarea ref={textareaRef} autoFocus rows={4} className="input-dark w-full" value={texto} onChange={event=>{setTexto(event.target.value);setCaret(event.target.selectionStart || 0)}} onClick={event=>setCaret(event.currentTarget.selectionStart || 0)} onKeyUp={event=>setCaret(event.currentTarget.selectionStart || 0)} onKeyDown={event=>{
+          if (!options.length) return
+          if (event.key==='ArrowDown') { event.preventDefault(); setSelectedIndex(index=>(index+1)%options.length) }
+          if (event.key==='ArrowUp') { event.preventDefault(); setSelectedIndex(index=>(index-1+options.length)%options.length) }
+          if (event.key==='Enter' || event.key==='Tab') { event.preventDefault(); insertMention(options[selectedIndex] || options[0]) }
+        }}/>
+        {options.length>0 && <div style={{ position:'absolute', left:0, right:0, top:'100%', zIndex:2, background:'#17181d', border:'1px solid rgba(57,255,20,.28)', maxHeight:210, overflowY:'auto' }}>
+          {options.map((persona,index)=><button type="button" key={persona.id} onMouseDown={event=>{event.preventDefault();insertMention(persona)}} style={{ width:'100%', textAlign:'left', padding:'9px 11px', border:0, color:index===selectedIndex?'var(--phosphor)':'var(--text)', background:index===selectedIndex?'rgba(57,255,20,.08)':'transparent' }}><strong>@{persona.nombre}</strong><span style={{ color:'var(--text-dim)', marginLeft:8, fontSize:'.62rem' }}>{persona.email || persona.rol}</span></button>)}
+        </div>}
+      </div>
+      <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:16 }}><button className="btn-ghost" onClick={onClose}>Cancelar</button><button className="btn-primary" disabled={!texto.trim()} onClick={submit}>Observado</button></div>
+    </div>
+  </div>
 }
 
 const EQUIPO_COMPRAS = [
@@ -656,7 +708,7 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
 
 // ─── Vista principal ───────────────────────────────────────
 export default function Requerimientos({ focusId }) {
-  const { allowedSedeIds, perfil, can } = useAuth()
+  const { allowedSedeIds, perfil, user, can } = useAuth()
   const canManage = can('compras', 'manage')
   const canRequest = can('compras', 'request') || canManage
   const [reqs, setReqs]       = useState([])
@@ -676,6 +728,7 @@ export default function Requerimientos({ focusId }) {
   const [showKpis, setShowKpis] = useState(false)
   const [showProcess, setShowProcess] = useState(false)
   const [showEquipoCompras, setShowEquipoCompras] = useState(false)
+  const [observationReq, setObservationReq] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -706,13 +759,15 @@ export default function Requerimientos({ focusId }) {
     if (!canManage) return
     const req = reqs.find(r=>r.id===id)
     if (!req || req.estado === estado) return
+    if (estado === 'Observado') {
+      setObservationReq(req)
+      return
+    }
     let comentario = ''
-    if (['Observado','Rechazado'].includes(estado)) {
+    if (estado === 'Rechazado') {
       comentario = (await pedirTexto({
-        titulo: estado === 'Observado' ? 'Observar requerimiento' : 'Rechazar requerimiento',
-        mensaje: estado === 'Observado'
-          ? '¿Qué debe corregir o responder el solicitante?'
-          : 'Indicá el motivo del rechazo:',
+        titulo: 'Rechazar requerimiento',
+        mensaje: 'Indicá el motivo del rechazo:',
         confirmText: estado,
       })) || ''
       if (!comentario) return
@@ -721,16 +776,34 @@ export default function Requerimientos({ focusId }) {
       const payload = buildTransitionPayload(req, estado, perfil, comentario)
       const updated = await updateRequerimiento(id, payload)
       setReqs(prev=>prev.map(r=>r.id===id?{...r,...updated}:r))
-      if (estado === 'Observado') {
-        const solicitante = solicitantes.find(s=>s.nombre===req.solicitante)
-        const destino = solicitante?.email || ''
-        const subject = encodeURIComponent(`[ACCIÓN REQUERIDA] Requerimiento #${req.numero||req.id} observado`)
-        const body = buildObservationEmail({ ...req, ...payload }, comentario, perfil?.nombre || perfil?.email, sedes)
-        window.open(`mailto:${destino}?subject=${subject}&body=${body}`, '_blank')
-        if (!destino) toast.ok('Se abrió el correo, pero el solicitante no tiene un email registrado. Completá el destinatario manualmente.')
-      }
     } catch (e) {
       toast.error('No se pudo actualizar el estado: ' + mensajeError(e))
+      await load()
+    }
+  }
+
+  const confirmObservation = async (comentario, mentionedUserIds) => {
+    const req = observationReq
+    if (!req) return
+    setObservationReq(null)
+    try {
+      const payload = buildTransitionPayload(req, 'Observado', perfil, comentario)
+      const updated = await updateRequerimiento(req.id, payload)
+      setReqs(prev=>prev.map(item=>item.id===req.id?{...item,...updated}:item))
+      try {
+        await crearComentario({ entidadTipo:'requerimiento', entidadId:req.id, autorId:user.id, autorNombre:perfil?.nombre || perfil?.email, texto:comentario, mencionadoUserIds:mentionedUserIds })
+      } catch (notificationError) {
+        console.warn('[requerimientos] La observación se guardó pero falló la mención:', notificationError)
+        toast.warn('La observación se guardó, pero no se pudo enviar la mención.')
+      }
+      const solicitante = solicitantes.find(s=>s.nombre===req.solicitante)
+      const destino = solicitante?.email || ''
+      const subject = encodeURIComponent(`[ACCIÓN REQUERIDA] Requerimiento #${req.numero||req.id} observado`)
+      const body = buildObservationEmail({ ...req, ...payload }, comentario, perfil?.nombre || perfil?.email, sedes)
+      window.open(`mailto:${destino}?subject=${subject}&body=${body}`, '_blank')
+      if (!destino) toast.ok('Se abrió el correo, pero el solicitante no tiene un email registrado. Completá el destinatario manualmente.')
+    } catch (error) {
+      toast.error('No se pudo observar el requerimiento: ' + mensajeError(error))
       await load()
     }
   }
@@ -820,6 +893,7 @@ export default function Requerimientos({ focusId }) {
 
   return (
     <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem', display:'flex', flexDirection:'column', gap:16 }}>
+      {observationReq && <ObservationModal personas={perfiles.filter(item=>item.activo!==false)} onClose={()=>setObservationReq(null)} onConfirm={confirmObservation} />}
       {showEquipoCompras && <EquipoComprasModal onClose={()=>setShowEquipoCompras(false)}/>} 
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:10 }}>

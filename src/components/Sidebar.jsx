@@ -4,8 +4,6 @@ import { supabase } from '../lib/supabase'
 import PushNotificationControl from './PushNotificationControl'
 import NotificationCenter from './NotificationCenter'
 import {
-  DISCIPLINARY_NOTEBOOK_URL,
-  canAccessDisciplinaryNotebook,
   getNavSection,
   getPrimaryNav,
   isQualityOnlyProfile,
@@ -14,7 +12,7 @@ import {
   LayoutDashboard, Building2, AlertTriangle,
   Wrench, Users, Menu, X, LogOut, KeyRound,
   Users2, ShoppingCart, Shield, ClipboardCheck, Megaphone, Plus, Truck,
-  Sparkles, Activity, Scale,
+  Sparkles, Activity,
   FolderKanban,
 } from 'lucide-react'
 import { APP_NAME, APP_VERSION } from '../data/releases'
@@ -39,21 +37,6 @@ function NavItem({ id, label, icon: Icon, active, onClick }) {
       <Icon size={13} style={{ flexShrink:0 }} />
       <span>{label}</span>
     </button>
-  )
-}
-
-function ExternalNavItem({ label, icon: Icon, href, onOpen }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onOpen}
-      className="nav-item w-full text-left"
-    >
-      <Icon size={13} style={{ flexShrink:0 }} />
-      <span>{label}</span>
-    </a>
   )
 }
 
@@ -155,7 +138,6 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
   }
   const primaryNav = getPrimaryNav(rol, perfil)
   const activeSection = getNavSection(activeView)
-  const canUseDisciplinaryNotebook = canAccessDisciplinaryNotebook(rol)
 
   const sidebarContent = (
     <div className="flex flex-col h-full" style={{ background:'var(--surface)' }}>
@@ -196,18 +178,6 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
             onClick={nav}
           />
         ))}
-
-        {canUseDisciplinaryNotebook && (
-          <>
-            <SectionLabel>GESTIÓN DISCIPLINARIA</SectionLabel>
-            <ExternalNavItem
-              label="Control disciplinario"
-              icon={Scale}
-              href={DISCIPLINARY_NOTEBOOK_URL}
-              onOpen={() => setMobileOpen(false)}
-            />
-          </>
-        )}
 
         {isAdmin && (
           <>

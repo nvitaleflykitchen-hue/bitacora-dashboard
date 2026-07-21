@@ -309,6 +309,12 @@ async function resolveComentarioParent(admin:any, entidadTipo:string, entidadId:
     if (!n) return null
     return { sedeId:n.sede_id, responsableUserId:n.created_by, url:'/?view=capa' }
   }
+  if (entidadTipo === 'requerimiento') {
+    const { data:r } = await admin.schema('bitacora').from('requerimientos')
+      .select('id,sede_id').eq('id', entidadId).maybeSingle()
+    if (!r) return null
+    return { sedeId:r.sede_id, url:`/?view=requerimientos&focus=${r.id}` }
+  }
   return null
 }
 
