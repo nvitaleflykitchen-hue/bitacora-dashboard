@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { ROLES, canAccessDisciplinaryNotebook, canAccessView, canSeeQualityTask, canWrite, getDefaultView, getPrimaryNav, isQualityTeamPerson } from './access'
+import { ROLES, canAccessDisciplinaryNotebook, canAccessView, canDeletePerson, canSeeQualityTask, canWrite, getDefaultView, getPrimaryNav, isQualityTeamPerson } from './access'
 
 describe('matriz de acceso', () => {
+  it('permite borrar fichas de personal únicamente a Nicolás', () => {
+    expect(canDeletePerson('626b2a44-be84-4b3e-a03f-505eaf9d195e')).toBe(true)
+    expect(canDeletePerson('otro-usuario')).toBe(false)
+    expect(canDeletePerson(null)).toBe(false)
+  })
   it('restringe el cuaderno disciplinario a administradores y encargados', () => {
     expect(canAccessDisciplinaryNotebook('admin')).toBe(true)
     expect(canAccessDisciplinaryNotebook('encargado')).toBe(true)

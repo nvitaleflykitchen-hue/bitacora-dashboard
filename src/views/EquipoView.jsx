@@ -27,6 +27,7 @@ import {
   ShieldX,
   Clock3,
   CreditCard,
+  Trash2,
 } from "lucide-react";
 import OrganigramaView from "./OrganigramaView";
 import AdjuntosPanel from "../components/AdjuntosPanel";
@@ -42,10 +43,11 @@ import {
   isQualityOnlyProfile,
   isQualityTeamPerson,
   isSafetyOnlyProfile,
+  canDeletePerson,
 } from "../lib/access";
 import { fmtFechaLarga } from "../lib/dateUtils";
 import { CRITERIOS_GUIA, ESCALA_GUIA, RECORDATORIO_ESCALA } from "../data/evaluacionGuia";
-import { confirmar, toast } from "../lib/feedback";
+import { confirmar, pedirTexto, toast } from "../lib/feedback";
 import { mensajeError } from "../lib/errores";
 import PersonalNovedadesReportModal from "../components/PersonalNovedadesReportModal";
 import {
@@ -77,6 +79,7 @@ function textoPeriodoPrueba(dias) { if (dias<0) return `Vencido hace ${Math.abs(
 function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   const { can, perfil, user } = useAuth();
   const canManage = can("equipo", "manage");
+  const canDelete = canDeletePerson(user?.id);
   const canManageCredentials = perfil?.rol === "admin";
   const [showCredential, setShowCredential] = useState(false);
   const canRequestAnulacion = ["admin", "editor", "grupo", "encargado"].includes(
@@ -98,6 +101,35 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   const [showEditPersona, setShowEditPersona] = useState(false);
   const [saving, setSaving] = useState(false);
   const [evaluadorPersona, setEvaluadorPersona] = useState(null);
+
+  const deletePersona = async () => {
+    const nombreCompleto = `${persona.nombre} ${persona.apellido || ""}`.trim();
+    const typed = await pedirTexto({
+      titulo: "Eliminar ficha definitivamente",
+      mensaje: `Esta acción no se puede deshacer. Escribí el nombre completo para continuar: ${nombreCompleto}`,
+      placeholder: nombreCompleto,
+      confirmText: "Continuar",
+    });
+    if (typed?.trim() !== nombreCompleto) {
+      if (typed !== null) toast.warn("El nombre ingresado no coincide.");
+      return;
+    }
+    if (!(await confirmar({
+      titulo: "Confirmar eliminación",
+      mensaje: `¿Eliminar definitivamente la ficha de ${nombreCompleto}? Para personal real usá “Dar de baja”.`,
+      confirmText: "Eliminar ficha",
+      peligro: true,
+    }))) return;
+    const { error } = await supabase.schema("equipo").from("personas").delete().eq("id", persona.id);
+    if (error) {
+      toast.error(error.code === "23503"
+        ? "La ficha tiene registros vinculados y no puede eliminarse. Usá Dar de baja."
+        : `No se pudo eliminar: ${mensajeError(error)}`);
+      return;
+    }
+    toast.ok("Ficha eliminada definitivamente.");
+    onBack();
+  };
 
   const EVAL_INICIAL = {
     evaluador_nombre: "",
@@ -665,6 +697,11 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
+          {canDelete && (
+            <button onClick={deletePersona} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:"0.7rem", color:"#ff5c5c" }}>
+              <Trash2 size={13} /> Eliminar ficha
+            </button>
+          )}
           {canManageCredentials && (
             <button onClick={() => setShowCredential(true)} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:"0.7rem" }}>
               <CreditCard size={13} /> Credencial

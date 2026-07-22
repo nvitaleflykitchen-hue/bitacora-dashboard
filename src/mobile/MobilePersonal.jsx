@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
-import { isQualityOnlyProfile, isQualityTeamPerson, isSafetyOnlyProfile } from '../lib/access'
+import { canDeletePerson, isQualityOnlyProfile, isQualityTeamPerson, isSafetyOnlyProfile } from '../lib/access'
 import { fmtFechaLarga } from '../lib/dateUtils'
 import PersonaFormularios from '../components/PersonaFormularios'
 import { PersonaAvatar, PersonaFotoEditor } from '../components/PersonaAvatar'
 import VacacionesPanel from '../components/VacacionesPanel'
 import AdjuntosPanel from '../components/AdjuntosPanel'
-import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star } from 'lucide-react'
-import { toast } from '../lib/feedback'
+import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star, Trash2 } from 'lucide-react'
+import { confirmar, pedirTexto, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { useBackHandler } from '../lib/backStack'
 import { downloadEvaluacionPersonalPdf, evaluacionPersonalFile, textoEvaluacionPersonal } from '../lib/evaluacionPersonalPdf'
@@ -324,7 +324,7 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
   )
 }
 
-function PersonaFicha({ personaId, canManage, onBack }) {
+function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
   const [persona, setPersona] = useState(null)
   const [evaluaciones, setEvaluaciones] = useState([])
   const [historial, setHistorial] = useState([])
@@ -333,6 +333,35 @@ function PersonaFicha({ personaId, canManage, onBack }) {
   const [tab, setTab] = useState('info')
   const [showEval, setShowEval] = useState(false)
   const [showHist, setShowHist] = useState(false)
+
+  const deletePersona = async () => {
+    const nombreCompleto = `${persona.nombre} ${persona.apellido || ''}`.trim()
+    const typed = await pedirTexto({
+      titulo: 'Eliminar ficha definitivamente',
+      mensaje: `Esta acción no se puede deshacer. Escribí el nombre completo para continuar: ${nombreCompleto}`,
+      placeholder: nombreCompleto,
+      confirmText: 'Continuar',
+    })
+    if (typed?.trim() !== nombreCompleto) {
+      if (typed !== null) toast.warn('El nombre ingresado no coincide.')
+      return
+    }
+    if (!(await confirmar({
+      titulo: 'Confirmar eliminación',
+      mensaje: `¿Eliminar definitivamente la ficha de ${nombreCompleto}? Para personal real usá “Dar de baja”.`,
+      confirmText: 'Eliminar ficha',
+      peligro: true,
+    }))) return
+    const { error } = await supabase.schema('equipo').from('personas').delete().eq('id', persona.id)
+    if (error) {
+      toast.error(error.code === '23503'
+        ? 'La ficha tiene registros vinculados y no puede eliminarse. Usá Dar de baja.'
+        : `No se pudo eliminar: ${mensajeError(error)}`)
+      return
+    }
+    toast.ok('Ficha eliminada definitivamente.')
+    onBack()
+  }
 
   const copyEvaluacion = async (ev) => {
     try {
@@ -408,6 +437,7 @@ function PersonaFicha({ personaId, canManage, onBack }) {
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--phosphor)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
           {mailLink && <a href={mailLink} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text)', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, textDecoration: 'none' }}><Mail size={11} /> Email</a>}
+          {canDelete && <button onClick={deletePersona} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,42,42,0.12)', color:'#ff5c5c', border:'1px solid rgba(255,42,42,0.3)', padding:'0.35rem 0.7rem', borderRadius:6, fontSize:'0.65rem', fontWeight:700 }}><Trash2 size={11} /> Eliminar</button>}
         </div>
       </div>
 
@@ -596,7 +626,7 @@ export default function MobilePersonal() {
   useEffect(() => { getSedes(allowedSedeIds || undefined).then(setSedes).catch(() => {}) }, [allowedSedeIds])
 
   if (selectedId) {
-    return <PersonaFicha personaId={selectedId} canManage={canManage} onBack={() => { setSelectedId(null); load() }} />
+    return <PersonaFicha personaId={selectedId} canManage={canManage} canDelete={canDeletePerson(user?.id)} onBack={() => { setSelectedId(null); load() }} />
   }
 
   const reactivar = async (persona) => {

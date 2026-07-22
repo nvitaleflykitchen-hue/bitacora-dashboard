@@ -284,3 +284,11 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - Las tarjetas de la vista `Equipo > Lista` muestran marco y rótulo con la cuenta regresiva.
 - Escala: verde >60 días, amarillo 31–60, naranja 16–30 y rojo <=15 o vencido.
 - Verificado con ESLint y build; autorizado para publicar.
+
+### 2026-07-22 — Eliminación de fichas de personal exclusiva de Nicolás
+
+- Se restringió el `DELETE` de `equipo.personas` al usuario de Nicolás Vitale (`626b2a44-be84-4b3e-a03f-505eaf9d195e`) mediante la migración `20260722182222_restrict_person_delete_to_nicolas_vitale.sql`, aplicada únicamente en Supabase `mixyhfdlzjarvszinytk`.
+- Equipo muestra el botón rojo `Eliminar ficha`/`Eliminar` solamente a ese usuario, tanto en escritorio como en mobile.
+- El borrado exige escribir el nombre completo exacto y luego aceptar una segunda confirmación. Si hay registros vinculados y Postgres bloquea la operación, se informa que corresponde usar `Dar de baja`.
+- No se eliminó ninguna persona durante la implementación.
+- Verificado: 21 tests de acceso aprobados, ESLint sin errores (2 warnings preexistentes en `EquipoView.jsx`) y build de producción correcto.

@@ -23,6 +23,7 @@ const DISCIPLINARY_NOTEBOOK_ROLES = new Set(['admin', 'encargado'])
 export const DISCIPLINARY_NOTEBOOK_URL = 'https://notebooklm.google.com/notebook/91ef1c43-02d9-4140-ab99-1ae3178a299d/preview'
 const QUALITY_ONLY_EMAILS = new Set(['tecnica@flykitchen.com.ar'])
 const SAFETY_ONLY_EMAILS = new Set(['rrhh.higieneyseguridad.emp@gmail.com'])
+const PERSON_DELETE_USER_ID = '626b2a44-be84-4b3e-a03f-505eaf9d195e'
 const SAFETY_ONLY_NAV = new Set(['tablon', 'pendientes', 'sedesHub', 'requerimientos', 'mantenimientoHub', 'calidadHub', 'equipo'])
 const SAFETY_ONLY_VIEWS = new Set([
   'tablon', 'pendientes', 'tareas', 'calendario',
@@ -57,6 +58,10 @@ export function isQualityOnlyProfile(perfil) {
 export function isSafetyOnlyProfile(perfil) {
   const email = String(perfil?.email || '').trim().toLowerCase()
   return SAFETY_ONLY_EMAILS.has(email)
+}
+
+export function canDeletePerson(userId) {
+  return String(userId || '') === PERSON_DELETE_USER_ID
 }
 
 export function getComprasPermisos(perfil) {
