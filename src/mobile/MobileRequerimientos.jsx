@@ -33,7 +33,7 @@ const URGENCIA_COLOR = { baja: '#39FF14', media: '#F59E0B', alta: '#FF2A2A' }
 
 function NuevoRequerimientoMobile({ sedes, perfil, sedeInicial, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ sede_id:sedeInicial?.id || (sedes.length===1 ? sedes[0].id : ''), descripcion:'', cantidad:'', unidad_medida:'unidad', urgencia:'media', fecha_necesidad:'', justificacion:'', tipo_compra:'' })
+  const [form, setForm] = useState({ sede_id:sedeInicial?.id || (sedes.length===1 ? sedes[0].id : ''), descripcion:'', cantidad:'', unidad_medida:'unidad', urgencia:'media', fecha_necesidad:'', justificacion:'', tipo_compra:'reposicion' })
   const set = (key,value) => setForm(prev=>({...prev,[key]:value}))
   const labelStyle = { display:'block', color:'var(--text-dim)', fontSize:'.64rem', fontWeight:700, marginBottom:5, textTransform:'uppercase' }
   const submit = async event => {
@@ -56,7 +56,7 @@ function NuevoRequerimientoMobile({ sedes, perfil, sedeInicial, onClose, onSaved
       <div><label style={labelStyle}>Qué se necesita *</label><textarea rows={3} className="input-dark w-full" value={form.descripcion} onChange={e=>set('descripcion',e.target.value)} placeholder="Producto, insumo o servicio"/></div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><div><label style={labelStyle}>Cantidad</label><input type="number" min="0" step="any" className="input-dark w-full" value={form.cantidad} onChange={e=>set('cantidad',e.target.value)}/></div><div><label style={labelStyle}>Unidad</label><input className="input-dark w-full" value={form.unidad_medida} onChange={e=>set('unidad_medida',e.target.value)} placeholder="unidad, kg..."/></div></div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}><div><label style={labelStyle}>Urgencia</label><select className="input-dark w-full" value={form.urgencia} onChange={e=>set('urgencia',e.target.value)}><option value="baja">Baja</option><option value="media">Media</option><option value="alta">Alta</option></select></div><div><label style={labelStyle}>Fecha necesaria</label><input type="date" className="input-dark w-full" value={form.fecha_necesidad} onChange={e=>set('fecha_necesidad',e.target.value)}/></div></div>
-      <div><label style={labelStyle}>Tipo de compra</label><input className="input-dark w-full" value={form.tipo_compra} onChange={e=>set('tipo_compra',e.target.value)} placeholder="Insumo, reparación, servicio..."/></div>
+      <div><label style={labelStyle}>Tipo de compra</label><select className="input-dark w-full" value={form.tipo_compra} onChange={e=>set('tipo_compra',e.target.value)}><option value="reposicion">Reposición habitual</option><option value="prueba">Compra de prueba</option><option value="unica">Compra única / equipamiento</option></select></div>
       <div><label style={labelStyle}>Justificación *</label><textarea rows={3} className="input-dark w-full" value={form.justificacion} onChange={e=>set('justificacion',e.target.value)} placeholder="Para qué se necesita y qué ocurre si no se compra"/></div>
       <button type="submit" disabled={saving} className="btn-primary" style={{width:'100%',padding:'.85rem',justifyContent:'center'}}>{saving?'Guardando...':'Crear solicitud'}</button>
     </div>

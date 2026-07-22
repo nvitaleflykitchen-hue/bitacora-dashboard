@@ -5,6 +5,19 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-22 · Codex — selector válido en alta móvil de Compras
+
+- `MobileRequerimientos.jsx` reemplaza el texto libre de `tipo_compra` por un selector
+  limitado a los tres valores admitidos por la base: reposición, prueba y compra única.
+- El valor inicial es `reposicion`; “Compra única / equipamiento” envía `unica` y ya no
+  provoca el CHECK `requerimientos_tipo_compra_check`.
+- Se cargó manualmente en producción el requerimiento N.º 54 para Elisa Bessone:
+  balanza para materia prima de 20 a 30 kg, compra única, urgencia media y estado Pendiente.
+- Verificación desde worktree limpio de `main`: `npm run check` aprobado; 0 errores de
+  lint (6 warnings preexistentes), 16 archivos/59 tests y build Vite correcto.
+
+---
+
 ## 2026-07-21 · Codex — miniaturas de fotos de personal
 
 ### Implementado localmente
