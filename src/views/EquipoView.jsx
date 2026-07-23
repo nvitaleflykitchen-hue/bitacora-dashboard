@@ -37,6 +37,7 @@ import DocumentacionChecklist from "../components/DocumentacionChecklist";
 import PersonaFormularios from "../components/PersonaFormularios";
 import { PersonaAvatar, PersonaFotoEditor } from "../components/PersonaAvatar";
 import CredencialPersonalModal from "../components/CredencialPersonalModal";
+import CredencialesMasivasA4 from "../components/CredencialesMasivasA4";
 import VacacionesPanel from "../components/VacacionesPanel";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
@@ -2814,6 +2815,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
   const { can, allowedSedeIds, perfil, user } = useAuth();
   const isQualityOnly = isQualityOnlyProfile(perfil);
   const isSafetyOnly = isSafetyOnlyProfile(perfil);
+  const isAdmin = perfil?.rol === "admin";
   const canManage = can("equipo", "manage") && !isSafetyOnly;
   const [personas, setPersonas] = useState([]);
   const [bajas, setBajas] = useState([]);
@@ -3170,6 +3172,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             ["organigrama", "ORGANIGRAMA"],
             ["vacaciones", "VACACIONES"],
             ...(canManage ? [["periodo-prueba", `PERÍODO DE PRUEBA (${periodosPrueba.length})`]] : []),
+            ...(isAdmin ? [["credenciales", "CREDENCIALES EMITIDAS"]] : []),
             ["bajas", `HISTORIAL DE BAJAS (${bajas.length})`],
             ...(canManage ? [["duplicados", `DUPLICADOS (${duplicados.length})`]] : []),
             ["reclutamiento", "SELECCIÓN"],
@@ -3255,6 +3258,8 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             <div className="glass p-4 flex items-center justify-between gap-4"><div><p className="font-title font-bold" style={{color:"var(--phosphor)"}}>PERÍODOS DE PRUEBA · 180 DÍAS</p><p style={{color:"var(--text-dim)",fontSize:'.72rem',marginTop:4}}>Cuenta regresiva automática desde la fecha de ingreso. Planta Córdoba no se incluye.</p></div><div className="text-right"><p className="font-title font-bold text-xl" style={{color:"var(--phosphor)"}}>{periodosPrueba.filter(({periodo})=>periodo.diasRestantes>=0).length}</p><p className="font-metric" style={{color:"var(--text-dim)",fontSize:'.58rem'}}>VIGENTES</p></div></div>
             {periodosPrueba.length===0 ? <div className="glass p-8 text-center" style={{color:"var(--text-dim)"}}>No hay personas dentro del período de prueba.</div> : periodosPrueba.map(({persona,periodo})=>{const sedeNombres=sedes.filter(s=>persona.sede_ids?.includes(s.id)).map(s=>s.nombre).join(' · ')||'Sin sede';const color=colorPeriodoPrueba(periodo.diasRestantes);return <button key={persona.id} onClick={()=>setSelectedId(persona.id)} className="glass w-full p-4 flex items-center gap-4 text-left" style={{borderLeft:`4px solid ${color}`}}><PersonaAvatar persona={persona} size={44}/><div className="flex-1 min-w-0"><p className="font-title font-bold" style={{color:'var(--text)'}}>{persona.nombre} {persona.apellido||''}</p><p style={{color:'var(--text-dim)',fontSize:'.7rem'}}>Legajo {persona.legajo||'sin cargar'} · {sedeNombres}</p><p style={{color:'var(--text-dim)',fontSize:'.66rem',marginTop:4}}>Ingreso: {fmtFechaLarga(persona.fecha_ingreso)} · Fin de prueba: {fmtFechaLarga(periodo.vencimiento.toISOString().slice(0,10))}</p></div><div className="text-right"><p className="font-title font-bold" style={{color,fontSize:'1rem'}}>{textoPeriodoPrueba(periodo.diasRestantes)}</p><p className="font-metric" style={{color:'var(--text-dim)',fontSize:'.58rem',marginTop:3}}>180 DÍAS</p></div><ChevronRight size={16} style={{color:'var(--text-dim)'}}/></button>})}
           </div>
+        ) : tab === "credenciales" ? (
+          <CredencialesMasivasA4 personas={personas} sedes={sedes} />
         ) : tab === "duplicados" ? (
           <div className="max-w-5xl space-y-4">
             <div className="glass p-4">

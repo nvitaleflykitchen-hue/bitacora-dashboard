@@ -64,7 +64,7 @@ const blobToDataUrl = blob => new Promise((resolve, reject) => {
   const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob)
 })
 
-async function imageData(url) {
+export async function imageData(url) {
   const response = await fetch(url)
   if (!response.ok) throw new Error('No se pudo cargar una imagen de la credencial.')
   const blob = await response.blob()
@@ -79,12 +79,12 @@ async function imageData(url) {
 // (CredencialPersonalModal.jsx), que dibuja la tarjeta en 270 x 428 px sobre un
 // formato CR80 de 53,98 x 85,6 mm. Convertimos píxeles de la vista previa a
 // milímetros para que ambas salidas coincidan y para no repetir números mágicos.
-const CARD_W = 53.98, CARD_H = 85.6
-const PREVIEW_W = 270, PREVIEW_H = 428
-const mx = px => px * CARD_W / PREVIEW_W   // píxeles -> mm (horizontal)
-const my = px => px * CARD_H / PREVIEW_H   // píxeles -> mm (vertical)
+export const CARD_W = 53.98, CARD_H = 85.6
+export const PREVIEW_W = 270, PREVIEW_H = 428
+export const mx = px => px * CARD_W / PREVIEW_W   // píxeles -> mm (horizontal)
+export const my = px => px * CARD_H / PREVIEW_H   // píxeles -> mm (vertical)
 // La vista previa define los tamaños en px de CSS; jsPDF los espera en puntos.
-const ptFromPx = px => my(px) * 72 / 25.4
+export const ptFromPx = px => my(px) * 72 / 25.4
 
 export async function descargarCredencialPdf(persona, credencial) {
   const [logo, foto, qr] = await Promise.all([
@@ -195,7 +195,7 @@ export async function descargarCredencialPdf(persona, credencial) {
   pdf.save(`Credencial-${name.replace(/\s+/g,'-')}.pdf`)
 }
 
-function coverImageData(dataUrl,width,height,posX=50,posY=50,zoom=1){
+export function coverImageData(dataUrl,width,height,posX=50,posY=50,zoom=1){
   return new Promise((resolve,reject)=>{
     const image=new Image()
     image.onload=()=>{
@@ -212,7 +212,7 @@ function coverImageData(dataUrl,width,height,posX=50,posY=50,zoom=1){
 // Dibuja una imagen dentro de la caja indicada como lo hace `object-fit: contain`
 // de CSS: conserva SIEMPRE la relación de aspecto original, la achica de forma
 // proporcional si no entra y la centra en los dos ejes. Nunca la estira.
-function addContainImage(pdf,dataUrl,x,y,width,height){
+export function addContainImage(pdf,dataUrl,x,y,width,height){
   const props=pdf.getImageProperties(dataUrl)
   const naturalWidth=Number(props?.width),naturalHeight=Number(props?.height)
   // Sin dimensiones válidas no se puede preservar la proporción: se omite el
