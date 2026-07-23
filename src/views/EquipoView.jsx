@@ -28,6 +28,7 @@ import {
   Clock3,
   CreditCard,
   Trash2,
+  Archive,
 } from "lucide-react";
 import OrganigramaView from "./OrganigramaView";
 import AdjuntosPanel from "../components/AdjuntosPanel";
@@ -128,6 +129,66 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
       return;
     }
     toast.ok("Ficha eliminada definitivamente.");
+    onBack();
+  };
+
+  const sendPersonaToObsolete = async () => {
+    const nombreCompleto = `${persona.nombre} ${persona.apellido || ""}`.trim();
+    const nota = await pedirTexto({
+      titulo: "Enviar ficha a obsoletos",
+      mensaje: `La ficha de ${nombreCompleto} dejará de aparecer en el equipo activo, pero conservará todo su historial vinculado. Indicá el motivo.`,
+      placeholder: "Ej.: no pertenece a este servicio; registro cargado en la sede incorrecta",
+      confirmText: "Continuar",
+    });
+    if (nota === null) return;
+    if (nota.trim().length < 10) {
+      toast.warn("La nota debe tener al menos 10 caracteres.");
+      return;
+    }
+    if (!(await confirmar({
+      titulo: "Confirmar envío a obsoletos",
+      mensaje: "La ficha quedará inactiva y podrá reactivarse posteriormente desde el historial de bajas.",
+      confirmText: "Enviar a obsoletos",
+      peligro: true,
+    }))) return;
+
+    setSaving(true);
+    const fecha = new Date().toISOString().slice(0, 10);
+    const observacion = `Ficha enviada a obsoletos: ${nota.trim()}`;
+    const { error } = await supabase
+      .schema("equipo")
+      .from("personas")
+      .update({
+        activo: false,
+        fecha_baja: fecha,
+        motivo_baja: "otro",
+        observaciones_baja: observacion,
+        baja_registrada_at: new Date().toISOString(),
+        baja_registrada_por: user?.id || null,
+      })
+      .eq("id", persona.id);
+    if (error) {
+      setSaving(false);
+      toast.error(`No se pudo enviar la ficha a obsoletos: ${mensajeError(error)}`);
+      return;
+    }
+
+    const { error: historialError } = await supabase
+      .schema("equipo")
+      .from("historial_personal")
+      .insert({
+        persona_id: persona.id,
+        tipo: "otro",
+        fecha,
+        descripcion: observacion,
+        registrado_por: user?.email || "Sistema",
+      });
+    setSaving(false);
+    if (historialError) {
+      toast.warn("La ficha quedó obsoleta, pero no se pudo agregar la nota al historial.");
+    } else {
+      toast.ok("Ficha enviada a obsoletos con trazabilidad.");
+    }
     onBack();
   };
 
@@ -697,6 +758,16 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
+          {canManage && (
+            <button
+              onClick={sendPersonaToObsolete}
+              disabled={saving}
+              className="btn-ghost flex items-center gap-1.5"
+              style={{ fontSize:"0.7rem", color:"#f59e0b" }}
+            >
+              <Archive size={13} /> Enviar a obsoletos
+            </button>
+          )}
           {canDelete && (
             <button onClick={deletePersona} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:"0.7rem", color:"#ff5c5c" }}>
               <Trash2 size={13} /> Eliminar ficha

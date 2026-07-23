@@ -85,6 +85,13 @@ describe('matriz de acceso', () => {
     expect(canWrite('editor', 'mantenimiento', 'manage', perfil)).toBe(false)
     expect(canWrite('editor', 'flota', 'manage', perfil)).toBe(false)
     expect(canWrite('editor', 'equipo', 'manage', perfil)).toBe(false)
+
+    const fabiana = { id:'fabiana', nombre:'Fabiana Belén Franco', email:'fabifranco13@gmail.com' }
+    expect(getDefaultView('encargado', fabiana)).toBe('calidadHub')
+    expect(canAccessView('encargado', 'capa', fabiana)).toBe(true)
+    expect(canWrite('encargado', 'calidad', 'manage', fabiana)).toBe(true)
+    expect(canWrite('encargado', 'equipo', 'manage', fabiana)).toBe(false)
+    expect(canWrite('encargado', 'compras', 'manage', fabiana)).toBe(false)
   })
 
   it('reconoce tareas propias o de calidad y personas del equipo calidad', () => {
