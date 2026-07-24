@@ -426,3 +426,18 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - Se generó y renderizó una muestra de Equipo central para verificar visualmente
   contraste, textos y continuidad de las conexiones.
 - Publicación autorizada explícitamente por Nicolás.
+
+## 2026-07-24 - Codex - Calidad transversal en todos los organigramas
+
+- La estructura obligatoria de todo organigrama operativo incluye Dirección,
+  Operaciones y Calidad.
+- Calidad mantiene dependencia jerárquica de Dirección y una relación funcional
+  azul punteada hacia Operaciones.
+- La misma regla se aplica automáticamente a Equipo central y a todas las unidades
+  de negocio, incluso sobre vistas publicadas anteriormente.
+- En Equipo central se eliminaron las múltiples líneas directas de Calidad hacia
+  cada unidad; la transversalidad se representa una sola vez hacia Operaciones,
+  evitando cruces y duplicaciones visuales.
+- Verificado con `npm run check`: 19 archivos de prueba, 71 tests aprobados y build
+  correcto; quedan 6 warnings de lint preexistentes y ningún error.
+- Publicación autorizada explícitamente por Nicolás.

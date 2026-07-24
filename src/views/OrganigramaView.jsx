@@ -439,6 +439,7 @@ export default function OrganigramaView({ onNavigate }) {
   const isVanesaScope = groupId === '__planta__' || groupId === '__cci__' || hasAny(selectedGroup?.nombre, ['planta de produccion','cci'])
   const isCordobaProductionGroup = isVanesaScope || norm(selectedGroup?.nombre) === 'otros' || groupSedes.some(s => norm(s.nombre).includes('planta de produccion cordoba'))
   const isBusinessScope = !['__global__','__central__'].includes(groupId)
+  const hasOperationalStructure = groupId !== '__global__'
   const sedes = groupSedes
   const sedeIds = useMemo(() => new Set(sedes.map(s => String(s.id))), [sedes])
   const assignments = useMemo(() => data.assignments.filter(a => a.activo !== false && sedeIds.has(String(a.sede_id))), [data.assignments, sedeIds])
@@ -497,16 +498,16 @@ export default function OrganigramaView({ onNavigate }) {
     executive && operations && { from:'executive', to:'operations' },
     executive && commercial && { from:'executive', to:'commercial', support:true },
     executive && quality && { from:'executive', to:'quality' },
-    quality && operations && isBusinessScope && { from:'quality', to:'operations', functional:true },
+    quality && operations && hasOperationalStructure && { from:'quality', to:'operations', functional:true },
     operations && supervisor && { from:'operations', to:'supervisor' },
     ...sedes.map(sede => ({ from:operationalParent, to:`sede:${sede.id}` })),
   ].filter(Boolean)
   const designerSeeds = [
-    executive && { id:'executive', contactId:executive.id, label:executive.nombre, role:'Dirección General', area:'Dirección', color:'#39ff14', position:{ x:0, y:0 }, required:isBusinessScope },
-    operations && { id:'operations', contactId:operations.id, label:operations.nombre, role:operationsRole, area:'Operaciones', color:'#22c55e', position:{ x:0, y:180 }, required:isBusinessScope },
+    executive && { id:'executive', contactId:executive.id, label:executive.nombre, role:'Dirección General', area:'Dirección', color:'#39ff14', position:{ x:0, y:0 }, required:hasOperationalStructure },
+    operations && { id:'operations', contactId:operations.id, label:operations.nombre, role:operationsRole, area:'Operaciones', color:'#22c55e', position:{ x:0, y:180 }, required:hasOperationalStructure },
     supervisor && { id:'supervisor', contactId:supervisor.id, label:supervisor.nombre, role:isEscalas ? 'Supervisión de Operaciones – Escalas' : isDiningGroup ? 'Supervisión de Comedores' : 'Supervisión Operativa', area:'Operaciones', color:'#22c55e', position:{ x:0, y:360 } },
     commercial && { id:'commercial', contactId:commercial.id, label:commercial.nombre, role:'Comercial y Facturación', area:'Administración', color:'#38bdf8', position:{ x:330, y:0 } },
-    quality && { id:'quality', contactId:quality.id, label:quality.nombre, role:'Dirección Técnica de Calidad', area:'Calidad transversal', color:'#f59e0b', position:{ x:330, y:180 }, required:isBusinessScope },
+    quality && { id:'quality', contactId:quality.id, label:quality.nombre, role:'Dirección Técnica de Calidad', area:'Calidad transversal', color:'#f59e0b', position:{ x:330, y:180 }, required:hasOperationalStructure },
     ...sedes.map((sede, index) => {
       const siteAssignments = assignments.filter(a => String(a.sede_id) === String(sede.id))
       const primary = siteAssignments.find(a => hasAny(a.rol, ['responsable','jefe','encargado'])) || siteAssignments[0]
@@ -532,7 +533,7 @@ export default function OrganigramaView({ onNavigate }) {
     target:edge.to,
     type:'smoothstep',
     animated:false,
-    required:isBusinessScope && ['executive-operations','executive-quality','quality-operations'].includes(id),
+    required:hasOperationalStructure && ['executive-operations','executive-quality','quality-operations'].includes(id),
     data:{ relationType, lineStyle:edge.functional || edge.support ? 'dashed' : 'solid', color, width:1.7, arrow:!edge.functional },
     markerEnd:edge.functional ? undefined : { type:'arrowclosed', color },
     style:{ stroke:color, strokeWidth:1.7, strokeDasharray:edge.functional || edge.support ? '6 5' : undefined },
@@ -550,7 +551,6 @@ export default function OrganigramaView({ onNavigate }) {
     { id:'unit:dining', label:'Comedores', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:scopeId(['comedor'], '__comedores__'), color:'#a3e635', position:{ x:700, y:600 }, required:true },
     { id:'unit:restaurants', label:'Restaurantes', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:scopeId(['restaurante','restaurant'], '__restaurantes__'), color:'#fb7185', position:{ x:980, y:600 }, required:true },
   ]
-  const centralUnitIds = centralUnitSeeds.filter(seed => seed.entityType === 'unidad').map(seed => seed.id)
   const centralUnitEdges = [
     ...['unit:production-cordoba','unit:cci'].map(target => ({
       id:`${vanesaNodeId}-${target}`, source:vanesaNodeId, target, type:'smoothstep', required:true,
@@ -561,11 +561,6 @@ export default function OrganigramaView({ onNavigate }) {
       id:`operations-${target}`, source:'operations', target, type:'smoothstep', required:true,
       data:{ relationType:'jerarquica', lineStyle:'solid', color:'#39ff14', width:1.7, arrow:true },
       markerEnd:{ type:'arrowclosed', color:'#39ff14' }, style:{ stroke:'#39ff14', strokeWidth:1.7 },
-    })),
-    ...centralUnitIds.map(target => ({
-      id:`quality-functional-${target}`, source:'quality', target, type:'smoothstep', required:true,
-      data:{ relationType:'funcional', lineStyle:'dotted', color:'#38bdf8', width:1.5, arrow:false, label:'Calidad transversal' },
-      label:'Calidad transversal', style:{ stroke:'#38bdf8', strokeWidth:1.5, strokeDasharray:'2 5' },
     })),
   ]
   const globalSeeds = [
