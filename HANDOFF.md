@@ -5,6 +5,16 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-24 · Codex — PDF de organigrama optimizado para impresión
+
+- La exportación PDF ya no replica el tema oscuro de la aplicación.
+- El paño se clona en modo impresión con fondo y tarjetas blancos, texto negro,
+  encabezado verde oscuro y sin sombras ni grilla decorativa.
+- Las líneas jerárquicas se imprimen en gris oscuro y las relaciones funcionales,
+  de apoyo o comunicación en azul con sus trazos diferenciados.
+- El cambio afecta únicamente el PDF; la interfaz conserva el tema oscuro.
+- Prueba específica de exportación aprobada. Pendiente de commit y publicación.
+
 ## 2026-07-24 · Codex — visor full-screen, herencia y PDF de organigramas
 
 - Se separó la consulta de la edición: cada organigrama ofrece `Ver pantalla completa`

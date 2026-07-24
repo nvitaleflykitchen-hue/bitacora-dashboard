@@ -35,7 +35,7 @@ describe('organigramaPdfFilename', () => {
     const element = document.createElement('main')
     await exportOrganigramaPdf({ element, name:'Hospitales' })
 
-    expect(pdfMocks.html2canvas).toHaveBeenCalledWith(element, expect.objectContaining({ scale:2, backgroundColor:'#0a0b0f' }))
+    expect(pdfMocks.html2canvas).toHaveBeenCalledWith(element, expect.objectContaining({ scale:2, backgroundColor:'#ffffff', onclone:expect.any(Function) }))
     expect(pdfMocks.addImage).toHaveBeenCalled()
     expect(pdfMocks.save).toHaveBeenCalledWith('organigrama-hospitales.pdf')
   })

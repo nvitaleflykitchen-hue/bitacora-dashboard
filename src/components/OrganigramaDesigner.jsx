@@ -395,10 +395,10 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             {available.map(contact => <button key={contact.id} type="button" onClick={() => addPerson(contact)} className="glass" style={{ textAlign:'left', padding:'9px 10px', border:'1px solid rgba(255,255,255,.07)' }}><p style={{ color:'var(--text)', fontSize:'.68rem', fontWeight:700 }}>{contact.nombre}</p><p style={{ color:'var(--text-dim)', fontSize:'.57rem', marginTop:3 }}>{contact.cargo || 'Sin cargo'} <Plus size={11} style={{ float:'right', color:'var(--phosphor)' }}/></p></button>)}
           </div>
         </aside>}
-        <main ref={canvasRef} style={{ minWidth:0, minHeight:0, background:'#0a0b0f' }}>
+        <main ref={canvasRef} data-organigrama-export-root style={{ minWidth:0, minHeight:0, background:'#0a0b0f' }}>
           <ReactFlow
             nodes={nodes.map(node => ({ ...node, draggable:canEdit, connectable:canEdit }))}
-            edges={edges}
+            edges={edges.map(edge => ({ ...edge, className:`org-edge-${edge.data?.relationType || 'jerarquica'}` }))}
             nodeTypes={nodeTypes}
             onNodesChange={changes => setNodes(current => applyNodeChanges(changes, current))}
             onEdgesChange={changes => canEdit && setEdges(current => applyEdgeChanges(changes, current))}
