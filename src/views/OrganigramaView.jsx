@@ -9,6 +9,9 @@ const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u03
 const hasAny = (value, terms) => terms.some(term => norm(value).includes(term))
 const displayGroupName = value => norm(value) === 'otros' ? 'Planta de Producción Córdoba' : value
 const isAirportSite = sede => norm(sede?.tipo).includes('aeropuerto') || norm(sede?.nombre).includes('aeropuerto')
+const isHospitalSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['hospital','hospitalario'])
+const isDiningSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['comedor']) && !isHospitalSite(sede)
+const isProductionSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['planta de produccion','produccion cordoba'])
 const isAirportGroupName = value => hasAny(value, ['aeropuerto', 'aeropuertos', 'escala', 'escalas'])
 const phoneDigits = value => String(value || '').replace(/\D/g, '').replace(/^0+/, '')
 const callHref = phone => phoneDigits(phone) ? `tel:${phoneDigits(phone)}` : ''
@@ -373,7 +376,15 @@ export default function OrganigramaView({ onNavigate }) {
       const sedes = siteResult.value || []
       const assignments = assignmentResult.status === 'fulfilled' ? assignmentResult.value : []
       const contactos = contactResult.status === 'fulfilled' ? contactResult.value : []
-      const displayGroups = grupos.length ? grupos : [{ id:'__escalas__', nombre:'ESCALAS' }]
+      const naturalGroups = grupos.length ? grupos : [{ id:'__escalas__', nombre:'ESCALAS' }]
+      const displayGroups = [
+        { id:'__global__', nombre:'FLY KITCHEN · GLOBAL' },
+        { id:'__central__', nombre:'EQUIPO CENTRAL' },
+        { id:'__hospitales__', nombre:'HOSPITALES' },
+        { id:'__comedores__', nombre:'COMEDORES' },
+        { id:'__planta__', nombre:'PLANTA DE PRODUCCIÓN' },
+        ...naturalGroups,
+      ]
       const unavailable = [
         groupResult.status === 'rejected' && 'grupos',
         assignmentResult.status === 'rejected' && 'responsables',
@@ -383,7 +394,7 @@ export default function OrganigramaView({ onNavigate }) {
       setData({ grupos:displayGroups, sedes, assignments, contactos })
       setGroupId(current => {
         if (current && displayGroups.some(g => String(g.id) === String(current))) return current
-        return String(displayGroups.find(g => norm(g.nombre).includes('escala'))?.id || displayGroups[0]?.id || '')
+        return String(displayGroups[0]?.id || '')
       })
     } catch (e) {
       setError(e.message || 'No se pudo cargar el organigrama.')
@@ -396,6 +407,10 @@ export default function OrganigramaView({ onNavigate }) {
 
   const selectedGroup = data.grupos.find(g => String(g.id) === String(groupId))
   const groupSedes = useMemo(() => data.sedes.filter(s => {
+    if (groupId === '__global__' || groupId === '__central__') return false
+    if (groupId === '__hospitales__') return isHospitalSite(s)
+    if (groupId === '__comedores__') return isDiningSite(s)
+    if (groupId === '__planta__') return isProductionSite(s)
     if (groupId === '__escalas__' || isAirportGroupName(selectedGroup?.nombre)) return isAirportSite(s)
     return !groupId || String(s.grupo_id) === String(groupId)
   }), [data.sedes, groupId, selectedGroup?.nombre])
@@ -492,6 +507,21 @@ export default function OrganigramaView({ onNavigate }) {
     animated:false,
     style:{ stroke:edge.support ? '#f59e0b' : '#39ff14', strokeWidth:1.7, strokeDasharray:edge.support ? '6 5' : undefined },
   }))
+  const airportGroup = data.grupos.find(group => !String(group.id).startsWith('__') && isAirportGroupName(group.nombre))
+  const globalSeeds = [
+    { id:'company', label:'Fly Kitchen', role:'Organización', area:'Estructura global', entityType:'unidad', color:'#39ff14', position:{ x:0, y:0 } },
+    { id:'unit:central', label:'Equipo central', role:'Dirección y áreas transversales', entityType:'unidad', linkedScope:'__central__', color:'#38bdf8', position:{ x:-580, y:220 } },
+    { id:'unit:airports', label:'Aeropuertos', role:'Operaciones aeroportuarias', entityType:'unidad', linkedScope:String(airportGroup?.id || '__escalas__'), color:'#22c55e', position:{ x:-290, y:220 } },
+    { id:'unit:hospitals', label:'Hospitales', role:'Servicios hospitalarios', entityType:'unidad', linkedScope:'__hospitales__', color:'#f59e0b', position:{ x:0, y:220 } },
+    { id:'unit:dining', label:'Comedores', role:'Servicios de alimentación', entityType:'unidad', linkedScope:'__comedores__', color:'#a3e635', position:{ x:290, y:220 } },
+    { id:'unit:production', label:'Planta de Producción', role:'Producción central', entityType:'unidad', linkedScope:'__planta__', color:'#c084fc', position:{ x:580, y:220 } },
+  ]
+  const globalEdges = globalSeeds.slice(1).map(node => ({
+    id:`company-${node.id}`, source:'company', target:node.id, type:'smoothstep',
+    data:{ relationType:'jerarquica' }, style:{ stroke:'#39ff14', strokeWidth:1.7 },
+  }))
+  const activeSeeds = groupId === '__global__' ? globalSeeds : designerSeeds
+  const activeEdges = groupId === '__global__' ? globalEdges : designerEdges
 
   if (loading) return <div className="flex-1 grid place-items-center"><Loader2 size={22} className="animate-spin" style={{ color:'var(--phosphor)' }}/></div>
 
@@ -513,17 +543,19 @@ export default function OrganigramaView({ onNavigate }) {
       {error && <div style={{ color:'#ff6060', border:'1px solid rgba(255,80,80,.25)', background:'rgba(255,80,80,.08)', padding:'0.7rem', fontSize:'0.72rem' }}>{error}</div>}
       {warning && <div style={{ color:'#f59e0b', border:'1px solid rgba(245,158,11,.25)', background:'rgba(245,158,11,.07)', padding:'0.65rem', fontSize:'0.68rem', marginBottom:'1rem' }}>{warning}</div>}
 
-      {!error && data.grupos.length > 0 && sedes.length > 0 && (
+      {!error && data.grupos.length > 0 && (sedes.length > 0 || String(groupId).startsWith('__')) && (
         <OrganigramaDesigner
           groupId={groupId}
           groupName={displayGroupName(selectedGroup?.nombre || 'General')}
-          seeds={designerSeeds}
-          seedEdges={designerEdges}
+          seeds={activeSeeds}
+          seedEdges={activeEdges}
           contacts={data.contactos}
           canEdit={canEditOrganigrama}
+          onOpenScope={setGroupId}
+          showGlobalBreadcrumb={groupId !== '__global__'}
         />
       )}
-      {!error && data.grupos.length > 0 && sedes.length === 0 && (
+      {!error && data.grupos.length > 0 && sedes.length === 0 && !String(groupId).startsWith('__') && (
         <div className="glass" style={{ textAlign:'center', padding:'2rem', color:'var(--text-dim)', fontSize:'0.75rem' }}>Este grupo todavía no tiene sedes asignadas.</div>
       )}
 

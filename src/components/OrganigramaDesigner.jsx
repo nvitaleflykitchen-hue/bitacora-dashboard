@@ -32,6 +32,7 @@ function nodeFromSeed(seed, index) {
       area:seed.area || '',
       contactId:seed.contactId || null,
       entityType:seed.entityType || 'persona',
+      linkedScope:seed.linkedScope || null,
       color:seed.color || COLORS[seed.entityType === 'sede' ? 'sede' : 'operaciones'],
     },
   }
@@ -55,6 +56,7 @@ function OrgCard({ data, selected }) {
           <p style={{ fontWeight:800, fontSize:'.78rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{data.label}</p>
           <p className="font-metric" style={{ color:data.color, fontSize:'.56rem', marginTop:4, letterSpacing:'.06em' }}>{data.role}</p>
           {data.area && <p style={{ color:'var(--text-dim)', fontSize:'.6rem', marginTop:4 }}>{data.area}</p>}
+          {data.linkedScope && <p className="font-metric" style={{ color:'var(--text-dim)', fontSize:'.5rem', marginTop:7 }}>DOBLE CLIC PARA ABRIR</p>}
         </div>
       </div>
       <Handle type="source" position={Position.Bottom} style={{ width:10, height:10, background:data.color, border:'2px solid #101116' }}/>
@@ -106,7 +108,7 @@ export function autoLayout(nodes, edges) {
   return nodes.map(node => ({ ...node, position:positions.get(node.id) || node.position }))
 }
 
-export default function OrganigramaDesigner({ groupId, groupName, seeds, seedEdges, contacts, canEdit }) {
+export default function OrganigramaDesigner({ groupId, groupName, seeds, seedEdges, contacts, canEdit, onOpenScope, showGlobalBreadcrumb }) {
   const [open, setOpen] = useState(false)
   const readPublished = useCallback(() => {
     try { return JSON.parse(localStorage.getItem(storageKey(groupId, 'published')) || 'null') } catch { return null }
@@ -136,18 +138,18 @@ export default function OrganigramaDesigner({ groupId, groupName, seeds, seedEdg
           <button type="button" className={canEdit ? 'btn-primary' : 'btn-ghost'} onClick={() => setOpen(true)}><Maximize2 size={14}/> {canEdit ? 'ABRIR DISEÑADOR' : 'VER EN PANTALLA COMPLETA'}</button>
         </div>
         <div style={{ height:520, marginTop:14, border:'1px solid rgba(255,255,255,.06)', borderRadius:6, overflow:'hidden' }}>
-          <ReactFlow nodes={previewNodes.map(node => ({ ...node, draggable:false, selectable:false }))} edges={previewEdges} nodeTypes={nodeTypes} fitView nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} panOnScroll zoomOnScroll>
+          <ReactFlow nodes={previewNodes.map(node => ({ ...node, draggable:false, selectable:false }))} edges={previewEdges} nodeTypes={nodeTypes} fitView nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} panOnScroll zoomOnScroll onNodeDoubleClick={(_, node) => node.data.linkedScope && onOpenScope?.(node.data.linkedScope)}>
             <Background color="rgba(57,255,20,.12)" gap={24}/>
             <Controls showInteractive={false}/>
           </ReactFlow>
         </div>
       </div>
-      {open && <DesignerWorkspace groupId={groupId} groupName={groupName} seeds={seeds} seedEdges={seedEdges} contacts={contacts} canEdit={canEdit} onClose={() => setOpen(false)} onPublished={() => setPublished(readPublished())}/>}
+      {open && <DesignerWorkspace key={groupId} groupId={groupId} groupName={groupName} seeds={seeds} seedEdges={seedEdges} contacts={contacts} canEdit={canEdit} onClose={() => setOpen(false)} onPublished={() => setPublished(readPublished())} onOpenScope={onOpenScope} showGlobalBreadcrumb={showGlobalBreadcrumb}/>}
     </>
   )
 }
 
-function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, canEdit, onClose, onPublished }) {
+function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, canEdit, onClose, onPublished, onOpenScope, showGlobalBreadcrumb }) {
   const { user } = useAuth()
   const initial = useMemo(() => {
     const fallback = { nodes:seeds.map(nodeFromSeed), edges:seedEdges }
@@ -156,6 +158,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   const [nodes, setNodes] = useState(initial.nodes)
   const [edges, setEdges] = useState(initial.edges)
   const [selectedId, setSelectedId] = useState(null)
+  const [selectedEdgeId, setSelectedEdgeId] = useState(null)
   const [query, setQuery] = useState('')
   const [dirty, setDirty] = useState(false)
   const [syncState, setSyncState] = useState('local')
@@ -208,13 +211,20 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   const onConnect = connection => {
     if (!canEdit || wouldCreateCycle(connection, nodes, edges)) return
     const withoutOldParent = edges.filter(edge => edge.target !== connection.target)
-    commit(nodes, addEdge({ ...connection, type:'smoothstep', markerEnd:{ type:MarkerType.ArrowClosed }, style:{ stroke:'#39ff14' } }, withoutOldParent))
+    commit(nodes, addEdge({
+      ...connection,
+      type:'smoothstep',
+      markerEnd:{ type:MarkerType.ArrowClosed, color:'#39ff14' },
+      data:{ relationType:'jerarquica', lineStyle:'solid', color:'#39ff14', width:1.7, arrow:true },
+      style:{ stroke:'#39ff14', strokeWidth:1.7 },
+    }, withoutOldParent))
   }
   const addPerson = contact => {
     if (!canEdit || nodes.some(node => node.data.contactId === contact.id)) return
     const node = nodeFromSeed({ id:`contact:${contact.id}`, contactId:contact.id, label:contact.nombre, role:contact.cargo || 'Responsable', area:contact.area || '', color:COLORS.operaciones }, nodes.length)
     commit([...nodes, node], edges)
     setSelectedId(node.id)
+    setSelectedEdgeId(null)
   }
   const removeSelected = () => {
     if (!selectedId || !canEdit) return
@@ -224,6 +234,25 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   const updateSelected = patch => {
     const next = nodes.map(node => node.id === selectedId ? { ...node, data:{ ...node.data, ...patch } } : node)
     commit(next, edges)
+  }
+  const selectedEdge = edges.find(edge => edge.id === selectedEdgeId)
+  const updateSelectedEdge = patch => {
+    if (!selectedEdge || !canEdit) return
+    const data = { relationType:'jerarquica', lineStyle:'solid', color:'#39ff14', width:1.7, arrow:true, ...(selectedEdge.data || {}), ...patch }
+    const strokeDasharray = data.lineStyle === 'dashed' ? '8 6' : data.lineStyle === 'dotted' ? '2 5' : undefined
+    const next = edges.map(edge => edge.id === selectedEdgeId ? {
+      ...edge,
+      label:data.label || undefined,
+      data,
+      style:{ ...(edge.style || {}), stroke:data.color, strokeWidth:Number(data.width), strokeDasharray },
+      markerEnd:data.arrow ? { type:MarkerType.ArrowClosed, color:data.color } : undefined,
+    } : edge)
+    commit(nodes, next)
+  }
+  const removeSelectedEdge = () => {
+    if (!selectedEdgeId || !canEdit) return
+    commit(nodes, edges.filter(edge => edge.id !== selectedEdgeId))
+    setSelectedEdgeId(null)
   }
   const saveDraft = async () => {
     const model = { nodes, edges, updatedAt:new Date().toISOString() }
@@ -263,9 +292,10 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
     const handler = event => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if (canEdit) saveDraft() }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo() }
-      if (event.key === 'Escape') setSelectedId(null)
+      if (event.key === 'Escape') { setSelectedId(null); setSelectedEdgeId(null) }
       const isEditingText = event.target instanceof Element && event.target.closest('input,textarea')
       if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId && !isEditingText) removeSelected()
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedEdgeId && !isEditingText) removeSelectedEdge()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -277,8 +307,12 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
         <button type="button" className="btn-ghost" onClick={onClose}><ArrowLeft size={14}/> VOLVER</button>
         <div style={{ minWidth:0 }}>
           <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'.84rem' }}>DISEÑADOR DE ORGANIGRAMA</p>
+          <div className="flex items-center gap-1" style={{ marginTop:2 }}>
+            {showGlobalBreadcrumb && <><button type="button" onClick={() => onOpenScope?.('__global__')} style={{ color:'var(--phosphor)', fontSize:'.57rem', padding:0 }}>FLY KITCHEN</button><span style={{ color:'var(--text-dim)', fontSize:'.57rem' }}>›</span></>}
+            <span style={{ color:'var(--text-dim)', fontSize:'.57rem' }}>{groupName}</span>
+          </div>
           <p style={{ color:'var(--text-dim)', fontSize:'.58rem' }}>
-            {groupName}{dirty ? ' · CAMBIOS SIN GUARDAR' : ''}
+            {dirty ? 'CAMBIOS SIN GUARDAR' : 'SIN CAMBIOS'}
             {' · '}{syncState === 'shared' ? `COMPARTIDO${sharedVersion ? ` · V${sharedVersion}` : ''}` : syncState === 'saving' ? 'GUARDANDO…' : syncState === 'error' ? 'ERROR DE SINCRONIZACIÓN' : 'GUARDADO EN ESTE DISPOSITIVO'}
           </p>
         </div>
@@ -311,7 +345,11 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             onEdgesChange={changes => canEdit && setEdges(current => applyEdgeChanges(changes, current))}
             onNodeDragStop={() => snapshot(nodes, edges)}
             onConnect={onConnect}
-            onSelectionChange={({ nodes:selectedNodes }) => setSelectedId(selectedNodes[0]?.id || null)}
+            onNodeDoubleClick={(_, node) => node.data.linkedScope && onOpenScope?.(node.data.linkedScope)}
+            onSelectionChange={({ nodes:selectedNodes, edges:selectedEdges }) => {
+              setSelectedId(selectedNodes[0]?.id || null)
+              setSelectedEdgeId(selectedEdges[0]?.id || null)
+            }}
             isValidConnection={connection => !wouldCreateCycle(connection, nodes, edges)}
             nodesConnectable={canEdit}
             nodesDraggable={canEdit}
@@ -331,7 +369,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
         </main>
         {canEdit && <aside style={{ padding:14, overflow:'auto', borderLeft:'1px solid rgba(255,255,255,.07)', background:'#111319' }}>
           <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'.62rem' }}>PROPIEDADES</p>
-          {!selected && <p style={{ color:'var(--text-dim)', fontSize:'.65rem', marginTop:14, lineHeight:1.5 }}>Seleccioná una tarjeta para editar su nombre visible, función, área y color. Arrastrá desde el punto inferior hacia otra tarjeta para crear la dependencia.</p>}
+          {!selected && !selectedEdge && <p style={{ color:'var(--text-dim)', fontSize:'.65rem', marginTop:14, lineHeight:1.5 }}>Seleccioná una tarjeta o una conexión. Arrastrá desde el punto inferior de una tarjeta hacia otra para crear una dependencia.</p>}
           {selected && <div style={{ display:'grid', gap:12, marginTop:14 }}>
             <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>NOMBRE<input className="input-dark w-full" value={selected.data.label} onChange={event => updateSelected({ label:event.target.value })} style={{ marginTop:5 }}/></label>
             <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>FUNCIÓN<input className="input-dark w-full" value={selected.data.role} onChange={event => updateSelected({ role:event.target.value })} style={{ marginTop:5 }}/></label>
@@ -339,6 +377,29 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>COLOR<input type="color" value={selected.data.color} onChange={event => updateSelected({ color:event.target.value })} style={{ display:'block', width:'100%', height:34, marginTop:5, background:'transparent', border:0 }}/></label>
             <button type="button" className="btn-ghost" onClick={removeSelected} style={{ color:'#ff6060', marginTop:8 }}><Trash2 size={13}/> QUITAR DEL ORGANIGRAMA</button>
             <p style={{ color:'var(--text-dim)', fontSize:'.56rem', lineHeight:1.45 }}>La ficha de la persona y todos sus registros permanecen intactos.</p>
+          </div>}
+          {selectedEdge && <div style={{ display:'grid', gap:12, marginTop:14 }}>
+            <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'.72rem' }}>CONEXIÓN</p>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>TIPO
+              <select className="input-dark w-full" value={selectedEdge.data?.relationType || 'jerarquica'} onChange={event => updateSelectedEdge({ relationType:event.target.value })} style={{ marginTop:5 }}>
+                <option value="jerarquica">Jerárquica</option>
+                <option value="funcional">Funcional</option>
+                <option value="apoyo">Apoyo / asesoría</option>
+                <option value="comunicacion">Comunicación</option>
+              </select>
+            </label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>ETIQUETA<input className="input-dark w-full" value={selectedEdge.data?.label || selectedEdge.label || ''} onChange={event => updateSelectedEdge({ label:event.target.value })} placeholder="Ej.: reporta a" style={{ marginTop:5 }}/></label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>TRAZO
+              <select className="input-dark w-full" value={selectedEdge.data?.lineStyle || 'solid'} onChange={event => updateSelectedEdge({ lineStyle:event.target.value })} style={{ marginTop:5 }}>
+                <option value="solid">Continuo</option>
+                <option value="dashed">Guiones</option>
+                <option value="dotted">Puntos</option>
+              </select>
+            </label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>COLOR<input type="color" value={selectedEdge.data?.color || selectedEdge.style?.stroke || '#39ff14'} onChange={event => updateSelectedEdge({ color:event.target.value })} style={{ display:'block', width:'100%', height:34, marginTop:5, background:'transparent', border:0 }}/></label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>GROSOR · {selectedEdge.data?.width || selectedEdge.style?.strokeWidth || 1.7}<input type="range" min="1" max="5" step=".25" value={selectedEdge.data?.width || selectedEdge.style?.strokeWidth || 1.7} onChange={event => updateSelectedEdge({ width:Number(event.target.value) })} style={{ width:'100%', marginTop:8 }}/></label>
+            <label className="flex items-center gap-2" style={{ color:'var(--text-dim)', fontSize:'.62rem' }}><input type="checkbox" checked={selectedEdge.data?.arrow !== false} onChange={event => updateSelectedEdge({ arrow:event.target.checked })}/> MOSTRAR FLECHA</label>
+            <button type="button" className="btn-ghost" onClick={removeSelectedEdge} style={{ color:'#ff6060', marginTop:8 }}><Trash2 size={13}/> ELIMINAR CONEXIÓN</button>
           </div>}
         </aside>}
       </div>

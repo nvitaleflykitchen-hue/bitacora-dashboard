@@ -5,6 +5,22 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-24 · Codex — organigrama global y editor de conexiones
+
+- Se agregó un organigrama matriz `Fly Kitchen` con cinco unidades navegables:
+  Equipo central, Aeropuertos, Hospitales, Comedores y Planta de Producción.
+- Cada unidad abre su propio suborganigrama con doble clic y el diseñador incorpora
+  una ruta superior para regresar al organigrama global.
+- Las sedes se agrupan automáticamente por nombre/tipo en Hospitales, Comedores,
+  Aeropuertos y Planta, conservando también los grupos existentes.
+- El inspector permite editar cada conexión: tipo jerárquico/funcional/apoyo/
+  comunicación, etiqueta, color, trazo, grosor, flecha y eliminación.
+- No requiere SQL adicional: `bitacora.organigramas` ya persiste un modelo JSON
+  independiente por `grupo_clave`.
+- Verificación: `npm run check` aprobado, 18 archivos/67 tests y build Vite correctos;
+  quedan únicamente 6 warnings de lint preexistentes en archivos ajenos.
+- Cambios locales pendientes de commit y publicación.
+
 ## 2026-07-24 · Codex — editor visual de organigrama
 
 - `src/views/OrganigramaView.jsx` convierte la vista estática en un lienzo interactivo.
