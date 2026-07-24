@@ -12,6 +12,9 @@ const isAirportSite = sede => norm(sede?.tipo).includes('aeropuerto') || norm(se
 const isHospitalSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['hospital','hospitalario'])
 const isDiningSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['comedor']) && !isHospitalSite(sede)
 const isProductionSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['planta de produccion','produccion cordoba'])
+const isEducationSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['educacion','educativo','escuela','colegio','universidad'])
+const isRestaurantSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['restaurante','restaurant'])
+const isCciSite = sede => hasAny(`${sede?.tipo} ${sede?.nombre}`, ['cci'])
 const isAirportGroupName = value => hasAny(value, ['aeropuerto', 'aeropuertos', 'escala', 'escalas'])
 const phoneDigits = value => String(value || '').replace(/\D/g, '').replace(/^0+/, '')
 const callHref = phone => phoneDigits(phone) ? `tel:${phoneDigits(phone)}` : ''
@@ -381,8 +384,11 @@ export default function OrganigramaView({ onNavigate }) {
         { id:'__global__', nombre:'FLY KITCHEN · GLOBAL' },
         { id:'__central__', nombre:'EQUIPO CENTRAL' },
         { id:'__hospitales__', nombre:'HOSPITALES' },
+        { id:'__educacion__', nombre:'EDUCACIÓN' },
         { id:'__comedores__', nombre:'COMEDORES' },
         { id:'__planta__', nombre:'PLANTA DE PRODUCCIÓN' },
+        { id:'__cci__', nombre:'CCI' },
+        { id:'__restaurantes__', nombre:'RESTAURANTES' },
         ...naturalGroups,
       ]
       const unavailable = [
@@ -409,8 +415,11 @@ export default function OrganigramaView({ onNavigate }) {
   const groupSedes = useMemo(() => data.sedes.filter(s => {
     if (groupId === '__global__' || groupId === '__central__') return false
     if (groupId === '__hospitales__') return isHospitalSite(s)
+    if (groupId === '__educacion__') return isEducationSite(s)
     if (groupId === '__comedores__') return isDiningSite(s)
     if (groupId === '__planta__') return isProductionSite(s)
+    if (groupId === '__cci__') return isCciSite(s)
+    if (groupId === '__restaurantes__') return isRestaurantSite(s)
     if (groupId === '__escalas__' || isAirportGroupName(selectedGroup?.nombre)) return isAirportSite(s)
     return !groupId || String(s.grupo_id) === String(groupId)
   }), [data.sedes, groupId, selectedGroup?.nombre])
@@ -507,21 +516,50 @@ export default function OrganigramaView({ onNavigate }) {
     animated:false,
     style:{ stroke:edge.support ? '#f59e0b' : '#39ff14', strokeWidth:1.7, strokeDasharray:edge.support ? '6 5' : undefined },
   }))
-  const airportGroup = data.grupos.find(group => !String(group.id).startsWith('__') && isAirportGroupName(group.nombre))
+  const vanesa = data.contactos.find(contact => hasAny(contact.nombre, ['vanesa ledesma']))
+  const vanesaNodeId = vanesa?.id ? `contact:${vanesa.id}` : 'central:vanesa'
+  const centralUnitSeeds = [
+    { id:vanesaNodeId, contactId:vanesa?.id || null, label:vanesa?.nombre || 'Vanesa Ledesma', role:vanesa?.cargo || 'Responsable', area:'Operaciones', color:'#22c55e', position:{ x:-520, y:360 }, required:true },
+    { id:'unit:production-cordoba', label:'Planta de Producción Córdoba', role:'Unidad operativa', area:'Responsable: Vanesa Ledesma', entityType:'unidad', linkedScope:'__planta__', color:'#c084fc', position:{ x:-650, y:600 }, required:true },
+    { id:'unit:cci', label:'CCI', role:'Unidad operativa', area:'Responsable: Vanesa Ledesma', entityType:'unidad', linkedScope:'__cci__', color:'#c084fc', position:{ x:-370, y:600 }, required:true },
+    { id:'unit:airports', label:'Aeropuertos', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:String(data.grupos.find(group => !String(group.id).startsWith('__') && isAirportGroupName(group.nombre))?.id || '__escalas__'), color:'#22c55e', position:{ x:-140, y:600 }, required:true },
+    { id:'unit:hospitals', label:'Hospitales', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__hospitales__', color:'#f59e0b', position:{ x:140, y:600 }, required:true },
+    { id:'unit:education', label:'Educación', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__educacion__', color:'#38bdf8', position:{ x:420, y:600 }, required:true },
+    { id:'unit:dining', label:'Comedores', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__comedores__', color:'#a3e635', position:{ x:700, y:600 }, required:true },
+    { id:'unit:restaurants', label:'Restaurantes', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__restaurantes__', color:'#fb7185', position:{ x:980, y:600 }, required:true },
+  ]
+  const centralUnitIds = centralUnitSeeds.filter(seed => seed.entityType === 'unidad').map(seed => seed.id)
+  const centralUnitEdges = [
+    ...['unit:production-cordoba','unit:cci'].map(target => ({
+      id:`${vanesaNodeId}-${target}`, source:vanesaNodeId, target, type:'smoothstep', required:true,
+      data:{ relationType:'jerarquica', lineStyle:'solid', color:'#39ff14', width:1.7, arrow:true },
+      markerEnd:{ type:'arrowclosed', color:'#39ff14' }, style:{ stroke:'#39ff14', strokeWidth:1.7 },
+    })),
+    ...['unit:airports','unit:hospitals','unit:education','unit:dining','unit:restaurants'].map(target => ({
+      id:`operations-${target}`, source:'operations', target, type:'smoothstep', required:true,
+      data:{ relationType:'jerarquica', lineStyle:'solid', color:'#39ff14', width:1.7, arrow:true },
+      markerEnd:{ type:'arrowclosed', color:'#39ff14' }, style:{ stroke:'#39ff14', strokeWidth:1.7 },
+    })),
+    ...centralUnitIds.map(target => ({
+      id:`quality-functional-${target}`, source:'quality', target, type:'smoothstep', required:true,
+      data:{ relationType:'funcional', lineStyle:'dotted', color:'#38bdf8', width:1.5, arrow:false, label:'Calidad transversal' },
+      label:'Calidad transversal', style:{ stroke:'#38bdf8', strokeWidth:1.5, strokeDasharray:'2 5' },
+    })),
+  ]
   const globalSeeds = [
     { id:'company', label:'Fly Kitchen', role:'Organización', area:'Estructura global', entityType:'unidad', color:'#39ff14', position:{ x:0, y:0 } },
-    { id:'unit:central', label:'Equipo central', role:'Dirección y áreas transversales', entityType:'unidad', linkedScope:'__central__', color:'#38bdf8', position:{ x:-580, y:220 } },
-    { id:'unit:airports', label:'Aeropuertos', role:'Operaciones aeroportuarias', entityType:'unidad', linkedScope:String(airportGroup?.id || '__escalas__'), color:'#22c55e', position:{ x:-290, y:220 } },
-    { id:'unit:hospitals', label:'Hospitales', role:'Servicios hospitalarios', entityType:'unidad', linkedScope:'__hospitales__', color:'#f59e0b', position:{ x:0, y:220 } },
-    { id:'unit:dining', label:'Comedores', role:'Servicios de alimentación', entityType:'unidad', linkedScope:'__comedores__', color:'#a3e635', position:{ x:290, y:220 } },
-    { id:'unit:production', label:'Planta de Producción', role:'Producción central', entityType:'unidad', linkedScope:'__planta__', color:'#c084fc', position:{ x:580, y:220 } },
+    { id:'unit:central', label:'Equipo central', role:'Dirección y áreas transversales', entityType:'unidad', linkedScope:'__central__', color:'#38bdf8', position:{ x:0, y:220 } },
   ]
   const globalEdges = globalSeeds.slice(1).map(node => ({
     id:`company-${node.id}`, source:'company', target:node.id, type:'smoothstep',
     data:{ relationType:'jerarquica' }, style:{ stroke:'#39ff14', strokeWidth:1.7 },
   }))
-  const activeSeeds = groupId === '__global__' ? globalSeeds : designerSeeds
-  const activeEdges = groupId === '__global__' ? globalEdges : designerEdges
+  const activeSeeds = groupId === '__global__'
+    ? globalSeeds
+    : groupId === '__central__' ? [...designerSeeds, ...centralUnitSeeds] : designerSeeds
+  const activeEdges = groupId === '__global__'
+    ? globalEdges
+    : groupId === '__central__' ? [...designerEdges, ...centralUnitEdges] : designerEdges
 
   if (loading) return <div className="flex-1 grid place-items-center"><Loader2 size={22} className="animate-spin" style={{ color:'var(--phosphor)' }}/></div>
 

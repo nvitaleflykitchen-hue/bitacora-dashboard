@@ -5,6 +5,23 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-24 · Codex — unidades operativas bajo Equipo central
+
+- El organigrama global queda reducido a `Fly Kitchen → Equipo central`; las unidades
+  operativas ya no aparecen como pares independientes del equipo central.
+- En Equipo central se incorporan nodos navegables obligatorios sin reemplazar ni mover
+  el diseño ya publicado: Planta de Producción Córdoba y CCI dependen de Vanesa Ledesma;
+  Aeropuertos, Hospitales, Educación, Comedores y Restaurantes dependen de Nicolás Vitale.
+- Débora Rodríguez conserva el mismo nivel jerárquico y se conecta funcionalmente con
+  todas las unidades mediante líneas azules punteadas de Calidad transversal.
+- Se agregaron scopes para CCI, Educación y Restaurantes, con clasificación automática
+  de sedes por nombre/tipo.
+- `mergeRequiredStructure` incorpora los nuevos nodos y conexiones sobre modelos
+  publicados existentes, preservando posiciones y tarjetas creadas por el administrador.
+- No requiere migración ni cambios de datos. `npm run check` aprobado: 18 archivos,
+  68 tests y build Vite correctos; permanecen 6 warnings preexistentes ajenos.
+- Cambios locales pendientes de commit y publicación.
+
 ## 2026-07-24 · Codex — organigrama global y editor de conexiones
 
 - Se agregó un organigrama matriz `Fly Kitchen` con cinco unidades navegables:

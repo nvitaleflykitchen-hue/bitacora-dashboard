@@ -38,6 +38,28 @@ function nodeFromSeed(seed, index) {
   }
 }
 
+export function mergeRequiredStructure(model, seeds, seedEdges) {
+  const base = model || { nodes:[], edges:[] }
+  const nodes = [...(base.nodes || [])]
+  const edges = [...(base.edges || [])]
+  const nodeIds = new Set(nodes.map(node => node.id))
+  const edgeIds = new Set(edges.map(edge => edge.id))
+
+  seeds.filter(seed => seed.required).forEach((seed, index) => {
+    if (!nodeIds.has(seed.id)) {
+      nodes.push(nodeFromSeed(seed, nodes.length + index))
+      nodeIds.add(seed.id)
+    }
+  })
+  seedEdges.filter(edge => edge.required).forEach(edge => {
+    if (!edgeIds.has(edge.id) && nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
+      edges.push(edge)
+      edgeIds.add(edge.id)
+    }
+  })
+  return { ...base, nodes, edges }
+}
+
 function OrgCard({ data, selected }) {
   return (
     <article style={{
@@ -124,8 +146,11 @@ export default function OrganigramaDesigner({ groupId, groupName, seeds, seedEdg
       .catch(() => {})
     return () => { active = false }
   }, [groupId, readPublished])
-  const previewNodes = published?.nodes || seeds.map(nodeFromSeed)
-  const previewEdges = published?.edges || seedEdges
+  const previewModel = published
+    ? mergeRequiredStructure(published, seeds, seedEdges)
+    : { nodes:seeds.map(nodeFromSeed), edges:seedEdges }
+  const previewNodes = previewModel.nodes
+  const previewEdges = previewModel.edges
 
   return (
     <>
@@ -153,7 +178,10 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   const { user } = useAuth()
   const initial = useMemo(() => {
     const fallback = { nodes:seeds.map(nodeFromSeed), edges:seedEdges }
-    try { return JSON.parse(localStorage.getItem(storageKey(groupId, 'draft')) || 'null') || JSON.parse(localStorage.getItem(storageKey(groupId, 'published')) || 'null') || fallback } catch { return fallback }
+    try {
+      const stored = JSON.parse(localStorage.getItem(storageKey(groupId, 'draft')) || 'null') || JSON.parse(localStorage.getItem(storageKey(groupId, 'published')) || 'null')
+      return stored ? mergeRequiredStructure(stored, seeds, seedEdges) : fallback
+    } catch { return fallback }
   }, [groupId, seedEdges, seeds])
   const [nodes, setNodes] = useState(initial.nodes)
   const [edges, setEdges] = useState(initial.edges)
@@ -178,14 +206,15 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
       setSharedVersion(result.record?.version_publicada || 0)
       const remote = result.record?.borrador || result.record?.publicado
       if (remote?.nodes && remote?.edges) {
-        setNodes(remote.nodes)
-        setEdges(remote.edges)
-        history.current = [{ nodes:remote.nodes, edges:remote.edges }]
+        const merged = mergeRequiredStructure(remote, seeds, seedEdges)
+        setNodes(merged.nodes)
+        setEdges(merged.edges)
+        history.current = [{ nodes:merged.nodes, edges:merged.edges }]
         historyIndex.current = 0
       }
     }).catch(() => setSyncState('error'))
     return () => { active = false }
-  }, [groupId])
+  }, [groupId, seedEdges, seeds])
 
   const snapshot = useCallback((nextNodes, nextEdges) => {
     history.current = history.current.slice(0, historyIndex.current + 1)
@@ -210,7 +239,10 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   }
   const onConnect = connection => {
     if (!canEdit || wouldCreateCycle(connection, nodes, edges)) return
-    const withoutOldParent = edges.filter(edge => edge.target !== connection.target)
+    const withoutOldParent = edges.filter(edge => (
+      edge.target !== connection.target
+      || ['funcional','apoyo','comunicacion'].includes(edge.data?.relationType)
+    ))
     commit(nodes, addEdge({
       ...connection,
       type:'smoothstep',
