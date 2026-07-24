@@ -10,6 +10,7 @@ import {
 } from '../lib/queries'
 import { fmtFechaHora, fmtFechaHoraReporte } from '../lib/dateUtils'
 import { useAuth } from '../lib/auth'
+import { getRacionValues, RACION_CATEGORIAS } from '../lib/comedoresMetricas'
 
 const CATEGORIAS = [
   { key: 'a', label: 'Producción / Servicio del turno' },
@@ -137,22 +138,16 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
     onClose()
   }
 
-  const raciones = [
-    { label:'Opción 1', producido:registro.op1_producidos, servido:registro.op1_servidos, reutilizable:registro.op1_sobrante_reutilizable, descarte:registro.op1_sobrante_descarte, sobrante:registro.op1_sobrante },
-    { label:'Opción 2', producido:registro.op2_producidos, servido:registro.op2_servidos, reutilizable:registro.op2_sobrante_reutilizable, descarte:registro.op2_sobrante_descarte, sobrante:registro.op2_sobrante },
-    { label:'Vegetariano', producido:registro.vegetariano_producidos, servido:registro.vegetariano_servidos, reutilizable:registro.vegetariano_sobrante_reutilizable, descarte:registro.vegetariano_sobrante_descarte, sobrante:registro.vegetariano_sobrante },
-    { label:'Ensalada', producido:registro.ensalada_producidos, servido:null, reutilizable:registro.ensalada_sobrante_reutilizable, descarte:registro.ensalada_sobrante_descarte, sobrante:registro.ensalada_sobrante },
-    { label:'Postre', producido:registro.postre_producidos, servido:null, reutilizable:registro.postre_sobrante_reutilizable, descarte:registro.postre_sobrante_descarte, sobrante:registro.postre_sobrante },
-  ].map(item => ({
-    ...item,
-    sobrante: item.sobrante ?? (
-      item.reutilizable != null || item.descarte != null
-        ? Number(item.reutilizable || 0) + Number(item.descarte || 0)
-        : null
-    ),
-  })).filter(item => [
-    item.producido, item.servido, item.reutilizable, item.descarte, item.sobrante,
-  ].some(value => value != null))
+  // La misma regla alimenta el listado de comedores y este detalle. Ensalada
+  // y postre no tienen campo "servido": se infiere como producido - sobrante.
+  const raciones = RACION_CATEGORIAS
+    .filter(cat => [
+      cat.producido, cat.servido, cat.sobrante, cat.reutilizable, cat.descarte,
+    ].some(field => field && registro?.[field] != null))
+    .map(cat => ({
+      label: cat.label,
+      ...getRacionValues(cat, registro),
+    }))
 
   const totalRaciones = campo => raciones.reduce(
     (total, item) => total + (item[campo] == null ? 0 : Number(item[campo]) || 0),

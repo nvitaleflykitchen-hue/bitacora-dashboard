@@ -292,3 +292,21 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - El borrado exige escribir el nombre completo exacto y luego aceptar una segunda confirmación. Si hay registros vinculados y Postgres bloquea la operación, se informa que corresponde usar `Dar de baja`.
 - No se eliminó ninguna persona durante la implementación.
 - Verificado: 21 tests de acceso aprobados, ESLint sin errores (2 warnings preexistentes en `EquipoView.jsx`) y build de producción correcto.
+## 2026-07-24 · Codex — cálculos de raciones y numeración de NC
+
+- Se corrigió localmente la diferencia entre el resumen de “Últimos reportes con
+  raciones” y el modal de detalle. `RegistroModal` ahora usa la misma función de
+  cálculo que `ComedoresMetricas`.
+- Ensalada y postre, que no tienen un campo explícito de servido, calculan
+  `servido = producido - reutilizable - descarte`.
+- Cuando un campo servido quedó en `0` por defecto pero existe producción, también
+  se infiere por diferencia. Esto corrige el caso Quilmes de 160 producidas,
+  84 sobrantes y 6 servidas: el resultado consistente es 76 servidas.
+- Se agregaron pruebas para Central Plaza y Quilmes. Verificación: ESLint de los
+  archivos tocados sin errores, 5 pruebas específicas aprobadas y build Vite OK.
+- El arreglo de códigos globales de No Conformidades fue aplicado en producción y
+  validado como Nair dentro de una transacción revertida:
+  `supabase/migrations/20260724110000_assign_no_conformidad_code_atomically.sql`
+  y el cambio correspondiente en `src/lib/queries.js`.
+- La prueba intentó insertar `NC-2026-001`, el trigger asignó `NC-2026-013` y el
+  `ROLLBACK` confirmó que no quedó ninguna fila de prueba.

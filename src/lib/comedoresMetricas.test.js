@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildComedoresMetricas } from './comedoresMetricas'
+import { buildComedoresMetricas, getRacionValues, RACION_CATEGORIAS } from './comedoresMetricas'
 
 describe('buildComedoresMetricas', () => {
   it('calcula producido, servido, sobrante y porcentajes por comedor', () => {
@@ -99,5 +99,69 @@ describe('buildComedoresMetricas', () => {
       descarte: 8,
       sinDiscriminar: 0,
     })
+  })
+  it('usa en el detalle la misma inferencia de servido que en el listado', () => {
+    const registro = {
+      op1_producidos: 165,
+      op1_servidos: 165,
+      op2_producidos: 30,
+      op2_servidos: 30,
+      vegetariano_producidos: 22,
+      vegetariano_servidos: 20,
+      vegetariano_sobrante_descarte: 2,
+      ensalada_producidos: 5,
+      postre_producidos: 100,
+      postre_sobrante_reutilizable: 10,
+    }
+
+    const detalle = RACION_CATEGORIAS.map(cat => getRacionValues(cat, registro))
+    const servidoDetalle = detalle.reduce((total, item) => total + item.servido, 0)
+    const metricas = buildComedoresMetricas([{
+      ...registro,
+      id: 4,
+      sede_id: 40,
+      sede_nombre: 'Comedor Central Plaza',
+      fecha_reporte: '2026-07-23T18:35:00Z',
+      turno: 'Único',
+    }])
+
+    expect(detalle[3].servido).toBe(5)
+    expect(detalle[4].servido).toBe(90)
+    expect(servidoDetalle).toBe(310)
+    expect(metricas.movimientos[0].servido).toBe(servidoDetalle)
+  })
+
+  it('no pierde producción cuando servido quedó en cero y el sobrante fue discriminado', () => {
+    const registro = {
+      op1_producidos: 70,
+      op1_servidos: 0,
+      op1_sobrante_reutilizable: 0,
+      op1_sobrante_descarte: 0,
+      vegetariano_producidos: 10,
+      vegetariano_servidos: 6,
+      vegetariano_sobrante_reutilizable: 4,
+      vegetariano_sobrante_descarte: 0,
+      postre_producidos: 80,
+      postre_sobrante_reutilizable: 73,
+      postre_sobrante_descarte: 7,
+    }
+
+    const metricas = buildComedoresMetricas([{
+      ...registro,
+      id: 5,
+      sede_id: 50,
+      sede_nombre: 'Comedor Quilmes',
+      fecha_reporte: '2026-07-23T19:27:00Z',
+      turno: 'Único',
+    }])
+
+    expect(metricas.movimientos[0]).toMatchObject({
+      producido: 160,
+      servido: 76,
+      sobrante: 84,
+    })
+    expect(metricas.movimientos[0].producido).toBe(
+      metricas.movimientos[0].servido + metricas.movimientos[0].sobrante,
+    )
   })
 })

@@ -72,7 +72,7 @@ const emptyTotals = () => ({
   sinDiscriminar: 0,
 })
 
-function getRacionValues(cat, registro) {
+export function getRacionValues(cat, registro) {
   const producido = toNumber(registro?.[cat.producido])
   const sobranteCargado = toNumber(registro?.[cat.sobrante])
   const discriminado = registro?.[cat.reutilizable] != null || registro?.[cat.descarte] != null
@@ -81,8 +81,9 @@ function getRacionValues(cat, registro) {
 
   if (discriminado) {
     const sobrante = reutilizable + descarte
-    const servido = cat.servido && registro?.[cat.servido] != null
-      ? toNumber(registro?.[cat.servido])
+    const servidoCargado = cat.servido ? toNumber(registro?.[cat.servido]) : 0
+    const servido = servidoCargado > 0
+      ? servidoCargado
       : Math.max(0, producido - sobrante)
     return { producido, servido, sobrante, reutilizable, descarte, sinDiscriminar:0 }
   }

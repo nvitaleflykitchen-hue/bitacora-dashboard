@@ -294,17 +294,12 @@ export async function getNoConformidades(filtros = {}) {
 }
 
 export async function createNoConformidad(payload) {
-  // generar código NC-YYYY-NNN
-  const anio = new Date().getFullYear();
-  const { count } = await db()
-    .from("no_conformidades")
-    .select("*", { count: "exact", head: true })
-    .like("codigo", `NC-${anio}-%`);
-  const nro = String((count || 0) + 1).padStart(3, "0");
-  const codigo = `NC-${anio}-${nro}`;
   const { data, error } = await db()
     .from("no_conformidades")
-    .insert({ ...payload, codigo })
+    // El trigger assign_no_conformidad_code asigna un correlativo global y
+    // atómico. No puede calcularse desde el cliente porque RLS hace que cada
+    // perfil territorial vea una cantidad diferente de NC.
+    .insert(payload)
     .select()
     .single();
   if (error) throw error;
