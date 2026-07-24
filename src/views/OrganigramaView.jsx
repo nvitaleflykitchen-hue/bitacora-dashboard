@@ -379,16 +379,25 @@ export default function OrganigramaView({ onNavigate }) {
       const sedes = siteResult.value || []
       const assignments = assignmentResult.status === 'fulfilled' ? assignmentResult.value : []
       const contactos = contactResult.status === 'fulfilled' ? contactResult.value : []
-      const naturalGroups = grupos.length ? grupos : [{ id:'__escalas__', nombre:'ESCALAS' }]
+      const businessDefinitions = [
+        { id:'__aeropuertos__', nombre:'AEROPUERTOS', terms:['aeropuerto','escala'] },
+        { id:'__hospitales__', nombre:'HOSPITALES', terms:['hospital'] },
+        { id:'__educacion__', nombre:'EDUCACIÓN', terms:['educacion','educativo'] },
+        { id:'__comedores__', nombre:'COMEDORES', terms:['comedor'] },
+        { id:'__planta__', nombre:'PLANTA DE PRODUCCIÓN', terms:['planta','produccion','otros'] },
+        { id:'__cci__', nombre:'CCI', terms:['cci'] },
+        { id:'__restaurantes__', nombre:'RESTAURANTES', terms:['restaurante','restaurant'] },
+      ]
+      const businessGroups = businessDefinitions.map(definition => {
+        const existing = grupos.find(group => hasAny(group.nombre, definition.terms))
+        return existing ? { ...existing, nombre:definition.nombre } : { id:definition.id, nombre:definition.nombre }
+      })
+      const businessIds = new Set(businessGroups.map(group => String(group.id)))
+      const naturalGroups = grupos.filter(group => !businessIds.has(String(group.id)))
       const displayGroups = [
         { id:'__global__', nombre:'FLY KITCHEN · GLOBAL' },
         { id:'__central__', nombre:'EQUIPO CENTRAL' },
-        { id:'__hospitales__', nombre:'HOSPITALES' },
-        { id:'__educacion__', nombre:'EDUCACIÓN' },
-        { id:'__comedores__', nombre:'COMEDORES' },
-        { id:'__planta__', nombre:'PLANTA DE PRODUCCIÓN' },
-        { id:'__cci__', nombre:'CCI' },
-        { id:'__restaurantes__', nombre:'RESTAURANTES' },
+        ...businessGroups,
         ...naturalGroups,
       ]
       const unavailable = [
@@ -414,26 +423,29 @@ export default function OrganigramaView({ onNavigate }) {
   const selectedGroup = data.grupos.find(g => String(g.id) === String(groupId))
   const groupSedes = useMemo(() => data.sedes.filter(s => {
     if (groupId === '__global__' || groupId === '__central__') return false
-    if (groupId === '__hospitales__') return isHospitalSite(s)
-    if (groupId === '__educacion__') return isEducationSite(s)
-    if (groupId === '__comedores__') return isDiningSite(s)
-    if (groupId === '__planta__') return isProductionSite(s)
-    if (groupId === '__cci__') return isCciSite(s)
-    if (groupId === '__restaurantes__') return isRestaurantSite(s)
-    if (groupId === '__escalas__' || isAirportGroupName(selectedGroup?.nombre)) return isAirportSite(s)
+    if (groupId === '__aeropuertos__' || isAirportGroupName(selectedGroup?.nombre)) return isAirportSite(s)
+    if (groupId === '__hospitales__' || hasAny(selectedGroup?.nombre, ['hospital'])) return isHospitalSite(s)
+    if (groupId === '__educacion__' || hasAny(selectedGroup?.nombre, ['educacion'])) return isEducationSite(s)
+    if (groupId === '__comedores__' || hasAny(selectedGroup?.nombre, ['comedor'])) return isDiningSite(s)
+    if (groupId === '__planta__' || hasAny(selectedGroup?.nombre, ['planta','produccion'])) return isProductionSite(s)
+    if (groupId === '__cci__' || norm(selectedGroup?.nombre) === 'cci') return isCciSite(s)
+    if (groupId === '__restaurantes__' || hasAny(selectedGroup?.nombre, ['restaurante','restaurant'])) return isRestaurantSite(s)
+    if (isAirportGroupName(selectedGroup?.nombre)) return isAirportSite(s)
     return !groupId || String(s.grupo_id) === String(groupId)
   }), [data.sedes, groupId, selectedGroup?.nombre])
   const isAirportGroup = groupSedes.length >= 3 && groupSedes.every(isAirportSite)
   const isDiningGroup = groupSedes.length >= 2 && groupSedes.every(s => norm(s.tipo).includes('comedor') || norm(s.nombre).includes('comedor'))
-  const isEscalas = isAirportGroupName(selectedGroup?.nombre) || groupId === '__escalas__' || isAirportGroup
-  const isCordobaProductionGroup = norm(selectedGroup?.nombre) === 'otros' || groupSedes.some(s => norm(s.nombre).includes('planta de produccion cordoba'))
+  const isEscalas = groupId === '__aeropuertos__' || isAirportGroupName(selectedGroup?.nombre) || isAirportGroup
+  const isVanesaScope = groupId === '__planta__' || groupId === '__cci__' || hasAny(selectedGroup?.nombre, ['planta de produccion','cci'])
+  const isCordobaProductionGroup = isVanesaScope || norm(selectedGroup?.nombre) === 'otros' || groupSedes.some(s => norm(s.nombre).includes('planta de produccion cordoba'))
+  const isBusinessScope = !['__global__','__central__'].includes(groupId)
   const sedes = groupSedes
   const sedeIds = useMemo(() => new Set(sedes.map(s => String(s.id))), [sedes])
   const assignments = useMemo(() => data.assignments.filter(a => a.activo !== false && sedeIds.has(String(a.sede_id))), [data.assignments, sedeIds])
   const assignedContactIds = useMemo(() => new Set(assignments.map(a => String(a.contacto_id || a.contactos?.id))), [assignments])
   const unassigned = data.contactos.filter(c => !assignedContactIds.has(String(c.id)))
   const findPerson = (fallback, terms) => {
-    const found = unassigned.find(c => hasAny(`${c.cargo} ${c.nombre}`, terms) || norm(c.nombre) === norm(fallback?.nombre))
+    const found = data.contactos.find(c => hasAny(`${c.cargo} ${c.nombre}`, terms) || norm(c.nombre) === norm(fallback?.nombre))
     if (!found) return fallback
     if (!fallback) return found
     return {
@@ -447,7 +459,8 @@ export default function OrganigramaView({ onNavigate }) {
   const executive = findPerson(isEscalas ? ESCALAS_REFERENCE.executive : null, ['gerente general','direccion general','presidencia'])
   const operations = isCordobaProductionGroup
     ? findPerson(CORDOBA_PRODUCTION_REFERENCE.plant, ['vanesa ledezma'])
-    : findPerson(isEscalas ? ESCALAS_REFERENCE.plant : null, ['jefatura de planta','jefe de planta'])
+    : findPerson(ESCALAS_REFERENCE.plant, ['nicolas vitale'])
+  const operationsRole = isVanesaScope ? 'Responsable Operativa' : groupId === '__central__' ? 'Jefatura de Planta' : 'Responsable Operativo'
   const diningSupervisorAssignment = isDiningGroup
     ? assignments.find(a => hasAny(`${a.rol} ${a.contactos?.cargo} ${a.contactos?.nombre}`, ['gestion de comedores','supervisor de comedores','supervision de comedores']))
     : null
@@ -483,16 +496,17 @@ export default function OrganigramaView({ onNavigate }) {
   const orgEdges = [
     executive && operations && { from:'executive', to:'operations' },
     executive && commercial && { from:'executive', to:'commercial', support:true },
-    operations && quality && { from:'operations', to:'quality', support:true },
+    executive && quality && { from:'executive', to:'quality' },
+    quality && operations && isBusinessScope && { from:'quality', to:'operations', functional:true },
     operations && supervisor && { from:'operations', to:'supervisor' },
     ...sedes.map(sede => ({ from:operationalParent, to:`sede:${sede.id}` })),
   ].filter(Boolean)
   const designerSeeds = [
-    executive && { id:'executive', contactId:executive.id, label:executive.nombre, role:'Dirección General', area:'Dirección', color:'#39ff14', position:{ x:0, y:0 } },
-    operations && { id:'operations', contactId:operations.id, label:operations.nombre, role:'Jefatura de Planta', area:'Operaciones', color:'#22c55e', position:{ x:0, y:180 } },
+    executive && { id:'executive', contactId:executive.id, label:executive.nombre, role:'Dirección General', area:'Dirección', color:'#39ff14', position:{ x:0, y:0 }, required:isBusinessScope },
+    operations && { id:'operations', contactId:operations.id, label:operations.nombre, role:operationsRole, area:'Operaciones', color:'#22c55e', position:{ x:0, y:180 }, required:isBusinessScope },
     supervisor && { id:'supervisor', contactId:supervisor.id, label:supervisor.nombre, role:isEscalas ? 'Supervisión de Operaciones – Escalas' : isDiningGroup ? 'Supervisión de Comedores' : 'Supervisión Operativa', area:'Operaciones', color:'#22c55e', position:{ x:0, y:360 } },
     commercial && { id:'commercial', contactId:commercial.id, label:commercial.nombre, role:'Comercial y Facturación', area:'Administración', color:'#38bdf8', position:{ x:330, y:0 } },
-    quality && { id:'quality', contactId:quality.id, label:quality.nombre, role:'Dirección Técnica de Calidad', area:'Calidad', color:'#f59e0b', position:{ x:330, y:180 } },
+    quality && { id:'quality', contactId:quality.id, label:quality.nombre, role:'Dirección Técnica de Calidad', area:'Calidad transversal', color:'#f59e0b', position:{ x:330, y:180 }, required:isBusinessScope },
     ...sedes.map((sede, index) => {
       const siteAssignments = assignments.filter(a => String(a.sede_id) === String(sede.id))
       const primary = siteAssignments.find(a => hasAny(a.rol, ['responsable','jefe','encargado'])) || siteAssignments[0]
@@ -508,25 +522,33 @@ export default function OrganigramaView({ onNavigate }) {
       }
     }),
   ].filter(Boolean)
-  const designerEdges = orgEdges.map(edge => ({
-    id:`${edge.from}-${edge.to}`,
+  const designerEdges = orgEdges.map(edge => {
+    const id = `${edge.from}-${edge.to}`
+    const relationType = edge.functional ? 'funcional' : edge.support ? 'apoyo' : 'jerarquica'
+    const color = edge.functional ? '#38bdf8' : edge.support ? '#f59e0b' : '#39ff14'
+    return {
+    id,
     source:edge.from,
     target:edge.to,
     type:'smoothstep',
     animated:false,
-    style:{ stroke:edge.support ? '#f59e0b' : '#39ff14', strokeWidth:1.7, strokeDasharray:edge.support ? '6 5' : undefined },
-  }))
+    required:isBusinessScope && ['executive-operations','executive-quality','quality-operations'].includes(id),
+    data:{ relationType, lineStyle:edge.functional || edge.support ? 'dashed' : 'solid', color, width:1.7, arrow:!edge.functional },
+    markerEnd:edge.functional ? undefined : { type:'arrowclosed', color },
+    style:{ stroke:color, strokeWidth:1.7, strokeDasharray:edge.functional || edge.support ? '6 5' : undefined },
+  }})
   const vanesa = data.contactos.find(contact => hasAny(contact.nombre, ['vanesa ledesma']))
   const vanesaNodeId = vanesa?.id ? `contact:${vanesa.id}` : 'central:vanesa'
+  const scopeId = (terms, fallback) => String(data.grupos.find(group => hasAny(group.nombre, terms))?.id || fallback)
   const centralUnitSeeds = [
     { id:vanesaNodeId, contactId:vanesa?.id || null, label:vanesa?.nombre || 'Vanesa Ledesma', role:vanesa?.cargo || 'Responsable', area:'Operaciones', color:'#22c55e', position:{ x:-520, y:360 }, required:true },
-    { id:'unit:production-cordoba', label:'Planta de Producción Córdoba', role:'Unidad operativa', area:'Responsable: Vanesa Ledesma', entityType:'unidad', linkedScope:'__planta__', color:'#c084fc', position:{ x:-650, y:600 }, required:true },
-    { id:'unit:cci', label:'CCI', role:'Unidad operativa', area:'Responsable: Vanesa Ledesma', entityType:'unidad', linkedScope:'__cci__', color:'#c084fc', position:{ x:-370, y:600 }, required:true },
-    { id:'unit:airports', label:'Aeropuertos', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:String(data.grupos.find(group => !String(group.id).startsWith('__') && isAirportGroupName(group.nombre))?.id || '__escalas__'), color:'#22c55e', position:{ x:-140, y:600 }, required:true },
-    { id:'unit:hospitals', label:'Hospitales', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__hospitales__', color:'#f59e0b', position:{ x:140, y:600 }, required:true },
-    { id:'unit:education', label:'Educación', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__educacion__', color:'#38bdf8', position:{ x:420, y:600 }, required:true },
-    { id:'unit:dining', label:'Comedores', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__comedores__', color:'#a3e635', position:{ x:700, y:600 }, required:true },
-    { id:'unit:restaurants', label:'Restaurantes', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:'__restaurantes__', color:'#fb7185', position:{ x:980, y:600 }, required:true },
+    { id:'unit:production-cordoba', label:'Planta de Producción Córdoba', role:'Unidad operativa', area:'Responsable: Vanesa Ledesma', entityType:'unidad', linkedScope:scopeId(['planta de produccion'], '__planta__'), color:'#c084fc', position:{ x:-650, y:600 }, required:true },
+    { id:'unit:cci', label:'CCI', role:'Unidad operativa', area:'Responsable: Vanesa Ledesma', entityType:'unidad', linkedScope:scopeId(['cci'], '__cci__'), color:'#c084fc', position:{ x:-370, y:600 }, required:true },
+    { id:'unit:airports', label:'Aeropuertos', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:scopeId(['aeropuerto','escala'], '__aeropuertos__'), color:'#22c55e', position:{ x:-140, y:600 }, required:true },
+    { id:'unit:hospitals', label:'Hospitales', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:scopeId(['hospital'], '__hospitales__'), color:'#f59e0b', position:{ x:140, y:600 }, required:true },
+    { id:'unit:education', label:'Educación', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:scopeId(['educacion'], '__educacion__'), color:'#38bdf8', position:{ x:420, y:600 }, required:true },
+    { id:'unit:dining', label:'Comedores', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:scopeId(['comedor'], '__comedores__'), color:'#a3e635', position:{ x:700, y:600 }, required:true },
+    { id:'unit:restaurants', label:'Restaurantes', role:'Unidad de negocio', area:'Responsable: Nicolás Vitale', entityType:'unidad', linkedScope:scopeId(['restaurante','restaurant'], '__restaurantes__'), color:'#fb7185', position:{ x:980, y:600 }, required:true },
   ]
   const centralUnitIds = centralUnitSeeds.filter(seed => seed.entityType === 'unidad').map(seed => seed.id)
   const centralUnitEdges = [

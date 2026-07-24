@@ -5,6 +5,27 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-24 · Codex — visor full-screen, herencia y PDF de organigramas
+
+- Se separó la consulta de la edición: cada organigrama ofrece `Ver pantalla completa`
+  para todos los perfiles y `Editar` únicamente para admin.
+- El visor full-screen reencuadra automáticamente al abrir/cargar datos y suma un botón
+  manual `Encuadrar`, corrigiendo la vista vacía o excesivamente alejada del resumen.
+- Se agregó exportación PDF A4 apaisada con título, fecha y el paño completo encuadrado.
+  Usa `html2canvas@1.4.1` y `jspdf`; el nombre del archivo se normaliza sin acentos.
+- El selector consolida categorías duplicadas y conserva el ID del grupo natural cuando
+  existe, para no perder organigramas ya publicados. Quedan Global, Equipo central,
+  Aeropuertos, Hospitales, Educación, Comedores, Planta, CCI y Restaurantes más grupos
+  verdaderamente adicionales.
+- Los organigramas operativos heredan como nodos obligatorios a Dirección General,
+  Nicolás o Vanesa según corresponda y Calidad transversal. Los layouts publicados
+  previamente conservan sus tarjetas y posiciones.
+- Vanesa rige Planta Córdoba y CCI; Nicolás el resto; Débora se vincula funcionalmente
+  con línea punteada y permanece al mismo nivel.
+- No requiere SQL. `npm run check` aprobado: 19 archivos/70 tests, lint sin errores y
+  build Vite correcto. Auditoría de dependencias de producción: 0 vulnerabilidades.
+- Cambios locales pendientes de commit y publicación.
+
 ## 2026-07-24 · Codex — unidades operativas bajo Equipo central
 
 - El organigrama global queda reducido a `Fly Kitchen → Equipo central`; las unidades

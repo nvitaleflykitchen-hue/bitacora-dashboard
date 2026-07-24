@@ -5,11 +5,12 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {
-  ArrowLeft, Eye, LayoutDashboard, Maximize2, Plus, Redo2, Save, Search,
+  ArrowLeft, Download, Eye, LayoutDashboard, Maximize2, Pencil, Plus, Redo2, Save, Search,
   Trash2, Undo2, Users, X,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { loadSharedOrganigrama, publishSharedOrganigrama, saveSharedOrganigramaDraft } from '../lib/organigramaStore'
+import { exportOrganigramaPdf } from '../lib/organigramaPdf'
 
 const COLORS = {
   direccion:'#39ff14',
@@ -131,7 +132,7 @@ export function autoLayout(nodes, edges) {
 }
 
 export default function OrganigramaDesigner({ groupId, groupName, seeds, seedEdges, contacts, canEdit, onOpenScope, showGlobalBreadcrumb }) {
-  const [open, setOpen] = useState(false)
+  const [openMode, setOpenMode] = useState(null)
   const readPublished = useCallback(() => {
     try { return JSON.parse(localStorage.getItem(storageKey(groupId, 'published')) || 'null') } catch { return null }
   }, [groupId])
@@ -158,18 +159,21 @@ export default function OrganigramaDesigner({ groupId, groupName, seeds, seedEdg
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <p className="font-title font-bold" style={{ color:'var(--text)' }}>ORGANIGRAMA · {groupName}</p>
-            <p style={{ color:'var(--text-dim)', fontSize:'.67rem', marginTop:4 }}>Vista publicada. Abrí el diseñador para trabajar sin distracciones.</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'.67rem', marginTop:4 }}>Vista publicada. Abrila en pantalla completa para recorrerla o descargarla en PDF.</p>
           </div>
-          <button type="button" className={canEdit ? 'btn-primary' : 'btn-ghost'} onClick={() => setOpen(true)}><Maximize2 size={14}/> {canEdit ? 'ABRIR DISEÑADOR' : 'VER EN PANTALLA COMPLETA'}</button>
+          <div className="flex gap-2">
+            <button type="button" className="btn-ghost" onClick={() => setOpenMode('view')}><Maximize2 size={14}/> VER PANTALLA COMPLETA</button>
+            {canEdit && <button type="button" className="btn-primary" onClick={() => setOpenMode('edit')}><Pencil size={14}/> EDITAR</button>}
+          </div>
         </div>
-        <div style={{ height:520, marginTop:14, border:'1px solid rgba(255,255,255,.06)', borderRadius:6, overflow:'hidden' }}>
-          <ReactFlow nodes={previewNodes.map(node => ({ ...node, draggable:false, selectable:false }))} edges={previewEdges} nodeTypes={nodeTypes} fitView nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} panOnScroll zoomOnScroll onNodeDoubleClick={(_, node) => node.data.linkedScope && onOpenScope?.(node.data.linkedScope)}>
+        <div style={{ height:360, marginTop:14, border:'1px solid rgba(255,255,255,.06)', borderRadius:6, overflow:'hidden' }}>
+          <ReactFlow key={`${groupId}:${previewNodes.length}:${previewEdges.length}`} nodes={previewNodes.map(node => ({ ...node, draggable:false, selectable:false }))} edges={previewEdges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding:.18 }} nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} panOnScroll zoomOnScroll onNodeDoubleClick={(_, node) => node.data.linkedScope && onOpenScope?.(node.data.linkedScope)}>
             <Background color="rgba(57,255,20,.12)" gap={24}/>
             <Controls showInteractive={false}/>
           </ReactFlow>
         </div>
       </div>
-      {open && <DesignerWorkspace key={groupId} groupId={groupId} groupName={groupName} seeds={seeds} seedEdges={seedEdges} contacts={contacts} canEdit={canEdit} onClose={() => setOpen(false)} onPublished={() => setPublished(readPublished())} onOpenScope={onOpenScope} showGlobalBreadcrumb={showGlobalBreadcrumb}/>}
+      {openMode && <DesignerWorkspace key={`${groupId}:${openMode}`} groupId={groupId} groupName={groupName} seeds={seeds} seedEdges={seedEdges} contacts={contacts} canEdit={openMode === 'edit' && canEdit} onClose={() => setOpenMode(null)} onPublished={() => setPublished(readPublished())} onOpenScope={onOpenScope} showGlobalBreadcrumb={showGlobalBreadcrumb}/>}
     </>
   )
 }
@@ -193,6 +197,10 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   const [sharedVersion, setSharedVersion] = useState(0)
   const history = useRef([{ nodes:initial.nodes, edges:initial.edges }])
   const historyIndex = useRef(0)
+  const flowRef = useRef(null)
+  const canvasRef = useRef(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -211,6 +219,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
         setEdges(merged.edges)
         history.current = [{ nodes:merged.nodes, edges:merged.edges }]
         historyIndex.current = 0
+        window.setTimeout(() => flowRef.current?.fitView({ padding:.14, duration:250 }), 0)
       }
     }).catch(() => setSyncState('error'))
     return () => { active = false }
@@ -316,6 +325,21 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
       setSyncState('error')
     }
   }
+  const fitCanvas = () => flowRef.current?.fitView({ padding:.14, duration:300 })
+  const exportPdf = async () => {
+    if (exporting) return
+    setExportError('')
+    setExporting(true)
+    try {
+      await flowRef.current?.fitView({ padding:.12, duration:0 })
+      await new Promise(resolve => window.setTimeout(resolve, 180))
+      await exportOrganigramaPdf({ element:canvasRef.current, name:groupName })
+    } catch (error) {
+      setExportError(error.message || 'No se pudo generar el PDF.')
+    } finally {
+      setExporting(false)
+    }
+  }
   const selected = nodes.find(node => node.id === selectedId)
   const usedContactIds = new Set(nodes.map(node => node.data.contactId).filter(Boolean).map(String))
   const available = contacts.filter(contact => !usedContactIds.has(String(contact.id)) && `${contact.nombre} ${contact.cargo || ''}`.toLowerCase().includes(query.toLowerCase()))
@@ -338,7 +362,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
       <header style={{ display:'flex', alignItems:'center', gap:10, padding:'0 14px', borderBottom:'1px solid rgba(57,255,20,.14)', background:'#14161b' }}>
         <button type="button" className="btn-ghost" onClick={onClose}><ArrowLeft size={14}/> VOLVER</button>
         <div style={{ minWidth:0 }}>
-          <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'.84rem' }}>DISEÑADOR DE ORGANIGRAMA</p>
+          <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'.84rem' }}>{canEdit ? 'DISEÑADOR' : 'VISOR'} DE ORGANIGRAMA</p>
           <div className="flex items-center gap-1" style={{ marginTop:2 }}>
             {showGlobalBreadcrumb && <><button type="button" onClick={() => onOpenScope?.('__global__')} style={{ color:'var(--phosphor)', fontSize:'.57rem', padding:0 }}>FLY KITCHEN</button><span style={{ color:'var(--text-dim)', fontSize:'.57rem' }}>›</span></>}
             <span style={{ color:'var(--text-dim)', fontSize:'.57rem' }}>{groupName}</span>
@@ -347,8 +371,11 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             {dirty ? 'CAMBIOS SIN GUARDAR' : 'SIN CAMBIOS'}
             {' · '}{syncState === 'shared' ? `COMPARTIDO${sharedVersion ? ` · V${sharedVersion}` : ''}` : syncState === 'saving' ? 'GUARDANDO…' : syncState === 'error' ? 'ERROR DE SINCRONIZACIÓN' : 'GUARDADO EN ESTE DISPOSITIVO'}
           </p>
+          {exportError && <p style={{ color:'#ff6060', fontSize:'.56rem', marginTop:2 }}>{exportError}</p>}
         </div>
         <div className="flex gap-2" style={{ marginLeft:'auto' }}>
+          <button type="button" className="btn-ghost" onClick={fitCanvas}><Maximize2 size={14}/> ENCUADRAR</button>
+          <button type="button" className="btn-ghost" onClick={exportPdf} disabled={exporting}><Download size={14}/> {exporting ? 'GENERANDO…' : 'PDF'}</button>
           {canEdit && <button type="button" className="btn-ghost" onClick={undo} title="Deshacer"><Undo2 size={14}/></button>}
           {canEdit && <button type="button" className="btn-ghost" onClick={redo} title="Rehacer"><Redo2 size={14}/></button>}
           {canEdit && <button type="button" className="btn-ghost" onClick={() => commit(autoLayout(nodes, edges), edges)}><LayoutDashboard size={14}/> ORDENAR</button>}
@@ -368,7 +395,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             {available.map(contact => <button key={contact.id} type="button" onClick={() => addPerson(contact)} className="glass" style={{ textAlign:'left', padding:'9px 10px', border:'1px solid rgba(255,255,255,.07)' }}><p style={{ color:'var(--text)', fontSize:'.68rem', fontWeight:700 }}>{contact.nombre}</p><p style={{ color:'var(--text-dim)', fontSize:'.57rem', marginTop:3 }}>{contact.cargo || 'Sin cargo'} <Plus size={11} style={{ float:'right', color:'var(--phosphor)' }}/></p></button>)}
           </div>
         </aside>}
-        <main style={{ minWidth:0, minHeight:0 }}>
+        <main ref={canvasRef} style={{ minWidth:0, minHeight:0, background:'#0a0b0f' }}>
           <ReactFlow
             nodes={nodes.map(node => ({ ...node, draggable:canEdit, connectable:canEdit }))}
             edges={edges}
@@ -393,6 +420,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             minZoom={0.15}
             maxZoom={2}
             defaultEdgeOptions={{ type:'smoothstep', markerEnd:{ type:MarkerType.ArrowClosed }, style:{ stroke:'#39ff14', strokeWidth:1.7 } }}
+            onInit={instance => { flowRef.current = instance; window.setTimeout(() => instance.fitView({ padding:.14, duration:250 }), 0) }}
           >
             <Background color="rgba(57,255,20,.13)" gap={24}/>
             <Controls/>
