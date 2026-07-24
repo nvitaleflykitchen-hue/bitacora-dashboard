@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Building2, ExternalLink, Loader2, Mail, MessageCircle, Network, Phone, RefreshCw, Users } from 'lucide-react'
+import { Building2, ExternalLink, GripVertical, LayoutDashboard, Loader2, Lock, Mail, MessageCircle, Network, Phone, RefreshCw, Save, Unlock, Users } from 'lucide-react'
 import { getAllSedeContactos, getContactos, getGrupos, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 
@@ -118,6 +118,154 @@ function SedeNode({ sede, assignments, fallbackOwner, excludedContactIds = new S
   )
 }
 
+const NODE_WIDTH = 250
+const PERSON_HEIGHT = 132
+const SEDE_HEIGHT = 190
+
+function layoutKey(groupId) {
+  return `flygestion:organigrama-layout:${groupId || 'general'}`
+}
+
+function makeDefaultLayout(nodeIds, sedeIds) {
+  const width = Math.max(1120, sedeIds.length * 270 + 120)
+  const center = Math.round(width / 2 - NODE_WIDTH / 2)
+  const positions = {
+    executive: { x:center, y:30 },
+    operations: { x:center, y:205 },
+    supervisor: { x:center, y:380 },
+    commercial: { x:center + 350, y:30 },
+    quality: { x:center + 350, y:205 },
+  }
+  sedeIds.forEach((id, index) => {
+    const rowWidth = sedeIds.length * 270
+    positions[id] = { x:Math.round((width - rowWidth) / 2 + index * 270 + 10), y:570 }
+  })
+  return {
+    width,
+    height: Math.max(820, 570 + Math.ceil(sedeIds.length / 5) * 220),
+    positions: Object.fromEntries(nodeIds.filter(id => positions[id]).map(id => [id, positions[id]])),
+  }
+}
+
+function connectionPath(from, to) {
+  const startX = from.x + NODE_WIDTH / 2
+  const startY = from.y + from.height
+  const endX = to.x + NODE_WIDTH / 2
+  const endY = to.y
+  const middleY = startY + Math.max(24, (endY - startY) / 2)
+  return `M ${startX} ${startY} V ${middleY} H ${endX} V ${endY}`
+}
+
+function OrgCanvas({ nodes, edges, groupId, editable }) {
+  const nodeIds = useMemo(() => nodes.map(node => node.id), [nodes])
+  const sedeIds = useMemo(() => nodes.filter(node => node.kind === 'sede').map(node => node.id), [nodes])
+  const defaults = useMemo(() => makeDefaultLayout(nodeIds, sedeIds), [nodeIds, sedeIds])
+  const [editing, setEditing] = useState(false)
+  const [positions, setPositions] = useState(defaults.positions)
+  const [saved, setSaved] = useState(true)
+
+  useEffect(() => {
+    let next = defaults.positions
+    try {
+      const stored = JSON.parse(localStorage.getItem(layoutKey(groupId)) || 'null')
+      if (stored?.positions) next = { ...defaults.positions, ...stored.positions }
+    } catch {
+      // Si el layout local se corrompe, se vuelve al orden automático.
+    }
+    setPositions(next)
+    setSaved(true)
+    setEditing(false)
+  }, [defaults.positions, groupId])
+
+  const save = () => {
+    localStorage.setItem(layoutKey(groupId), JSON.stringify({ positions, updatedAt:new Date().toISOString() }))
+    setSaved(true)
+  }
+
+  const autoArrange = () => {
+    setPositions(defaults.positions)
+    setSaved(false)
+  }
+
+  const beginDrag = (event, nodeId) => {
+    if (!editing || event.button !== 0 || event.target.closest('a,button,input,select')) return
+    event.preventDefault()
+    const origin = positions[nodeId] || { x:0, y:0 }
+    const startX = event.clientX
+    const startY = event.clientY
+    const move = moveEvent => {
+      setPositions(current => ({
+        ...current,
+        [nodeId]: {
+          x:Math.max(8, origin.x + moveEvent.clientX - startX),
+          y:Math.max(8, origin.y + moveEvent.clientY - startY),
+        },
+      }))
+      setSaved(false)
+    }
+    const end = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+  }
+
+  const visibleNodes = nodes.filter(node => positions[node.id])
+  const positioned = Object.fromEntries(visibleNodes.map(node => [
+    node.id,
+    { ...positions[node.id], height:node.kind === 'sede' ? SEDE_HEIGHT : PERSON_HEIGHT },
+  ]))
+
+  return (
+    <section>
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+        <p style={{ color:'var(--text-dim)', fontSize:'0.64rem' }}>
+          {editing ? 'Arrastrá cualquier tarjeta. Las conexiones acompañan el movimiento.' : 'Vista interactiva: desplazate horizontalmente para recorrer toda la estructura.'}
+        </p>
+        {editable && (
+          <div className="flex gap-2">
+            {editing && <button type="button" className="btn-ghost" onClick={autoArrange}><LayoutDashboard size={13}/> ORDENAR</button>}
+            {editing && <button type="button" className="btn-ghost" onClick={save} disabled={saved}><Save size={13}/> {saved ? 'GUARDADO' : 'GUARDAR'}</button>}
+            <button type="button" className={editing ? 'btn-primary' : 'btn-ghost'} onClick={() => setEditing(value => !value)}>
+              {editing ? <Unlock size={13}/> : <Lock size={13}/>} {editing ? 'TERMINAR EDICIÓN' : 'EDITAR ORGANIGRAMA'}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="glass" style={{ overflow:'auto', border:'1px solid rgba(57,255,20,.13)', borderRadius:6, background:'radial-gradient(circle at center, rgba(57,255,20,.035), transparent 52%), #101116' }}>
+        <div style={{ position:'relative', width:defaults.width, height:defaults.height, minHeight:700 }}>
+          <svg width={defaults.width} height={defaults.height} style={{ position:'absolute', inset:0, pointerEvents:'none', overflow:'visible' }} aria-hidden="true">
+            {edges.map(edge => {
+              const from = positioned[edge.from]
+              const to = positioned[edge.to]
+              if (!from || !to) return null
+              return <path key={`${edge.from}-${edge.to}`} d={connectionPath(from, to)} fill="none" stroke={edge.support ? 'rgba(245,158,11,.5)' : 'rgba(57,255,20,.42)'} strokeWidth="2" strokeDasharray={edge.support ? '6 6' : undefined}/>
+            })}
+          </svg>
+          {visibleNodes.map(node => {
+            const position = positioned[node.id]
+            return (
+              <div
+                key={node.id}
+                onPointerDown={event => beginDrag(event, node.id)}
+                style={{
+                  position:'absolute', left:position.x, top:position.y, width:NODE_WIDTH,
+                  cursor:editing ? 'grab' : 'default', userSelect:editing ? 'none' : 'auto',
+                  zIndex:2, touchAction:editing ? 'none' : 'auto',
+                }}
+              >
+                {editing && <div className="font-metric" style={{ position:'absolute', zIndex:4, right:7, top:7, display:'flex', alignItems:'center', gap:4, color:'var(--phosphor)', fontSize:'0.55rem', background:'rgba(5,8,7,.84)', padding:'4px 6px', borderRadius:4 }}><GripVertical size={12}/> MOVER</div>}
+                {node.content}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function OrganigramaView({ onNavigate }) {
   const { allowedSedeIds, rol } = useAuth()
   const [data, setData] = useState({ grupos:[], sedes:[], assignments:[], contactos:[] })
@@ -207,6 +355,28 @@ export default function OrganigramaView({ onNavigate }) {
     onNavigate?.('sedesHub')
   }
 
+  const canEditOrganigrama = rol === 'admin'
+  const orgNodes = [
+    executive && { id:'executive', kind:'person', content:<PersonNode title="DIRECCIÓN GENERAL" contact={executive}/> },
+    operations && { id:'operations', kind:'person', content:<PersonNode title="JEFATURA DE PLANTA" contact={operations}/> },
+    supervisor && { id:'supervisor', kind:'person', content:<PersonNode title={isEscalas ? 'SUPERVISIÓN DE OPERACIONES – ESCALAS' : isDiningGroup ? 'SUPERVISIÓN DE COMEDORES' : 'SUPERVISIÓN OPERATIVA'} contact={supervisor}/> },
+    commercial && { id:'commercial', kind:'person', content:<PersonNode title="COMERCIAL Y FACTURACIÓN" contact={commercial} tone="support"/> },
+    quality && { id:'quality', kind:'person', content:<PersonNode title="DIRECCIÓN TÉCNICA DE CALIDAD" contact={quality} tone="support"/> },
+    ...sedes.map(sede => ({
+      id:`sede:${sede.id}`,
+      kind:'sede',
+      content:<SedeNode sede={sede} assignments={assignments.filter(a => String(a.sede_id) === String(sede.id))} fallbackOwner={isEscalas ? ESCALAS_REFERENCE.siteOwners.find(owner => norm(sede.nombre).includes(owner.match)) : null} excludedContactIds={supervisorContactIds} onOpen={openSede}/>,
+    })),
+  ].filter(Boolean)
+  const operationalParent = supervisor ? 'supervisor' : operations ? 'operations' : 'executive'
+  const orgEdges = [
+    executive && operations && { from:'executive', to:'operations' },
+    executive && commercial && { from:'executive', to:'commercial', support:true },
+    operations && quality && { from:'operations', to:'quality', support:true },
+    operations && supervisor && { from:'operations', to:'supervisor' },
+    ...sedes.map(sede => ({ from:operationalParent, to:`sede:${sede.id}` })),
+  ].filter(Boolean)
+
   if (loading) return <div className="flex-1 grid place-items-center"><Loader2 size={22} className="animate-spin" style={{ color:'var(--phosphor)' }}/></div>
 
   return (
@@ -227,7 +397,14 @@ export default function OrganigramaView({ onNavigate }) {
       {error && <div style={{ color:'#ff6060', border:'1px solid rgba(255,80,80,.25)', background:'rgba(255,80,80,.08)', padding:'0.7rem', fontSize:'0.72rem' }}>{error}</div>}
       {warning && <div style={{ color:'#f59e0b', border:'1px solid rgba(245,158,11,.25)', background:'rgba(245,158,11,.07)', padding:'0.65rem', fontSize:'0.68rem', marginBottom:'1rem' }}>{warning}</div>}
 
-      {!error && data.grupos.length > 0 && (
+      {!error && data.grupos.length > 0 && sedes.length > 0 && (
+        <OrgCanvas nodes={orgNodes} edges={orgEdges} groupId={groupId} editable={canEditOrganigrama}/>
+      )}
+      {!error && data.grupos.length > 0 && sedes.length === 0 && (
+        <div className="glass" style={{ textAlign:'center', padding:'2rem', color:'var(--text-dim)', fontSize:'0.75rem' }}>Este grupo todavía no tiene sedes asignadas.</div>
+      )}
+
+      {data.grupos.length === -1 && (
         <div style={{ minWidth:900, paddingBottom:'2rem' }}>
           <div style={{ display:'grid', gridTemplateColumns:'280px 280px 280px', justifyContent:'center', alignItems:'center', columnGap:28 }}>
             <div/>

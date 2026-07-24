@@ -5,6 +5,22 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-24 · Codex — editor visual de organigrama
+
+- `src/views/OrganigramaView.jsx` convierte la vista estática en un lienzo interactivo.
+- Únicamente admin puede activar el modo edición, arrastrar responsables y sedes, ordenar
+  automáticamente y guardar una distribución diferente por grupo.
+- Las líneas jerárquicas y las conexiones de apoyo se recalculan mientras se mueve cada
+  tarjeta. El resto de los perfiles conserva una vista de solo lectura.
+- La primera versión guarda las posiciones en `localStorage`; no modifica responsables,
+  fichas, sedes, permisos ni datos de Supabase.
+- Verificación: ESLint específico sin errores, 17 archivos/65 tests aprobados y build
+  Vite de producción aprobado.
+- Pendiente: validación visual dentro de una sesión autenticada y, si se requiere que la
+  disposición sea compartida entre usuarios, diseñar/aprobar una tabla de layout en
+  Supabase antes de aplicar SQL.
+- Sin commit, push, deploy ni cambios remotos.
+
 ## 2026-07-22 · Codex — selector válido en alta móvil de Compras
 
 - `MobileRequerimientos.jsx` reemplaza el texto libre de `tipo_compra` por un selector
