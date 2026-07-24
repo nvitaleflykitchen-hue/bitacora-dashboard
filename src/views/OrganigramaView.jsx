@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Building2, ExternalLink, GripVertical, LayoutDashboard, Loader2, Lock, Mail, MessageCircle, Network, Phone, Plus, RefreshCw, Save, Trash2, Unlock, Users } from 'lucide-react'
 import { getAllSedeContactos, getContactos, getGrupos, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
+import OrganigramaDesigner from '../components/OrganigramaDesigner'
 
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
@@ -462,6 +463,35 @@ export default function OrganigramaView({ onNavigate }) {
     operations && supervisor && { from:'operations', to:'supervisor' },
     ...sedes.map(sede => ({ from:operationalParent, to:`sede:${sede.id}` })),
   ].filter(Boolean)
+  const designerSeeds = [
+    executive && { id:'executive', contactId:executive.id, label:executive.nombre, role:'Dirección General', area:'Dirección', color:'#39ff14', position:{ x:0, y:0 } },
+    operations && { id:'operations', contactId:operations.id, label:operations.nombre, role:'Jefatura de Planta', area:'Operaciones', color:'#22c55e', position:{ x:0, y:180 } },
+    supervisor && { id:'supervisor', contactId:supervisor.id, label:supervisor.nombre, role:isEscalas ? 'Supervisión de Operaciones – Escalas' : isDiningGroup ? 'Supervisión de Comedores' : 'Supervisión Operativa', area:'Operaciones', color:'#22c55e', position:{ x:0, y:360 } },
+    commercial && { id:'commercial', contactId:commercial.id, label:commercial.nombre, role:'Comercial y Facturación', area:'Administración', color:'#38bdf8', position:{ x:330, y:0 } },
+    quality && { id:'quality', contactId:quality.id, label:quality.nombre, role:'Dirección Técnica de Calidad', area:'Calidad', color:'#f59e0b', position:{ x:330, y:180 } },
+    ...sedes.map((sede, index) => {
+      const siteAssignments = assignments.filter(a => String(a.sede_id) === String(sede.id))
+      const primary = siteAssignments.find(a => hasAny(a.rol, ['responsable','jefe','encargado'])) || siteAssignments[0]
+      return {
+        id:`sede:${sede.id}`,
+        contactId:primary?.contactos?.id || null,
+        label:primary?.contactos?.nombre || sede.nombre,
+        role:primary?.rol || 'Responsable de sede',
+        area:sede.nombre,
+        entityType:'sede',
+        color:'#a3e635',
+        position:{ x:(index - (sedes.length - 1) / 2) * 290, y:560 },
+      }
+    }),
+  ].filter(Boolean)
+  const designerEdges = orgEdges.map(edge => ({
+    id:`${edge.from}-${edge.to}`,
+    source:edge.from,
+    target:edge.to,
+    type:'smoothstep',
+    animated:false,
+    style:{ stroke:edge.support ? '#f59e0b' : '#39ff14', strokeWidth:1.7, strokeDasharray:edge.support ? '6 5' : undefined },
+  }))
 
   if (loading) return <div className="flex-1 grid place-items-center"><Loader2 size={22} className="animate-spin" style={{ color:'var(--phosphor)' }}/></div>
 
@@ -484,7 +514,14 @@ export default function OrganigramaView({ onNavigate }) {
       {warning && <div style={{ color:'#f59e0b', border:'1px solid rgba(245,158,11,.25)', background:'rgba(245,158,11,.07)', padding:'0.65rem', fontSize:'0.68rem', marginBottom:'1rem' }}>{warning}</div>}
 
       {!error && data.grupos.length > 0 && sedes.length > 0 && (
-        <OrgCanvas nodes={orgNodes} edges={orgEdges} groupId={groupId} editable={canEditOrganigrama} availableContacts={data.contactos}/>
+        <OrganigramaDesigner
+          groupId={groupId}
+          groupName={displayGroupName(selectedGroup?.nombre || 'General')}
+          seeds={designerSeeds}
+          seedEdges={designerEdges}
+          contacts={data.contactos}
+          canEdit={canEditOrganigrama}
+        />
       )}
       {!error && data.grupos.length > 0 && sedes.length === 0 && (
         <div className="glass" style={{ textAlign:'center', padding:'2rem', color:'var(--text-dim)', fontSize:'0.75rem' }}>Este grupo todavía no tiene sedes asignadas.</div>

@@ -1,0 +1,347 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Background, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow,
+  addEdge, applyEdgeChanges, applyNodeChanges,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import {
+  ArrowLeft, Eye, LayoutDashboard, Maximize2, Plus, Redo2, Save, Search,
+  Trash2, Undo2, Users, X,
+} from 'lucide-react'
+import { useAuth } from '../lib/auth'
+import { loadSharedOrganigrama, publishSharedOrganigrama, saveSharedOrganigramaDraft } from '../lib/organigramaStore'
+
+const COLORS = {
+  direccion:'#39ff14',
+  operaciones:'#22c55e',
+  calidad:'#f59e0b',
+  soporte:'#38bdf8',
+  sede:'#a3e635',
+}
+
+const storageKey = (groupId, state) => `flygestion:org-designer:${groupId || 'general'}:${state}`
+
+function nodeFromSeed(seed, index) {
+  return {
+    id:seed.id,
+    type:'orgCard',
+    position:seed.position || { x:80 + (index % 4) * 290, y:80 + Math.floor(index / 4) * 190 },
+    data:{
+      label:seed.label || 'Sin asignar',
+      role:seed.role || 'Responsable',
+      area:seed.area || '',
+      contactId:seed.contactId || null,
+      entityType:seed.entityType || 'persona',
+      color:seed.color || COLORS[seed.entityType === 'sede' ? 'sede' : 'operaciones'],
+    },
+  }
+}
+
+function OrgCard({ data, selected }) {
+  return (
+    <article style={{
+      width:240, minHeight:108, padding:'14px 16px', borderRadius:8,
+      border:`2px solid ${selected ? data.color : `${data.color}66`}`,
+      background:'linear-gradient(145deg, rgba(28,30,36,.98), rgba(15,17,21,.98))',
+      boxShadow:selected ? `0 0 0 3px ${data.color}22, 0 12px 30px rgba(0,0,0,.4)` : '0 8px 22px rgba(0,0,0,.28)',
+      color:'var(--text)',
+    }}>
+      <Handle type="target" position={Position.Top} style={{ width:10, height:10, background:data.color, border:'2px solid #101116' }}/>
+      <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+        <div style={{ width:34, height:34, borderRadius:8, display:'grid', placeItems:'center', color:data.color, background:`${data.color}16`, border:`1px solid ${data.color}55` }}>
+          <Users size={16}/>
+        </div>
+        <div style={{ minWidth:0 }}>
+          <p style={{ fontWeight:800, fontSize:'.78rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{data.label}</p>
+          <p className="font-metric" style={{ color:data.color, fontSize:'.56rem', marginTop:4, letterSpacing:'.06em' }}>{data.role}</p>
+          {data.area && <p style={{ color:'var(--text-dim)', fontSize:'.6rem', marginTop:4 }}>{data.area}</p>}
+        </div>
+      </div>
+      <Handle type="source" position={Position.Bottom} style={{ width:10, height:10, background:data.color, border:'2px solid #101116' }}/>
+    </article>
+  )
+}
+
+const nodeTypes = { orgCard:OrgCard }
+
+export function wouldCreateCycle(connection, nodes, edges) {
+  if (!connection.source || !connection.target || connection.source === connection.target) return true
+  const adjacency = new Map()
+  ;[...edges, connection].forEach(edge => {
+    const list = adjacency.get(edge.source) || []
+    list.push(edge.target)
+    adjacency.set(edge.source, list)
+  })
+  const seen = new Set()
+  const visit = id => {
+    if (id === connection.source && seen.size) return true
+    if (seen.has(id)) return false
+    seen.add(id)
+    return (adjacency.get(id) || []).some(visit)
+  }
+  return visit(connection.target) || !nodes.some(node => node.id === connection.target)
+}
+
+export function autoLayout(nodes, edges) {
+  const children = new Map()
+  const targets = new Set(edges.map(edge => edge.target))
+  edges.forEach(edge => children.set(edge.source, [...(children.get(edge.source) || []), edge.target]))
+  const roots = nodes.filter(node => !targets.has(node.id))
+  const levels = []
+  const queue = roots.map(node => ({ id:node.id, level:0 }))
+  const visited = new Set()
+  while (queue.length) {
+    const current = queue.shift()
+    if (visited.has(current.id)) continue
+    visited.add(current.id)
+    ;(levels[current.level] ||= []).push(current.id)
+    ;(children.get(current.id) || []).forEach(id => queue.push({ id, level:current.level + 1 }))
+  }
+  nodes.filter(node => !visited.has(node.id)).forEach(node => (levels[levels.length] ||= []).push(node.id))
+  const positions = new Map()
+  levels.forEach((ids, level) => {
+    const width = ids.length * 290
+    ids.forEach((id, index) => positions.set(id, { x:index * 290 - width / 2, y:level * 180 }))
+  })
+  return nodes.map(node => ({ ...node, position:positions.get(node.id) || node.position }))
+}
+
+export default function OrganigramaDesigner({ groupId, groupName, seeds, seedEdges, contacts, canEdit }) {
+  const [open, setOpen] = useState(false)
+  const readPublished = useCallback(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey(groupId, 'published')) || 'null') } catch { return null }
+  }, [groupId])
+  const [published, setPublished] = useState(readPublished)
+  useEffect(() => {
+    let active = true
+    setPublished(readPublished())
+    loadSharedOrganigrama(groupId)
+      .then(result => {
+        if (active && result.record?.publicado) setPublished(result.record.publicado)
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [groupId, readPublished])
+  const previewNodes = published?.nodes || seeds.map(nodeFromSeed)
+  const previewEdges = published?.edges || seedEdges
+
+  return (
+    <>
+      <div className="glass" style={{ padding:'1rem', border:'1px solid rgba(57,255,20,.14)' }}>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="font-title font-bold" style={{ color:'var(--text)' }}>ORGANIGRAMA · {groupName}</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'.67rem', marginTop:4 }}>Vista publicada. Abrí el diseñador para trabajar sin distracciones.</p>
+          </div>
+          <button type="button" className={canEdit ? 'btn-primary' : 'btn-ghost'} onClick={() => setOpen(true)}><Maximize2 size={14}/> {canEdit ? 'ABRIR DISEÑADOR' : 'VER EN PANTALLA COMPLETA'}</button>
+        </div>
+        <div style={{ height:520, marginTop:14, border:'1px solid rgba(255,255,255,.06)', borderRadius:6, overflow:'hidden' }}>
+          <ReactFlow nodes={previewNodes.map(node => ({ ...node, draggable:false, selectable:false }))} edges={previewEdges} nodeTypes={nodeTypes} fitView nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} panOnScroll zoomOnScroll>
+            <Background color="rgba(57,255,20,.12)" gap={24}/>
+            <Controls showInteractive={false}/>
+          </ReactFlow>
+        </div>
+      </div>
+      {open && <DesignerWorkspace groupId={groupId} groupName={groupName} seeds={seeds} seedEdges={seedEdges} contacts={contacts} canEdit={canEdit} onClose={() => setOpen(false)} onPublished={() => setPublished(readPublished())}/>}
+    </>
+  )
+}
+
+function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, canEdit, onClose, onPublished }) {
+  const { user } = useAuth()
+  const initial = useMemo(() => {
+    const fallback = { nodes:seeds.map(nodeFromSeed), edges:seedEdges }
+    try { return JSON.parse(localStorage.getItem(storageKey(groupId, 'draft')) || 'null') || JSON.parse(localStorage.getItem(storageKey(groupId, 'published')) || 'null') || fallback } catch { return fallback }
+  }, [groupId, seedEdges, seeds])
+  const [nodes, setNodes] = useState(initial.nodes)
+  const [edges, setEdges] = useState(initial.edges)
+  const [selectedId, setSelectedId] = useState(null)
+  const [query, setQuery] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const [syncState, setSyncState] = useState('local')
+  const [sharedVersion, setSharedVersion] = useState(0)
+  const history = useRef([{ nodes:initial.nodes, edges:initial.edges }])
+  const historyIndex = useRef(0)
+
+  useEffect(() => {
+    let active = true
+    loadSharedOrganigrama(groupId).then(result => {
+      if (!active) return
+      if (!result.available) {
+        setSyncState('local')
+        return
+      }
+      setSyncState('shared')
+      setSharedVersion(result.record?.version_publicada || 0)
+      const remote = result.record?.borrador || result.record?.publicado
+      if (remote?.nodes && remote?.edges) {
+        setNodes(remote.nodes)
+        setEdges(remote.edges)
+        history.current = [{ nodes:remote.nodes, edges:remote.edges }]
+        historyIndex.current = 0
+      }
+    }).catch(() => setSyncState('error'))
+    return () => { active = false }
+  }, [groupId])
+
+  const snapshot = useCallback((nextNodes, nextEdges) => {
+    history.current = history.current.slice(0, historyIndex.current + 1)
+    history.current.push({ nodes:nextNodes, edges:nextEdges })
+    historyIndex.current += 1
+    setDirty(true)
+  }, [])
+  const commit = useCallback((nextNodes, nextEdges) => {
+    setNodes(nextNodes); setEdges(nextEdges); snapshot(nextNodes, nextEdges)
+  }, [snapshot])
+  const undo = () => {
+    if (historyIndex.current === 0) return
+    historyIndex.current -= 1
+    const state = history.current[historyIndex.current]
+    setNodes(state.nodes); setEdges(state.edges); setDirty(true)
+  }
+  const redo = () => {
+    if (historyIndex.current >= history.current.length - 1) return
+    historyIndex.current += 1
+    const state = history.current[historyIndex.current]
+    setNodes(state.nodes); setEdges(state.edges); setDirty(true)
+  }
+  const onConnect = connection => {
+    if (!canEdit || wouldCreateCycle(connection, nodes, edges)) return
+    const withoutOldParent = edges.filter(edge => edge.target !== connection.target)
+    commit(nodes, addEdge({ ...connection, type:'smoothstep', markerEnd:{ type:MarkerType.ArrowClosed }, style:{ stroke:'#39ff14' } }, withoutOldParent))
+  }
+  const addPerson = contact => {
+    if (!canEdit || nodes.some(node => node.data.contactId === contact.id)) return
+    const node = nodeFromSeed({ id:`contact:${contact.id}`, contactId:contact.id, label:contact.nombre, role:contact.cargo || 'Responsable', area:contact.area || '', color:COLORS.operaciones }, nodes.length)
+    commit([...nodes, node], edges)
+    setSelectedId(node.id)
+  }
+  const removeSelected = () => {
+    if (!selectedId || !canEdit) return
+    commit(nodes.filter(node => node.id !== selectedId), edges.filter(edge => edge.source !== selectedId && edge.target !== selectedId))
+    setSelectedId(null)
+  }
+  const updateSelected = patch => {
+    const next = nodes.map(node => node.id === selectedId ? { ...node, data:{ ...node.data, ...patch } } : node)
+    commit(next, edges)
+  }
+  const saveDraft = async () => {
+    const model = { nodes, edges, updatedAt:new Date().toISOString() }
+    localStorage.setItem(storageKey(groupId, 'draft'), JSON.stringify(model))
+    setSyncState('saving')
+    try {
+      const result = await saveSharedOrganigramaDraft({ groupKey:groupId, name:groupName, model, userId:user?.id })
+      setSyncState(result.available ? 'shared' : 'local')
+      setDirty(false)
+    } catch {
+      setSyncState('error')
+    }
+  }
+  const publish = async () => {
+    const model = { nodes, edges, publishedAt:new Date().toISOString() }
+    localStorage.setItem(storageKey(groupId, 'published'), JSON.stringify(model))
+    localStorage.setItem(storageKey(groupId, 'draft'), JSON.stringify(model))
+    setSyncState('saving')
+    try {
+      const result = await publishSharedOrganigrama({ groupKey:groupId, name:groupName, model, userId:user?.id, currentVersion:sharedVersion })
+      if (result.available) {
+        setSharedVersion(result.record.version_publicada)
+        setSyncState('shared')
+      } else {
+        setSyncState('local')
+      }
+      setDirty(false); onPublished()
+    } catch {
+      setSyncState('error')
+    }
+  }
+  const selected = nodes.find(node => node.id === selectedId)
+  const usedContactIds = new Set(nodes.map(node => node.data.contactId).filter(Boolean).map(String))
+  const available = contacts.filter(contact => !usedContactIds.has(String(contact.id)) && `${contact.nombre} ${contact.cargo || ''}`.toLowerCase().includes(query.toLowerCase()))
+
+  useEffect(() => {
+    const handler = event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if (canEdit) saveDraft() }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo() }
+      if (event.key === 'Escape') setSelectedId(null)
+      const isEditingText = event.target instanceof Element && event.target.closest('input,textarea')
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId && !isEditingText) removeSelected()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:200, display:'grid', gridTemplateRows:'58px 1fr', background:'#0a0b0f' }}>
+      <header style={{ display:'flex', alignItems:'center', gap:10, padding:'0 14px', borderBottom:'1px solid rgba(57,255,20,.14)', background:'#14161b' }}>
+        <button type="button" className="btn-ghost" onClick={onClose}><ArrowLeft size={14}/> VOLVER</button>
+        <div style={{ minWidth:0 }}>
+          <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'.84rem' }}>DISEÑADOR DE ORGANIGRAMA</p>
+          <p style={{ color:'var(--text-dim)', fontSize:'.58rem' }}>
+            {groupName}{dirty ? ' · CAMBIOS SIN GUARDAR' : ''}
+            {' · '}{syncState === 'shared' ? `COMPARTIDO${sharedVersion ? ` · V${sharedVersion}` : ''}` : syncState === 'saving' ? 'GUARDANDO…' : syncState === 'error' ? 'ERROR DE SINCRONIZACIÓN' : 'GUARDADO EN ESTE DISPOSITIVO'}
+          </p>
+        </div>
+        <div className="flex gap-2" style={{ marginLeft:'auto' }}>
+          {canEdit && <button type="button" className="btn-ghost" onClick={undo} title="Deshacer"><Undo2 size={14}/></button>}
+          {canEdit && <button type="button" className="btn-ghost" onClick={redo} title="Rehacer"><Redo2 size={14}/></button>}
+          {canEdit && <button type="button" className="btn-ghost" onClick={() => commit(autoLayout(nodes, edges), edges)}><LayoutDashboard size={14}/> ORDENAR</button>}
+          {canEdit && <button type="button" className="btn-ghost" onClick={saveDraft}><Save size={14}/> GUARDAR BORRADOR</button>}
+          {canEdit && <button type="button" className="btn-primary" onClick={publish}><Eye size={14}/> PUBLICAR VISTA</button>}
+          <button type="button" className="btn-ghost" onClick={onClose} aria-label="Cerrar"><X size={15}/></button>
+        </div>
+      </header>
+      <div style={{ minHeight:0, display:'grid', gridTemplateColumns:canEdit ? '260px minmax(0,1fr) 280px' : '1fr' }}>
+        {canEdit && <aside style={{ padding:12, overflow:'auto', borderRight:'1px solid rgba(255,255,255,.07)', background:'#111319' }}>
+          <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'.62rem' }}>PERSONAS DISPONIBLES</p>
+          <div className="relative" style={{ marginTop:10 }}>
+            <Search size={13} style={{ position:'absolute', left:9, top:9, color:'var(--text-dim)' }}/>
+            <input className="input-dark w-full" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar persona…" style={{ paddingLeft:29, height:32, fontSize:'.66rem' }}/>
+          </div>
+          <div style={{ display:'grid', gap:7, marginTop:10 }}>
+            {available.map(contact => <button key={contact.id} type="button" onClick={() => addPerson(contact)} className="glass" style={{ textAlign:'left', padding:'9px 10px', border:'1px solid rgba(255,255,255,.07)' }}><p style={{ color:'var(--text)', fontSize:'.68rem', fontWeight:700 }}>{contact.nombre}</p><p style={{ color:'var(--text-dim)', fontSize:'.57rem', marginTop:3 }}>{contact.cargo || 'Sin cargo'} <Plus size={11} style={{ float:'right', color:'var(--phosphor)' }}/></p></button>)}
+          </div>
+        </aside>}
+        <main style={{ minWidth:0, minHeight:0 }}>
+          <ReactFlow
+            nodes={nodes.map(node => ({ ...node, draggable:canEdit, connectable:canEdit }))}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            onNodesChange={changes => setNodes(current => applyNodeChanges(changes, current))}
+            onEdgesChange={changes => canEdit && setEdges(current => applyEdgeChanges(changes, current))}
+            onNodeDragStop={() => snapshot(nodes, edges)}
+            onConnect={onConnect}
+            onSelectionChange={({ nodes:selectedNodes }) => setSelectedId(selectedNodes[0]?.id || null)}
+            isValidConnection={connection => !wouldCreateCycle(connection, nodes, edges)}
+            nodesConnectable={canEdit}
+            nodesDraggable={canEdit}
+            elementsSelectable
+            selectionOnDrag
+            multiSelectionKeyCode={['Control','Meta']}
+            deleteKeyCode={null}
+            fitView
+            minZoom={0.15}
+            maxZoom={2}
+            defaultEdgeOptions={{ type:'smoothstep', markerEnd:{ type:MarkerType.ArrowClosed }, style:{ stroke:'#39ff14', strokeWidth:1.7 } }}
+          >
+            <Background color="rgba(57,255,20,.13)" gap={24}/>
+            <Controls/>
+            <MiniMap pannable zoomable nodeColor={node => node.data.color || '#39ff14'} maskColor="rgba(5,6,9,.78)"/>
+          </ReactFlow>
+        </main>
+        {canEdit && <aside style={{ padding:14, overflow:'auto', borderLeft:'1px solid rgba(255,255,255,.07)', background:'#111319' }}>
+          <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'.62rem' }}>PROPIEDADES</p>
+          {!selected && <p style={{ color:'var(--text-dim)', fontSize:'.65rem', marginTop:14, lineHeight:1.5 }}>Seleccioná una tarjeta para editar su nombre visible, función, área y color. Arrastrá desde el punto inferior hacia otra tarjeta para crear la dependencia.</p>}
+          {selected && <div style={{ display:'grid', gap:12, marginTop:14 }}>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>NOMBRE<input className="input-dark w-full" value={selected.data.label} onChange={event => updateSelected({ label:event.target.value })} style={{ marginTop:5 }}/></label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>FUNCIÓN<input className="input-dark w-full" value={selected.data.role} onChange={event => updateSelected({ role:event.target.value })} style={{ marginTop:5 }}/></label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>ÁREA<input className="input-dark w-full" value={selected.data.area || ''} onChange={event => updateSelected({ area:event.target.value })} style={{ marginTop:5 }}/></label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>COLOR<input type="color" value={selected.data.color} onChange={event => updateSelected({ color:event.target.value })} style={{ display:'block', width:'100%', height:34, marginTop:5, background:'transparent', border:0 }}/></label>
+            <button type="button" className="btn-ghost" onClick={removeSelected} style={{ color:'#ff6060', marginTop:8 }}><Trash2 size={13}/> QUITAR DEL ORGANIGRAMA</button>
+            <p style={{ color:'var(--text-dim)', fontSize:'.56rem', lineHeight:1.45 }}>La ficha de la persona y todos sus registros permanecen intactos.</p>
+          </div>}
+        </aside>}
+      </div>
+    </div>
+  )
+}

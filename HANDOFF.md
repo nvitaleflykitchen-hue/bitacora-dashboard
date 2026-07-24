@@ -24,6 +24,25 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
   Supabase antes de aplicar SQL.
 - Sin commit, push, deploy ni cambios remotos.
 
+## 2026-07-24 · Codex — rediseño full-screen del organigrama
+
+- Se reemplazó el editor simple por `OrganigramaDesigner.jsx`, basado en
+  `@xyflow/react@12.11.2` fijado de forma exacta.
+- El modo diseño cubre toda la aplicación y ofrece panel de personas, paño con zoom,
+  minimapa, selección múltiple, conexiones por arrastre, prevención de ciclos,
+  inspector de propiedades, autoordenamiento, deshacer/rehacer, borrador y publicación.
+- Solo `admin` edita; los demás perfiles pueden abrir la vista publicada a pantalla completa.
+- Se agregó fallback local y el repositorio de sincronización compartida. Mientras no
+  exista la tabla remota, la interfaz informa “Guardado en este dispositivo”.
+- Migración aplicada en el proyecto correcto `mixyhfdlzjarvszinytk` y espejada en
+  `supabase/migrations/20260724151857_organigrama_designer_shared_layout.sql`.
+  Crea `bitacora.organigramas`, habilita RLS, permite lectura autenticada y reserva
+  inserción/actualización a perfiles `admin`. Verificación: RLS activo, `anon` sin
+  privilegios, `authenticated` sin DELETE, tres policies esperadas y cero filas iniciales.
+- ESLint y build aprobados; prueba específica del motor aprobada (2/2). La verificación
+  visual automatizada no llegó a abrir el navegador y fue detenida tras el primer timeout.
+- Sin commit, push, deploy ni cambios remotos.
+
 ## 2026-07-22 · Codex — selector válido en alta móvil de Compras
 
 - `MobileRequerimientos.jsx` reemplaza el texto libre de `tipo_compra` por un selector
