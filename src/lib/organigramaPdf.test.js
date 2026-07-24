@@ -2,26 +2,34 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pdfMocks = vi.hoisted(() => ({
   save:vi.fn(),
-  addImage:vi.fn(),
-  html2canvas:vi.fn(async () => ({ width:1600, height:900, toDataURL:() => 'data:image/png;base64,mock' })),
+  line:vi.fn(),
+  roundedRect:vi.fn(),
 }))
 
-vi.mock('html2canvas', () => ({ default:pdfMocks.html2canvas }))
 vi.mock('jspdf', () => ({
   jsPDF:class {
     internal = { pageSize:{ getWidth:() => 297, getHeight:() => 210 } }
     setFillColor() {}
-    rect() {}
+    setDrawColor() {}
+    setLineWidth() {}
+    setLineDashPattern() {}
     setTextColor() {}
     setFont() {}
     setFontSize() {}
+    rect() {}
+    triangle() {}
     text() {}
-    addImage(...args) { pdfMocks.addImage(...args) }
+    line(...args) { pdfMocks.line(...args) }
+    roundedRect(...args) { pdfMocks.roundedRect(...args) }
     save(...args) { pdfMocks.save(...args) }
   },
 }))
 
-import { exportOrganigramaPdf, organigramaPdfFilename } from './organigramaPdf'
+import {
+  createOrganigramaPrintLayout,
+  exportOrganigramaPdf,
+  organigramaPdfFilename,
+} from './organigramaPdf'
 
 describe('organigramaPdfFilename', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -31,12 +39,28 @@ describe('organigramaPdfFilename', () => {
     expect(organigramaPdfFilename('')).toBe('organigrama-general.pdf')
   })
 
-  it('captura el paño y descarga un PDF apaisado', async () => {
-    const element = document.createElement('main')
-    await exportOrganigramaPdf({ element, name:'Hospitales' })
+  it('acomoda todos los nodos dentro del área imprimible', () => {
+    const result = createOrganigramaPrintLayout([
+      { id:'a', position:{ x:-500, y:0 } },
+      { id:'b', position:{ x:900, y:600 } },
+    ])
+    expect(result.nodes[0].print.x).toBeGreaterThanOrEqual(10)
+    expect(result.nodes[1].print.x + result.nodes[1].print.width).toBeLessThanOrEqual(287)
+    expect(result.nodes[1].print.y + result.nodes[1].print.height).toBeLessThanOrEqual(197)
+  })
 
-    expect(pdfMocks.html2canvas).toHaveBeenCalledWith(element, expect.objectContaining({ scale:2, backgroundColor:'#ffffff', onclone:expect.any(Function) }))
-    expect(pdfMocks.addImage).toHaveBeenCalled()
+  it('dibuja conexiones y tarjetas como vectores antes de descargar', async () => {
+    await exportOrganigramaPdf({
+      name:'Hospitales',
+      nodes:[
+        { id:'a', position:{ x:0, y:0 }, data:{ label:'Dirección', role:'Gerencia' } },
+        { id:'b', position:{ x:0, y:180 }, data:{ label:'Hospitales', role:'Unidad' } },
+      ],
+      edges:[{ source:'a', target:'b', data:{ relationType:'jerarquica' } }],
+    })
+
+    expect(pdfMocks.line).toHaveBeenCalled()
+    expect(pdfMocks.roundedRect).toHaveBeenCalledTimes(2)
     expect(pdfMocks.save).toHaveBeenCalledWith('organigrama-hospitales.pdf')
   })
 })

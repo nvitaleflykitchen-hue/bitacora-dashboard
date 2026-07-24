@@ -333,7 +333,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
     try {
       await flowRef.current?.fitView({ padding:.12, duration:0 })
       await new Promise(resolve => window.setTimeout(resolve, 180))
-      await exportOrganigramaPdf({ element:canvasRef.current, name:groupName })
+      await exportOrganigramaPdf({ name:groupName, nodes, edges })
     } catch (error) {
       setExportError(error.message || 'No se pudo generar el PDF.')
     } finally {

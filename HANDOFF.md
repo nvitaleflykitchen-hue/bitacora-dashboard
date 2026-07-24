@@ -412,3 +412,17 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
   y el cambio correspondiente en `src/lib/queries.js`.
 - La prueba intentó insertar `NC-2026-001`, el trigger asignó `NC-2026-013` y el
   `ROLLBACK` confirmó que no quedó ninguna fila de prueba.
+
+## 2026-07-24 - Codex - PDF vectorial de organigramas
+
+- Se reemplazó la captura rasterizada del paño por un PDF vectorial A4 apaisado.
+- Las tarjetas se dibujan con texto oscuro y tamaños legibles; las dependencias
+  jerárquicas usan líneas verdes sólidas con flechas y las relaciones transversales
+  usan líneas azules punteadas.
+- El PDF incluye leyenda, fecha y pie de documento, y acomoda automáticamente los
+  nodos dentro del área imprimible.
+- Verificado con `npm run check`: 19 archivos de prueba, 71 tests aprobados y build
+  correcto. Persisten 6 warnings de lint preexistentes, sin errores.
+- Se generó y renderizó una muestra de Equipo central para verificar visualmente
+  contraste, textos y continuidad de las conexiones.
+- Publicación autorizada explícitamente por Nicolás.
