@@ -10,6 +10,9 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 - `src/views/OrganigramaView.jsx` convierte la vista estática en un lienzo interactivo.
 - Únicamente admin puede activar el modo edición, arrastrar responsables y sedes, ordenar
   automáticamente y guardar una distribución diferente por grupo.
+- La segunda etapa permite agregar personas existentes del directorio, quitarlas solo del
+  organigrama (sin borrar ficha ni historial) y cambiar su dependencia jerárquica; las
+  líneas se reconstruyen con cada cambio.
 - Las líneas jerárquicas y las conexiones de apoyo se recalculan mientras se mueve cada
   tarjeta. El resto de los perfiles conserva una vista de solo lectura.
 - La primera versión guarda las posiciones en `localStorage`; no modifica responsables,

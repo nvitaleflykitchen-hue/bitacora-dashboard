@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Building2, ExternalLink, GripVertical, LayoutDashboard, Loader2, Lock, Mail, MessageCircle, Network, Phone, RefreshCw, Save, Unlock, Users } from 'lucide-react'
+import { Building2, ExternalLink, GripVertical, LayoutDashboard, Loader2, Lock, Mail, MessageCircle, Network, Phone, Plus, RefreshCw, Save, Trash2, Unlock, Users } from 'lucide-react'
 import { getAllSedeContactos, getContactos, getGrupos, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 
@@ -140,9 +140,12 @@ function makeDefaultLayout(nodeIds, sedeIds) {
     const rowWidth = sedeIds.length * 270
     positions[id] = { x:Math.round((width - rowWidth) / 2 + index * 270 + 10), y:570 }
   })
+  nodeIds.filter(id => !positions[id]).forEach((id, index) => {
+    positions[id] = { x:40 + (index % 4) * 270, y:790 + Math.floor(index / 4) * 180 }
+  })
   return {
     width,
-    height: Math.max(820, 570 + Math.ceil(sedeIds.length / 5) * 220),
+    height: Math.max(900, 980 + Math.ceil(Math.max(0, nodeIds.length - sedeIds.length - 5) / 4) * 180),
     positions: Object.fromEntries(nodeIds.filter(id => positions[id]).map(id => [id, positions[id]])),
   }
 }
@@ -156,34 +159,88 @@ function connectionPath(from, to) {
   return `M ${startX} ${startY} V ${middleY} H ${endX} V ${endY}`
 }
 
-function OrgCanvas({ nodes, edges, groupId, editable }) {
-  const nodeIds = useMemo(() => nodes.map(node => node.id), [nodes])
-  const sedeIds = useMemo(() => nodes.filter(node => node.kind === 'sede').map(node => node.id), [nodes])
+function OrgCanvas({ nodes, edges, groupId, editable, availableContacts = [] }) {
+  const usedContactIds = useMemo(() => new Set(nodes.map(node => String(node.contactId || '')).filter(Boolean)), [nodes])
+  const contactNodes = useMemo(() => availableContacts
+    .filter(contact => contact?.id && !usedContactIds.has(String(contact.id)))
+    .map(contact => ({
+      id:`contact:${contact.id}`,
+      contactId:contact.id,
+      kind:'person',
+      label:contact.nombre,
+      content:<PersonNode title={contact.cargo || 'RESPONSABLE'} contact={contact}/>,
+    })), [availableContacts, usedContactIds])
+  const allNodes = useMemo(() => [...nodes, ...contactNodes], [contactNodes, nodes])
+  const nodeIds = useMemo(() => allNodes.map(node => node.id), [allNodes])
+  const sedeIds = useMemo(() => allNodes.filter(node => node.kind === 'sede').map(node => node.id), [allNodes])
   const defaults = useMemo(() => makeDefaultLayout(nodeIds, sedeIds), [nodeIds, sedeIds])
   const [editing, setEditing] = useState(false)
   const [positions, setPositions] = useState(defaults.positions)
+  const [activeNodeIds, setActiveNodeIds] = useState(nodes.map(node => node.id))
+  const [parents, setParents] = useState({})
+  const [contactToAdd, setContactToAdd] = useState('')
   const [saved, setSaved] = useState(true)
 
   useEffect(() => {
     let next = defaults.positions
+    let nextActive = nodes.map(node => node.id)
+    let nextParents = {}
     try {
       const stored = JSON.parse(localStorage.getItem(layoutKey(groupId)) || 'null')
       if (stored?.positions) next = { ...defaults.positions, ...stored.positions }
+      if (Array.isArray(stored?.activeNodeIds)) nextActive = stored.activeNodeIds.filter(id => nodeIds.includes(id))
+      if (stored?.parents) nextParents = stored.parents
     } catch {
       // Si el layout local se corrompe, se vuelve al orden automático.
     }
     setPositions(next)
+    setActiveNodeIds(nextActive)
+    setParents(nextParents)
+    setContactToAdd('')
     setSaved(true)
     setEditing(false)
-  }, [defaults.positions, groupId])
+  }, [defaults.positions, groupId, nodeIds, nodes])
 
   const save = () => {
-    localStorage.setItem(layoutKey(groupId), JSON.stringify({ positions, updatedAt:new Date().toISOString() }))
+    localStorage.setItem(layoutKey(groupId), JSON.stringify({ positions, activeNodeIds, parents, updatedAt:new Date().toISOString() }))
     setSaved(true)
   }
 
   const autoArrange = () => {
     setPositions(defaults.positions)
+    setSaved(false)
+  }
+
+  const addContact = () => {
+    if (!contactToAdd || activeNodeIds.includes(contactToAdd)) return
+    setActiveNodeIds(current => [...current, contactToAdd])
+    const suggestedParent = activeNodeIds.includes('supervisor') ? 'supervisor' : activeNodeIds.includes('operations') ? 'operations' : 'executive'
+    setParents(current => ({ ...current, [contactToAdd]:suggestedParent }))
+    setContactToAdd('')
+    setSaved(false)
+  }
+
+  const removeNode = nodeId => {
+    setActiveNodeIds(current => current.filter(id => id !== nodeId))
+    setParents(current => {
+      const next = { ...current }
+      delete next[nodeId]
+      const fallbackParent = nodeId !== 'operations' && activeNodeIds.includes('operations')
+        ? 'operations'
+        : nodeId !== 'executive' && activeNodeIds.includes('executive') ? 'executive' : ''
+      activeNodeIds.forEach(id => {
+        if (id !== nodeId && (next[id] || baseParents[id]) === nodeId) {
+          if (fallbackParent && fallbackParent !== id) next[id] = fallbackParent
+          else delete next[id]
+        }
+      })
+      return next
+    })
+    setSaved(false)
+  }
+
+  const changeParent = (nodeId, parentId) => {
+    setParents(current => ({ ...current, [nodeId]:parentId }))
     setSaved(false)
   }
 
@@ -211,11 +268,22 @@ function OrgCanvas({ nodes, edges, groupId, editable }) {
     window.addEventListener('pointerup', end)
   }
 
-  const visibleNodes = nodes.filter(node => positions[node.id])
+  const visibleNodes = allNodes.filter(node => activeNodeIds.includes(node.id) && positions[node.id])
   const positioned = Object.fromEntries(visibleNodes.map(node => [
     node.id,
     { ...positions[node.id], height:node.kind === 'sede' ? SEDE_HEIGHT : PERSON_HEIGHT },
   ]))
+  const baseParents = Object.fromEntries(edges.map(edge => [edge.to, edge.from]))
+  const effectiveEdges = visibleNodes
+    .filter(node => node.id !== 'executive')
+    .map(node => {
+      const parent = parents[node.id] || baseParents[node.id]
+      if (!parent || !positioned[parent] || parent === node.id) return null
+      const original = edges.find(edge => edge.to === node.id)
+      return { from:parent, to:node.id, support:original?.support && !parents[node.id] }
+    })
+    .filter(Boolean)
+  const addableNodes = allNodes.filter(node => node.kind === 'person' && !activeNodeIds.includes(node.id))
 
   return (
     <section>
@@ -225,6 +293,13 @@ function OrgCanvas({ nodes, edges, groupId, editable }) {
         </p>
         {editable && (
           <div className="flex gap-2">
+            {editing && <>
+              <select className="input-dark" value={contactToAdd} onChange={event => setContactToAdd(event.target.value)} style={{ minWidth:220, fontSize:'0.65rem' }}>
+                <option value="">Agregar persona…</option>
+                {addableNodes.map(node => <option key={node.id} value={node.id}>{node.label || node.content?.props?.contact?.nombre || node.id}</option>)}
+              </select>
+              <button type="button" className="btn-ghost" onClick={addContact} disabled={!contactToAdd}><Plus size={13}/> AGREGAR</button>
+            </>}
             {editing && <button type="button" className="btn-ghost" onClick={autoArrange}><LayoutDashboard size={13}/> ORDENAR</button>}
             {editing && <button type="button" className="btn-ghost" onClick={save} disabled={saved}><Save size={13}/> {saved ? 'GUARDADO' : 'GUARDAR'}</button>}
             <button type="button" className={editing ? 'btn-primary' : 'btn-ghost'} onClick={() => setEditing(value => !value)}>
@@ -236,7 +311,7 @@ function OrgCanvas({ nodes, edges, groupId, editable }) {
       <div className="glass" style={{ overflow:'auto', border:'1px solid rgba(57,255,20,.13)', borderRadius:6, background:'radial-gradient(circle at center, rgba(57,255,20,.035), transparent 52%), #101116' }}>
         <div style={{ position:'relative', width:defaults.width, height:defaults.height, minHeight:700 }}>
           <svg width={defaults.width} height={defaults.height} style={{ position:'absolute', inset:0, pointerEvents:'none', overflow:'visible' }} aria-hidden="true">
-            {edges.map(edge => {
+            {effectiveEdges.map(edge => {
               const from = positioned[edge.from]
               const to = positioned[edge.to]
               if (!from || !to) return null
@@ -255,7 +330,18 @@ function OrgCanvas({ nodes, edges, groupId, editable }) {
                   zIndex:2, touchAction:editing ? 'none' : 'auto',
                 }}
               >
-                {editing && <div className="font-metric" style={{ position:'absolute', zIndex:4, right:7, top:7, display:'flex', alignItems:'center', gap:4, color:'var(--phosphor)', fontSize:'0.55rem', background:'rgba(5,8,7,.84)', padding:'4px 6px', borderRadius:4 }}><GripVertical size={12}/> MOVER</div>}
+                {editing && (
+                  <div style={{ position:'absolute', zIndex:4, left:0, right:0, top:-34, display:'flex', alignItems:'center', gap:5 }}>
+                    <span className="font-metric" style={{ display:'flex', alignItems:'center', gap:3, color:'var(--phosphor)', fontSize:'0.52rem', background:'rgba(5,8,7,.92)', padding:'5px 6px', borderRadius:4 }}><GripVertical size={11}/> MOVER</span>
+                    {node.id !== 'executive' && (
+                      <select value={parents[node.id] || baseParents[node.id] || ''} onChange={event => changeParent(node.id, event.target.value)} className="input-dark" title="Depende de" style={{ flex:1, minWidth:0, height:27, padding:'2px 5px', fontSize:'0.52rem' }}>
+                        <option value="">Sin dependencia</option>
+                        {visibleNodes.filter(parent => parent.id !== node.id && parent.kind === 'person').map(parent => <option key={parent.id} value={parent.id}>{parent.label || parent.content?.props?.contact?.nombre || parent.id}</option>)}
+                      </select>
+                    )}
+                    {node.kind === 'person' && node.id !== 'executive' && <button type="button" onClick={() => removeNode(node.id)} title="Quitar del organigrama" className="btn-ghost" style={{ width:28, height:27, padding:0, color:'#ff6060' }}><Trash2 size={12}/></button>}
+                  </div>
+                )}
                 {node.content}
               </div>
             )
@@ -357,11 +443,11 @@ export default function OrganigramaView({ onNavigate }) {
 
   const canEditOrganigrama = rol === 'admin'
   const orgNodes = [
-    executive && { id:'executive', kind:'person', content:<PersonNode title="DIRECCIÓN GENERAL" contact={executive}/> },
-    operations && { id:'operations', kind:'person', content:<PersonNode title="JEFATURA DE PLANTA" contact={operations}/> },
-    supervisor && { id:'supervisor', kind:'person', content:<PersonNode title={isEscalas ? 'SUPERVISIÓN DE OPERACIONES – ESCALAS' : isDiningGroup ? 'SUPERVISIÓN DE COMEDORES' : 'SUPERVISIÓN OPERATIVA'} contact={supervisor}/> },
-    commercial && { id:'commercial', kind:'person', content:<PersonNode title="COMERCIAL Y FACTURACIÓN" contact={commercial} tone="support"/> },
-    quality && { id:'quality', kind:'person', content:<PersonNode title="DIRECCIÓN TÉCNICA DE CALIDAD" contact={quality} tone="support"/> },
+    executive && { id:'executive', contactId:executive.id, label:executive.nombre, kind:'person', content:<PersonNode title="DIRECCIÓN GENERAL" contact={executive}/> },
+    operations && { id:'operations', contactId:operations.id, label:operations.nombre, kind:'person', content:<PersonNode title="JEFATURA DE PLANTA" contact={operations}/> },
+    supervisor && { id:'supervisor', contactId:supervisor.id, label:supervisor.nombre, kind:'person', content:<PersonNode title={isEscalas ? 'SUPERVISIÓN DE OPERACIONES – ESCALAS' : isDiningGroup ? 'SUPERVISIÓN DE COMEDORES' : 'SUPERVISIÓN OPERATIVA'} contact={supervisor}/> },
+    commercial && { id:'commercial', contactId:commercial.id, label:commercial.nombre, kind:'person', content:<PersonNode title="COMERCIAL Y FACTURACIÓN" contact={commercial} tone="support"/> },
+    quality && { id:'quality', contactId:quality.id, label:quality.nombre, kind:'person', content:<PersonNode title="DIRECCIÓN TÉCNICA DE CALIDAD" contact={quality} tone="support"/> },
     ...sedes.map(sede => ({
       id:`sede:${sede.id}`,
       kind:'sede',
@@ -398,7 +484,7 @@ export default function OrganigramaView({ onNavigate }) {
       {warning && <div style={{ color:'#f59e0b', border:'1px solid rgba(245,158,11,.25)', background:'rgba(245,158,11,.07)', padding:'0.65rem', fontSize:'0.68rem', marginBottom:'1rem' }}>{warning}</div>}
 
       {!error && data.grupos.length > 0 && sedes.length > 0 && (
-        <OrgCanvas nodes={orgNodes} edges={orgEdges} groupId={groupId} editable={canEditOrganigrama}/>
+        <OrgCanvas nodes={orgNodes} edges={orgEdges} groupId={groupId} editable={canEditOrganigrama} availableContacts={data.contactos}/>
       )}
       {!error && data.grupos.length > 0 && sedes.length === 0 && (
         <div className="glass" style={{ textAlign:'center', padding:'2rem', color:'var(--text-dim)', fontSize:'0.75rem' }}>Este grupo todavía no tiene sedes asignadas.</div>
