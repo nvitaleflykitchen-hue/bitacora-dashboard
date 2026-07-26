@@ -147,7 +147,7 @@ function QuickCapaModal({ sedes, onClose, onCreated }) {
       const created = await createCapa({
         ...form,
         fecha_limite: form.fecha_limite || null,
-        created_by: perfil?.nombre || user?.email,
+        created_by: user?.id || perfil?.id || null,
       })
       onCreated(created)
     } catch (e) {
@@ -206,7 +206,7 @@ function QuickNCModal({ sedes, onClose, onCreated }) {
         sede_nombre: sede?.nombre || '',
         estado: 'Abierta',
         fecha_apertura: new Date().toISOString().slice(0, 10),
-        created_by: perfil?.nombre || user?.email,
+        created_by: user?.id || perfil?.id || null,
       })
       onCreated(created)
     } catch (e) {

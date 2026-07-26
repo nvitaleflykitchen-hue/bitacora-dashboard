@@ -427,6 +427,17 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
   contraste, textos y continuidad de las conexiones.
 - Publicación autorizada explícitamente por Nicolás.
 
+## 2026-07-26 - Codex - UUID del creador en Calidad móvil
+
+- Corregido `MobileCapa`: la creación móvil de No Conformidades enviaba el nombre
+  del perfil en `created_by`, aunque la columna exige el UUID de autenticación.
+- El mismo defecto fue corregido preventivamente en la creación móvil de CAPA.
+- Ambos flujos ahora usan `user.id`, con `perfil.id` como respaldo, y `null` si la
+  sesión no aporta ninguno.
+- Verificado con `npm run check`: 19 archivos de prueba, 71 tests aprobados y build
+  correcto; quedan 6 warnings de lint preexistentes y ningún error.
+- Publicación autorizada explícitamente por Nicolás.
+
 ## 2026-07-24 - Codex - Calidad transversal en todos los organigramas
 
 - La estructura obligatoria de todo organigrama operativo incluye Dirección,
