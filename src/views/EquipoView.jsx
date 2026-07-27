@@ -39,6 +39,7 @@ import { PersonaAvatar, PersonaFotoEditor } from "../components/PersonaAvatar";
 import CredencialPersonalModal from "../components/CredencialPersonalModal";
 import CredencialesMasivasA4 from "../components/CredencialesMasivasA4";
 import VacacionesPanel from "../components/VacacionesPanel";
+import PersonaRrhhPanel from "../components/PersonaRrhhPanel";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
 import {
@@ -885,6 +886,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
           ["evaluaciones", "EVALUACIONES"],
           ["historial", "HISTORIAL"],
           ["logros", "LOGROS"],
+          ...(perfil?.rol === "admin" ? [["rrhh", "RR. HH."]] : []),
           ...(canManage ? [["formularios", "FORMULARIOS"]] : []),
         ].map(([id, label]) => (
           <button
@@ -1065,6 +1067,10 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
             canEdit={canManage}
             title="Documentación del puesto"
           />
+        )}
+
+        {tab === "rrhh" && perfil?.rol === "admin" && (
+          <PersonaRrhhPanel personaId={persona.id} />
         )}
 
         {/* ── FORMULARIOS ── */}

@@ -427,6 +427,33 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
   contraste, textos y continuidad de las conexiones.
 - Publicación autorizada explícitamente por Nicolás.
 
+## 2026-07-26 - Codex - Estructura privada de RR. HH.
+
+- Se analizó `BASE_COMPLETA_PERSONAL_FLY_2026.xlsx`: 231 filas, 221
+  coincidencias seguras, 5 para revisión y 5 excluidas por no existir en la app.
+- Se creó y aplicó en producción (`mixyhfdlzjarvszinytk`) la migración
+  `persona_rrhh_privada`, con las tablas `equipo.persona_rrhh` e
+  `equipo.importaciones_personal`.
+- Ambas tablas tienen RLS activo y políticas de lectura/escritura exclusivas
+  para perfiles `admin`; `anon` no tiene privilegios y no se concedió `DELETE`.
+- El lote seguro fue aplicado en producción: 221/221 personas activas y
+  canónicas tienen su ficha `equipo.persona_rrhh`, todas con fila de origen.
+- Los 5 casos para revisión manual no fueron importados y las 5 personas que no
+  existen en la app continuaron excluidas. El total de personas activas
+  canónicas se mantuvo en 234; no se crearon ni reactivaron fichas.
+- La carga normalizó nombre y apellido a estilo oración y completó solamente
+  campos operativos vacíos. No modificó roles, permisos, sedes, estado activo
+  ni vínculos históricos.
+- Antes de aplicarla se ejecutó el lote completo dentro de
+  `BEGIN ... ROLLBACK`: validó 221/221 y dejó cero filas persistidas. Luego se
+  aplicó el mismo lote con `COMMIT` y se verificó nuevamente 221/221.
+- El archivo local de migración está pendiente de commit/push:
+  `supabase/migrations/20260726213000_persona_rrhh_privada.sql`.
+- Se generó una simulación auditable de importación, sin cambios de datos:
+  221 coincidencias seguras, 5 revisiones manuales y 5 exclusiones.
+- La simulación se encuentra en
+  `C:/Users/nicol/AppData/Local/Temp/codex-personal-analysis/outputs/SIMULACION_IMPORTACION_PERSONAL_FLY_2026.xlsx`.
+
 ## 2026-07-26 - Codex - UUID del creador en Calidad móvil
 
 - Corregido `MobileCapa`: la creación móvil de No Conformidades enviaba el nombre
@@ -437,6 +464,23 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - Verificado con `npm run check`: 19 archivos de prueba, 71 tests aprobados y build
   correcto; quedan 6 warnings de lint preexistentes y ningún error.
 - Publicación autorizada explícitamente por Nicolás.
+
+## 2026-07-26 - Codex - Ficha privada de RR. HH. en Equipo
+
+- Se agregó la pestaña `RR. HH.` a la ficha individual de Equipo, visible
+  únicamente para perfiles `admin`.
+- La vista consulta `equipo.persona_rrhh` solamente cuando se abre la pestaña y
+  organiza la información en datos personales, contacto de emergencia,
+  domicilio, datos laborales, indumentaria y trazabilidad de importación.
+- Las personas no incluidas en el lote seguro muestran el estado
+  `Ficha privada pendiente`, sin inventar ni completar información.
+- La interfaz es de solo lectura; la protección real continúa en las políticas
+  RLS admin-only de las tablas privadas.
+- Verificado con `npm run check`: 19 archivos de prueba y 71 tests aprobados,
+  lint sin errores y build de producción correcto. Persisten 6 warnings
+  preexistentes.
+- Archivos pendientes de commit/push: `src/components/PersonaRrhhPanel.jsx`,
+  `src/views/EquipoView.jsx`, `HANDOFF.md` y la migración privada ya aplicada.
 
 ## 2026-07-24 - Codex - Calidad transversal en todos los organigramas
 
