@@ -526,3 +526,8 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - Verificado con `npm run check`: 19 archivos de prueba, 71 tests aprobados y build
   correcto; quedan 6 warnings de lint preexistentes y ningún error.
 - Publicación autorizada explícitamente por Nicolás.
+# 2026-07-28 - PDF de apercibimiento con párrafos
+
+- Corregido el cálculo de altura del apercibimiento: los saltos de párrafo que jsPDF conserva dentro de una línea ahora se contabilizan como renglones reales.
+- Esto evita que textos completos guardados en la base invadan el bloque de firmas o queden visualmente recortados.
+- Agregada prueba específica con varios párrafos; `apercibimientoPdf.test.js` (6/6) y build de producción pasan.

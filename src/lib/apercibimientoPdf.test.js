@@ -55,4 +55,21 @@ describe('apercibimientoPdf', () => {
       layoutDoc.splitTextToSize(motivo, 480).join(' ')
     )
   })
+
+  it('cuenta los saltos de párrafo como renglones reales antes de ubicar las firmas', () => {
+    const motivo = Array(8)
+      .fill(
+        'Se deja constancia de una situación informada durante la jornada laboral y de las instrucciones comunicadas al trabajador.'
+      )
+      .join('\n\n')
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' })
+    doc.setFontSize(9.5)
+    const rawLines = doc.splitTextToSize(motivo, 480)
+    const renderedLines = rawLines.flatMap((line) => String(line).split(/\r?\n/))
+    const layout = calculateApercibimientoLayout(doc, motivo)
+
+    expect(layout.pages.flat()).toEqual(renderedLines)
+    expect(layout.pages.flat()).not.toContainEqual(expect.stringContaining('\n'))
+    expect(layout.signatureTop + 159).toBeLessThanOrEqual(750)
+  })
 })

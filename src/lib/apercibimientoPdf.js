@@ -53,7 +53,12 @@ export function calculateApercibimientoLayout(doc, motivo) {
   const fontSize = 9.5
   const lineHeight = fontSize * lineHeightFactor
   doc.setFontSize(fontSize)
-  const lines = doc.splitTextToSize(text(motivo), maxWidth)
+  // jsPDF puede conservar saltos de párrafo dentro de un elemento del array.
+  // Al dibujarlo, esos saltos sí consumen renglones, por lo que deben entrar
+  // también en el cálculo de altura para evitar que el texto invada las firmas.
+  const lines = doc
+    .splitTextToSize(text(motivo), maxWidth)
+    .flatMap((line) => String(line).split(/\r?\n/))
   const onePageCapacity = Math.floor((NOTICE_MAX_BOTTOM - 14 - NOTICE_TEXT_Y) / lineHeight) + 1
 
   if (lines.length <= onePageCapacity) {
