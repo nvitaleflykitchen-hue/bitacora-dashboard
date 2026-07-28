@@ -531,3 +531,10 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - Corregido el cálculo de altura del apercibimiento: los saltos de párrafo que jsPDF conserva dentro de una línea ahora se contabilizan como renglones reales.
 - Esto evita que textos completos guardados en la base invadan el bloque de firmas o queden visualmente recortados.
 - Agregada prueba específica con varios párrafos; `apercibimientoPdf.test.js` (6/6) y build de producción pasan.
+# 2026-07-28 - Guardarraíles de evaluaciones
+
+- El aviso anti-inflación de puntajes dejó de ser solo informativo.
+- Se bloquea el guardado si los 11 criterios tienen calificación 5 y se muestra una advertencia visible en el formulario.
+- Toda calificación 4 o 5 exige una justificación concreta en Observaciones RR. HH. (mínimo 30 caracteres).
+- Un promedio mayor a 4 exige una oportunidad de mejora en Sugerencias (mínimo 20 caracteres).
+- `npm run check`: 76 tests, lint sin errores y build correcto.

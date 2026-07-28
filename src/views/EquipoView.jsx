@@ -65,6 +65,31 @@ import {
 
 const PERIODO_PRUEBA_DIAS = 180;
 const PLANTA_CORDOBA_SEDE_ID = 24;
+const EVALUACION_SCORE_FIELDS = [
+  "d1_cumple_actividades",
+  "d2_sin_supervision",
+  "d3_comprende_prioridades",
+  "e1_cooperacion",
+  "e2_comunicacion",
+  "e3_maneja_desacuerdos",
+  "e4_ambiente_confianza",
+  "e5_evita_conflictos",
+  "p1_cumple_horario",
+  "p2_aseo_personal",
+  "p3_uniforme",
+];
+
+function puntajesEvaluacion(form) {
+  return EVALUACION_SCORE_FIELDS
+    .map((field) => Number(form[field]))
+    .filter((value) => value >= 1 && value <= 5);
+}
+
+function evaluacionConTodosCinco(form) {
+  const puntajes = puntajesEvaluacion(form);
+  return puntajes.length === EVALUACION_SCORE_FIELDS.length
+    && puntajes.every((value) => value === 5);
+}
 function estadoPeriodoPrueba(persona, hoy = new Date()) {
   if (!persona?.fecha_ingreso || persona.sede_ids?.includes(PLANTA_CORDOBA_SEDE_ID)) return null;
   const ingreso = new Date(`${persona.fecha_ingreso}T00:00:00`);
@@ -304,22 +329,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   }, []);
 
   const calcPuntaje = (f) => {
-    const fields = [
-      "d1_cumple_actividades",
-      "d2_sin_supervision",
-      "d3_comprende_prioridades",
-      "e1_cooperacion",
-      "e2_comunicacion",
-      "e3_maneja_desacuerdos",
-      "e4_ambiente_confianza",
-      "e5_evita_conflictos",
-      "p1_cumple_horario",
-      "p2_aseo_personal",
-      "p3_uniforme",
-    ];
-    const vals = fields
-      .map((k) => Number(f[k]))
-      .filter((v) => v >= 1 && v <= 5);
+    const vals = puntajesEvaluacion(f);
     if (!vals.length) return null;
     const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
     return Math.round(avg * 10) / 10;
@@ -486,6 +496,25 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   };
 
   const saveEval = async () => {
+    if (evaluacionConTodosCinco(evalForm)) {
+      toast.warn(
+        "No se puede guardar una evaluación con los 11 criterios en 5. El valor 5 es excepcional: revisá cada criterio y calificá según hechos observables.",
+      );
+      return;
+    }
+    const puntajesAltos = puntajesEvaluacion(evalForm).filter((value) => value >= 4);
+    if (puntajesAltos.length && evalForm.observaciones_rrhh.trim().length < 30) {
+      toast.warn(
+        "Los puntajes 4 y 5 requieren una justificación concreta en Observaciones RR. HH. (mínimo 30 caracteres).",
+      );
+      return;
+    }
+    if (calcPuntaje(evalForm) > 4 && evalForm.sugerencias_evaluador.trim().length < 20) {
+      toast.warn(
+        "Para promedios mayores a 4 indicá al menos una oportunidad de mejora en Sugerencias.",
+      );
+      return;
+    }
     setSaving(true);
     const puntaje = calcPuntaje(evalForm);
     const resultado = getResultado(puntaje);
@@ -1295,14 +1324,37 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                 </div>
                 {(() => {
                   const s = calcPuntaje(evalForm);
+                  const todosCinco = evaluacionConTodosCinco(evalForm);
                   return s ? (
-                    <div
-                      className="mb-3 p-3 rounded flex items-center gap-3"
-                      style={{
-                        background: "rgba(57,255,20,0.07)",
-                        border: "1px solid rgba(57,255,20,0.2)",
-                      }}
-                    >
+                    <>
+                      {todosCinco && (
+                        <div
+                          className="mb-3 p-3 rounded"
+                          role="alert"
+                          style={{
+                            background: "rgba(245,158,11,0.12)",
+                            border: "1px solid rgba(245,158,11,0.55)",
+                            color: "#f59e0b",
+                            fontSize: "0.72rem",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          <strong>REVISÁ LA CALIFICACIÓN:</strong> no se puede guardar con los
+                          11 criterios en 5. Cumplir correctamente equivale a 3; el 5 se
+                          reserva para desempeños excepcionales y verificables.
+                        </div>
+                      )}
+                      <div
+                        className="mb-3 p-3 rounded flex items-center gap-3"
+                        style={{
+                          background: todosCinco
+                            ? "rgba(245,158,11,0.07)"
+                            : "rgba(57,255,20,0.07)",
+                          border: todosCinco
+                            ? "1px solid rgba(245,158,11,0.35)"
+                            : "1px solid rgba(57,255,20,0.2)",
+                        }}
+                      >
                       <span
                         className="font-title font-bold text-2xl"
                         style={{
@@ -1350,7 +1402,8 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                           ítems
                         </p>
                       </div>
-                    </div>
+                      </div>
+                    </>
                   ) : null;
                 })()}
                 <div className="grid grid-cols-2 gap-3 mb-3">
