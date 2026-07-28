@@ -5,6 +5,36 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-28 · Codex — Falso error al aprobar formularios disciplinarios
+
+- Se confirmó en producción que la aprobación de la solicitud de Exequiel Lobo
+  sí quedó guardada, aunque la interfaz informó
+  `Cannot coerce the result to a single JSON object`.
+- La causa estaba en `reviewDisciplinaryRequest`: el `UPDATE` exigía una
+  representación única con `.select('*').single()`. La modificación podía
+  persistir y, aun así, esa conversión de respuesta fallaba.
+- El flujo ahora actualiza sin depender de la representación del `UPDATE` y
+  verifica el estado final mediante una consulta separada con `maybeSingle()`.
+  También detecta solicitudes inexistentes o ya resueltas en otro estado.
+- Se agregó cobertura de regresión para reconocer aprobaciones y rechazos ya
+  aplicados.
+- El PDF de apercibimiento ahora calcula la altura del motivo, amplía el marco
+  y desplaza el bloque de firmas. Para textos excepcionalmente extensos reduce
+  moderadamente la tipografía antes de alcanzar el límite de una hoja.
+- Se renderizó y revisó visualmente el caso de Exequiel Lobo: el texto completo
+  queda contenido, legible y sin superposición.
+- Para motivos que no entran de forma legible en una hoja, el documento ahora
+  continúa automáticamente en páginas numeradas y coloca las firmas después
+  de la última línea, sin recortar contenido.
+- Los administradores ahora pueden editar un apercibimiento aprobado mientras
+  todavía no fue notificado. Se editan fecha, texto y campos complementarios;
+  la versión anterior queda anexada a las observaciones de revisión.
+- Los apercibimientos ya notificados permanecen inmutables.
+- Verificado con `npm run check`: 19 archivos de prueba, 75 tests aprobados,
+  lint sin errores y build de producción correcto. Persisten 6 warnings
+  preexistentes.
+- Pendiente de autorización de Nicolás para commit y push.
+
 ## 2026-07-24 · Codex — PDF de organigrama optimizado para impresión
 
 - La exportación PDF ya no replica el tema oscuro de la aplicación.

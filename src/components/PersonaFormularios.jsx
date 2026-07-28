@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpen, Check, Download, FileText, ShieldAlert, X } from 'lucide-react'
+import { BookOpen, Check, Download, FileText, Pencil, Save, ShieldAlert, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { DISCIPLINARY_NOTEBOOK_URL } from '../lib/access'
 import { apercibimientoFilename, createApercibimientoPdf } from '../lib/apercibimientoPdf'
@@ -11,6 +11,7 @@ import {
   listDisciplinaryRequests,
   notifyDisciplinaryRequest,
   reviewDisciplinaryRequest,
+  updateApprovedDisciplinaryRequest,
 } from '../lib/disciplinaryWorkflow'
 import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
@@ -44,6 +45,8 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
   const [reviewNotes, setReviewNotes] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editDraft, setEditDraft] = useState(null)
 
   const canCreate = canCreateDisciplinaryRequest(rol)
   const canReview = canReviewDisciplinaryRequest(rol)
@@ -109,6 +112,43 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
   const download = request => {
     const pdf = createApercibimientoPdf(persona, { fecha:request.fecha_hecho, motivo:request.hechos })
     pdf.save(apercibimientoFilename(persona, request.fecha_hecho))
+  }
+
+  const beginEdit = request => {
+    setEditingId(request.id)
+    setEditDraft({
+      fecha_hecho: request.fecha_hecho,
+      hechos: request.hechos || '',
+      descargo_trabajador: request.descargo_trabajador || '',
+      testigos_evidencia: request.testigos_evidencia || '',
+      fundamento_legal: request.fundamento_legal || '',
+      texto_propuesto: request.texto_propuesto || '',
+      urgente: Boolean(request.urgente),
+      medida_preventiva: request.medida_preventiva || '',
+    })
+  }
+
+  const saveEdit = async request => {
+    if (!editDraft?.fecha_hecho) return toast.warn('Indicá la fecha del hecho.')
+    if (editDraft.hechos.trim().length < 10) return toast.warn('El texto debe tener al menos 10 caracteres.')
+    if (editDraft.urgente && editDraft.medida_preventiva.trim().length < 10) {
+      return toast.warn('Detallá la medida preventiva adoptada.')
+    }
+    const ok = await confirmar({
+      titulo:'Guardar cambios',
+      mensaje:'Se actualizará el apercibimiento aprobado y quedará registrada la versión anterior en la trazabilidad. ¿Continuar?',
+      confirmText:'Guardar cambios',
+      cancelText:'Cancelar',
+    })
+    if (!ok) return
+    setSaving(true)
+    const { error } = await updateApprovedDisciplinaryRequest(request, editDraft, user.id)
+    setSaving(false)
+    if (error) return toast.error(`No se pudo editar el apercibimiento: ${mensajeError(error)}`)
+    setEditingId(null)
+    setEditDraft(null)
+    toast.success('Apercibimiento actualizado. Ya podés descargar el nuevo PDF.')
+    await load()
   }
 
   const markNotified = async request => {
@@ -191,8 +231,38 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
               <span style={{ color:'var(--text)', fontSize:'0.7rem', fontWeight:700 }}>{request.fecha_hecho}</span>
               <StatusChip estado={request.estado} />
             </div>
-            <p style={{ color:'var(--text)', fontSize:'0.72rem', whiteSpace:'pre-wrap' }}>{request.hechos}</p>
-            {request.urgente && <p style={{ color:'#f59e0b', fontSize:'0.66rem', marginTop:8 }}><strong>Medida preventiva:</strong> {request.medida_preventiva}</p>}
+            {editingId === request.id ? (
+              <div style={{ display:'grid', gap:10 }}>
+                <div>
+                  <label style={labelStyle}>Fecha del hecho</label>
+                  <input type="date" className="input-dark w-full" value={editDraft.fecha_hecho} onChange={event => setEditDraft(draft => ({ ...draft, fecha_hecho:event.target.value }))} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Texto del apercibimiento</label>
+                  <textarea className="input-dark w-full" rows={12} value={editDraft.hechos} onChange={event => setEditDraft(draft => ({ ...draft, hechos:event.target.value }))} />
+                </div>
+                <div className={compact ? '' : 'grid grid-cols-2 gap-3'}>
+                  <div><label style={labelStyle}>Descargo del trabajador</label><textarea className="input-dark w-full" rows={3} value={editDraft.descargo_trabajador} onChange={event => setEditDraft(draft => ({ ...draft, descargo_trabajador:event.target.value }))} /></div>
+                  <div><label style={labelStyle}>Testigos y evidencia</label><textarea className="input-dark w-full" rows={3} value={editDraft.testigos_evidencia} onChange={event => setEditDraft(draft => ({ ...draft, testigos_evidencia:event.target.value }))} /></div>
+                </div>
+                <div className={compact ? '' : 'grid grid-cols-2 gap-3'}>
+                  <div><label style={labelStyle}>Fundamento legal</label><textarea className="input-dark w-full" rows={3} value={editDraft.fundamento_legal} onChange={event => setEditDraft(draft => ({ ...draft, fundamento_legal:event.target.value }))} /></div>
+                  <div><label style={labelStyle}>Texto propuesto</label><textarea className="input-dark w-full" rows={3} value={editDraft.texto_propuesto} onChange={event => setEditDraft(draft => ({ ...draft, texto_propuesto:event.target.value }))} /></div>
+                </div>
+                <label style={{ display:'flex', gap:8, color:'var(--text)', fontSize:'0.7rem' }}>
+                  <input type="checkbox" checked={editDraft.urgente} onChange={event => setEditDraft(draft => ({ ...draft, urgente:event.target.checked }))} />
+                  Medida preventiva urgente
+                </label>
+                {editDraft.urgente && <div><label style={labelStyle}>Medida preventiva</label><textarea className="input-dark w-full" rows={3} value={editDraft.medida_preventiva} onChange={event => setEditDraft(draft => ({ ...draft, medida_preventiva:event.target.value }))} /></div>}
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn-primary" disabled={saving} onClick={() => saveEdit(request)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem' }}><Save size={12} /> Guardar cambios</button>
+                  <button className="btn-ghost" disabled={saving} onClick={() => { setEditingId(null); setEditDraft(null) }} style={{ fontSize:'0.68rem' }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (<>
+              <p style={{ color:'var(--text)', fontSize:'0.72rem', whiteSpace:'pre-wrap' }}>{request.hechos}</p>
+              {request.urgente && <p style={{ color:'#f59e0b', fontSize:'0.66rem', marginTop:8 }}><strong>Medida preventiva:</strong> {request.medida_preventiva}</p>}
+            </>)}
             {request.revision_observaciones && <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginTop:8 }}><strong>Revisión:</strong> {request.revision_observaciones}</p>}
 
             {canReview && request.estado === 'pendiente_aprobacion' && (
@@ -205,8 +275,9 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
               </div>
             )}
 
-            {canReview && request.estado === 'aprobado' && (
+            {canReview && request.estado === 'aprobado' && editingId !== request.id && (
               <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:10 }}>
+                <button className="btn-ghost" disabled={saving || editingId !== null} onClick={() => beginEdit(request)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem' }}><Pencil size={12} /> Editar</button>
                 <button className="btn-ghost" onClick={() => download(request)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem' }}><Download size={12} /> Descargar PDF</button>
                 <button className="btn-primary" disabled={saving} onClick={() => markNotified(request)} style={{ fontSize:'0.68rem' }}>Confirmar notificación</button>
               </div>
