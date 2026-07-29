@@ -5,6 +5,22 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-29 · Codex — Actualizaciones y Manual de Uso 2.7.0
+
+- Se elevó la versión visible y técnica de `2.6.0` a `2.7.0` en `releases.js`,
+  `package.json` y `package-lock.json`.
+- Actualizaciones incorpora una ficha del 29/07/2026 que resume los cambios publicados
+  desde el 19/07: Equipo/RR. HH., organigramas, credenciales masivas, flujo disciplinario,
+  informe general configurable, raciones y correcciones mobile.
+- El Manual de Uso suma el módulo “Equipo y RR. HH.” con instrucciones para ficha,
+  documentación privada, historial, apercibimientos, suspensiones, período de prueba,
+  bajas/obsoletos, organigrama, credenciales e informes.
+- `CHANGELOG.md` incorpora el resumen técnico-funcional de la versión 2.7.0.
+- Sin cambios en Supabase, datos, esquema, RLS, grants o policies.
+- Verificación: `npm run check` aprobado (lint sin errores, 6 advertencias
+  preexistentes; 20 archivos y 80 tests aprobados; build Vite aprobado).
+- Publicación autorizada por Nicolás con “dale”.
+
 ## 2026-07-29 · Codex — suspensión de Paola y flujo automático al Historial
 
 - En Supabase `mixyhfdlzjarvszinytk` se creó el antecedente de suspensión de Paola

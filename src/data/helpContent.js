@@ -165,6 +165,76 @@ export const HELP_MODULES = [
     ],
   },
   {
+    id: 'equipo',
+    label: 'Equipo y RR. HH.',
+    icon: '👥',
+    intro: 'Fichas del personal, documentación, evaluaciones, historial laboral, organigrama, credenciales y formularios disciplinarios.',
+    sections: [
+      {
+        title: 'Ficha de una persona',
+        body: [
+          'Ingresá a Equipo, buscá a la persona y abrí su ficha. Las pestañas reúnen datos y puesto, documentación, evaluaciones, historial, logros, RR. HH. y formularios.',
+          'Usá el lápiz junto al nombre para corregir datos personales, puesto, área o sedes asignadas. Una persona puede pertenecer a más de una sede.',
+          'No elimines una ficha con actividad vinculada. Usá “Enviar a obsoletos” o el flujo de baja para retirarla del equipo activo conservando su trazabilidad.',
+        ],
+      },
+      {
+        title: 'Documentación y ficha privada de RR. HH.',
+        body: [
+          'Documentación permite registrar requisitos, vencimientos y evidencias de la persona. Los avisos muestran documentos vencidos o próximos a renovar.',
+          'La pestaña RR. HH. contiene información privada y está reservada a perfiles autorizados. No debe usarse para observaciones operativas generales.',
+          'El Historial conserva antecedentes laborales, reconocimientos, apercibimientos, suspensiones y sus documentos. Los registros formales no se eliminan: cuando corresponde se solicita su anulación con trazabilidad.',
+        ],
+      },
+      {
+        title: 'Apercibimientos',
+        body: [
+          'En Formularios, el encargado describe objetivamente el hecho y puede agregar descargo, evidencia, fundamento y texto propuesto. Un administrador revisa y aprueba o rechaza la solicitud.',
+          'Después de la aprobación, descargá el PDF, notificá al trabajador y confirmá “Fue notificado”. Esa confirmación crea el antecedente en Historial.',
+          'Una vez notificado, adjuntá la copia firmada. El mismo documento se visualiza desde Formularios y desde el registro correspondiente del Historial.',
+        ],
+      },
+      {
+        title: 'Suspensiones firmadas',
+        body: [
+          'En Formularios → Suspensiones firmadas indicá el primer día, la cantidad de días y el motivo. El sistema calcula la fecha final y el día de reintegro.',
+          'Elegí el archivo firmado o usá “Tomar foto”. Al registrar, se crea automáticamente el antecedente de tipo Suspensión y el documento queda vinculado en Historial.',
+          'Las suspensiones ya registradas se muestran en la misma sección con sus fechas, reintegro, motivo y adjuntos.',
+        ],
+      },
+      {
+        title: 'Período de prueba, bajas y obsoletos',
+        body: [
+          'La pestaña Período de prueba ordena al personal por vencimiento y muestra la cuenta regresiva para facilitar el seguimiento.',
+          'Para una baja laboral, registrá fecha, motivo y observaciones. La persona sale de la nómina activa sin perder evaluaciones, documentos ni historial.',
+          '“Enviar a obsoletos” se usa para fichas que deben quedar inactivas pero conservar sus vínculos. Las fichas inactivas se consultan en Historial de bajas y pueden reactivarse.',
+        ],
+      },
+      {
+        title: 'Organigrama',
+        body: [
+          'El Organigrama abre un editor visual de pantalla completa. Permite ubicar personas y unidades, crear conexiones y representar funciones transversales como Calidad.',
+          'Guardá los cambios antes de salir. Usá la exportación PDF para obtener una versión legible destinada a impresión o comunicación.',
+        ],
+      },
+      {
+        title: 'Credenciales',
+        body: [
+          'Desde la ficha individual se puede emitir o consultar la credencial de una persona autorizada.',
+          'La pestaña Credenciales emitidas permite filtrar, seleccionar varias credenciales y descargar hojas A4 con frentes, dorsos y guías de corte para impresión doble faz.',
+        ],
+      },
+      {
+        title: 'Informes de personal y gestión',
+        body: [
+          'Informe de novedades reúne novedades del período y antecedentes disciplinarios vinculados a las personas y sedes seleccionadas.',
+          'En el tablero global, Informe de gestión permite elegir fechas, una o varias sedes y los temas del resumen: Operación, Escalamientos, Mantenimiento, Flota, Compras, Calidad, Tareas y RR. HH.',
+          'El PDF incluye únicamente el alcance seleccionado. Revisá siempre el período y las sedes antes de descargarlo.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'mantenimiento',
     label: 'Mantenimiento',
     icon: '🔧',

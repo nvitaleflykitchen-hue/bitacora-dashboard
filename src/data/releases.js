@@ -1,7 +1,31 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.6.0";
+export const APP_VERSION = "2.7.0";
 
 export const RELEASES = [
+  {
+    version: "2.7.0",
+    date: "2026-07-29",
+    title: "Equipo, organigramas e informes de gestión",
+    functions: [
+      "Equipo incorpora período de prueba, bajas sin pérdida de historial, fichas privadas de RR. HH. y protección contra el borrado accidental de personas con registros vinculados.",
+      "El organigrama se convierte en un editor visual de pantalla completa, con conexiones, unidades, Calidad transversal y exportación PDF legible.",
+      "Las credenciales emitidas pueden seleccionarse e imprimirse en lote, con frentes y dorsos distribuidos en hojas A4.",
+      "El flujo disciplinario permite crear, aprobar, editar y notificar apercibimientos; los documentos firmados quedan visibles en Formularios e Historial.",
+      "Las suspensiones firmadas registran fecha inicial, cantidad de días, motivo, reintegro y adjunto directamente en el historial de la persona.",
+      "El informe de novedades de personal recupera los antecedentes vinculados y el nuevo Informe de gestión permite elegir período, sedes y temas antes de generar el PDF.",
+      "La lectura de raciones distingue producidas, servidas, reutilizables y descartadas, con una comparación más clara por producto.",
+      "Compras mobile permite crear solicitudes con tipos válidos y se corrigieron cálculos de raciones, numeración de NC y evaluaciones con puntajes inconsistentes.",
+    ],
+    problem: "Las funciones incorporadas durante la segunda mitad de julio habían superado la documentación disponible: varias herramientas de RR. HH., organigramas, informes y mobile no figuraban en Actualizaciones ni en el Manual de Uso.",
+    affectedUsers: "Administradores, RR. HH., responsables de sede, Calidad, Compras y usuarios que consultan informes o trabajan desde mobile.",
+    usage: "Ingresá a Equipo para gestionar fichas, organigramas, credenciales y formularios disciplinarios. Desde el tablero global usá Informe de gestión para elegir el período, las sedes y los temas del PDF. Consultá el Manual de Uso actualizado para el paso a paso.",
+    examples: [
+      "Registrar una suspensión firmada y verla automáticamente en el Historial de la persona.",
+      "Seleccionar varias sedes y generar un informe mensual solo con Operación, Mantenimiento y RR. HH.",
+      "Imprimir varias credenciales en hojas A4 listas para corte y doble faz.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.6.0",
     date: "2026-07-19",

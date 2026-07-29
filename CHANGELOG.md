@@ -1,5 +1,15 @@
 # Historial de cambios — Fly Gestión
 
+## 2.7.0 — 2026-07-29
+
+- Equipo suma período de prueba, bajas/obsoletos con historial, fichas privadas de RR. HH. y protección contra eliminaciones accidentales.
+- Nuevo editor visual de organigramas con conexiones, unidades, Calidad transversal y exportación PDF.
+- Impresión masiva de credenciales en A4.
+- Flujo disciplinario integral para apercibimientos y suspensiones firmadas vinculadas al historial.
+- Informe general configurable por período, sedes y temas.
+- Mejoras en lectura de raciones, Compras mobile, numeración de NC y consistencia de evaluaciones.
+- Actualización integral de Actualizaciones y del Manual de Uso.
+
 ## 2.6.0 — 2026-07-19
 
 - Bloque acumulativo de mejoras incorporadas después de la versión 2.5.0.
