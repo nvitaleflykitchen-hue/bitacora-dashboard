@@ -20,6 +20,33 @@ export function disciplinaryStatusMeta(estado) {
   return DISCIPLINARY_STATUS[estado] || { label: estado || 'Sin estado', color: '#9ca3af' }
 }
 
+function formatLocalDate(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function suspensionPeriod(startDate, days) {
+  const parsedDays = Number(days)
+  const parts = String(startDate || '').split('-').map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN) || !Number.isInteger(parsedDays) || parsedDays < 1) {
+    return null
+  }
+
+  const start = new Date(parts[0], parts[1] - 1, parts[2])
+  const end = new Date(start)
+  end.setDate(end.getDate() + parsedDays - 1)
+  const returnDate = new Date(end)
+  returnDate.setDate(returnDate.getDate() + 1)
+
+  return {
+    start: formatLocalDate(start),
+    end: formatLocalDate(end),
+    returnDate: formatLocalDate(returnDate),
+  }
+}
+
 export function isDisciplinaryReviewApplied(record, approved) {
   return record?.estado === (approved ? 'aprobado' : 'rechazado')
 }
@@ -47,6 +74,34 @@ export async function createDisciplinaryRequest(payload) {
     .schema('equipo')
     .from('solicitudes_disciplinarias')
     .insert(payload)
+    .select('*')
+    .single()
+}
+
+export async function listPersonalSuspensions(personaId) {
+  return supabase
+    .schema('equipo')
+    .from('historial_personal')
+    .select('*')
+    .eq('persona_id', personaId)
+    .eq('tipo', 'suspension')
+    .eq('anulada', false)
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+}
+
+export async function createPersonalSuspension(payload) {
+  return supabase
+    .schema('equipo')
+    .from('historial_personal')
+    .insert({
+      persona_id: payload.persona_id,
+      tipo: 'suspension',
+      fecha: payload.fecha,
+      descripcion: payload.descripcion.trim(),
+      dias_suspension: Number(payload.dias_suspension),
+      registrado_por: payload.registrado_por?.trim() || null,
+    })
     .select('*')
     .single()
 }

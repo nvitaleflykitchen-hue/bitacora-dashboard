@@ -5,6 +5,7 @@ import {
   disciplinaryEditAuditNote,
   disciplinaryStatusMeta,
   isDisciplinaryReviewApplied,
+  suspensionPeriod,
 } from './disciplinaryWorkflow'
 
 describe('flujo disciplinario', () => {
@@ -41,5 +42,24 @@ describe('flujo disciplinario', () => {
     expect(note).toContain('Aprobado por administración.')
     expect(note).toContain('Fecha anterior: 2026-07-27')
     expect(note).toContain('Texto anterior: Texto original')
+  })
+
+  it('calcula el fin de la suspensión y la fecha de reintegro', () => {
+    expect(suspensionPeriod('2026-07-28', 3)).toEqual({
+      start:'2026-07-28',
+      end:'2026-07-30',
+      returnDate:'2026-07-31',
+    })
+    expect(suspensionPeriod('2026-07-31', 2)).toEqual({
+      start:'2026-07-31',
+      end:'2026-08-01',
+      returnDate:'2026-08-02',
+    })
+  })
+
+  it('rechaza períodos de suspensión incompletos', () => {
+    expect(suspensionPeriod('', 3)).toBeNull()
+    expect(suspensionPeriod('2026-07-28', 0)).toBeNull()
+    expect(suspensionPeriod('2026-07-28', 1.5)).toBeNull()
   })
 })

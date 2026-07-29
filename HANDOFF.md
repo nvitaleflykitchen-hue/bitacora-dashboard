@@ -5,6 +5,25 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-29 · Codex — suspensión de Paola y flujo automático al Historial
+
+- En Supabase `mixyhfdlzjarvszinytk` se creó el antecedente de suspensión de Paola
+  Tabarez (`historial_personal.id = 8fe22ba8-d0cc-41e8-8013-01a0860295b4`): 3 días
+  desde el 28/07/2026, reintegro el 31/07/2026, motivo Browix.
+- El adjunto 299 ya cargado se vinculó al antecedente como `historial_personal`; no se
+  duplicó ni se movió el archivo físico de Storage.
+- Hallazgo sin modificar: el documento firmado informa DNI 28.351.982, mientras la ficha
+  de la app guarda 28.851.982. Requiere validación de Nicolás.
+- Se preparó sobre `origin/main` un flujo nuevo para suspensiones: pide primer día,
+  cantidad de días, motivo y documento; calcula fin/reintegro, crea el historial y sube
+  el adjunto directamente al antecedente.
+- La sección lista las suspensiones existentes con sus documentos y funciona en escritorio
+  y mobile porque `PersonaFormularios` es compartido.
+- Sin cambios de esquema, migraciones, RLS, grants o policies.
+- Verificación: `npm run check` aprobado (lint sin errores, 6 advertencias
+  preexistentes; 20 archivos y 80 tests aprobados; build Vite aprobado).
+- Publicación autorizada por Nicolás con “dsle” (interpretado como “dale”).
+
 ## 2026-07-29 · Codex — suspensiones firmadas en Formularios del personal
 
 - `PersonaFormularios.jsx` incorpora una sección permanente “Suspensiones firmadas”,
