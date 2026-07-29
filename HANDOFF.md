@@ -5,6 +5,17 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-29 · Codex — suspensiones firmadas en Formularios del personal
+
+- `PersonaFormularios.jsx` incorpora una sección permanente “Suspensiones firmadas”,
+  asociada a la ficha mediante `entity_type = persona_suspension_firmada`.
+- Un administrador puede subir una foto, PDF o documento; también puede tomar la foto
+  desde el celular. La sección se comparte entre la ficha de escritorio y la vista móvil.
+- No se cargaron archivos de prueba ni se modificaron datos, esquema, RLS o permisos.
+- Verificación: `npm run check` aprobado (lint sin errores, 6 advertencias
+  preexistentes; 20 archivos y 78 tests aprobados; build Vite aprobado).
+- Publicación autorizada por Nicolás con “sale subilo”.
+
 ## 2026-07-29 · Codex — informe general configurable desde la app
 
 - `DashboardGlobal.jsx` incorpora el botón “Informe de gestión”.

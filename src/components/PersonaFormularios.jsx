@@ -223,6 +223,23 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
       </button>
 
       <div style={{ marginTop:24, borderTop:'1px solid rgba(255,255,255,0.08)', paddingTop:16 }}>
+        <div style={{ marginBottom:18, padding:'12px 14px', border:'1px solid rgba(239,68,68,0.2)', borderRadius:6, background:'rgba(239,68,68,0.04)' }}>
+          <div style={{ marginBottom:8 }}>
+            <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.78rem' }}>Suspensiones firmadas</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginTop:2 }}>
+              Adjuntá la notificación de suspensión firmada por el trabajador y la autoridad. Podés subir una foto, un PDF o un documento.
+            </p>
+          </div>
+          <AdjuntosPanel
+            entityType="persona_suspension_firmada"
+            entityId={persona.id}
+            compact
+            readOnly={!canReview}
+            label="Documentos de suspensión"
+            camera
+          />
+        </div>
+
         <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.78rem', marginBottom:10 }}>Solicitudes de esta persona</p>
         {loading && <p style={{ color:'var(--text-dim)', fontSize:'0.7rem' }}>Cargando…</p>}
         {!loading && requests.length === 0 && <p style={{ color:'var(--text-dim)', fontSize:'0.7rem' }}>No hay solicitudes disciplinarias.</p>}
