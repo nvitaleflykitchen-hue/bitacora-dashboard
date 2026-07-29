@@ -5,6 +5,20 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-29 · Codex — informe general configurable desde la app
+
+- `DashboardGlobal.jsx` incorpora el botón “Informe de gestión”.
+- El nuevo modal permite seleccionar período, múltiples sedes dentro del alcance del
+  usuario y cualquiera de estos puntos: Operación, Escalamientos, Mantenimiento, Flota,
+  Compras, Calidad, Tareas/Gestión y Equipo/RR. HH.
+- `gestionGeneralReportPdf.js` consulta únicamente los módulos y sedes seleccionados,
+  resume estados/KPIs y descarga un PDF A4 con el alcance indicado.
+- Se agregó cobertura para informe completo y selección de un solo punto.
+- Validación local: revisión visual de las dos páginas renderizadas sin recortes ni
+  superposiciones; `npm run check` aprobado (lint sin errores, 11 advertencias
+  preexistentes; 17 archivos y 61 tests aprobados; build Vite aprobado).
+- No hubo cambios en Supabase, datos, esquema, RLS o permisos.
+
 ## 2026-07-29 · Codex — apercibimientos visibles y firmado adjunto
 
 - Se verificó en Supabase, únicamente mediante consultas de solo lectura sobre

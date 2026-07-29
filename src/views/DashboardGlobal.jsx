@@ -7,7 +7,8 @@ import RegistroModal from '../components/RegistroModal'
 import PageHeader from '../components/PageHeader'
 import TareaForm from '../components/TareaForm'
 import TicketRapidoModal from '../components/TicketRapidoModal'
-import { RefreshCw, ClipboardList, Building2, AlertTriangle, CheckSquare, Wrench, Flame } from 'lucide-react'
+import GestionGeneralReportModal from '../components/GestionGeneralReportModal'
+import { RefreshCw, ClipboardList, Building2, AlertTriangle, CheckSquare, Wrench, Flame, FileDown } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { fmtFecha, fmtHora } from '../lib/dateUtils'
@@ -44,6 +45,7 @@ export default function DashboardGlobal({ onNavigate }) {
   const [ticketOrigen, setTicketOrigen] = useState(null)
   const [mntStats, setMntStats]       = useState(null)
   const [tendencia, setTendencia]     = useState([])
+  const [showGestionReport, setShowGestionReport] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -107,6 +109,9 @@ export default function DashboardGlobal({ onNavigate }) {
       <PageHeader title="Dashboard Global" subtitle={hoy}>
         <div className="flex items-center gap-3">
           <Clock />
+          <button onClick={() => setShowGestionReport(true)} className="btn-ghost flex items-center gap-1.5" style={{ padding:'0.35rem 0.75rem' }}>
+            <FileDown size={11} /> Informe de gestión
+          </button>
           <button onClick={load} className="btn-ghost flex items-center gap-1.5" style={{ padding:'0.35rem 0.75rem' }}>
             <RefreshCw size={11} /> Actualizar
           </button>
@@ -313,6 +318,9 @@ export default function DashboardGlobal({ onNavigate }) {
           onClose={() => setTicketOrigen(null)}
           onCreated={() => { setTicketOrigen(null); load() }}
         />
+      )}
+      {showGestionReport && (
+        <GestionGeneralReportModal sedes={data.sedes || []} onClose={() => setShowGestionReport(false)} />
       )}
     </div>
   )
