@@ -287,10 +287,12 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
         .eq("persona_id", personaId)
         .order("fecha_evaluacion", { ascending: false }),
       supabase
-        .from("v_historial_personal")
+        .schema("equipo")
+        .from("historial_personal")
         .select("*")
         .eq("persona_id", personaId)
-        .order("fecha", { ascending: false }),
+        .order("fecha", { ascending: false })
+        .order("created_at", { ascending: false }),
       supabase
         .from("v_logros_obtenidos")
         .select("*")

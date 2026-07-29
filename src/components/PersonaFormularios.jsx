@@ -3,6 +3,7 @@ import { BookOpen, Check, Download, FileText, Pencil, Save, ShieldAlert, X } fro
 import { useAuth } from '../lib/auth'
 import { DISCIPLINARY_NOTEBOOK_URL } from '../lib/access'
 import { apercibimientoFilename, createApercibimientoPdf } from '../lib/apercibimientoPdf'
+import AdjuntosPanel from './AdjuntosPanel'
 import {
   canCreateDisciplinaryRequest,
   canReviewDisciplinaryRequest,
@@ -280,6 +281,19 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
                 <button className="btn-ghost" disabled={saving || editingId !== null} onClick={() => beginEdit(request)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem' }}><Pencil size={12} /> Editar</button>
                 <button className="btn-ghost" onClick={() => download(request)} style={{ display:'flex', gap:5, alignItems:'center', fontSize:'0.68rem' }}><Download size={12} /> Descargar PDF</button>
                 <button className="btn-primary" disabled={saving} onClick={() => markNotified(request)} style={{ fontSize:'0.68rem' }}>Confirmar notificación</button>
+              </div>
+            )}
+
+            {request.estado === 'notificado' && request.historial_id && (
+              <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+                <AdjuntosPanel
+                  entityType="historial_personal"
+                  entityId={request.historial_id}
+                  compact
+                  readOnly={!canReview}
+                  label="Apercibimiento firmado"
+                  camera
+                />
               </div>
             )}
           </div>

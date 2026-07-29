@@ -392,7 +392,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
     Promise.all([
       supabase.from('v_personas').select('*').eq('id', personaId).single(),
       supabase.from('v_evaluaciones').select('*').eq('persona_id', personaId).order('fecha_evaluacion', { ascending: false }),
-      supabase.from('v_historial_personal').select('*').eq('persona_id', personaId).order('fecha', { ascending: false }),
+      supabase.schema('equipo').from('historial_personal').select('*').eq('persona_id', personaId).order('fecha', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('v_logros_obtenidos').select('*').eq('persona_id', personaId).order('fecha', { ascending: false }),
     ]).then(([p, ev, hi, lo]) => {
       setPersona(p.data)

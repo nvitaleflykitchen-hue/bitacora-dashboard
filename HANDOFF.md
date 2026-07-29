@@ -5,6 +5,21 @@ empezar. Lo más nuevo va arriba. Reglas completas en [`AGENTS.md`](./AGENTS.md)
 
 ---
 
+## 2026-07-29 · Codex — apercibimientos visibles y firmado adjunto
+
+- Se verificó en Supabase, únicamente mediante consultas de solo lectura sobre
+  `mixyhfdlzjarvszinytk`, que Pablo Gabriel Oggero tiene 2 solicitudes disciplinarias
+  notificadas y 2 filas vigentes correctamente vinculadas en `equipo.historial_personal`.
+- `EquipoView.jsx` y `MobilePersonal.jsx` ahora leen el historial desde la tabla canónica
+  `equipo.historial_personal`, protegida por RLS, en lugar de depender de
+  `public.v_historial_personal`, cuya falla quedaba silenciada como una lista vacía.
+- `PersonaFormularios.jsx` muestra, debajo de cada solicitud notificada, el panel
+  “Apercibimiento firmado” asociado al mismo `historial_id`; admin puede subir archivo o
+  foto desde allí. El adjunto también se ve en Historial, sin duplicar archivos.
+- Verificación previa en el árbol compartido: `npm run check` aprobado (lint sin errores,
+  11 advertencias preexistentes; 16 archivos y 59 tests aprobados; build Vite aprobado).
+- No se modificaron datos, esquema, grants, RLS ni policies.
+
 ## 2026-07-28 · Codex — Falso error al aprobar formularios disciplinarios
 
 - Se confirmó en producción que la aprobación de la solicitud de Exequiel Lobo
