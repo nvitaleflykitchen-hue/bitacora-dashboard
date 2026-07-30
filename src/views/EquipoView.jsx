@@ -40,6 +40,8 @@ import CredencialPersonalModal from "../components/CredencialPersonalModal";
 import CredencialesMasivasA4 from "../components/CredencialesMasivasA4";
 import VacacionesPanel from "../components/VacacionesPanel";
 import PersonaRrhhPanel from "../components/PersonaRrhhPanel";
+import BibliotecaRecursos from "../components/BibliotecaRecursos";
+import EvaluacionesAnalysisPanel from "../components/EvaluacionesAnalysisPanel";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
 import {
@@ -62,32 +64,18 @@ import {
   evaluacionPersonalFile,
   textoEvaluacionPersonal,
 } from "../lib/evaluacionPersonalPdf";
+import {
+  analizarObjetividadEvaluacion,
+  promedioEvaluacion,
+  puntajesEvaluacion,
+} from "../lib/evaluacionObjetividad";
 
 const PERIODO_PRUEBA_DIAS = 180;
 const PLANTA_CORDOBA_SEDE_ID = 24;
-const EVALUACION_SCORE_FIELDS = [
-  "d1_cumple_actividades",
-  "d2_sin_supervision",
-  "d3_comprende_prioridades",
-  "e1_cooperacion",
-  "e2_comunicacion",
-  "e3_maneja_desacuerdos",
-  "e4_ambiente_confianza",
-  "e5_evita_conflictos",
-  "p1_cumple_horario",
-  "p2_aseo_personal",
-  "p3_uniforme",
-];
-
-function puntajesEvaluacion(form) {
-  return EVALUACION_SCORE_FIELDS
-    .map((field) => Number(form[field]))
-    .filter((value) => value >= 1 && value <= 5);
-}
 
 function evaluacionConTodosCinco(form) {
   const puntajes = puntajesEvaluacion(form);
-  return puntajes.length === EVALUACION_SCORE_FIELDS.length
+  return puntajes.length === 11
     && puntajes.every((value) => value === 5);
 }
 function estadoPeriodoPrueba(persona, hoy = new Date()) {
@@ -240,6 +228,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     sugerencias_evaluador: "",
   };
   const [evalForm, setEvalForm] = useState(EVAL_INICIAL);
+  const evalAnalysis = analizarObjetividadEvaluacion(evalForm);
   const [histForm, setHistForm] = useState({
     tipo: perfil?.rol === "admin" ? "apercibimiento" : "reconocimiento",
     fecha: new Date().toISOString().split("T")[0],
@@ -331,10 +320,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   }, []);
 
   const calcPuntaje = (f) => {
-    const vals = puntajesEvaluacion(f);
-    if (!vals.length) return null;
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    return Math.round(avg * 10) / 10;
+    return promedioEvaluacion(f);
   };
 
   const getResultado = (score) => {
@@ -434,6 +420,28 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     }
   };
 
+  const copyRevisionRequest = async (ev) => {
+    const analisis = analizarObjetividadEvaluacion(ev);
+    const nombre = `${persona.nombre} ${persona.apellido || ""}`.trim();
+    const texto = [
+      `Revisión solicitada · Evaluación de desempeño de ${nombre}`,
+      `Período: ${ev.periodo || "sin informar"}`,
+      "",
+      "Antes de validarla, revisá los siguientes puntos:",
+      ...analisis.hallazgos.map(
+        (hallazgo) => `- ${hallazgo.titulo}: ${hallazgo.detalle}`,
+      ),
+      "",
+      "La revisión debe basarse en hechos observables del período. La app no modifica los puntajes automáticamente.",
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(texto);
+      toast.ok("Pedido de revisión copiado para enviarlo al evaluador.");
+    } catch {
+      toast.error("No se pudo copiar el pedido de revisión.");
+    }
+  };
+
   const solicitarAnulacion = async (h) => {
     const motivo = anulacionMotivo.trim();
     if (motivo.length < 10) {
@@ -498,22 +506,13 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
   };
 
   const saveEval = async () => {
-    if (evaluacionConTodosCinco(evalForm)) {
+    const analisis = analizarObjetividadEvaluacion(evalForm);
+    if (analisis.bloqueantes > 0) {
       toast.warn(
-        "No se puede guardar una evaluación con los 11 criterios en 5. El valor 5 es excepcional: revisá cada criterio y calificá según hechos observables.",
-      );
-      return;
-    }
-    const puntajesAltos = puntajesEvaluacion(evalForm).filter((value) => value >= 4);
-    if (puntajesAltos.length && evalForm.observaciones_rrhh.trim().length < 30) {
-      toast.warn(
-        "Los puntajes 4 y 5 requieren una justificación concreta en Observaciones RR. HH. (mínimo 30 caracteres).",
-      );
-      return;
-    }
-    if (calcPuntaje(evalForm) > 4 && evalForm.sugerencias_evaluador.trim().length < 20) {
-      toast.warn(
-        "Para promedios mayores a 4 indicá al menos una oportunidad de mejora en Sugerencias.",
+        `La evaluación requiere revisión: ${analisis.hallazgos
+          .filter((hallazgo) => hallazgo.severidad === "bloqueante")
+          .map((hallazgo) => hallazgo.titulo)
+          .join(" · ")}`,
       );
       return;
     }
@@ -1154,6 +1153,12 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     <X size={13} />
                   </button>
                 </div>
+                <div className="mb-4">
+                  <BibliotecaRecursos
+                    compact
+                    categoria="Evaluaciones de desempeño"
+                  />
+                </div>
                 <div
                   className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 p-3"
                   style={{
@@ -1439,6 +1444,84 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     </div>
                   ))}
                 </div>
+                <div
+                  className="mb-3 p-3 rounded"
+                  role="status"
+                  style={{
+                    background:
+                      evalAnalysis.bloqueantes > 0
+                        ? "rgba(255,68,68,0.08)"
+                        : evalAnalysis.revisiones > 0
+                          ? "rgba(245,158,11,0.08)"
+                          : "rgba(57,255,20,0.06)",
+                    border:
+                      evalAnalysis.bloqueantes > 0
+                        ? "1px solid rgba(255,68,68,0.35)"
+                        : evalAnalysis.revisiones > 0
+                          ? "1px solid rgba(245,158,11,0.35)"
+                          : "1px solid rgba(57,255,20,0.25)",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p
+                      className="font-metric"
+                      style={{
+                        color:
+                          evalAnalysis.bloqueantes > 0
+                            ? "#ff6b6b"
+                            : evalAnalysis.revisiones > 0
+                              ? "#f59e0b"
+                              : "#39FF14",
+                        fontSize: "0.64rem",
+                      }}
+                    >
+                      CONTROL DE OBJETIVIDAD · CALIDAD {evalAnalysis.calidad}%
+                    </p>
+                    <span style={{ color: "var(--text-dim)", fontSize: "0.6rem" }}>
+                      {evalAnalysis.criteriosObservados}/11 criterios observados
+                    </span>
+                  </div>
+                  {evalAnalysis.hallazgos.length ? (
+                    <div className="mt-2 space-y-2">
+                      {evalAnalysis.hallazgos.map((hallazgo) => (
+                        <div key={hallazgo.codigo}>
+                          <p
+                            style={{
+                              color:
+                                hallazgo.severidad === "bloqueante"
+                                  ? "#ff6b6b"
+                                  : "#f59e0b",
+                              fontSize: "0.68rem",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {hallazgo.titulo}
+                          </p>
+                          <p
+                            style={{
+                              color: "var(--text-dim)",
+                              fontSize: "0.65rem",
+                              lineHeight: 1.45,
+                            }}
+                          >
+                            {hallazgo.detalle}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p
+                      style={{
+                        color: "var(--text-dim)",
+                        fontSize: "0.67rem",
+                        marginTop: 6,
+                      }}
+                    >
+                      No se detectaron inconsistencias automáticas. La evaluación
+                      todavía requiere validación humana y devolución.
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center gap-4 mb-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1459,7 +1542,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     style={{ fontSize: "0.72rem" }}
                   >
                     <Save size={12} />{" "}
-                    {saving ? "Guardando..." : "Guardar evaluación"}
+                    {saving ? "Guardando..." : "Analizar y guardar"}
                   </button>
                   <button
                     onClick={() => setShowEvalForm(false)}
@@ -1477,7 +1560,15 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                   Sin evaluaciones aún.
                 </p>
               )}
-              {evaluaciones.map((ev) => (
+              {evaluaciones.map((ev) => {
+                const analisis = analizarObjetividadEvaluacion(ev);
+                const colorAnalisis =
+                  analisis.estado === "requiere_revision"
+                    ? "#ff6b6b"
+                    : analisis.estado === "revisar"
+                      ? "#f59e0b"
+                      : "#39FF14";
+                return (
                 <div key={ev.id} className="glass p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -1526,6 +1617,50 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                         </button>
                       )}
                     </div>
+                  </div>
+                  <div
+                    className="flex items-center justify-between gap-3 mb-3 p-2 rounded"
+                    style={{
+                      background: `${colorAnalisis}0D`,
+                      border: `1px solid ${colorAnalisis}33`,
+                    }}
+                  >
+                    <div>
+                      <p
+                        className="font-metric"
+                        style={{ color: colorAnalisis, fontSize: "0.58rem" }}
+                      >
+                        {analisis.estado === "requiere_revision"
+                          ? "REQUIERE REVISIÓN"
+                          : analisis.estado === "revisar"
+                            ? "REVISAR ANTES DE VALIDAR"
+                            : "LISTA PARA VALIDAR"}
+                      </p>
+                      {analisis.hallazgos.length > 0 && (
+                        <p
+                          style={{
+                            color: "var(--text-dim)",
+                            fontSize: "0.63rem",
+                            marginTop: 3,
+                          }}
+                        >
+                          {analisis.hallazgos[0].titulo}
+                          {analisis.hallazgos.length > 1
+                            ? ` · +${analisis.hallazgos.length - 1}`
+                            : ""}
+                        </p>
+                      )}
+                    </div>
+                    {canManage && analisis.hallazgos.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => copyRevisionRequest(ev)}
+                        style={{ fontSize: "0.62rem", color: colorAnalisis }}
+                      >
+                        Solicitar revisión
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
@@ -1620,7 +1755,8 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                     />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -2879,6 +3015,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
   const isAdmin = perfil?.rol === "admin";
   const canManage = can("equipo", "manage") && !isSafetyOnly;
   const [personas, setPersonas] = useState([]);
+  const [evaluacionesEquipo, setEvaluacionesEquipo] = useState([]);
   const [bajas, setBajas] = useState([]);
   const [duplicados, setDuplicados] = useState([]);
   const [sedes, setSedes] = useState([]);
@@ -2897,8 +3034,9 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
 
   const load = async () => {
     setLoading(true);
-    const [pRes, bajasRes, sRes, gRes, candidatosDuplicadosRes] = await Promise.all([
+    const [pRes, evaluacionesRes, bajasRes, sRes, gRes, candidatosDuplicadosRes] = await Promise.all([
       supabase.from("v_personas").select("*").order("nombre"),
+      supabase.from("v_evaluaciones").select("*").order("fecha_evaluacion", { ascending: false }),
       supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,area,sede_ids,fecha_ingreso,fecha_baja,motivo_baja,observaciones_baja,foto_url,baja_registrada_at,motivo_reactivacion").eq("activo", false).is("duplicado_de", null).not("fecha_baja", "is", null).not("motivo_baja", "is", null).order("fecha_baja", { ascending: false }),
       supabase
         .schema("bitacora")
@@ -2942,6 +3080,14 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
       ? personasTerritoriales.filter((p) => isQualityTeamPerson(p, perfil))
       : personasTerritoriales;
     setPersonas(personasPermitidas);
+    const personasPermitidasIds = new Set(
+      personasPermitidas.map((persona) => String(persona.id)),
+    );
+    setEvaluacionesEquipo(
+      (evaluacionesRes.data || []).filter((evaluacion) =>
+        personasPermitidasIds.has(String(evaluacion.persona_id)),
+      ),
+    );
     const bajasTerritoriales = allowedSedeIds === null
       ? bajasRes.data || []
       : (bajasRes.data || []).filter((p) => p.sede_ids?.some((id) => allowedSedeIds.includes(id)));
@@ -3022,7 +3168,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
     }
   }, [isQualityOnly, selectedId, loading, personas]);
   useEffect(() => {
-    if (isQualityOnly && !["lista", "ranking"].includes(tab)) setTab("lista");
+    if (isQualityOnly && !["lista", "analisis", "recursos"].includes(tab)) setTab("lista");
   }, [isQualityOnly, tab]);
 
   const filtered = personas.filter((p) => {
@@ -3056,9 +3202,6 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
     (p) => Number(p.puntaje_promedio || 0) > 0,
   );
 
-  const ranking = [...personas].sort(
-    (a, b) => (b.puntos_total || 0) - (a.puntos_total || 0),
-  );
   const periodosPrueba = personas.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=-30 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
 
   const RESULTADO_COLOR = {
@@ -3229,7 +3372,8 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
         <div className="flex gap-0">
           {[
             ["lista", "LISTA"],
-            ["ranking", "RANKING"],
+            ["analisis", "ANÁLISIS"],
+            ["recursos", "RECURSOS"],
             ["organigrama", "ORGANIGRAMA"],
             ["vacaciones", "VACACIONES"],
             ...(canManage ? [["periodo-prueba", `PERÍODO DE PRUEBA (${periodosPrueba.length})`]] : []),
@@ -3242,7 +3386,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             <button
               key={id}
               onClick={() => {
-                if (isQualityOnly && !["lista", "ranking"].includes(id)) return;
+                if (isQualityOnly && !["lista", "analisis", "recursos"].includes(id)) return;
                 setTab(id);
               }}
               className="font-metric px-4 py-1.5"
@@ -3252,7 +3396,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                 background: tab === id ? "rgba(57,255,20,0.1)" : "transparent",
                 color: tab === id ? "var(--phosphor)" : "var(--text-dim)",
                 opacity:
-                  isQualityOnly && !["lista", "ranking"].includes(id)
+                  isQualityOnly && !["lista", "analisis", "recursos"].includes(id)
                     ? 0.35
                     : 1,
                 borderBottom:
@@ -3673,89 +3817,15 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
                 );
               })}
           </div>
-        ) : (
-          // Ranking tab
-          <div className="max-w-2xl space-y-2">
-            {ranking.map((p, i) => {
-              const puntaje = Math.min(5, p.puntaje_promedio || 0);
-              const res =
-                puntaje > 0
-                  ? puntaje < 2
-                    ? "Bajo"
-                    : puntaje < 3
-                      ? "Aceptable"
-                      : puntaje < 4.5
-                        ? "Alto"
-                        : "Excelente"
-                  : null;
-              const medal =
-                i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedId(p.id)}
-                  className="glass w-full p-3 flex items-center gap-4 text-left"
-                  style={{
-                    border:
-                      i < 3
-                        ? "1px solid rgba(57,255,20,0.15)"
-                        : "1px solid rgba(57,255,20,0.06)",
-                    borderRadius: 4,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: i < 3 ? "1.3rem" : "0.8rem",
-                      minWidth: 32,
-                      textAlign: "center",
-                      color: "var(--text-dim)",
-                    }}
-                  >
-                    {medal}
-                  </span>
-                  <div className="flex-1">
-                    <p style={{ fontSize: "0.83rem", color: "var(--text)" }}>
-                      {p.nombre} {p.apellido || ""}
-                    </p>
-                    <p
-                      style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}
-                    >
-                      {p.puesto || "—"}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className="font-title font-bold"
-                      style={{ color: "var(--phosphor)", fontSize: "1rem" }}
-                    >
-                      {p.puntos_total || 0}
-                    </p>
-                    <p style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}>
-                      puntos
-                    </p>
-                  </div>
-                  {res && (
-                    <span
-                      className="font-metric"
-                      style={{
-                        fontSize: "0.62rem",
-                        color: RESULTADO_COLOR[res],
-                        minWidth: 56,
-                        textAlign: "right",
-                      }}
-                    >
-                      {res}
-                    </span>
-                  )}
-                  <ChevronRight
-                    size={12}
-                    style={{ color: "rgba(57,255,20,0.3)" }}
-                  />
-                </button>
-              );
-            })}
-          </div>
-        )}
+        ) : tab === "analisis" ? (
+          <EvaluacionesAnalysisPanel
+            evaluaciones={evaluacionesEquipo}
+            personas={personas}
+            onOpenPersona={setSelectedId}
+          />
+        ) : tab === "recursos" ? (
+          <BibliotecaRecursos />
+        ) : null}
       </div>
     </div>
   );

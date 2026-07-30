@@ -613,3 +613,22 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
 - Toda calificación 4 o 5 exige una justificación concreta en Observaciones RR. HH. (mínimo 30 caracteres).
 - Un promedio mayor a 4 exige una oportunidad de mejora en Sugerencias (mínimo 20 caracteres).
 - `npm run check`: 76 tests, lint sin errores y build correcto.
+
+## 2026-07-30 - Codex - Evaluaciones objetivas y biblioteca de RR. HH.
+
+- Se reemplazó el ranking de personal por un análisis de cobertura y calidad de
+  evaluaciones, sin medallas ni comparación de personas con datos incompletos.
+- El analizador detecta falta de período/evaluador, puntaje automático, valores
+  altos o bajos sin evidencia, observaciones genéricas y ausencia de una acción
+  verificable. La app no modifica puntajes ni toma decisiones automáticas.
+- Las nuevas evaluaciones muestran el análisis en tiempo real y bloquean el
+  guardado mientras existan controles críticos. Las evaluaciones anteriores
+  muestran su estado y permiten copiar un pedido de revisión para el evaluador.
+- Se creó una biblioteca inicial de recursos con los dos instructivos de RR. HH.
+  y el cuaderno de NotebookLM, disponible en Equipo y dentro del formulario.
+- Se actualizó el Manual de Uso y se replicó el flujo esencial en mobile.
+- No se creó ninguna tabla, política, bucket ni migración; no hubo cambios en
+  Supabase ni en datos de producción.
+- Verificado: lint sin errores (6 warnings preexistentes), 21 archivos de prueba,
+  83 tests aprobados y build de producción correcto.
+- Pendiente de commit/push y publicación; requiere autorización de Nicolás.

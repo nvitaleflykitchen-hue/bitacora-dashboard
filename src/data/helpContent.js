@@ -187,6 +187,15 @@ export const HELP_MODULES = [
         ],
       },
       {
+        title: 'Evaluaciones objetivas y biblioteca',
+        body: [
+          'La pestaña Análisis reemplaza el ranking. Muestra cobertura y calidad de las evaluaciones, sin comparar personas ni entregar medallas por información incompleta.',
+          'Antes de guardar, el control de objetividad revisa período, evaluador, evidencia para puntajes altos o bajos, expresiones genéricas y oportunidad de seguimiento. La app señala qué corregir, pero no modifica calificaciones automáticamente.',
+          'En Recursos están disponibles los instructivos vigentes y el cuaderno de NotebookLM. Los mismos accesos aparecen dentro del formulario para consultar los criterios mientras se evalúa.',
+          '“Solicitar revisión” copia un mensaje con las observaciones detectadas para enviarlo al evaluador. La validación definitiva y la devolución continúan siendo responsabilidad humana.',
+        ],
+      },
+      {
         title: 'Apercibimientos',
         body: [
           'En Formularios, el encargado describe objetivamente el hecho y puede agregar descargo, evidencia, fundamento y texto propuesto. Un administrador revisa y aprueba o rechaza la solicitud.',

@@ -14,6 +14,9 @@ import { mensajeError } from '../lib/errores'
 import { useBackHandler } from '../lib/backStack'
 import { downloadEvaluacionPersonalPdf, evaluacionPersonalFile, textoEvaluacionPersonal } from '../lib/evaluacionPersonalPdf'
 import { Download, Share2, Copy } from 'lucide-react'
+import BibliotecaRecursos from '../components/BibliotecaRecursos'
+import EvaluacionesAnalysisPanel from '../components/EvaluacionesAnalysisPanel'
+import { analizarObjetividadEvaluacion } from '../lib/evaluacionObjetividad'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -92,6 +95,7 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const puntaje = calcPuntaje(form)
   const resultado = getResultado(puntaje)
+  const analisis = analizarObjetividadEvaluacion(form)
 
   useEffect(() => {
     if (!user?.id) return
@@ -107,6 +111,16 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
   }, [user?.id])
 
   const submit = async () => {
+    if (analisis.bloqueantes > 0) {
+      toast.warn(
+        'La evaluación requiere revisión: '
+        + analisis.hallazgos
+          .filter(hallazgo => hallazgo.severidad === 'bloqueante')
+          .map(hallazgo => hallazgo.titulo)
+          .join(' · ')
+      )
+      return
+    }
     setSaving(true)
     const toNum = v => (v === '' || v === null ? null : Number(v))
     const { error } = await supabase.schema('equipo').from('evaluaciones').insert({
@@ -148,6 +162,7 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
             </div>
           ))}
         </Card>
+        <BibliotecaRecursos compact categoria="Evaluaciones de desempeño" />
         <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: 10 }}>Escala: 1 = muy bajo, 3 = aceptable, 5 = excelente. Dejá sin calificar si no aplica.</p>
 
         {[['evaluador_nombre', 'Evaluador', 'Ej: María González'], ['evaluador_cargo', 'Cargo evaluador', 'Ej: Jefe de Cocina'], ['periodo', 'Período', 'Ej: Q2 2026']].map(([k, l, ph]) => (
@@ -189,8 +204,24 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
           <span style={{ fontSize: '0.78rem', color: 'var(--text)' }}>Superó período de prueba</span>
         </label>
 
+        <Card style={{
+          background: analisis.bloqueantes > 0 ? 'rgba(255,68,68,0.08)' : analisis.revisiones > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(57,255,20,0.06)',
+          border: analisis.bloqueantes > 0 ? '1px solid rgba(255,68,68,0.35)' : analisis.revisiones > 0 ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgba(57,255,20,0.25)',
+        }}>
+          <p style={{ fontSize: '0.65rem', fontWeight: 800, color: analisis.bloqueantes > 0 ? '#ff6b6b' : analisis.revisiones > 0 ? '#f59e0b' : '#39FF14' }}>
+            CONTROL DE OBJETIVIDAD · CALIDAD {analisis.calidad}%
+          </p>
+          {analisis.hallazgos.map(hallazgo => (
+            <div key={hallazgo.codigo} style={{ marginTop: 8 }}>
+              <p style={{ fontSize: '0.68rem', fontWeight: 700, color: hallazgo.severidad === 'bloqueante' ? '#ff6b6b' : '#f59e0b' }}>{hallazgo.titulo}</p>
+              <p style={{ fontSize: '0.64rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>{hallazgo.detalle}</p>
+            </div>
+          ))}
+          {!analisis.hallazgos.length && <p style={{ fontSize: '0.66rem', color: 'var(--text-dim)', marginTop: 6 }}>Sin inconsistencias automáticas. Requiere validación humana.</p>}
+        </Card>
+
         <button onClick={submit} disabled={saving} className="btn-primary w-full" style={{ padding: '0.75rem' }}>
-          {saving ? 'Guardando...' : 'Guardar evaluación'}
+          {saving ? 'Guardando...' : 'Analizar y guardar'}
         </button>
       </div>
     </div>
@@ -599,10 +630,11 @@ export default function MobilePersonal() {
   const isSafetyOnly = isSafetyOnlyProfile(perfil)
   const canManage = can('equipo', 'manage') && !isQualityOnly && !isSafetyOnly
   const [personas, setPersonas] = useState([])
+  const [evaluacionesEquipo, setEvaluacionesEquipo] = useState([])
   const [bajas, setBajas] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [view, setView] = useState('lista') // 'lista' | 'ranking'
+  const [view, setView] = useState('lista')
   const [selectedId, setSelectedId] = useState(null)
   useBackHandler(() => setSelectedId(null), !!selectedId)
   const [showNew, setShowNew] = useState(false)
@@ -613,10 +645,14 @@ export default function MobilePersonal() {
     setLoading(true)
     Promise.all([
       supabase.from('v_personas').select('*').order('nombre'),
+      supabase.from('v_evaluaciones').select('*').order('fecha_evaluacion', { ascending: false }),
       supabase.schema('equipo').from('personas').select('id,nombre,apellido,puesto,area,fecha_baja,motivo_baja,observaciones_baja,foto_url').eq('activo', false).is('duplicado_de', null).not('fecha_baja', 'is', null).not('motivo_baja', 'is', null).order('fecha_baja', { ascending:false })
-    ]).then(([r, bajasRes]) => {
+    ]).then(([r, evaluacionesRes, bajasRes]) => {
         const data = r.data || []
-        setPersonas(isQualityOnly ? data.filter(p => isQualityTeamPerson(p, perfil)) : data)
+        const permitidas = isQualityOnly ? data.filter(p => isQualityTeamPerson(p, perfil)) : data
+        setPersonas(permitidas)
+        const ids = new Set(permitidas.map(persona => String(persona.id)))
+        setEvaluacionesEquipo((evaluacionesRes.data || []).filter(evaluacion => ids.has(String(evaluacion.persona_id))))
         setBajas(isQualityOnly ? [] : (bajasRes.data || []))
       })
       .finally(() => setLoading(false))
@@ -653,8 +689,6 @@ export default function MobilePersonal() {
     const q = search.toLowerCase()
     return (p.nombre + ' ' + (p.apellido || '') + ' ' + (p.legajo || '') + ' ' + (p.puesto || '') + ' ' + (p.area || '')).toLowerCase().includes(q)
   })
-  const ranking = [...personas].sort((a, b) => (b.puntos_total || 0) - (a.puntos_total || 0))
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
       <div style={{ padding: '1.25rem 1rem 0.75rem', flexShrink: 0 }}>
@@ -663,9 +697,10 @@ export default function MobilePersonal() {
           <button onClick={() => setView('lista')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'lista' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'lista' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
             <Users size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Lista
           </button>
-          <button onClick={() => setView('ranking')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'ranking' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'ranking' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
-            <Star size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Ranking
+          <button onClick={() => setView('analisis')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'analisis' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'analisis' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
+            <Star size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Análisis
           </button>
+          <button onClick={() => setView('recursos')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'recursos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'recursos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Recursos</button>
           {!isQualityOnly && <button onClick={() => setView('bajas')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'bajas' ? 'rgba(245,158,11,0.15)' : 'transparent', color: view === 'bajas' ? '#F59E0B' : 'var(--text-dim)' }}>
             Bajas ({bajas.length})
           </button>}
@@ -724,25 +759,15 @@ export default function MobilePersonal() {
               <div style={{ textAlign:'right' }}><p style={{ color:'#F59E0B', fontSize:'0.62rem', textTransform:'uppercase' }}>{(p.motivo_baja || 'otro').replaceAll('_',' ')}</p><p style={{ color:'var(--text-dim)', fontSize:'0.62rem' }}>{p.fecha_baja || 'Sin fecha'}</p>{canManage && <button className="btn-ghost" style={{ marginTop:6, fontSize:'0.6rem' }} onClick={() => reactivar(p)}>REACTIVAR</button>}</div>
             </div>
           ))
+        ) : view === 'analisis' ? (
+          <EvaluacionesAnalysisPanel
+            compact
+            evaluaciones={evaluacionesEquipo}
+            personas={personas}
+            onOpenPersona={setSelectedId}
+          />
         ) : (
-          ranking.map((p, i) => {
-            const puntaje = p.puntaje_promedio || 0
-            const res = puntaje > 0 ? getResultado(puntaje) : null
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`
-            return (
-              <button key={p.id} onClick={() => setSelectedId(p.id)} style={{ width: '100%', textAlign: 'left', background: 'var(--surface)', border: 'none', borderRadius: 10, padding: '0.75rem', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: i < 3 ? '1.2rem' : '0.8rem', minWidth: 28, textAlign: 'center', color: 'var(--text-dim)' }}>{medal}</span>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text)' }}>{p.nombre} {p.apellido || ''}</p>
-                  <p style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>{p.puesto || '—'}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--phosphor)' }}>{p.puntos_total || 0}</p>
-                  <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>puntos</p>
-                </div>
-              </button>
-            )
-          })
+          <BibliotecaRecursos />
         )}
       </div>
 
