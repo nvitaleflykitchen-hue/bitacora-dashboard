@@ -38,4 +38,23 @@ describe('OrganigramaDesigner', () => {
     expect(merged.nodes.find(node => node.id === 'unit').data.label).toBe('Hospitales')
     expect(merged.edges.map(edge => edge.id)).toEqual(['person-unit'])
   })
+
+  it('no reconstruye una conexión obligatoria eliminada intencionalmente', () => {
+    const saved = {
+      nodes:[
+        { id:'person', position:{ x:0, y:0 }, data:{} },
+        { id:'unit', position:{ x:0, y:180 }, data:{} },
+      ],
+      edges:[],
+      removedRequiredEdgeIds:['person-unit'],
+    }
+    const merged = mergeRequiredStructure(
+      saved,
+      [{ id:'person', required:true }, { id:'unit', required:true }],
+      [{ id:'person-unit', source:'person', target:'unit', required:true }]
+    )
+
+    expect(merged.edges).toEqual([])
+    expect(merged.removedRequiredEdgeIds).toEqual(['person-unit'])
+  })
 })

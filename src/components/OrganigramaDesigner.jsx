@@ -45,6 +45,7 @@ export function mergeRequiredStructure(model, seeds, seedEdges) {
   const edges = [...(base.edges || [])]
   const nodeIds = new Set(nodes.map(node => node.id))
   const edgeIds = new Set(edges.map(edge => edge.id))
+  const removedRequiredEdgeIds = new Set(base.removedRequiredEdgeIds || [])
 
   seeds.filter(seed => seed.required).forEach((seed, index) => {
     if (!nodeIds.has(seed.id)) {
@@ -53,7 +54,7 @@ export function mergeRequiredStructure(model, seeds, seedEdges) {
     }
   })
   seedEdges.filter(edge => edge.required).forEach(edge => {
-    if (!edgeIds.has(edge.id) && nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
+    if (!removedRequiredEdgeIds.has(edge.id) && !edgeIds.has(edge.id) && nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
       edges.push(edge)
       edgeIds.add(edge.id)
     }
@@ -189,6 +190,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   }, [groupId, seedEdges, seeds])
   const [nodes, setNodes] = useState(initial.nodes)
   const [edges, setEdges] = useState(initial.edges)
+  const [removedRequiredEdgeIds, setRemovedRequiredEdgeIds] = useState(initial.removedRequiredEdgeIds || [])
   const [selectedId, setSelectedId] = useState(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState(null)
   const [query, setQuery] = useState('')
@@ -217,6 +219,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
         const merged = mergeRequiredStructure(remote, seeds, seedEdges)
         setNodes(merged.nodes)
         setEdges(merged.edges)
+        setRemovedRequiredEdgeIds(merged.removedRequiredEdgeIds || [])
         history.current = [{ nodes:merged.nodes, edges:merged.edges }]
         historyIndex.current = 0
         window.setTimeout(() => flowRef.current?.fitView({ padding:.14, duration:250 }), 0)
@@ -292,11 +295,14 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   }
   const removeSelectedEdge = () => {
     if (!selectedEdgeId || !canEdit) return
+    if (seedEdges.some(edge => edge.required && edge.id === selectedEdgeId)) {
+      setRemovedRequiredEdgeIds(current => current.includes(selectedEdgeId) ? current : [...current, selectedEdgeId])
+    }
     commit(nodes, edges.filter(edge => edge.id !== selectedEdgeId))
     setSelectedEdgeId(null)
   }
   const saveDraft = async () => {
-    const model = { nodes, edges, updatedAt:new Date().toISOString() }
+    const model = { nodes, edges, removedRequiredEdgeIds, updatedAt:new Date().toISOString() }
     localStorage.setItem(storageKey(groupId, 'draft'), JSON.stringify(model))
     setSyncState('saving')
     try {
@@ -308,7 +314,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
     }
   }
   const publish = async () => {
-    const model = { nodes, edges, publishedAt:new Date().toISOString() }
+    const model = { nodes, edges, removedRequiredEdgeIds, publishedAt:new Date().toISOString() }
     localStorage.setItem(storageKey(groupId, 'published'), JSON.stringify(model))
     localStorage.setItem(storageKey(groupId, 'draft'), JSON.stringify(model))
     setSyncState('saving')

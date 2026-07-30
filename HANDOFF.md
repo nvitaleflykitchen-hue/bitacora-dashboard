@@ -631,4 +631,18 @@ dos agentes mezclado. Hay que revisarlo con Nicolás archivo por archivo.
   Supabase ni en datos de producción.
 - Verificado: lint sin errores (6 warnings preexistentes), 21 archivos de prueba,
   83 tests aprobados y build de producción correcto.
+- Publicado en `main` mediante el commit `8334475`.
+
+## 2026-07-29 - Codex - Persistencia al borrar conexiones del organigrama
+
+- Corregido el editor del organigrama: las conexiones provenientes de la
+  estructura base ya no reaparecen después de borrarlas, guardar y volver a
+  abrir el editor.
+- El modelo guarda una lista explícita de conexiones obligatorias eliminadas y
+  la respeta al reconstruir la estructura.
+- Se agregó una prueba de regresión que carga un organigrama guardado y confirma
+  que la conexión eliminada no se recrea.
+- Verificado con `npm run check`: 20 archivos de prueba, 81 tests aprobados,
+  lint sin errores y build de producción correcto. Persisten 6 warnings
+  preexistentes.
 - Pendiente de commit/push y publicación; requiere autorización de Nicolás.
