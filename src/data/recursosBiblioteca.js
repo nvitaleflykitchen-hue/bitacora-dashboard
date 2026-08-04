@@ -1,7 +1,39 @@
 export const NOTEBOOK_RRHH_URL =
   "https://notebook.google.com/notebook/68b08d5e-b2c8-42b0-b98f-92beae2b4141/preview";
 
+export const NOTEBOOK_BPM_URL =
+  "https://notebook.google.com/notebook/653026c0-7a22-406c-8f24-eda00c1e86ef";
+
 export const RECURSOS_BIBLIOTECA = [
+  {
+    id: "manual-bpm-rev-08",
+    categoria: "Calidad e inocuidad",
+    tipo: "PDF",
+    titulo: "Manual de Buenas Prácticas de Manufactura",
+    descripcion:
+      "Criterios de inocuidad, higiene personal, limpieza y desinfección, almacenamiento, elaboración, transporte y control de BPM.",
+    codigo: "CAL-BPM-MAN-001",
+    version: "Rev. 08",
+    vigencia: "21/04/2025",
+    responsable: "Calidad",
+    url: "/recursos/calidad/manual-bpm-rev-08.pdf",
+    destacado: true,
+  },
+  {
+    id: "notebooklm-bpm",
+    categoria: "Calidad e inocuidad",
+    tipo: "NOTEBOOKLM",
+    titulo: "Cuaderno de consultas sobre BPM",
+    descripcion:
+      "Consultá el manual, buscá criterios y obtené respuestas contextualizadas sobre Buenas Prácticas de Manufactura.",
+    codigo: "Recurso externo",
+    version: "En línea",
+    vigencia: "Actualización continua",
+    responsable: "Calidad",
+    url: NOTEBOOK_BPM_URL,
+    destacado: true,
+    externo: true,
+  },
   {
     id: "evaluacion-desempeno-v1",
     categoria: "Evaluaciones de desempeño",
