@@ -9,6 +9,7 @@ import AdjuntosPanel from '../../components/AdjuntosPanel'
 import { TicketModal as FullTicketModal } from './MntTickets'
 import { toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
+import usePersistedState from '../../hooks/usePersistedState'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
@@ -503,10 +504,10 @@ export default function MntKanban() {
   const [proveedores, setProveedores]   = useState([])
   const [sedesCatalogo, setSedesCatalogo] = useState([])
   const [loading, setLoading]           = useState(true)
-  const [filterResp, setFilterResp]     = useState('')
-  const [filterPrior, setFilterPrior]   = useState('')
-  const [filterSede, setFilterSede]     = useState('')
-  const [filterSLA, setFilterSLA]       = useState(false)
+  const [filterResp, setFilterResp]     = usePersistedState('mntKanban.responsable', '')
+  const [filterPrior, setFilterPrior]   = usePersistedState('mntKanban.prioridad', '')
+  const [filterSede, setFilterSede]     = usePersistedState('mntKanban.sede', '')
+  const [filterSLA, setFilterSLA]       = usePersistedState('mntKanban.sla', false)
   const [selectedTicket, setSelectedTicket] = useState(null)
 
   const load = useCallback(async () => {
@@ -523,7 +524,7 @@ export default function MntKanban() {
   useEffect(()=>{ load() },[load])
 
   // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
-  useEffect(() => { if (sedesCatalogo.length === 1) setFilterSede(sedesCatalogo[0].nombre) }, [sedesCatalogo])
+  useEffect(() => { if (sedesCatalogo.length === 1) setFilterSede(sedesCatalogo[0].nombre) }, [sedesCatalogo, setFilterSede])
 
   const moveTicket = async (ticketId, newEstado) => {
     setTickets(prev => prev.map(t => t.id===ticketId ? {...t,estado:newEstado} : t))
@@ -546,6 +547,8 @@ export default function MntKanban() {
 
   const vencidos   = tickets.filter(t=>slaStatus(t)==='vencido').length
   const sinAsignar = tickets.filter(t=>!t.responsable_id&&t.estado!=='resuelto').length
+  const activeFilters = [filterResp, filterPrior, filterSede, filterSLA].filter(Boolean).length
+  const clearFilters = () => { setFilterResp(''); setFilterPrior(''); setFilterSede(''); setFilterSLA(false) }
 
   const SEL = { background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'inherit' }
 
@@ -604,6 +607,7 @@ export default function MntKanban() {
           <input type="checkbox" checked={filterSLA} onChange={e=>setFilterSLA(e.target.checked)} style={{ accentColor:'#ff5050' }}/>
           Solo SLA vencido
         </label>
+        {activeFilters > 0 && <button type="button" onClick={clearFilters} className="btn-ghost" style={{ fontSize:'0.62rem' }}>Limpiar filtros ({activeFilters})</button>}
         <button onClick={load} style={{ ...SEL, marginLeft:'auto', display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
           <RefreshCw size={11}/>Actualizar
         </button>
