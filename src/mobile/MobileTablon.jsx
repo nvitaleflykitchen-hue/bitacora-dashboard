@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getAnuncios, crearAnuncio, marcarAnunciosLeidos, getSedes, getGrupos } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { Megaphone, X, Plus } from 'lucide-react'
+import CumpleaniosTablon from '../components/CumpleaniosTablon'
 
 const PRIORIDADES = [
   { v: 'baja', label: 'Baja', color: 'var(--text-dim)' },
@@ -43,6 +44,7 @@ export default function MobileTablon() {
       </div>
 
       <div style={{ flex: 1 }}>
+        <CumpleaniosTablon mobile />
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
             <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />

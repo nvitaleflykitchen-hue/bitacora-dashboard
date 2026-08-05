@@ -37,27 +37,19 @@ Esto es un hallazgo relevante para quien tome el proyecto: **el código fuente r
 
 El repo tiene `.vercel/project.json` con `orgId` y `projectId` ya configurados — es decir, ya está enlazado (`vercel link`) a un proyecto Vercel específico. No hace falta volver a vincular salvo que se mueva a otra cuenta/equipo de Vercel.
 
-### 2.3 Proceso manual de deploy
+### 2.3 Proceso seguro de deploy
 
 ```bat
 DEPLOY.bat
 ```
 
-Contenido completo del script (3 líneas + pausa):
-
-```bat
-@echo off
-cd /d "%~dp0"
-echo Deployando bitacora-dashboard a Vercel...
-npx vercel --prod --yes
-pause
-```
-
 Pasos que ejecuta:
 1. Se posiciona en la carpeta donde está el `.bat` (evita errores si se ejecuta desde otro directorio).
-2. Corre `npx vercel --prod --yes`, que: instala dependencias según `vercel.json`, corre `npm run build`, y publica el contenido de `dist/` directo a producción — sin pasar por preview/staging, sin pedir confirmación adicional (`--yes`).
+2. Ejecuta `npm run deploy:prod`.
+3. Bloquea el deploy si no se está en `main`, si el workspace tiene cambios sin commit o si `main` difiere de `origin/main`.
+4. Ejecuta lint, tests y build antes de publicar con Vercel.
 
-⚠️ No hay ambiente de *preview* ni *staging* en este flujo: cada deploy va directo a producción. No hay tampoco ningún gate de calidad (lint, test, build check en CI) antes de que el cambio quede público — el único control es que el build local de `vercel --prod` falle si hay un error de compilación.
+⚠️ No hay ambiente de *staging*: cada ejecución de `DEPLOY.bat` va a producción. Los PR y pushes a `main` ejecutan además `.github/workflows/ci.yml`; no se debe integrar un PR si esa verificación falla.
 
 ### 2.4 Pre-requisitos para poder correr el deploy
 

@@ -3,6 +3,7 @@ import { getAnuncios, crearAnuncio, marcarAnunciosLeidos, getSedes, getGrupos, g
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import AdjuntosPanel from '../components/AdjuntosPanel'
+import CumpleaniosTablon from '../components/CumpleaniosTablon'
 
 const PRIORIDADES = [
   { v: 'baja', label: 'Baja', color: 'var(--text-dim)' },
@@ -133,6 +134,7 @@ export default function Tablon() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <CumpleaniosTablon />
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />

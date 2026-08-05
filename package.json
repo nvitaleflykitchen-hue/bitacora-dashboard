@@ -10,6 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run lint && npm run test && npm run build",
+    "predeploy:check": "node scripts/predeploy-check.mjs",
+    "deploy:prod": "npm run predeploy:check && npm run check && npx vercel --prod --yes",
     "preview": "vite preview",
     "postinstall": "node scripts/postinstall.cjs"
   },

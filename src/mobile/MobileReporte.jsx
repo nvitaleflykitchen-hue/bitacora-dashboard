@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   getSedes, createRegistro, createRequerimiento,
   getActivos, getPersonasBySede, createVehiculoNovedadConTicket, createPersonaNovedad,
@@ -149,7 +149,7 @@ const sumarSobrante = (reutilizable, descarte) => {
 // chips de TIPOS_ESCALAMIENTO — esto reemplaza la vieja sección única de
 // "Escalamientos" al final del formulario.
 
-function ModuloNovedadCard({ item, index, ejemplo, onChange, onRemove }) {
+function ModuloNovedadCard({ item, index, ejemplo, onChange, onRemove, activos = [], permiteActivo = false, hideCrearTicket = false }) {
   const color = MOD_COLORS[item.severidad] || MOD_COLORS['Hay novedades']
   const tipoSel = TIPOS_ESCALAMIENTO.find(t => t.val === item.tipo_escalamiento)
   const colorEscalar = tipoSel?.color || '#FF2A2A'
@@ -173,6 +173,23 @@ function ModuloNovedadCard({ item, index, ejemplo, onChange, onRemove }) {
           <X size={14} />
         </button>
       </div>
+
+      {permiteActivo && (
+        <>
+          <select value={item.activo_id || ''} onChange={e => {
+            const activo = activos.find(a => String(a.id) === e.target.value)
+            onChange({ ...item, activo_id: e.target.value, activo_nombre: activo?.nombre || '', crear_ticket: e.target.value ? (item.crear_ticket ?? !hideCrearTicket) : false })
+          }} style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, marginBottom: '0.55rem', boxSizing: 'border-box', background: 'var(--surface)', border: `1px solid ${color}33`, color: 'var(--text)', fontSize: '0.82rem' }}>
+            <option value="">— Novedad general, sin equipo asociado —</option>
+            {activos.map(a => <option key={a.id} value={a.id}>{a.nombre}{a.codigo ? ` (${a.codigo})` : ''}</option>)}
+          </select>
+          {activos.length === 0 && <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', margin: '-0.3rem 0 0.55rem' }}>No hay equipos cargados para esta sede.</p>}
+          {!hideCrearTicket && item.activo_id && <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.6rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!item.crear_ticket} onChange={e => onChange({ ...item, crear_ticket: e.target.checked })} style={{ accentColor: color }} />
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Crear ticket automático en Mantenimiento</span>
+          </label>}
+        </>
+      )}
 
       {/* Severidad */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
@@ -236,7 +253,7 @@ function ModuloNovedadCard({ item, index, ejemplo, onChange, onRemove }) {
   )
 }
 
-function ModuloCard({ mod, items, ejemplo, onAgregar, onActualizar, onQuitar }) {
+function ModuloCard({ mod, items, ejemplo, onAgregar, onActualizar, onQuitar, activos, hideCrearTicket }) {
   const [open, setOpen] = useState(false)
   const tieneNovedad = items.length > 0
   const peorSeveridad = items.some(it => it.severidad === 'Crítico') ? 'Crítico' : (tieneNovedad ? 'Hay novedades' : 'Sin novedad')
@@ -283,6 +300,7 @@ function ModuloCard({ mod, items, ejemplo, onAgregar, onActualizar, onQuitar }) 
           ) : (
             items.map((item, i) => (
               <ModuloNovedadCard key={i} item={item} index={i} ejemplo={ejemplo}
+                activos={activos} permiteActivo={mod.key === 'e'} hideCrearTicket={hideCrearTicket}
                 onChange={val => onActualizar(i, val)}
                 onRemove={() => onQuitar(i)} />
             ))
@@ -691,12 +709,15 @@ export default function MobileReporte({ onBack, onSuccess }) {
 
   // Vehículos asignados a la sede + novedades cargadas: array de { activo_id, activo_nombre, tipo, descripcion, crearTicket }
   const [vehiculosSede,     setVehiculosSede]     = useState([])
+  const [equiposSede,       setEquiposSede]       = useState([])
   const [vehiculoNovedades, setVehiculoNovedades] = useState([])
   const [ticketsFlotaCreados, setTicketsFlotaCreados] = useState(0)
+  const [ticketsMantenimientoCreados, setTicketsMantenimientoCreados] = useState(0)
 
   // Personal asignado a la sede + novedades cargadas: array de { persona_id, persona_nombre, categoria, descripcion }
   const [personasSede,     setPersonasSede]     = useState([])
   const [personaNovedades, setPersonaNovedades] = useState([])
+  const submitEnCursoRef = useRef(false)
 
   // Vuelos del día (solo sedes tipo Aeropuerto): plantilla del día de hoy + estado por vuelo,
   // más vuelos no listados que se agregan a mano (ad-hoc).
@@ -755,8 +776,9 @@ export default function MobileReporte({ onBack, onSuccess }) {
 
   // Cargar vehículos y personal asignados a la sede elegida
   useEffect(() => {
-    if (!sedeId) { setVehiculosSede([]); setPersonasSede([]); return }
+    if (!sedeId) { setVehiculosSede([]); setEquiposSede([]); setPersonasSede([]); return }
     getActivos({ tipo: 'VEHICULO', sede_id: sedeId }).then(setVehiculosSede).catch(console.error)
+    getActivos({ tipo: 'Equipo', sede_id: sedeId }).then(setEquiposSede).catch(console.error)
     getPersonasBySede(sedeId).then(setPersonasSede).catch(console.error)
   }, [sedeId])
 
@@ -776,7 +798,7 @@ export default function MobileReporte({ onBack, onSuccess }) {
   const agregarItemModulo = (key) =>
     setModulos(prev => ({
       ...prev,
-      [key]: { items: [...prev[key].items, { severidad: 'Hay novedades', descripcion: '', privada: false, escalar: false, tipo_escalamiento: '' }] },
+      [key]: { items: [...prev[key].items, { severidad: 'Hay novedades', descripcion: '', privada: false, escalar: false, tipo_escalamiento: '', activo_id: '', activo_nombre: '', crear_ticket: false }] },
     }))
 
   const actualizarItemModulo = (key, i, val) =>
@@ -864,6 +886,10 @@ export default function MobileReporte({ onBack, onSuccess }) {
   }
 
   const handleSubmit = async (forzar = false) => {
+    if (submitEnCursoRef.current) return
+    submitEnCursoRef.current = true
+    let inicioEnvio = false
+    try {
     if (!sedeId)  { setError('Seleccioná una sede'); return }
     if (!turno)   { setError('Seleccioná el turno'); return }
     // Validar novedades de módulo
@@ -912,7 +938,7 @@ export default function MobileReporte({ onBack, onSuccess }) {
       }
     }
     setLoading(true); setError(null)
-    try {
+    inicioEnvio = true
       const dupId = await checkDuplicado()
       if (dupId && !forzar) {
         setError('DUPLICADO')
@@ -1030,11 +1056,15 @@ export default function MobileReporte({ onBack, onSuccess }) {
             reportante:         perfil?.nombre || '',
             fecha_reporte:      fechaHoy,
             estado:             'Pendiente',
+            activo_id:          it.modulo_key === 'e' ? (it.activo_id || null) : null,
+            activo_nombre:      it.modulo_key === 'e' ? (it.activo_nombre || null) : null,
+            crear_ticket:       it.modulo_key === 'e' && !esOperario && !!it.crear_ticket,
             escalar:            !!it.escalar,
             tipo_escalamiento:  it.escalar ? (it.tipo_escalamiento || 'Otro') : null,
           })
         ))
       }
+      setTicketsMantenimientoCreados(resultadosModulos.filter(r => r.ticket).length)
       setEscalamientosCreados(resultadosModulos.filter(r => r.escalamiento).length)
 
       // Insertar novedades de vehículo (+ ticket de Flota cuando se pidió)
@@ -1144,7 +1174,8 @@ export default function MobileReporte({ onBack, onSuccess }) {
         setError(err.message || 'Error desconocido')
       }
     } finally {
-      setLoading(false)
+      submitEnCursoRef.current = false
+      if (inicioEnvio) setLoading(false)
     }
   }
 
@@ -1243,6 +1274,12 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
         {ticketsFlotaCreados > 0 && (
           <p style={{ color: COLOR_VEHICULO, fontSize: '0.78rem', textAlign: 'center' }}>
             🚚 {ticketsFlotaCreados} ticket{ticketsFlotaCreados > 1 ? 's' : ''} de Flota creado{ticketsFlotaCreados > 1 ? 's' : ''} automáticamente
+          </p>
+        )}
+
+        {ticketsMantenimientoCreados > 0 && (
+          <p style={{ color: '#F59E0B', fontSize: '0.78rem', textAlign: 'center' }}>
+            🛠️ {ticketsMantenimientoCreados} ticket{ticketsMantenimientoCreados > 1 ? 's' : ''} de Mantenimiento creado{ticketsMantenimientoCreados > 1 ? 's' : ''} automáticamente
           </p>
         )}
 
@@ -1584,6 +1621,8 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
               onAgregar={() => agregarItemModulo(m.key)}
               onActualizar={(i, val) => actualizarItemModulo(m.key, i, val)}
               onQuitar={(i) => quitarItemModulo(m.key, i)}
+              activos={m.key === 'e' ? equiposSede : []}
+              hideCrearTicket={esOperario}
             />
           ))}
         </div>
