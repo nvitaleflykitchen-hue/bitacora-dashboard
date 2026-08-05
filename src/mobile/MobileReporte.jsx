@@ -778,7 +778,7 @@ export default function MobileReporte({ onBack, onSuccess }) {
   useEffect(() => {
     if (!sedeId) { setVehiculosSede([]); setEquiposSede([]); setPersonasSede([]); return }
     getActivos({ tipo: 'VEHICULO', sede_id: sedeId }).then(setVehiculosSede).catch(console.error)
-    getActivos({ tipo: 'Equipo', sede_id: sedeId }).then(setEquiposSede).catch(console.error)
+    getActivos({ tipo: 'EQUIPO', sede_id: Number(sedeId) }).then(setEquiposSede).catch(console.error)
     getPersonasBySede(sedeId).then(setPersonasSede).catch(console.error)
   }, [sedeId])
 
