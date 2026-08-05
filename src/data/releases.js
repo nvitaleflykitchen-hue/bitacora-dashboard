@@ -1,7 +1,26 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.2";
+export const APP_VERSION = "2.7.3";
 
 export const RELEASES = [
+  {
+    version: "2.7.3",
+    date: "2026-08-05",
+    title: "Historial integral de cada vehículo",
+    functions: [
+      "Flota > Tickets > Por unidad reúne los tickets de mantenimiento y las novedades operativas de cada vehículo.",
+      "Cada unidad muestra tickets totales y abiertos, novedades, último kilometraje y costos registrados.",
+      "El nuevo botón Exportar PDF genera una ficha completa con estados, prioridades, diagnósticos, responsables, costos y novedades.",
+      "La vinculación prioriza el identificador interno del activo y conserva la patente o nombre como respaldo para registros históricos.",
+    ],
+    problem: "El historial por unidad solo mostraba tickets y no permitía reunir ni exportar las novedades vinculadas al vehículo.",
+    affectedUsers: "Responsables de Flota, administradores, editores y usuarios que consultan el mantenimiento vehicular.",
+    usage: "Ingresá a Flota > Tickets, elegí Por unidad, seleccioná el vehículo y usá Exportar PDF para descargar su ficha histórica.",
+    examples: [
+      "Consultar todos los tickets abiertos y resueltos del LIFAN AD 286 IH junto con sus novedades de operación.",
+      "Enviar al taller o a la gerencia un PDF con diagnóstico, kilometraje, costos e incidentes de la unidad.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.7.2",
     date: "2026-08-05",
