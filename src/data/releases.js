@@ -1,7 +1,25 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.1";
+export const APP_VERSION = "2.7.2";
 
 export const RELEASES = [
+  {
+    version: "2.7.2",
+    date: "2026-08-05",
+    title: "Edición directa de contactos rápidos",
+    functions: [
+      "El panel de Contactos rápidos incorpora el acceso Editar contactos para administradores y editores.",
+      "La gestión permite agregar, modificar o desactivar contactos, vincularlos con usuarios y asignarlos a una o varias sedes.",
+      "Al cerrar la edición, el panel invalida su caché y vuelve a consultar el directorio para mostrar los cambios recientes.",
+    ],
+    problem: "En Compras se podían consultar y utilizar los contactos rápidos, pero no existía un acceso visible para administrarlos desde la misma pantalla.",
+    affectedUsers: "Administradores y editores que mantienen el directorio, y usuarios de los módulos que consultan contactos rápidos.",
+    usage: "Abrí CONTACTOS y elegí EDITAR CONTACTOS. Desde la ventana de gestión podés agregar un contacto o usar los botones de lápiz y papelera para modificarlo o desactivarlo.",
+    examples: [
+      "Actualizar el teléfono o email de un integrante de Compras sin salir del tablero de requerimientos.",
+      "Agregar un contacto y vincularlo con un usuario existente para completar sus datos más rápido.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.7.1",
     date: "2026-08-05",

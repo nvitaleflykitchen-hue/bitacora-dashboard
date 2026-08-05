@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getDirectorio } from '../lib/queries'
+import { useAuth } from '../lib/auth'
+import ContactosTab from './ContactosTab'
 
 const IcoPhone = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11.5 19.79 19.79 0 010 2.82 2 2 0 011.77.64h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L5.91 8.09a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
 const IcoWA   = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -13,10 +15,18 @@ const IcoMail = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none
  *   modulo — 'rrhh' | 'mantenimiento' | 'flota' | 'emergencias'
  */
 export default function ContactosQuickBtn({ modulo }) {
+  const { rol } = useAuth()
+  const canEdit = ['admin', 'editor'].includes(rol)
   const [open, setOpen] = useState(false)
+  const [managing, setManaging] = useState(false)
   const [contactos, setContactos] = useState([])
   const [loaded, setLoaded] = useState(false)
   const ref = useRef()
+
+  const closeManager = () => {
+    setManaging(false)
+    setLoaded(false)
+  }
 
   // Carga lazy — solo cuando se abre por primera vez
   useEffect(() => {
@@ -111,7 +121,59 @@ export default function ContactosQuickBtn({ modulo }) {
               </div>
             </div>
           ))}
+
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setManaging(true) }}
+              style={{
+                width: '100%', marginTop: '0.7rem', padding: '0.5rem 0.65rem',
+                background: 'rgba(57,255,20,0.08)', border: '1px solid rgba(57,255,20,0.22)',
+                borderRadius: 5, color: 'var(--phosphor)', cursor: 'pointer',
+                fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em',
+                fontFamily: 'var(--font-metric, monospace)',
+              }}
+            >
+              ✏ EDITAR CONTACTOS
+            </button>
+          )}
         </div>
+      )}
+
+      {managing && (
+        <>
+          <div
+            role="presentation"
+            onMouseDown={closeManager}
+            style={{ position:'fixed', inset:0, zIndex:80, background:'rgba(0,0,0,0.72)' }}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Editar contactos"
+            style={{
+              position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
+              zIndex:81, width:'min(900px, 94vw)', maxHeight:'88vh', overflowY:'auto',
+              background:'var(--bg)', border:'1px solid rgba(57,255,20,0.2)', borderRadius:10,
+              boxShadow:'0 24px 80px rgba(0,0,0,0.75)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={closeManager}
+              aria-label="Cerrar edición de contactos"
+              style={{
+                position:'sticky', top:10, float:'right', zIndex:2, margin:'10px 12px 0 0',
+                width:30, height:30, borderRadius:5, cursor:'pointer',
+                background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)',
+                color:'var(--text-dim)', fontSize:'1rem',
+              }}
+            >
+              ×
+            </button>
+            <ContactosTab modulo={modulo} />
+          </section>
+        </>
       )}
 
       <style>{`@keyframes cqb-spin { to { transform: rotate(360deg) } }`}</style>
