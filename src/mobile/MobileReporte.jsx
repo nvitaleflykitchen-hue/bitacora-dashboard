@@ -749,6 +749,26 @@ export default function MobileReporte({ onBack, onSuccess }) {
   const [archivos, setArchivos] = useState([]) // [{ id, file, preview }]
   const [adjuntosErrores, setAdjuntosErrores] = useState(0)
 
+  const hasUnsavedChanges = Boolean(
+    turno || nivelActividad !== 'Normal' || estadoGeneral !== 'Sin novedades' ||
+    modulos.some(modulo => modulo.estado !== 'Sin novedad' || modulo.items?.length) ||
+    vehiculoNovedades.length || personaNovedades.length || vuelosAdHoc.length || archivos.length ||
+    [op1Prod, op1Serv, op1Reutilizable, op1Descarte, op2Prod, op2Serv, op2Reutilizable, op2Descarte,
+      vegProd, vegServ, vegReutilizable, vegDescarte, ensaladaProd, ensaladaReutilizable,
+      ensaladaDescarte, postreProd, postreReutilizable, postreDescarte].some(Boolean)
+  )
+
+  useEffect(() => {
+    if (!hasUnsavedChanges || enviado) return undefined
+    const warnBeforeUnload = event => event.preventDefault()
+    window.addEventListener('beforeunload', warnBeforeUnload)
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload)
+  }, [hasUnsavedChanges, enviado])
+
+  const requestBack = () => {
+    if (!hasUnsavedChanges || enviado || window.confirm('Hay datos sin enviar. ¿Querés salir y descartarlos?')) onBack()
+  }
+
   // Cargar sedes
   useEffect(() => {
     getSedes(allowedSedeIds?.length ? allowedSedeIds : null).then(list => {
@@ -1354,7 +1374,7 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
         background: 'var(--surface)',
         borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0,
       }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '0.2rem' }}>
+        <button onClick={requestBack} aria-label="Volver" style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '0.2rem' }}>
           <ChevronLeft size={22} />
         </button>
         <div>

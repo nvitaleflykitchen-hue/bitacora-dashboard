@@ -319,7 +319,6 @@ function AppInner() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '2rem',
           }}
-          onClick={() => setShowReporte(false)}
         >
           <div
             onClick={e => e.stopPropagation()}
