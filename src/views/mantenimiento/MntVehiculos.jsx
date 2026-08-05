@@ -7,11 +7,12 @@ import { isQualityOnlyProfile } from '../../lib/access'
 import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, History, LayoutGrid, List, Download } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
 import { descargarHistorialVehiculoPdf } from '../../lib/vehiculoHistorialPdf'
+import { vehiculoEstadoFromDb, vehiculoEstadoToDb } from '../../lib/vehiculoTicketState'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
   { id:'en progreso', label:'En Progreso',  color:'#ffb400' },
-  { id:'aprobado',    label:'Bloqueado',    color:'#ff5050' },
+  { id:'bloqueado',   label:'Bloqueado',    color:'#ff5050' },
   { id:'resuelto',    label:'Resuelto',     color:'#39ff14' },
 ]
 const PC = { critica:'#FF2A2A', alta:'#ff5050', media:'#ffb400', baja:'#50b4ff' }
@@ -26,13 +27,11 @@ function slaStatus(t) {
 }
 
 // ─── MODAL NUEVO / EDITAR TICKET ─────────────────────────────────────────────
-function TicketModal({ ticket, patentes, onClose, onSaved }) {
-  const isNew = !ticket?.id
-  const [form, setForm] = useState({
+const ticketFormFrom = ticket => ({
     activo_nombre: ticket?.activo_nombre || '',
     descripcion:   ticket?.descripcion   || '',
     diagnostico:   ticket?.diagnostico   || '',
-    estado:        ticket?.estado        || 'abierto',
+    estado:        vehiculoEstadoFromDb(ticket?.estado) || 'abierto',
     prioridad:     ticket?.prioridad     || 'media',
     tipo:          ticket?.tipo          || 'correctivo',
     lectura_km:    ticket?.lectura_km    ?? '',
@@ -41,13 +40,22 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
     costo_real:    ticket?.costo_real    ?? '',
     fecha_limite:  ticket?.fecha_limite ? ticket.fecha_limite.split('T')[0] : '',
     notas_costos:  ticket?.notas_costos  || '',
-  })
+})
+
+function TicketModal({ ticket, patentes, onClose, onSaved }) {
+  const isNew = !ticket?.id
+  const [initialForm] = useState(() => ticketFormFrom(ticket))
+  const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState(null)
   const [tab, setTab]       = useState('detalle')
   const [historial, setHistorial] = useState([])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm)
+  const requestClose = () => {
+    if (!isDirty || window.confirm('Hay cambios sin guardar. ¿Querés descartarlos?')) onClose()
+  }
 
   useEffect(() => {
     if (tab === 'historial' && ticket?.id) {
@@ -66,6 +74,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
     setSaving(true); setErr(null)
     const payload = {
       ...form,
+      estado: vehiculoEstadoToDb(form.estado),
       categoria: 'Vehiculos',
       lectura_km: form.lectura_km !== '' ? parseInt(form.lectura_km) : null,
       costo_real: form.costo_real !== '' ? parseFloat(form.costo_real) : null,
@@ -101,7 +110,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
             <div style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.1em', textTransform:'uppercase' }}>{isNew ? 'Nuevo ticket · Flota' : 'Editar ticket · Flota'}</div>
             <div style={{ fontSize:'0.85rem', fontWeight:700, color:'var(--text)', marginTop:1 }}>{isNew ? 'Nuevo incidente vehicular' : form.activo_nombre}</div>
           </div>
-          <button onClick={onClose} style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={16}/></button>
+          <button onClick={requestClose} aria-label="Cerrar ticket" style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={16}/></button>
         </div>
 
         {/* Tabs */}
@@ -147,7 +156,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
                   <select style={INP} value={form.estado} onChange={e=>set('estado',e.target.value)}>
                     <option value="abierto">Nuevo</option>
                     <option value="en progreso">En Progreso</option>
-                    <option value="aprobado">Bloqueado</option>
+                    <option value="bloqueado">Bloqueado</option>
                     <option value="resuelto">Resuelto</option>
                     <option value="rechazado">Rechazado</option>
                   </select>
@@ -216,7 +225,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
 
         <div style={{ padding:'12px 20px', borderTop:'1px solid rgba(57,255,20,0.06)', display:'flex', gap:8, justifyContent:'flex-end', flexShrink:0 }}>
           {err && <span style={{ fontSize:'0.65rem', color:'#ff5050', flex:1, alignSelf:'center' }}>{err}</span>}
-          <button onClick={onClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.08)', color:'rgba(255,255,255,0.4)', fontFamily:'monospace', fontSize:'0.65rem', padding:'6px 16px', borderRadius:5, cursor:'pointer' }}>Cancelar</button>
+          <button onClick={requestClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.08)', color:'rgba(255,255,255,0.4)', fontFamily:'monospace', fontSize:'0.65rem', padding:'6px 16px', borderRadius:5, cursor:'pointer' }}>Cancelar</button>
           {tab === 'detalle' && (
             <button onClick={save} disabled={saving} style={{ background:'rgba(57,255,20,0.15)', border:'1px solid rgba(57,255,20,0.4)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.65rem', padding:'6px 18px', borderRadius:5, cursor:'pointer', fontWeight:700 }}>
               {saving ? 'Guardando...' : isNew ? 'Crear ticket' : 'Guardar'}
@@ -344,7 +353,7 @@ function HistorialPorUnidad({ tickets, novedades }) {
   const lastKm = hist.reduce((m,t) => Math.max(m, t.lectura_km||0), 0)
 
   const PC = { critica:'#FF2A2A', alta:'#F59E0B', media:'#50b4ff', baja:'var(--text-dim)' }
-  const EC = { resuelto:'chip-green', 'en progreso':'chip-yellow', abierto:'chip-blue', rechazado:'chip-gray' }
+  const EC = { resuelto:'chip-green', 'en progreso':'chip-yellow', abierto:'chip-blue', bloqueado:'chip-red', rechazado:'chip-gray' }
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', gap:0, minHeight:400, border:'1px solid rgba(57,255,20,0.08)', borderRadius:3 }}>
@@ -475,6 +484,7 @@ export default function MntVehiculos({ focusId }) {
   const [tickets, setTickets]   = useState([])
   const [novedades, setNovedades] = useState([])
   const [loading, setLoading]   = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [filterPat, setFilterPat]   = useState('')
   const [filterPrior, setFilterPrior] = useState('')
   const [filterTipo, setFilterTipo]   = useState('')
@@ -489,6 +499,7 @@ export default function MntVehiculos({ focusId }) {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError('')
     const [ticketsResult, novedadesResult] = await Promise.all([
       supabase.schema('mantenimiento').from('tickets')
         .select('id,numero,activo_id,activo_nombre,descripcion,diagnostico,estado,prioridad,tipo,lectura_km,responsable,sede,costo_real,fecha_limite,created_at,notas_costos')
@@ -498,7 +509,10 @@ export default function MntVehiculos({ focusId }) {
         .select('id,registro_id,activo_id,activo_nombre,tipo,descripcion,estado,reportante,fecha_reporte,created_at,sede_id,sede_nombre')
         .order('fecha_reporte', { ascending:false }),
     ])
-    setTickets(ticketsResult.data || [])
+    if (ticketsResult.error || novedadesResult.error) {
+      setLoadError('No se pudo cargar toda la información de Flota. Reintentá para evitar trabajar con un listado incompleto.')
+    }
+    setTickets((ticketsResult.data || []).map(t => ({ ...t, estado: vehiculoEstadoFromDb(t.estado) })))
     setNovedades(novedadesResult.data || [])
     setLoading(false)
   }, [])
@@ -509,7 +523,12 @@ export default function MntVehiculos({ focusId }) {
 
   const moveTicket = async (ticketId, newEstado) => {
     setTickets(prev => prev.map(t => t.id === parseInt(ticketId) ? { ...t, estado: newEstado } : t))
-    await supabase.schema('mantenimiento').from('tickets').update({ estado: newEstado }).eq('id', ticketId)
+    const previous = tickets.find(t => t.id === parseInt(ticketId))?.estado
+    const { error } = await supabase.schema('mantenimiento').from('tickets').update({ estado: vehiculoEstadoToDb(newEstado) }).eq('id', ticketId)
+    if (error) {
+      setTickets(prev => prev.map(t => t.id === parseInt(ticketId) ? { ...t, estado: previous } : t))
+      setLoadError('No se pudo cambiar el estado del ticket. El movimiento fue revertido.')
+    }
   }
 
   let filtered = tickets
@@ -601,6 +620,11 @@ export default function MntVehiculos({ focusId }) {
       </div>
 
       {/* ── CONTENIDO ─────────────────────────────────────────────────────────── */}
+      {loadError && (
+        <div role="alert" style={{ padding:'0.7rem 0.9rem', border:'1px solid rgba(255,80,80,0.35)', background:'rgba(255,80,80,0.08)', color:'#ff8a8a', fontSize:'0.72rem', display:'flex', alignItems:'center', gap:10 }}>
+          <AlertTriangle size={14}/><span style={{ flex:1 }}>{loadError}</span><button type="button" className="btn-ghost" onClick={load}>Reintentar</button>
+        </div>
+      )}
       {loading ? (
         <p style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.75rem' }}>Cargando flota...</p>
       ) : viewMode === 'kanban' ? (

@@ -5,6 +5,7 @@ import { ROLE_LABELS } from '../lib/access'
 import DashboardGlobal from './DashboardGlobal'
 import SedeEncargadoView from './SedeEncargadoView'
 import { getDirectorio } from '../lib/queries'
+import { phoneHref, whatsappHref } from '../lib/phoneUtils'
 import MiGestionPanel from '../components/MiGestionPanel'
 
 const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
@@ -62,7 +63,7 @@ function ContactChip({ c }) {
       {/* Botones de acción */}
       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
         <a
-          href={`tel:+${c.tel}`}
+          href={phoneHref(c.tel || c.telefono)}
           title="Llamar"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -76,7 +77,7 @@ function ContactChip({ c }) {
         </a>
         {c.wa && (
           <a
-            href={`https://wa.me/${c.wa}`}
+            href={whatsappHref(c.wa)}
             target="_blank"
             rel="noopener noreferrer"
             title="WhatsApp"

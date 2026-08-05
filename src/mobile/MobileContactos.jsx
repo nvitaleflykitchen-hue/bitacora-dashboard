@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getDirectorio } from '../lib/queries'
+import { phoneHref, whatsappHref } from '../lib/phoneUtils'
 
 const MODULO_ORDER = ['rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
 const MODULO_META = {
@@ -27,11 +28,11 @@ function ContactCard({ c }) {
         </div>
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-        <a href={`tel:+${c.tel}`} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.25)', color:'var(--phosphor)', borderRadius:6, padding:'0.45rem 0.9rem', fontSize:'0.75rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
+        <a href={phoneHref(c.tel || c.telefono)} aria-label={`Llamar a ${c.nombre}`} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.25)', color:'var(--phosphor)', borderRadius:6, padding:'0.45rem 0.9rem', fontSize:'0.75rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
           📞 Llamar
         </a>
-        {c.wa && (
-          <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(37,211,102,0.1)', border:'1px solid rgba(37,211,102,0.25)', color:'#25d366', borderRadius:6, padding:'0.45rem 0.9rem', fontSize:'0.75rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
+        {whatsappHref(c.wa) && (
+          <a href={whatsappHref(c.wa)} target="_blank" rel="noopener noreferrer" aria-label={`Enviar WhatsApp a ${c.nombre}`} style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(37,211,102,0.1)', border:'1px solid rgba(37,211,102,0.25)', color:'#25d366', borderRadius:6, padding:'0.45rem 0.9rem', fontSize:'0.75rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
             💬 WhatsApp
           </a>
         )}

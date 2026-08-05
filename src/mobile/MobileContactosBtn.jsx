@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Phone, X } from 'lucide-react'
 import { getDirectorio } from '../lib/queries'
+import { phoneHref, whatsappHref } from '../lib/phoneUtils'
 
 /**
  * Botón + bottom-sheet de contactos rápidos para mobile.
@@ -84,12 +85,12 @@ export default function MobileContactosBtn({ modulo, label = 'Contactos' }) {
                     <p style={{ color: 'var(--phosphor)', fontFamily: 'monospace', fontSize: '0.7rem', marginTop: 2, opacity: 0.8 }}>{c.telefono}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <a href={`tel:+${c.tel}`}
+                    <a href={phoneHref(c.tel || c.telefono)} aria-label={`Llamar a ${c.nombre}`}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, background: 'rgba(57,255,20,0.1)', border: '1px solid rgba(57,255,20,0.25)', color: 'var(--phosphor)', borderRadius: 8, textDecoration: 'none', fontSize: '0.9rem' }}>
                       📞
                     </a>
-                    {c.wa && (
-                      <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener noreferrer"
+                    {whatsappHref(c.wa) && (
+                      <a href={whatsappHref(c.wa)} target="_blank" rel="noopener noreferrer" aria-label={`Enviar WhatsApp a ${c.nombre}`}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)', color: '#25d366', borderRadius: 8, textDecoration: 'none', fontSize: '0.9rem' }}>
                         💬
                       </a>

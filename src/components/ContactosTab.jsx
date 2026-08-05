@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
 import { getDirectorio, saveDirectorioContacto, removeDirectorioContacto, getPerfiles, getSedes } from '../lib/queries'
 import { confirmar } from '../lib/feedback'
+import { phoneDigits, phoneHref, whatsappDigits, whatsappHref } from '../lib/phoneUtils'
 
 // ─── Labels por módulo ────────────────────────────────────────────────────────
 const MODULO_META = {
@@ -59,11 +60,11 @@ function ContactCard({ c, canEdit, onEdit, onDelete, perfilesMap }) {
 
       {/* Botones acción */}
       <div style={{ display:'flex', gap:5, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
-        <a href={`tel:+${c.tel}`} title="Llamar" style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.22)', color:'var(--phosphor)', borderRadius:4, padding:'0.32rem 0.65rem', fontSize:'0.65rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
+        {phoneHref(c.tel || c.telefono) && <a href={phoneHref(c.tel || c.telefono)} title="Llamar" aria-label={`Llamar a ${c.nombre}`} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.22)', color:'var(--phosphor)', borderRadius:4, padding:'0.32rem 0.65rem', fontSize:'0.65rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
           <IcoPhone /> Llamar
-        </a>
-        {c.wa && (
-          <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.22)', color:'#25d366', borderRadius:4, padding:'0.32rem 0.65rem', fontSize:'0.65rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
+        </a>}
+        {whatsappHref(c.wa) && (
+          <a href={whatsappHref(c.wa)} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label={`Enviar WhatsApp a ${c.nombre}`} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.22)', color:'#25d366', borderRadius:4, padding:'0.32rem 0.65rem', fontSize:'0.65rem', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
             <IcoWA /> WhatsApp
           </a>
         )}
@@ -74,8 +75,8 @@ function ContactCard({ c, canEdit, onEdit, onDelete, perfilesMap }) {
         )}
         {canEdit && (
           <>
-            <button onClick={onEdit} title="Editar" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text-dim)', borderRadius:4, cursor:'pointer' }}><IcoEdit /></button>
-            <button onClick={onDelete} title="Eliminar" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(255,42,42,0.07)', border:'1px solid rgba(255,42,42,0.18)', color:'#ff6b6b', borderRadius:4, cursor:'pointer' }}><IcoTrash /></button>
+            <button onClick={onEdit} title="Editar" aria-label={`Editar ${c.nombre}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text-dim)', borderRadius:4, cursor:'pointer' }}><IcoEdit /></button>
+            <button onClick={onDelete} title="Eliminar" aria-label={`Eliminar ${c.nombre}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(255,42,42,0.07)', border:'1px solid rgba(255,42,42,0.18)', color:'#ff6b6b', borderRadius:4, cursor:'pointer' }}><IcoTrash /></button>
           </>
         )}
       </div>
@@ -104,24 +105,23 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   // Auto-rellenar tel desde telefono: quitar espacios/guiones, agregar 549 si es número corto
-  const autoTel = (raw) => {
-    const digits = raw.replace(/\D/g, '')
-    if (digits.length <= 10) return '549' + digits
-    if (digits.startsWith('0')) return '54' + digits.slice(1)
-    return digits
-  }
+  const autoTel = raw => phoneDigits(raw)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.nombre.trim()) { setErr('El nombre es obligatorio'); return }
     if (!form.telefono.trim()) { setErr('El teléfono (display) es obligatorio'); return }
-    if (!form.tel.trim()) { setErr('El campo TEL (para llamadas) es obligatorio'); return }
+    const normalizedTel = phoneDigits(form.tel || form.telefono)
+    const normalizedWa = whatsappDigits(form.wa)
+    if (!normalizedTel) { setErr('Ingresá un teléfono válido'); return }
     setSaving(true)
     setErr('')
     try {
       await saveDirectorioContacto({
         id: contacto?.id,
         ...form,
+        tel: normalizedTel,
+        wa: normalizedWa,
         perfil_id: form.perfil_id || null,
         sede_ids: form.sede_ids,
         sede_id: form.sede_ids[0] || null,

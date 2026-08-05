@@ -1,7 +1,29 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.3";
+export const APP_VERSION = "2.7.4";
 
 export const RELEASES = [
+  {
+    version: "2.7.4",
+    date: "2026-08-05",
+    title: "Fase 1: operaciones más seguras y claras",
+    functions: [
+      "Nuevo Reporte ya no se cierra al tocar accidentalmente fuera del formulario.",
+      "Los teléfonos y enlaces de WhatsApp se normalizan antes de usarse, evitando prefijos duplicados o enlaces inválidos.",
+      "Flota muestra el estado Bloqueado de forma consistente y mantiene compatibilidad con los registros históricos.",
+      "Los errores al cargar contactos o datos de Flota se informan y ofrecen una acción de reintento.",
+      "Los cambios de estado fallidos en el tablero de Flota se revierten automáticamente en pantalla.",
+      "Los controles principales de contactos y tickets incorporan nombres accesibles para lectores de pantalla.",
+    ],
+    problem: "Algunos cierres accidentales podían hacer perder cargas, ciertos teléfonos generaban enlaces inválidos y varios fallos de red se confundían con listados vacíos.",
+    affectedUsers: "Todo el personal que carga reportes, consulta contactos o gestiona tickets de Flota en escritorio y mobile.",
+    usage: "Usá los flujos normalmente. Si una consulta falla, la pantalla lo informa y permite reintentar; si intentás cerrar un ticket modificado, se solicita confirmación.",
+    examples: [
+      "Evitar perder un reporte por tocar el fondo del modal.",
+      "Llamar o escribir por WhatsApp aunque el número haya sido cargado con espacios, guiones o +54.",
+      "Distinguir un error de conexión de una flota o agenda realmente vacía.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.7.3",
     date: "2026-08-05",

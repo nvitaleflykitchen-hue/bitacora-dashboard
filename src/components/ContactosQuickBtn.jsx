@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { getDirectorio } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import ContactosTab from './ContactosTab'
+import { phoneHref, whatsappHref } from '../lib/phoneUtils'
 
 const IcoPhone = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11.5 19.79 19.79 0 010 2.82 2 2 0 011.77.64h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L5.91 8.09a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
 const IcoWA   = () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -21,6 +22,7 @@ export default function ContactosQuickBtn({ modulo }) {
   const [managing, setManaging] = useState(false)
   const [contactos, setContactos] = useState([])
   const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const ref = useRef()
 
   const closeManager = () => {
@@ -31,9 +33,10 @@ export default function ContactosQuickBtn({ modulo }) {
   // Carga lazy — solo cuando se abre por primera vez
   useEffect(() => {
     if (!open || loaded) return
+    setLoadError('')
     getDirectorio(modulo)
       .then(data => { setContactos(data || []); setLoaded(true) })
-      .catch(() => setLoaded(true))
+      .catch(() => { setLoadError('No se pudieron cargar los contactos.'); setLoaded(true) })
   }, [open, loaded, modulo])
 
   // Cierra al hacer click fuera
@@ -84,13 +87,20 @@ export default function ContactosQuickBtn({ modulo }) {
             </div>
           )}
 
-          {loaded && contactos.length === 0 && (
+          {loaded && loadError && (
+            <div role="alert" style={{ color:'#ff8a8a', fontSize:'0.7rem', textAlign:'center', padding:'0.5rem 0' }}>
+              <p>{loadError}</p>
+              <button type="button" className="btn-ghost" onClick={() => setLoaded(false)} style={{ marginTop:6 }}>Reintentar</button>
+            </div>
+          )}
+
+          {loaded && !loadError && contactos.length === 0 && (
             <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', textAlign: 'center', padding: '0.5rem 0' }}>
               Sin contactos cargados
             </p>
           )}
 
-          {loaded && contactos.map(c => (
+          {loaded && !loadError && contactos.map(c => (
             <div key={c.id} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '0.5rem 0',
@@ -102,18 +112,18 @@ export default function ContactosQuickBtn({ modulo }) {
                 <p style={{ color: 'var(--phosphor)', fontFamily: 'monospace', fontSize: '0.62rem', opacity: 0.7 }}>{c.telefono}</p>
               </div>
               <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
-                <a href={`tel:+${c.tel}`} title="Llamar"
+                {phoneHref(c.tel || c.telefono) && <a href={phoneHref(c.tel || c.telefono)} title="Llamar" aria-label={`Llamar a ${c.nombre}`}
                   style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.2)', color:'var(--phosphor)', borderRadius:4, textDecoration:'none' }}>
                   <IcoPhone />
-                </a>
-                {c.wa && (
-                  <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener noreferrer" title="WhatsApp"
+                </a>}
+                {whatsappHref(c.wa) && (
+                  <a href={whatsappHref(c.wa)} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label={`Enviar WhatsApp a ${c.nombre}`}
                     style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.2)', color:'#25d366', borderRadius:4, textDecoration:'none' }}>
                     <IcoWA />
                   </a>
                 )}
                 {c.email && (
-                  <a href={`mailto:${c.email}`} title="Email"
+                  <a href={`mailto:${c.email}`} title="Email" aria-label={`Enviar email a ${c.nombre}`}
                     style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, background:'rgba(99,179,237,0.08)', border:'1px solid rgba(99,179,237,0.2)', color:'#63b3ed', borderRadius:4, textDecoration:'none' }}>
                     <IcoMail />
                   </a>
