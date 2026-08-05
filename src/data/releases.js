@@ -1,7 +1,30 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.0";
+export const APP_VERSION = "2.7.1";
 
 export const RELEASES = [
+  {
+    version: "2.7.1",
+    date: "2026-08-05",
+    title: "Reportes vinculados, cumpleaños y despliegues más seguros",
+    functions: [
+      "Las novedades de Equipos / Mantenimiento pueden asociarse a un activo de la sede y generar un ticket de mantenimiento vinculado.",
+      "El selector de equipos reconoce correctamente los activos cargados con el dominio EQUIPO y filtra por la sede elegida.",
+      "El Tablón informa los cumpleaños de hoy y de los próximos 7 días, tanto en escritorio como en mobile.",
+      "Cuando la persona cumple años y tiene teléfono cargado, el botón Saludar abre WhatsApp con un mensaje preparado.",
+      "Los reportes mobile bloquean dobles envíos inmediatos y evitan recrear una novedad idéntica al reutilizar un reporte existente.",
+      "El historial de Equipo deja de mostrar dos veces las novedades automáticas duplicadas del mismo registro, sin ocultar notas manuales legítimas.",
+      "GitHub verifica automáticamente lint, pruebas y build; el deploy de producción se bloquea si la rama está desactualizada, tiene cambios sin commit o no es main.",
+    ],
+    problem: "Algunas novedades podían duplicarse, los equipos cargados no aparecían en el selector por una diferencia de mayúsculas y los cumpleaños del personal no tenían visibilidad operativa. Además, el proceso anterior permitía desplegar accidentalmente una rama antigua o con cambios mezclados.",
+    affectedUsers: "Todo el personal que consulta el Tablón, responsables que cargan reportes y usuarios de Equipo y Mantenimiento.",
+    usage: "En Nuevo Reporte abrí Equipos / Mantenimiento, agregá la novedad y elegí el activo de la sede; si corresponde, marcá Crear ticket automático. En el Tablón consultá los cumpleaños próximos y usá Saludar durante el día del cumpleaños.",
+    examples: [
+      "Vincular una falla del horno pizzero al activo correspondiente y crear el ticket sin volver a cargar sus datos.",
+      "Ver en el Tablón que una persona cumple hoy y abrir el saludo preparado en WhatsApp.",
+      "Reintentar un reporte sin duplicar la misma novedad en el historial del personal.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.7.0",
     date: "2026-07-29",
