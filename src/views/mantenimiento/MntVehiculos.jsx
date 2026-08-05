@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase, db } from '../../lib/supabase'
 import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
 import { notifyHighPriority } from '../../lib/pushNotifications'
 import { isQualityOnlyProfile } from '../../lib/access'
-import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, History, LayoutGrid, List } from 'lucide-react'
+import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, History, LayoutGrid, List, Download } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
+import { descargarHistorialVehiculoPdf } from '../../lib/vehiculoHistorialPdf'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
@@ -300,19 +301,45 @@ function Column({ col, tickets, onDrop, onCardClick }) {
 
 
 // ─── HISTORIAL POR UNIDAD ─────────────────────────────────────────────────────
-function HistorialPorUnidad({ tickets }) {
+const vehicleKey = value => String(value || '').trim().toUpperCase().replace(/\s+/g, ' ')
+
+function HistorialPorUnidad({ tickets, novedades }) {
   const [selected, setSelected] = useState(null)
+
+  const idByName = [...tickets, ...novedades].reduce((acc,item) => {
+    const name = vehicleKey(item.activo_nombre)
+    if (name && item.activo_id) acc[name] = item.activo_id
+    return acc
+  }, {})
+  const identity = item => {
+    const name = vehicleKey(item.activo_nombre) || 'SIN ASIGNAR'
+    const id = item.activo_id || idByName[name]
+    return id ? `id:${id}` : `nombre:${name}`
+  }
 
   // Group by patente (activo_nombre)
   const byPatente = {}
+  const labels = {}
   tickets.forEach(t => {
-    const key = t.activo_nombre || 'Sin asignar'
+    const key = identity(t)
     if (!byPatente[key]) byPatente[key] = []
     byPatente[key].push(t)
+    labels[key] ||= vehicleKey(t.activo_nombre) || 'SIN ASIGNAR'
   })
-  const patentes = Object.keys(byPatente).sort()
+  novedades.forEach(n => {
+    const key = identity(n)
+    if (!byPatente[key]) byPatente[key] = []
+    labels[key] ||= vehicleKey(n.activo_nombre) || 'SIN ASIGNAR'
+  })
+  const novedadesByPatente = novedades.reduce((acc,n) => {
+    const key = identity(n)
+    ;(acc[key] ||= []).push(n)
+    return acc
+  }, {})
+  const patentes = Object.keys(byPatente).sort((a,b) => labels[a].localeCompare(labels[b], 'es'))
 
   const hist = selected ? byPatente[selected] : []
+  const novedadesUnidad = selected ? (novedadesByPatente[selected] || []) : []
   const costoTotal = hist.reduce((s,t) => s+(t.costo_real||0), 0)
   const lastKm = hist.reduce((m,t) => Math.max(m, t.lectura_km||0), 0)
 
@@ -331,17 +358,19 @@ function HistorialPorUnidad({ tickets }) {
         )}
         {patentes.map(pat => {
           const tks = byPatente[pat]
-          const open = tks.filter(t => t.estado !== 'resuelto').length
+          const open = tks.filter(t => !['resuelto','rechazado'].includes(t.estado)).length
+          const novs = novedadesByPatente[pat] || []
           const isActive = selected === pat
           return (
             <button key={pat} onClick={() => setSelected(pat)}
               style={{ width:'100%', textAlign:'left', padding:'0.6rem 0.75rem', background: isActive ? 'rgba(57,255,20,0.08)' : 'transparent',
                 borderLeft: isActive ? '2px solid var(--phosphor)' : '2px solid transparent',
                 borderBottom:'1px solid rgba(57,255,20,0.05)', cursor:'pointer', display:'block' }}>
-              <p style={{ fontSize:'0.75rem', color: isActive ? 'var(--phosphor)' : 'var(--text)', margin:0, fontFamily:"'Roboto Mono',monospace", fontWeight:600 }}>{pat}</p>
+              <p style={{ fontSize:'0.75rem', color: isActive ? 'var(--phosphor)' : 'var(--text)', margin:0, fontFamily:"'Roboto Mono',monospace", fontWeight:600 }}>{labels[pat]}</p>
               <div style={{ display:'flex', gap:4, marginTop:3 }}>
                 <span className='chip chip-gray' style={{ borderRadius:2 }}>{tks.length} tickets</span>
                 {open > 0 && <span className='chip chip-yellow' style={{ borderRadius:2 }}>{open} abiertos</span>}
+                {novs.length > 0 && <span className='chip chip-blue' style={{ borderRadius:2 }}>{novs.length} novedades</span>}
               </div>
             </button>
           )
@@ -354,7 +383,7 @@ function HistorialPorUnidad({ tickets }) {
           <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', textAlign:'center', paddingTop:'3rem' }}>Seleccioná una unidad</p>
         ) : (
           <>
-            <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'stretch' }}>
               <div className='kpi-card' style={{ minWidth:90 }}>
                 <p className='kpi-label'>Tickets</p>
                 <p className='kpi-value' style={{ fontSize:'1.5rem' }}>{hist.length}</p>
@@ -371,6 +400,30 @@ function HistorialPorUnidad({ tickets }) {
                   <p className='kpi-value' style={{ fontSize:'1.2rem' }}>{lastKm.toLocaleString('es-AR')}</p>
                 </div>
               )}
+              <div className='kpi-card' style={{ minWidth:90 }}>
+                <p className='kpi-label'>Novedades</p>
+                <p className='kpi-value' style={{ fontSize:'1.5rem' }}>{novedadesUnidad.length}</p>
+              </div>
+              <button className='btn-ghost' onClick={() => descargarHistorialVehiculoPdf({ vehiculo:labels[selected], tickets:hist, novedades:novedadesUnidad })}
+                style={{ marginLeft:'auto', alignSelf:'center', display:'flex', alignItems:'center', gap:6 }}>
+                <Download size={13}/> Exportar PDF
+              </button>
+            </div>
+            <div style={{ marginTop:16 }}>
+              <p style={{ color:'var(--phosphor)', fontSize:'0.65rem', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:8 }}>Novedades operativas</p>
+              {novedadesUnidad.length === 0 ? (
+                <p style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>Sin novedades registradas para esta unidad.</p>
+              ) : novedadesUnidad.map(n => (
+                <div key={n.id} className='glass rounded' style={{ padding:'0.65rem 0.8rem', marginBottom:6, borderRadius:3 }}>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4 }}>
+                    <span className='chip chip-blue' style={{ borderRadius:2 }}>{n.tipo || 'Novedad'}</span>
+                    <span style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>{n.fecha_reporte ? fmtFecha(n.fecha_reporte) : ''}</span>
+                    <span style={{ marginLeft:'auto', fontSize:'0.62rem', color:'var(--text-dim)' }}>{n.estado || ''}</span>
+                  </div>
+                  <p style={{ fontSize:'0.75rem', color:'var(--text)', margin:0 }}>{n.descripcion}</p>
+                  <p style={{ fontSize:'0.62rem', color:'var(--text-dim)', margin:'4px 0 0' }}>{[n.reportante,n.sede_nombre].filter(Boolean).join(' · ')}</p>
+                </div>
+              ))}
             </div>
             <div className='glass rounded overflow-hidden' style={{ borderRadius:3 }}>
               <table className='table-dark w-full'>
@@ -420,6 +473,7 @@ export default function MntVehiculos({ focusId }) {
   const canWrite = (rol === 'admin' || rol === 'editor' || rol === 'encargado' || rol === 'flota') && !isQualityOnlyProfile(perfil)
 
   const [tickets, setTickets]   = useState([])
+  const [novedades, setNovedades] = useState([])
   const [loading, setLoading]   = useState(true)
   const [filterPat, setFilterPat]   = useState('')
   const [filterPrior, setFilterPrior] = useState('')
@@ -435,11 +489,17 @@ export default function MntVehiculos({ focusId }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.schema('mantenimiento').from('tickets')
-      .select('id,numero,activo_nombre,descripcion,diagnostico,estado,prioridad,tipo,lectura_km,responsable,sede,costo_real,fecha_limite,created_at,notas_costos')
-      .eq('categoria', 'Vehiculos')
-      .order('created_at', { ascending: false })
-    setTickets(data || [])
+    const [ticketsResult, novedadesResult] = await Promise.all([
+      supabase.schema('mantenimiento').from('tickets')
+        .select('id,numero,activo_id,activo_nombre,descripcion,diagnostico,estado,prioridad,tipo,lectura_km,responsable,sede,costo_real,fecha_limite,created_at,notas_costos')
+        .eq('categoria', 'Vehiculos')
+        .order('created_at', { ascending: false }),
+      db().from('vehiculo_novedades')
+        .select('id,registro_id,activo_id,activo_nombre,tipo,descripcion,estado,reportante,fecha_reporte,created_at,sede_id,sede_nombre')
+        .order('fecha_reporte', { ascending:false }),
+    ])
+    setTickets(ticketsResult.data || [])
+    setNovedades(novedadesResult.data || [])
     setLoading(false)
   }, [])
 
@@ -555,7 +615,7 @@ export default function MntVehiculos({ focusId }) {
           ))}
         </div>
       ) : (
-        <HistorialPorUnidad tickets={tickets} />
+        <HistorialPorUnidad tickets={tickets} novedades={novedades} />
       )}
     </div>
   )
