@@ -1,9 +1,24 @@
-import React from 'react'
+import React, { useRef } from 'react'
 
 export default function WorkspaceTabs({ title, subtitle, tabs, activeTab, onTabChange, children, rightSlot, maxPrimaryTabs = 5 }) {
+  const navRef = useRef(null)
   const primaryTabs = tabs.slice(0, maxPrimaryTabs)
   const secondaryTabs = tabs.slice(maxPrimaryTabs)
   const activeSecondary = secondaryTabs.some(tab => tab.id === activeTab) ? activeTab : ''
+
+  const handleTabKeyDown = event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    const controls = [...navRef.current.querySelectorAll('button, select')]
+    const currentIndex = controls.indexOf(event.currentTarget)
+    if (currentIndex < 0) return
+    event.preventDefault()
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? controls.length - 1
+        : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + controls.length) % controls.length
+    controls[nextIndex]?.focus()
+  }
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
@@ -15,12 +30,13 @@ export default function WorkspaceTabs({ title, subtitle, tabs, activeTab, onTabC
           </div>
           {rightSlot && <div style={{ flexShrink:0 }}>{rightSlot}</div>}
         </div>
-        <nav aria-label={`Secciones de ${title}`} className="flex gap-1 mt-4 overflow-x-auto pb-2">
+        <nav ref={navRef} aria-label={`Secciones de ${title}`} className="flex gap-1 mt-4 overflow-x-auto pb-2">
           {primaryTabs.map(tab => (
             <button
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
+              onKeyDown={handleTabKeyDown}
               aria-current={activeTab === tab.id ? 'page' : undefined}
               className={activeTab === tab.id ? 'btn-primary' : 'btn-ghost'}
               style={{ flexShrink:0, fontSize:'0.65rem', padding:'0.4rem 0.7rem' }}
@@ -33,6 +49,7 @@ export default function WorkspaceTabs({ title, subtitle, tabs, activeTab, onTabC
               <span className="sr-only">Más herramientas de {title}</span>
               <select aria-label={`Más herramientas de ${title}`} value={activeSecondary}
                 onChange={event => event.target.value && onTabChange(event.target.value)}
+                onKeyDown={handleTabKeyDown}
                 className={activeSecondary ? 'btn-primary' : 'btn-ghost'}
                 style={{ fontSize:'0.65rem', padding:'0.4rem 1.8rem 0.4rem 0.7rem', cursor:'pointer' }}>
                 <option value="">Más herramientas</option>

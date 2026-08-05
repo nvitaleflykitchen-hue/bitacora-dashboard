@@ -179,7 +179,7 @@ export default function ImportarContactosModal({ existentes = [], onClose, onImp
               Importar contactos desde Google
             </h2>
           </div>
-          <button onClick={onClose} className="btn-ghost" style={{ padding:'0.3rem' }}><X size={14}/></button>
+          <button onClick={onClose} aria-label="Cerrar importación" className="btn-ghost" style={{ padding:'0.3rem' }}><X size={14}/></button>
         </div>
 
         {/* Body */}

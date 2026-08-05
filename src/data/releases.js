@@ -1,7 +1,28 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.6";
+export const APP_VERSION = "2.7.7";
 
 export const RELEASES = [
+  {
+    version: "2.7.7",
+    date: "2026-08-05",
+    title: "Fase 4: controles consistentes y accesibles",
+    functions: [
+      "Todos los controles muestran un foco visible y consistente al navegar con teclado.",
+      "Las pestañas de Mantenimiento, Flota y Calidad se pueden recorrer con las flechas, Inicio y Fin.",
+      "Botones, campos y acciones táctiles mantienen un área mínima de 44 píxeles en mobile.",
+      "Los botones representados sólo por íconos incorporan nombres claros para lectores de pantalla.",
+      "Las alertas comunican su actualización y estado a tecnologías de asistencia.",
+      "Las animaciones se reducen automáticamente cuando el dispositivo así lo solicita.",
+    ],
+    problem: "Los controles no mantenían el mismo comportamiento de foco, varios íconos no explicaban su acción y algunos objetivos táctiles resultaban demasiado pequeños.",
+    affectedUsers: "Todo el personal, especialmente quienes usan teclado, lectores de pantalla o la aplicación desde un teléfono en operación.",
+    usage: "La operatoria no cambia. Ahora podés recorrer las secciones con el teclado y los controles móviles ofrecen áreas táctiles más seguras.",
+    examples: [
+      "Moverse entre secciones con las flechas sin depender del mouse.",
+      "Identificar correctamente acciones como Cerrar o Actualizar aunque visualmente sólo muestren un ícono.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.7.6",
     date: "2026-08-05",

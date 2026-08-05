@@ -75,7 +75,7 @@ function NCForm({ onClose, onCreated, sedes, rol, ncOrigen }) {
               </p>
             )}
           </div>
-          <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">

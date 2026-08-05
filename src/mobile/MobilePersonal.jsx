@@ -146,7 +146,7 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nueva evaluación</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
         <Card style={{ background: 'rgba(57,255,20,0.04)', border: '1px solid rgba(57,255,20,0.12)' }}>
           <p style={{ fontSize: '0.58rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 7 }}>Personal evaluado</p>
@@ -260,7 +260,7 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nuevo registro</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Cerrar detalle" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Tipo *</label>
         <select className="input-dark w-full" value={form.tipo} onChange={e => set('tipo', e.target.value)} style={{ marginBottom: 12 }}>
@@ -332,7 +332,7 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nueva persona</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
         {[['nombre', 'Nombre *', 'Ej: Juan'], ['apellido', 'Apellido', 'Ej: Pérez'], ['legajo', 'N.º de legajo', 'Ej: FK-00125'], ['dni', 'DNI', 'Ej: 34567890'], ['puesto', 'Puesto', 'Ej: Cocinero'], ['area', 'Área', 'Ej: Cocina'], ['telefono', 'Teléfono', 'Ej: 1145678900'], ['email', 'Email', 'Ej: juan.perez@email.com']].map(([k, l, ph]) => (
           <div key={k} style={{ marginBottom: 10 }}>

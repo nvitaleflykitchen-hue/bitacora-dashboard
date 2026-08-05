@@ -162,7 +162,7 @@ function QuickCapaModal({ sedes, onClose, onCreated }) {
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nueva Acción CAPA</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede *</label>
         <select className="input-dark w-full mb-3" value={form.sede_id} onChange={e => set('sede_id', e.target.value)} style={{ marginBottom: 12 }}>
@@ -221,7 +221,7 @@ function QuickNCModal({ sedes, onClose, onCreated }) {
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nueva No Conformidad</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Cerrar detalle" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede *</label>
         <select className="input-dark w-full" value={form.sede_id} onChange={e => set('sede_id', e.target.value)} style={{ marginBottom: 12 }}>

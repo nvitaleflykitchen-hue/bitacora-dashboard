@@ -33,7 +33,7 @@ function SheetModal({ title, onClose, children }) {
       <div style={{ background: 'var(--surface)', width: '100%', borderRadius: '14px 14px 0 0', padding: '1.25rem', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>{title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
         {children}
       </div>

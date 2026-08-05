@@ -114,11 +114,11 @@ select option:hover {
 .nav-item:hover { color:var(--phosphor); background:var(--phosphor-dim); }
 .nav-item.active { color:var(--phosphor); background:var(--phosphor-dim); border-left-color:var(--phosphor); text-shadow:0 0 6px var(--phosphor-glow); }
 
-/* Foco de teclado visible (accesibilidad) */
-.nav-item:focus-visible,
-.btn-primary:focus-visible,
-.btn-ghost:focus-visible,
-.btn-danger:focus-visible { outline:2px solid var(--phosphor); outline-offset:2px; }
+/* Foco de teclado visible en todos los controles, incluso los que usan estilos inline. */
+:where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline:2px solid var(--phosphor);
+  outline-offset:2px;
+}
 
 .kpi-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:1rem 1.25rem; position:relative; transition:border-color 0.2s; }
 .kpi-card:hover { border-color:rgba(57,255,20,0.18); }
@@ -170,10 +170,20 @@ select option:hover {
 
 /* ─── Targets táctiles en mobile (≥44px, operación en planta) ─── */
 @media (max-width: 767px), (pointer: coarse) {
-  .btn-primary, .btn-ghost {
+  button, [role="button"], .btn-primary, .btn-ghost, .btn-danger {
     min-height: 44px;
   }
-  input.input-dark, select.input-dark {
+  input, select, textarea, input.input-dark, select.input-dark {
     min-height: 44px;
+  }
+}
+
+/* Respeta la preferencia del sistema y evita movimiento innecesario. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior:auto !important;
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
   }
 }
