@@ -551,15 +551,16 @@ export default function MntVehiculos({ focusId }) {
               <span style={{ fontSize:'0.65rem', color:'#ffb400', fontWeight:600 }}>{sinAsignar} sin taller</span>
             </div>
           )}
-          {/* Toggle kanban / por unidad */}
-          <div style={{ display:'flex', borderRadius:2, overflow:'hidden', border:'1px solid rgba(57,255,20,0.08)' }}>
+          {/* Toggle kanban / historial por vehículo */}
+          <div style={{ display:'flex', borderRadius:4, overflow:'hidden', border:'1px solid rgba(57,255,20,0.28)', background:'rgba(57,255,20,0.04)' }}>
             {[
               { id:'kanban', label:'Kanban', icon: LayoutGrid },
-              { id:'historial', label:'Por unidad', icon: History },
+              { id:'historial', label:'Historial por vehículo', icon: History },
             ].map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => setViewMode(id)}
-                style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', background: viewMode===id ? 'rgba(57,255,20,0.12)' : 'transparent', color: viewMode===id ? '#39FF14' : 'rgba(255,255,255,0.35)', border:'none', cursor:'pointer', fontSize:'0.62rem', fontFamily:'monospace', borderRight: id==='kanban' ? '1px solid rgba(57,255,20,0.07)' : 'none' }}>
-                <Icon size={11}/>{label}
+              <button key={id} type="button" onClick={() => setViewMode(id)}
+                title={id === 'historial' ? 'Ver tickets, novedades y exportar el PDF de cada vehículo' : 'Ver tablero de tickets'}
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 13px', background: viewMode===id ? 'rgba(57,255,20,0.16)' : 'rgba(255,255,255,0.025)', color: viewMode===id ? '#39FF14' : 'rgba(255,255,255,0.72)', border:'none', cursor:'pointer', fontSize:'0.66rem', fontWeight:viewMode===id?700:600, fontFamily:'monospace', borderRight: id==='kanban' ? '1px solid rgba(57,255,20,0.18)' : 'none' }}>
+                <Icon size={12}/>{label}
               </button>
             ))}
           </div>
