@@ -141,7 +141,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
             <div style={{ fontSize:'0.65rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.12em', textTransform:'uppercase' }}>{sede?.id ? 'EDITAR' : 'NUEVA'} UNIDAD</div>
             <div style={{ fontSize:'1rem', fontWeight:700, color:'#e2e8f0', marginTop:2 }}>{sede?.nombre || 'Nueva sede'}</div>
           </div>
-          <button onClick={onClose} style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={18}/></button>
+          <button onClick={onClose} aria-label="Cerrar ficha de sede" style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={18}/></button>
         </div>
 
         <div style={{ marginBottom:10 }}>

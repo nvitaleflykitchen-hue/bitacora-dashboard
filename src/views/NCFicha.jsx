@@ -153,7 +153,7 @@ export default function NCFicha({ nc, onClose, onUpdate, onDerivar, ncOrigen, nc
               {nc.sede_nombre || 'Sede no asignada'} · {nc.fecha_apertura ? fmtFechaLarga(nc.fecha_apertura) : 'Sin fecha'}
             </p>
           </div>
-          <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={18} /></button>
+          <button onClick={onClose} aria-label="Cerrar ficha" className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={18} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">

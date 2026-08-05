@@ -51,6 +51,8 @@ export default function AlertaBanner({ onNavigate }) {
   if (collapsed) {
     return (
       <div
+        role="status"
+        aria-live="polite"
         style={{
           background: criticas.length > 0 ? 'rgba(255,42,42,0.08)' : 'rgba(245,158,11,0.06)',
           borderBottom: `1px solid ${criticas.length > 0 ? 'rgba(255,42,42,0.2)' : 'rgba(245,158,11,0.2)'}`,
@@ -76,7 +78,7 @@ export default function AlertaBanner({ onNavigate }) {
   }
 
   return (
-    <div style={{
+    <div role="region" aria-label="Alertas operativas" aria-busy={loading} style={{
       background: 'var(--surface)',
       borderBottom: '1px solid rgba(255,42,42,0.15)',
       padding: '0.4rem 0.75rem',

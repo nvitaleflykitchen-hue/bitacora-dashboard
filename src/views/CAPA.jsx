@@ -113,7 +113,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode =
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px', maxHeight:'90vh', overflowY:'auto' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
           <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>{mode === 'gestion' ? 'Nuevo proyecto de gestión' : 'Nueva Acción CAPA'}</h2>
-          <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {mode === 'gestion' && (
@@ -336,7 +336,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
               <span style={{ fontSize:'0.6rem', color:'var(--text-dim)', marginLeft:6 }}>{c.auditoria_codigo}</span>
             )}
           </div>
-          <button onClick={onClose} className="btn-ghost" style={{ padding:'0.25rem' }}><X size={13} /></button>
+          <button onClick={onClose} aria-label="Cerrar detalle" className="btn-ghost" style={{ padding:'0.25rem' }}><X size={13} /></button>
         </div>
         <div className="px-5 py-4 space-y-3">
           <div className="flex gap-2 flex-wrap">
@@ -634,7 +634,7 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, perfiles, onC
       <div className="glass hud-corner fade-in w-full max-w-lg rounded" style={{ borderRadius:'3px', maxHeight:'90vh', overflowY:'auto' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom:'1px solid rgba(57,255,20,0.08)' }}>
           <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Datos del plan — {auditoriaCodigo}</h2>
-          <button onClick={onClose} className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
+          <button onClick={onClose} aria-label="Cerrar formulario" className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', lineHeight:1.5 }}>

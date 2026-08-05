@@ -72,7 +72,7 @@ export default function GestionGeneralReportModal({ sedes, onClose }) {
               <p style={{ color:'var(--text-dim)', fontSize:'.7rem', marginTop:3 }}>Elegí período, sedes y puntos que querés incluir en el resumen.</p>
             </div>
           </div>
-          <button onClick={onClose} className="btn-ghost" disabled={loading}><X size={14}/></button>
+          <button onClick={onClose} aria-label="Cerrar informe" className="btn-ghost" disabled={loading}><X size={14}/></button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5">

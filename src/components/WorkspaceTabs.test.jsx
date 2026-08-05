@@ -32,4 +32,20 @@ describe('WorkspaceTabs', () => {
     fireEvent.change(more, { target:{ value:'tab-5' } })
     expect(onChange).toHaveBeenCalledWith('tab-5')
   })
+
+  it('permite recorrer las secciones con el teclado', () => {
+    render(
+      <WorkspaceTabs title="Calidad" tabs={[{ id:'a', label:'Auditorias' }, { id:'b', label:'CAPA' }]} activeTab="a" onTabChange={() => {}}>
+        <p>Contenido</p>
+      </WorkspaceTabs>
+    )
+
+    const first = screen.getByRole('button', { name:'Auditorias' })
+    const second = screen.getByRole('button', { name:'CAPA' })
+    first.focus()
+    fireEvent.keyDown(first, { key:'ArrowRight' })
+    expect(second).toHaveFocus()
+    fireEvent.keyDown(second, { key:'Home' })
+    expect(first).toHaveFocus()
+  })
 })

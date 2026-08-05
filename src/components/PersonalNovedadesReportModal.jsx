@@ -33,7 +33,7 @@ export default function PersonalNovedadesReportModal({ sedes, onClose }) {
     <div className="glass fade-in w-full max-w-lg" style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,.22)', borderRadius:6, padding:'1.5rem' }}>
       <div className="flex items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-3"><CalendarRange size={19} style={{ color:'var(--phosphor)' }} /><div><h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Informe de novedades del personal</h2><p style={{ color:'var(--text-dim)', fontSize:'.7rem', marginTop:3 }}>Seleccioná la sede y el período que querés informar.</p></div></div>
-        <button onClick={onClose} className="btn-ghost" disabled={loading}><X size={14}/></button>
+        <button onClick={onClose} aria-label="Cerrar informe" className="btn-ghost" disabled={loading}><X size={14}/></button>
       </div>
       <label className="font-metric block mb-1" style={{ fontSize:'.6rem', color:'var(--text-dim)' }}>SEDE</label>
       <select className="input-dark w-full mb-4" value={sedeId} onChange={e=>setSedeId(e.target.value)}>

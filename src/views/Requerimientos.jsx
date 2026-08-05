@@ -142,7 +142,7 @@ function EquipoComprasModal({ onClose }) {
             <h2 style={{ color:'var(--text)', fontWeight:800, fontSize:'1rem' }}>Equipo de Compras</h2>
             <p style={{ color:'var(--text-dim)', fontSize:'.62rem', marginTop:3 }}>Directorio y alcance operativo · referencia recibida 21/05/2026</p>
           </div>
-          <button className="btn-ghost" onClick={onClose}><X size={14}/></button>
+          <button className="btn-ghost" onClick={onClose} aria-label="Cerrar formulario"><X size={14}/></button>
         </div>
         <div style={{ padding:'1.2rem', minWidth:900 }}>
           <div style={{ display:'flex', justifyContent:'center' }}><EquipoComprasNode persona={gerente} accent="var(--phosphor)"/></div>
@@ -383,7 +383,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
               </button>
             )}
           </div>
-          <button onClick={onClose} className="btn-ghost" style={{ padding:'0.3rem' }}><X size={14}/></button>
+          <button onClick={onClose} aria-label="Cerrar detalle" className="btn-ghost" style={{ padding:'0.3rem' }}><X size={14}/></button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding:'1rem 1.25rem', display:'flex', flexDirection:'column', gap:12 }}>
@@ -908,7 +908,7 @@ export default function Requerimientos({ focusId }) {
             {showKpis ? <EyeOff size={12}/> : <Eye size={12}/>}
             {showKpis ? 'Ocultar KPIs' : 'Mostrar KPIs'}
           </button>
-          <button onClick={load} className="btn-ghost" style={{ padding:'0.4rem 0.5rem' }}><RefreshCw size={12}/></button>
+          <button onClick={load} aria-label="Actualizar requerimientos" className="btn-ghost" style={{ padding:'0.4rem 0.5rem' }}><RefreshCw size={12}/></button>
           {canRequest && <button onClick={()=>{ setEditReq(null); setShowForm(true) }} className="btn-primary"
             style={{ display:'flex', alignItems:'center', gap:5 }}>
             <Plus size={12}/> Nuevo requerimiento
