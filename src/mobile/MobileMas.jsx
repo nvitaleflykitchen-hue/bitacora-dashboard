@@ -7,6 +7,9 @@ import MobileIndicadores from './MobileIndicadores'
 import MobileTablon from './MobileTablon'
 import MobileContactos from './MobileContactos'
 import MobileActualizaciones from './MobileActualizaciones'
+import MobileEscalamientos from './MobileEscalamientos'
+import MobileChecklist from './MobileChecklist'
+import MobileRequerimientos from './MobileRequerimientos'
 import { useAuth } from '../lib/auth'
 import { canAccessView } from '../lib/access'
 import MobileFlota from './MobileFlota'
@@ -14,6 +17,9 @@ import { useBackHandler } from '../lib/backStack'
 import AuditoriasInternas from '../views/AuditoriasInternas'
 
 const MODULES = [
+  { key:'escalamientos', label:'Escalamientos', sub:'Casos que requieren seguimiento', icon:ClipboardCheck, ready:true, view:'escalamientos', group:'Trabajo diario' },
+  { key:'checklist', label:'Checklist', sub:'Controles operativos de la sede', icon:ClipboardList, ready:true, view:'inicio', group:'Trabajo diario' },
+  { key:'compras', label:'Compras', sub:'Requerimientos y seguimiento', icon:ClipboardList, ready:true, view:'requerimientos', group:'Trabajo diario' },
   { key: 'calidad',       label: 'Calidad',       sub: 'CAPA / No Conformidades',         icon: ClipboardList, ready: true,  view: 'calidadHub' },
   { key: 'auditorias',    label: 'Auditorías internas', sub: 'Relevamiento, fotos y hallazgos', icon: ClipboardCheck, ready: true, view: 'calidadHub' },
   { key: 'personal',      label: 'Personal',      sub: 'Equipo / RRHH',                    icon: Users,         ready: true,  view: 'equipo' },
@@ -24,6 +30,13 @@ const MODULES = [
   { key: 'actualizaciones', label: 'Actualizaciones', sub: 'Versiones y nuevas funciones',  icon: Sparkles,      ready: true,  view: 'actualizaciones' },
   { key: 'contactos',     label: 'Directorio',    sub: 'Teléfonos importantes',            icon: Phone,         ready: true,  view: 'inicio' },
 ]
+
+const MODULE_GROUPS = ['Trabajo diario', 'Gestión', 'Información']
+const moduleGroup = key => {
+  if (['escalamientos','checklist','compras'].includes(key)) return 'Trabajo diario'
+  if (['tablon','actualizaciones','contactos'].includes(key)) return 'Información'
+  return 'Gestión'
+}
 
 function ModuleCard({ mod, onOpen }) {
   const Icon = mod.icon
@@ -67,6 +80,7 @@ export default function MobileMas({ initialModule = null }) {
   useBackHandler(() => setActive(null), !!active)
   const visibleModules = MODULES.filter(m =>
     canAccessView(rol, m.view, perfil) &&
+    (m.key !== 'checklist' || rol !== 'consultor') &&
     (rol !== 'mnt_editor' || ['mantenimiento', 'actualizaciones', 'contactos'].includes(m.key))
   )
 
@@ -105,6 +119,9 @@ export default function MobileMas({ initialModule = null }) {
           {mod.key === 'tablon' && <MobileTablon />}
           {mod.key === 'actualizaciones' && <MobileActualizaciones />}
           {mod.key === 'contactos' && <MobileContactos />}
+          {mod.key === 'escalamientos' && <MobileEscalamientos />}
+          {mod.key === 'checklist' && <MobileChecklist onBack={() => setActive(null)} />}
+          {mod.key === 'compras' && <MobileRequerimientos />}
         </div>
       </div>
     )
@@ -116,7 +133,17 @@ export default function MobileMas({ initialModule = null }) {
       {visibleModules.length === 0 ? (
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>No hay módulos adicionales para tu rol.</p>
       ) : (
-        visibleModules.map(m => <ModuleCard key={m.key} mod={m} onOpen={setActive} />)
+        MODULE_GROUPS.map(group => {
+          const modules = visibleModules.filter(mod => moduleGroup(mod.key) === group)
+          if (!modules.length) return null
+          const headingId = `mobile-more-${group.replace(/\s+/g, '-').toLowerCase()}`
+          return (
+            <section key={group} aria-labelledby={headingId}>
+              <h2 id={headingId} style={{ color:'var(--phosphor)', fontSize:'0.65rem', textTransform:'uppercase', letterSpacing:'0.08em', margin:'1rem 0 0.55rem' }}>{group}</h2>
+              {modules.map(mod => <ModuleCard key={mod.key} mod={mod} onOpen={setActive} />)}
+            </section>
+          )
+        })
       )}
     </div>
   )

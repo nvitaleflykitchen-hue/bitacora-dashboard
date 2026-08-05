@@ -1,7 +1,28 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.5";
+export const APP_VERSION = "2.7.6";
 
 export const RELEASES = [
+  {
+    version: "2.7.6",
+    date: "2026-08-05",
+    title: "Fase 3: navegación más simple",
+    functions: [
+      "Los módulos extensos muestran hasta cinco secciones principales y agrupan el resto en Más herramientas.",
+      "Mantenimiento pasa de diez opciones simultáneas a cinco accesos principales más un selector organizado.",
+      "Flota y Calidad aplican la misma jerarquía, conservando todas sus funciones y permisos.",
+      "La navegación inferior mobile general baja de ocho a cinco destinos para mejorar lectura y área táctil.",
+      "Checklist, Compras y Escalamientos continúan disponibles en Más, dentro del grupo Trabajo diario.",
+      "El menú Más separa Trabajo diario, Gestión e Información para reducir la búsqueda visual.",
+    ],
+    problem: "La cantidad de pestañas y destinos simultáneos dificultaba reconocer qué era principal y obligaba a recorrer opciones sin una jerarquía clara.",
+    affectedUsers: "Todos los usuarios de mobile y quienes trabajan en los hubs de Mantenimiento, Flota y Calidad.",
+    usage: "Usá las cinco secciones visibles para el trabajo habitual. Las funciones especializadas permanecen disponibles en Más herramientas o en Más desde mobile.",
+    examples: [
+      "Abrir Proveedores o Matafuegos desde Más herramientas en Mantenimiento.",
+      "Ingresar a Checklist, Compras o Escalamientos desde Trabajo diario en mobile.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.7.5",
     date: "2026-08-05",

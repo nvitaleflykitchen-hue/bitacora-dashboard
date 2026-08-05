@@ -43,6 +43,7 @@ export default function MobileApp() {
   const navAllowed = isSafetyOnly
     ? new Set(['tareas', 'sedes', 'tickets', 'compras', 'mas'])
     : (isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (isComprasOnly ? new Set(['home', 'compras']) : (isMaintenanceEditor ? new Set(['tickets', 'sedes', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null))))
+  const bottomNavAllowed = navAllowed || new Set(['home', 'tareas', 'sedes', 'tickets', 'mas'])
   const [tab, setTab] = useState(isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home')))
   const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
@@ -194,7 +195,7 @@ export default function MobileApp() {
           display: 'flex',
           padding: '0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom))',
         }}>
-          {NAV.filter(n => (!navAllowed || navAllowed.has(n.key)) && (canUseChecklist || n.key !== 'checklist')).map(n => (
+          {NAV.filter(n => bottomNavAllowed.has(n.key) && (canUseChecklist || n.key !== 'checklist')).map(n => (
             <button key={n.key} onClick={() => { setMasModule(null); setTab(n.key) }}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
