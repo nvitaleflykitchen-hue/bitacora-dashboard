@@ -1,7 +1,27 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.4";
+export const APP_VERSION = "2.7.5";
 
 export const RELEASES = [
+  {
+    version: "2.7.5",
+    date: "2026-08-05",
+    title: "Fase 2: menos ruido y trabajo más rápido",
+    functions: [
+      "La barra global muestra por defecto un resumen compacto con cantidad y severidad de las alertas.",
+      "Cada usuario puede desplegar o minimizar las alertas y la aplicación recuerda su preferencia.",
+      "Los filtros del tablero de Mantenimiento se conservan al cambiar de pantalla o volver a ingresar.",
+      "Flota recuerda el vehículo, prioridad, tipo, SLA y la vista elegida entre Kanban e Historial por vehículo.",
+      "Cuando hay filtros activos se muestra su cantidad y un botón permite limpiarlos todos con una sola acción.",
+    ],
+    problem: "Las alertas ocupaban demasiado espacio en todas las pantallas y los usuarios debían reconstruir sus filtros cada vez que retomaban una tarea.",
+    affectedUsers: "Todo el personal de escritorio, especialmente responsables de Mantenimiento y Flota.",
+    usage: "Usá Ver alertas para desplegar el detalle. Configurá los filtros una vez; se recuperarán automáticamente hasta que elijas Limpiar filtros.",
+    examples: [
+      "Volver al historial de una unidad y conservar el vehículo y la prioridad seleccionados.",
+      "Mantener visible sólo el resumen de alertas mientras se trabaja en un tablero.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.7.4",
     date: "2026-08-05",

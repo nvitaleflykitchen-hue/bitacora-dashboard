@@ -8,6 +8,7 @@ import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, His
 import PageHeader from '../../components/PageHeader'
 import { descargarHistorialVehiculoPdf } from '../../lib/vehiculoHistorialPdf'
 import { vehiculoEstadoFromDb, vehiculoEstadoToDb } from '../../lib/vehiculoTicketState'
+import usePersistedState from '../../hooks/usePersistedState'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
@@ -485,17 +486,17 @@ export default function MntVehiculos({ focusId }) {
   const [novedades, setNovedades] = useState([])
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [filterPat, setFilterPat]   = useState('')
-  const [filterPrior, setFilterPrior] = useState('')
-  const [filterTipo, setFilterTipo]   = useState('')
-  const [filterSLA, setFilterSLA]     = useState(false)
+  const [filterPat, setFilterPat]   = usePersistedState('flotaVehiculos.patente', '')
+  const [filterPrior, setFilterPrior] = usePersistedState('flotaVehiculos.prioridad', '')
+  const [filterTipo, setFilterTipo]   = usePersistedState('flotaVehiculos.tipo', '')
+  const [filterSLA, setFilterSLA]     = usePersistedState('flotaVehiculos.sla', false)
   const [modalTicket, setModalTicket] = useState(null) // null | ticket obj | 'new'
   useEffect(() => {
     if (!focusId || loading) return
     const target = tickets.find(item => String(item.id) === String(focusId))
     if (target) setModalTicket(target)
   }, [focusId, loading, tickets])
-  const [viewMode, setViewMode]   = useState('kanban')
+  const [viewMode, setViewMode]   = usePersistedState('flotaVehiculos.vista', 'kanban')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -540,6 +541,8 @@ export default function MntVehiculos({ focusId }) {
   const vencidos   = tickets.filter(t => slaStatus(t) === 'vencido').length
   const abiertos   = tickets.filter(t => t.estado !== 'resuelto' && t.estado !== 'rechazado').length
   const sinAsignar = tickets.filter(t => !t.responsable && t.estado !== 'resuelto' && t.estado !== 'rechazado').length
+  const activeFilters = [filterPat, filterPrior, filterTipo, filterSLA].filter(Boolean).length
+  const clearFilters = () => { setFilterPat(''); setFilterPrior(''); setFilterTipo(''); setFilterSLA(false) }
 
   const SEL = { background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'monospace', cursor:'pointer' }
 
@@ -614,6 +617,7 @@ export default function MntVehiculos({ focusId }) {
           <input type="checkbox" checked={filterSLA} onChange={e=>setFilterSLA(e.target.checked)} style={{ accentColor:'#ff5050' }}/>
           Solo SLA vencido
         </label>
+        {activeFilters > 0 && <button type="button" onClick={clearFilters} className="btn-ghost" style={{ fontSize:'0.62rem' }}>Limpiar filtros ({activeFilters})</button>}
         <button onClick={load} style={{ ...SEL, marginLeft:'auto', display:'flex', alignItems:'center', gap:5 }}>
           <RefreshCw size={11}/> Actualizar
         </button>
