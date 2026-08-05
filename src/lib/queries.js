@@ -1466,6 +1466,18 @@ export async function createVehiculoNovedad(payload) {
 }
 
 export async function createPersonaNovedad(payload) {
+  if (payload.registro_id && payload.persona_id) {
+    const { data: existente, error: existenteError } = await db()
+      .from("persona_novedades").select("*")
+      .eq("registro_id", payload.registro_id)
+      .eq("persona_id", payload.persona_id)
+      .eq("categoria", payload.categoria || "Otro")
+      .eq("descripcion", payload.descripcion)
+      .limit(1).maybeSingle();
+    if (existenteError) throw existenteError;
+    if (existente) return existente;
+  }
+
   const { data, error } = await db()
     .from("persona_novedades")
     .insert(payload)
@@ -1574,10 +1586,16 @@ export async function createModuloNovedad(payload) {
  *            estado, escalar, tipo_escalamiento }
  */
 export async function createModuloNovedadConEscalamiento(payload) {
-  const { escalar, tipo_escalamiento, ...novedadPayload } = payload;
+  const { escalar, tipo_escalamiento, crear_ticket, activo_id, activo_nombre, prioridad, ...novedadPayload } = payload;
   const novedad = await createModuloNovedad(novedadPayload);
-  if (!escalar || !novedad?.id) return { novedad, escalamiento: null };
-  const escalamiento = await createEscalamientoItem({
+  if (!novedad?.id) return { novedad, ticket: null, escalamiento: null };
+  const ticket = crear_ticket && activo_id ? await createTicket({
+    tipo: "correctivo", categoria: "Equipos", activo_id, activo_nombre,
+    descripcion: novedad.descripcion, estado: "abierto",
+    prioridad: prioridad || (novedad.severidad === "Crítico" ? "alta" : "media"),
+    sede_id: novedad.sede_id, sede: novedad.sede_nombre,
+  }) : null;
+  const escalamiento = escalar ? await createEscalamientoItem({
     registro_id: novedad.registro_id,
     tipo: tipo_escalamiento || "Otro",
     descripcion: `[${novedad.modulo_label || novedad.modulo_key}] ${novedad.descripcion}`,
@@ -1587,8 +1605,8 @@ export async function createModuloNovedadConEscalamiento(payload) {
     fecha_reporte: novedad.fecha_reporte,
     estado: "Pendiente",
     modulo_novedad_id: novedad.id,
-  });
-  return { novedad, escalamiento };
+  }) : null;
+  return { novedad, ticket, escalamiento };
 }
 
 // ═══════════════════════════════════════════════════════════

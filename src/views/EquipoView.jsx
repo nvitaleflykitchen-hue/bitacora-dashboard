@@ -64,6 +64,7 @@ import {
   evaluacionPersonalFile,
   textoEvaluacionPersonal,
 } from "../lib/evaluacionPersonalPdf";
+import { deduplicarHistorialPersonal } from "../lib/historialPersonal";
 import {
   analizarObjetividadEvaluacion,
   promedioEvaluacion,
@@ -290,7 +291,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
     ]);
     setPersona(p.data);
     setEvaluaciones(ev.data || []);
-    setHistorial(hi.data || []);
+    setHistorial(deduplicarHistorialPersonal(hi.data || []));
     setLogros(lo.data || []);
     const historialIds = (hi.data || []).map((item) => item.id);
     if (historialIds.length) {
