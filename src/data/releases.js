@@ -1,7 +1,25 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.9";
+export const APP_VERSION = "2.7.10";
 
 export const RELEASES = [
+  {
+    version: "2.7.10",
+    date: "2026-08-05",
+    title: "Fase 5: Inicio enfocado en resolver",
+    functions: [
+      "Inicio mantiene visible el trabajo que requiere atención y pliega los bloques secundarios.",
+      "Contactos rápidos permanece cerrado por defecto y sólo carga el directorio cuando se abre.",
+      "El Dashboard Global pasa a Resumen operativo y se consulta bajo demanda.",
+      "La aplicación recuerda si cada usuario dejó abiertos o cerrados Contactos y Resumen operativo.",
+      "Las alertas se agrupan por destino operativo: Tickets, Asignación, Matafuegos, Flota y Acciones correctivas.",
+      "Cada grupo conserva la severidad más alta, el total afectado y el detalle disponible al apoyar el cursor.",
+    ],
+    problem: "Inicio mezclaba trabajo personal, un directorio extenso y el dashboard completo; la barra de alertas mostraba categorías separadas que llevaban al mismo módulo.",
+    affectedUsers: "Todos los usuarios de escritorio, especialmente administradores y responsables con acceso a múltiples módulos.",
+    usage: "Resolvé primero los elementos de Mi Gestión. Abrí Contactos rápidos o Resumen operativo sólo cuando necesites esa información.",
+    examples: ["Ver en un único acceso todas las alertas relacionadas con Tickets.", "Consultar el estado global sin cargarlo permanentemente en Inicio."],
+    screenshots: [],
+  },
   {
     version: "2.7.9",
     date: "2026-08-05",
