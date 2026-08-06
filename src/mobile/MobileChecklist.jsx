@@ -6,6 +6,7 @@ import { ChevronLeft, CheckSquare, Square, Check } from 'lucide-react'
 import { ELPIDIO_TORRES_SEDE_ID, ELPIDIO_TURNO_INFO, CHECKLIST_REEMPLAZO_POR_SEDE, CHECKLIST_EXTRA_POR_SEDE } from '../data/checklistSedeTemplates'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import EmptyState from '../components/EmptyState'
 
 const TIPO_LABELS = {
   apertura: { label: 'Apertura', emoji: '🌅', color: '#39FF14' },
@@ -166,16 +167,16 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
     return (
       <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
         <div style={{ padding:'0.85rem 1rem', display:'flex', alignItems:'center', gap:'0.75rem', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <button onClick={onBack} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', padding:'0.2rem' }}>
-            <ChevronLeft size={22} />
+          <button onClick={onBack} aria-label="Volver al inicio" style={{ display:'flex', alignItems:'center', gap:4, background:'none', border:'none', color:'var(--phosphor)', cursor:'pointer', padding:'0.45rem 0.6rem', fontSize:'0.75rem', fontWeight:700 }}>
+            <ChevronLeft size={20} aria-hidden="true" /> Volver
           </button>
           <h2 style={{ color:'var(--text)', fontWeight:700, fontSize:'1rem', margin:0 }}>Checklist</h2>
         </div>
         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1rem', padding:'2rem' }}>
           {sedes.length > 1 && (
             <div style={{ width:'100%' }}>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', textTransform:'uppercase', marginBottom:5 }}>Sede</p>
-              <select value={sedeId || ''} onChange={e => setSedeId(Number(e.target.value))} style={{ width:'100%', padding:'0.7rem', borderRadius:8, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text)', fontSize:'0.85rem' }}>
+              <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', textTransform:'uppercase', marginBottom:5 }}>Sede</p>
+              <select value={sedeId || ''} onChange={e => setSedeId(Number(e.target.value))} style={{ width:'100%', padding:'0.75rem', borderRadius:8, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text)', fontSize:'0.85rem' }}>
                 <option value="">Seleccioná una sede</option>
                 {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
@@ -209,21 +210,21 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
     <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
       {/* Header */}
       <div style={{ padding:'0.85rem 1rem', display:'flex', alignItems:'center', gap:'0.75rem', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
-        <button onClick={() => setTipo(null)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', padding:'0.2rem' }}>
-          <ChevronLeft size={22} />
+        <button onClick={() => setTipo(null)} style={{ display:'flex', alignItems:'center', gap:4, background:'none', border:'none', color:'var(--phosphor)', cursor:'pointer', padding:'0.45rem 0.6rem', fontSize:'0.75rem', fontWeight:700 }}>
+          <ChevronLeft size={20} aria-hidden="true" /> Volver
         </button>
         <div style={{ flex:1 }}>
           <h2 style={{ color:'var(--text)', fontWeight:700, fontSize:'1rem', margin:0 }}>
             {tipoInfo.emoji} {limpiezaCfg ? tipoInfo.label : `Checklist de ${tipoInfo.label}`}
           </h2>
           {yaHecho && (
-            <p style={{ color:'var(--warn)', fontSize:'0.65rem', marginTop:2 }}>Ya completado hoy · {yaHecho.items_ok}/{yaHecho.items_total} ítems</p>
+            <p style={{ color:'var(--warn)', fontSize:'0.75rem', marginTop:2 }}>Ya completado hoy · {yaHecho.items_ok}/{yaHecho.items_total} ítems</p>
           )}
         </div>
         {totalCount > 0 && (
           <div style={{ textAlign:'right' }}>
             <p style={{ color: tipoInfo.color, fontWeight:700, fontSize:'1rem' }}>{pct}%</p>
-            <p style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{okCount}/{totalCount}</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{okCount}/{totalCount}</p>
           </div>
         )}
       </div>
@@ -231,7 +232,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
       {/* Sede selector (si hay más de una) */}
       {sedes.length > 1 && (
         <div style={{ padding:'0.75rem 1rem', borderBottom:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
-          <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.4rem' }}>
+          <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.4rem' }}>
             Sede *
           </p>
           <select value={sedeId || ''} onChange={e => setSedeId(Number(e.target.value))}
@@ -246,16 +247,16 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
       <div className="mobile-scroll" style={{ flex:1, padding:'0.75rem 1rem' }}>
         {esPilotoElpidio && (
           <div style={{ background:'rgba(59,130,246,0.08)', border:'1px solid rgba(59,130,246,0.25)', borderRadius:8, padding:'0.75rem', marginBottom:'0.85rem' }}>
-            <p style={{ color:'#60A5FA', fontWeight:700, fontSize:'0.72rem', marginBottom:3 }}>PILOTO DE 1 SEMANA · ELPIDIO TORRES</p>
+            <p style={{ color:'#60A5FA', fontWeight:700, fontSize:'0.75rem', marginBottom:3 }}>PILOTO DE 1 SEMANA · ELPIDIO TORRES</p>
             <p style={{ color:'var(--text)', fontSize:'0.76rem', lineHeight:1.4 }}>Horario: {tipoInfo.horario}. {tipoInfo.rutina}</p>
-            <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', lineHeight:1.4, marginTop:5 }}>Nair y equipo: dejen en Observaciones cualquier duda o sugerencia. Al finalizar la semana revisamos todas las mejoras juntas.</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', lineHeight:1.4, marginTop:5 }}>Nair y equipo: dejen en Observaciones cualquier duda o sugerencia. Al finalizar la semana revisamos todas las mejoras juntas.</p>
           </div>
         )}
         {limpiezaCfg && !esPilotoElpidio && (
           <div style={{ background:`${tipoInfo.color}14`, border:`1px solid ${tipoInfo.color}40`, borderRadius:8, padding:'0.75rem', marginBottom:'0.85rem' }}>
-            <p style={{ color:tipoInfo.color, fontWeight:700, fontSize:'0.72rem', marginBottom:3 }}>{tipoInfo.horario} · {tipoInfo.label.toUpperCase()}</p>
+            <p style={{ color:tipoInfo.color, fontWeight:700, fontSize:'0.75rem', marginBottom:3 }}>{tipoInfo.horario} · {tipoInfo.label.toUpperCase()}</p>
             <p style={{ color:'var(--text)', fontSize:'0.76rem', lineHeight:1.4 }}>{tipoInfo.rutina}</p>
-            <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', lineHeight:1.4, marginTop:5 }}>La foto es obligatoria ante cualquier desvío. Si algo requiere seguimiento, registralo también como tarea.</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', lineHeight:1.4, marginTop:5 }}>La foto es obligatoria ante cualquier desvío. Si algo requiere seguimiento, registralo también como tarea.</p>
           </div>
         )}
         {loadingItems ? (
@@ -264,10 +265,18 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
           </div>
         ) : !sedeId ? (
           <p style={{ color:'var(--text-dim)', textAlign:'center', paddingTop:'2rem', fontSize:'0.85rem' }}>Seleccioná una sede</p>
+        ) : Object.keys(byCat).length === 0 ? (
+          <EmptyState
+            icono={CheckSquare}
+            titulo="No hay controles configurados"
+            detalle="Elegí otro checklist o consultá con un administrador para configurar esta sede."
+            accion="Elegir otro checklist"
+            onAccion={() => setTipo(null)}
+          />
         ) : (
           Object.entries(byCat).map(([cat, catItems]) => (
             <div key={cat} style={{ marginBottom:'1.25rem' }}>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.5rem' }}>
+              <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.5rem' }}>
                 {cat}
               </p>
               {catItems.map(item => {
@@ -282,7 +291,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
                         ['no_cumplido', 'No cumplido', '#FF2A2A'],
                         ['no_aplica', 'No aplica', '#9CA3AF'],
                       ].map(([value, label, color]) => (
-                        <button key={value} onClick={() => setEstado(item.id, value)} disabled={!!yaHecho} style={{ padding:'0.42rem 0.2rem', borderRadius:6, border:`1px solid ${estado === value ? color : 'rgba(255,255,255,0.1)'}`, background:estado === value ? `${color}18` : 'transparent', color:estado === value ? color : 'var(--text-dim)', fontSize:'0.62rem', fontWeight:estado === value ? 700 : 400 }}>
+                        <button key={value} onClick={() => setEstado(item.id, value)} disabled={!!yaHecho} style={{ padding:'0.42rem 0.2rem', borderRadius:6, border:`1px solid ${estado === value ? color : 'rgba(255,255,255,0.1)'}`, background:estado === value ? `${color}18` : 'transparent', color:estado === value ? color : 'var(--text-dim)', fontSize:'0.75rem', fontWeight:estado === value ? 700 : 400 }}>
                           {label}
                         </button>
                       ))}
@@ -314,7 +323,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
         {/* Observaciones */}
         {items.length > 0 && (
           <div style={{ marginBottom:'1rem' }}>
-            <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.4rem' }}>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.4rem' }}>
               Observaciones (opcional)
             </p>
             <textarea
@@ -336,14 +345,14 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
         {/* Evidencia fotográfica */}
         {limpiezaCfg && !yaHecho && items.length > 0 && (
           <div style={{ marginBottom:'1rem' }}>
-            <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.4rem' }}>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.75rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.4rem' }}>
               Evidencia fotográfica {noCumplidos > 0 ? '(obligatoria ante desvío)' : '(recomendada)'}
             </p>
             <input type="file" accept="image/*" capture="environment" multiple
               onChange={e => setFotos(Array.from(e.target.files || []))}
               style={{ width:'100%', fontSize:'0.8rem', color:'var(--text-dim)' }} />
             {fotos.length > 0 && (
-              <p style={{ color:'var(--phosphor)', fontSize:'0.7rem', marginTop:4 }}>{fotos.length} foto(s) lista(s) para adjuntar</p>
+              <p style={{ color:'var(--phosphor)', fontSize:'0.75rem', marginTop:4 }}>{fotos.length} foto(s) lista(s) para adjuntar</p>
             )}
           </div>
         )}

@@ -49,3 +49,7 @@ export function recordMobileRecent(shortcuts, key) {
     recents: [key, ...shortcuts.recents.filter(item => item !== key)].slice(0, 4),
   }
 }
+
+export function clearMobileRecents(shortcuts) {
+  return { ...shortcuts, recents: [] }
+}

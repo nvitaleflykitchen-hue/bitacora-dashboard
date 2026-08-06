@@ -13,16 +13,16 @@ export default function EmptyState({ icono: Icono, titulo, detalle, accion, onAc
           <Icono size={20} style={{ color: 'var(--phosphor)', opacity: 0.7 }} />
         </div>
       )}
-      <p className="font-metric" style={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600 }}>
+      <p className="font-metric" style={{ color: 'var(--text)', fontSize: '0.85rem', fontWeight: 600 }}>
         {titulo}
       </p>
       {detalle && (
-        <p className="font-metric mt-1" style={{ color: 'var(--text-dim)', fontSize: '0.7rem', maxWidth: 320, lineHeight: 1.5 }}>
+        <p className="font-metric mt-1" style={{ color: 'var(--text-dim)', fontSize: '0.75rem', maxWidth: 320, lineHeight: 1.5 }}>
           {detalle}
         </p>
       )}
       {accion && onAccion && (
-        <button onClick={onAccion} className="btn-primary mt-4" style={{ fontSize: '0.72rem' }}>
+        <button type="button" onClick={onAccion} className="btn-primary mt-4" style={{ fontSize: '0.75rem', minHeight:44 }}>
           {accion}
         </button>
       )}
