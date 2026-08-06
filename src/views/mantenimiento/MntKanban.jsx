@@ -10,6 +10,7 @@ import { TicketModal as FullTicketModal } from './MntTickets'
 import { toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
 import usePersistedState from '../../hooks/usePersistedState'
+import { filterMaintenanceAssets, filterMaintenanceTickets } from '../../lib/maintenanceTickets'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
@@ -519,7 +520,12 @@ export default function MntKanban() {
       getProveedores(),
       getSedes(allowedSedeIds),
     ])
-    setTickets(t); setResponsables(r.data||[]); setActivos(a); setProveedores(p); setSedesCatalogo(s); setLoading(false)
+    setTickets(filterMaintenanceTickets(t, a))
+    setResponsables(r.data||[])
+    setActivos(filterMaintenanceAssets(a))
+    setProveedores(p)
+    setSedesCatalogo(s)
+    setLoading(false)
   }, [allowedSedeIds])
   useEffect(()=>{ load() },[load])
 
