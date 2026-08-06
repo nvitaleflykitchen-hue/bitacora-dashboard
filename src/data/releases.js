@@ -1,7 +1,24 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.8";
+export const APP_VERSION = "2.7.9";
 
 export const RELEASES = [
+  {
+    version: "2.7.9",
+    date: "2026-08-05",
+    title: "Ficha personal más limpia",
+    functions: [
+      "La ficha deja visible Mensaje y reúne Llamar, Email, Credencial y acciones administrativas en Más acciones.",
+      "Enviar a obsoletos y Eliminar ficha aparecen separados y con jerarquía de advertencia o peligro.",
+      "Puntaje, resultado, logros e incidentes pasan a un resumen compacto dentro del encabezado.",
+      "Logros y Formularios se agrupan en Más dentro de la navegación de la ficha.",
+      "Los datos personales y laborales aprovechan mejor el ancho y reducen el desplazamiento vertical.",
+    ],
+    problem: "La cabecera mostraba demasiadas acciones equivalentes, exponía permanentemente operaciones peligrosas y dedicaba una franja completa a métricas frecuentemente vacías.",
+    affectedUsers: "Administradores, responsables de RR. HH. y usuarios que consultan fichas personales.",
+    usage: "Usá Mensaje para el contacto frecuente y abrí Más acciones para llamadas, email, credenciales y operaciones administrativas.",
+    examples: ["Enviar una ficha a obsoletos desde la sección separada del menú.", "Consultar métricas sin perder espacio vertical."],
+    screenshots: [],
+  },
   {
     version: "2.7.8",
     date: "2026-08-05",
