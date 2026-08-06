@@ -471,7 +471,7 @@ function MassAssignModal({ plan, activos, sedes, onClose, onSaved }) {
 
 // ─── Vista principal ──────────────────────────────────────────────────────────
 export default function MntPlanes({ defaultTipo, focusId } = {}) {
-  const { allowedSedeIds } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds } = useAuth()
   const [planes, setPlanes]           = useState([])
   const [activos, setActivos]         = useState([])
   const [sedes, setSedes]             = useState([])

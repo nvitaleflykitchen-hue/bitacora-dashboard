@@ -39,6 +39,12 @@ describe('matriz de acceso', () => {
     expect(canWrite('consultor', 'calidad', 'manage', perfil)).toBe(false)
   })
 
+  it('habilita gestión global de mantenimiento sin cambiar el rol territorial', () => {
+    const perfil = { id:'u-grupo', rol:'grupo', mantenimiento_permisos:['manage_all'] }
+    expect(canWrite('grupo', 'mantenimiento', 'manage', perfil)).toBe(true)
+    expect(canWrite('grupo', 'admin', 'manage', perfil)).toBe(false)
+  })
+
   it('permite a sede reportar sin administrar', () => {
     expect(canWrite('sede', 'mantenimiento', 'report')).toBe(true)
     expect(canWrite('sede', 'mantenimiento', 'manage')).toBe(false)

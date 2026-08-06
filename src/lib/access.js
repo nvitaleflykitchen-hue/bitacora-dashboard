@@ -80,6 +80,11 @@ export function hasComprasPermission(perfil, action = 'request') {
   return permisos.has(action)
 }
 
+export function hasMantenimientoGlobalPermission(perfil) {
+  return Array.isArray(perfil?.mantenimiento_permisos)
+    && perfil.mantenimiento_permisos.includes('manage_all')
+}
+
 export function isComprasOnlyProfile(perfil) {
   return perfil?.rol === 'consultor' && getComprasPermisos(perfil).length > 0
 }
@@ -242,6 +247,7 @@ export function canWrite(rol, domain, action = 'manage', perfil = null) {
   }
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_WRITE_DOMAINS.has(domain)
   if (rol === 'admin' || rol === 'editor') return true
+  if (domain === 'mantenimiento' && hasMantenimientoGlobalPermission(perfil)) return true
   if (domain === 'compras' && hasComprasPermission(perfil, action)) return true
   if (rol === 'consultor') return false
   if (rol === 'grupo' || rol === 'encargado') {

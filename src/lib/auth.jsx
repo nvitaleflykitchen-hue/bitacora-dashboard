@@ -28,6 +28,7 @@ function perfilEqual(a, b) {
     && a.email === b.email
     && JSON.stringify(a.sede_ids) === JSON.stringify(b.sede_ids)
     && JSON.stringify(a.compras_permisos || []) === JSON.stringify(b.compras_permisos || [])
+    && JSON.stringify(a.mantenimiento_permisos || []) === JSON.stringify(b.mantenimiento_permisos || [])
 }
 
 export function AuthProvider({ children }) {
@@ -101,22 +102,26 @@ export function AuthProvider({ children }) {
       const { data: permisos, error: permisosError } = await withTimeout(
         db()
           .from('perfil_permisos')
-          .select('accion, activo')
+          .select('modulo, accion, activo')
           .eq('perfil_id', authUser.id)
-          .eq('modulo', 'compras'),
-        'Carga de permisos de compras',
+          .in('modulo', ['compras', 'mantenimiento']),
+        'Carga de permisos de módulos',
       )
       if (permisosError) throw permisosError
       data = {
         ...data,
         compras_permisos: (permisos || [])
-          .filter(p => p.activo)
+          .filter(p => p.activo && p.modulo === 'compras')
+          .map(p => p.accion)
+          .filter(Boolean),
+        mantenimiento_permisos: (permisos || [])
+          .filter(p => p.activo && p.modulo === 'mantenimiento')
           .map(p => p.accion)
           .filter(Boolean),
       }
     } catch (permisosError) {
-      console.warn('[auth] no se pudieron cargar permisos de compras', permisosError)
-      data = { ...data, compras_permisos: [] }
+      console.warn('[auth] no se pudieron cargar permisos de módulos', permisosError)
+      data = { ...data, compras_permisos: [], mantenimiento_permisos: [] }
     }
 
     // Only update perfil state when data actually changed to avoid cascading re-renders
@@ -237,11 +242,12 @@ export function AuthProvider({ children }) {
   const rol = perfil?.rol || 'consultor'
   const sedeIds = perfil?.sede_ids || []
   const grupoId = perfil?.grupo_id || null
+  const mantenimientoSedeIds = perfil?.mantenimiento_permisos?.includes('manage_all') ? null : allowedSedeIds
   const isAdmin = rol === 'admin'
   const can = (domain, action) => canWrite(rol, domain, action, perfil)
 
   return (
-    <AuthContext.Provider value={{ user, perfil, rol, sedeIds, grupoId, allowedSedeIds, accessBlocked, authError, isAdmin, can, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, perfil, rol, sedeIds, grupoId, allowedSedeIds, mantenimientoSedeIds, accessBlocked, authError, isAdmin, can, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   )

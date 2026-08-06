@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes, getPermisosCompras, setPermisoCompras } from '../lib/queries'
+import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes, getPermisosCompras, setPermisoCompras, getPermisosMantenimiento, setPermisoMantenimiento } from '../lib/queries'
 import { supabase } from '../lib/supabase'
-import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart } from 'lucide-react'
+import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart, Wrench } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import { confirmar, toast } from '../lib/feedback'
@@ -100,6 +100,45 @@ function PermisosComprasModal({ perfil, permisos, adminId, onClose, onSaved }) {
           <button onClick={handleGuardar} disabled={saving} className="btn-primary flex-1">
             {saving ? 'Guardando...' : 'Guardar'}
           </button>
+          <button onClick={onClose} className="btn-ghost">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PermisoMantenimientoModal({ perfil, activo, adminId, onClose, onSaved }) {
+  const [enabled, setEnabled] = useState(activo)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleGuardar = async () => {
+    setSaving(true); setError(null)
+    try {
+      await setPermisoMantenimiento({ perfilId:perfil.id, activo:enabled, createdBy:adminId })
+      onSaved(); onClose()
+    } catch (e) { setError(e.message) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="modal-overlay" style={{ zIndex:50 }}>
+      <div className="glass rounded p-6 w-full max-w-md fade-in" style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.15)', borderRadius:4 }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-title font-bold" style={{ color:'var(--text)', fontSize:'0.95rem' }}>Permiso de Mantenimiento</h2>
+          <button onClick={onClose} className="btn-ghost" style={{ padding:'0.2rem 0.4rem' }}><XIcon size={14}/></button>
+        </div>
+        <p className="font-metric mb-4" style={{ color:'var(--text-dim)', fontSize:'0.7rem' }}>{perfil.nombre || perfil.email}</p>
+        <label className="flex items-start gap-2.5 cursor-pointer p-3 rounded" style={{ background:enabled ? 'rgba(57,255,20,0.05)' : 'transparent', border:'1px solid rgba(57,255,20,0.08)' }}>
+          <input type="checkbox" checked={enabled} onChange={e=>setEnabled(e.target.checked)} style={{ accentColor:'var(--phosphor)', marginTop:2 }}/>
+          <span>
+            <span className="font-metric block" style={{ color:'var(--text)', fontSize:'0.75rem' }}>Administración global</span>
+            <span className="font-metric block" style={{ color:'var(--text-dim)', fontSize:'0.62rem', lineHeight:1.5 }}>Gestiona tickets, activos, preventivos, insumos, proveedores y responsables de todas las sedes. Los demás módulos conservan su alcance actual.</span>
+          </span>
+        </label>
+        {error && <p className="font-metric my-3" style={{ color:'var(--alert)', fontSize:'0.7rem' }}>{error}</p>}
+        <div className="flex gap-2 mt-4">
+          <button onClick={handleGuardar} disabled={saving} className="btn-primary flex-1">{saving ? 'Guardando...' : 'Guardar'}</button>
           <button onClick={onClose} className="btn-ghost">Cancelar</button>
         </div>
       </div>
@@ -307,17 +346,21 @@ export default function Usuarios() {
   const [saving, setSaving]       = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [permisosCompras, setPermisosCompras] = useState([])
+  const [permisosMantenimiento, setPermisosMantenimiento] = useState([])
   const [permisosPerfil, setPermisosPerfil] = useState(null) // perfil cuyo modal de permisos está abierto
+  const [mantenimientoPerfil, setMantenimientoPerfil] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [perfilesData, gruposData, sedesData, permisosData] = await Promise.all([
+      const [perfilesData, gruposData, sedesData, permisosData, permisosMntData] = await Promise.all([
         getPerfilesConDirectorio(), getGrupos(), getSedes(),
         getPermisosCompras().catch(e => { console.error('perfil_permisos:', e); return [] }),
+        getPermisosMantenimiento().catch(e => { console.error('perfil_permisos mantenimiento:', e); return [] }),
       ])
       setPerfiles(perfilesData); setGrupos(gruposData); setSedes(sedesData)
       setPermisosCompras(permisosData)
+      setPermisosMantenimiento(permisosMntData)
     }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -450,6 +493,16 @@ export default function Usuarios() {
         />
       )}
 
+      {mantenimientoPerfil && (
+        <PermisoMantenimientoModal
+          perfil={mantenimientoPerfil}
+          activo={permisosMantenimiento.some(pp => pp.perfil_id === mantenimientoPerfil.id && pp.accion === 'manage_all' && pp.activo)}
+          adminId={perfilActual?.id}
+          onClose={() => setMantenimientoPerfil(null)}
+          onSaved={load}
+        />
+      )}
+
       <PageHeader title="Usuarios" subtitle="Gestión de perfiles y roles">
         <div className="flex gap-2">
           <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-1.5"
@@ -488,6 +541,7 @@ export default function Usuarios() {
                   <th>Rol</th>
                   <th>Grupo / Sedes</th>
                   <th>Compras</th>
+                  <th>Mantenimiento</th>
                   <th>Estado</th>
                   <th></th>
                 </tr>
@@ -600,6 +654,20 @@ export default function Usuarios() {
                             </div>
                           )
                         })()}
+                      </td>
+                      <td>
+                        {['admin','editor'].includes(p.rol)
+                          ? <span className="chip chip-gray" style={{ fontSize:'0.6rem' }}>Total (rol)</span>
+                          : <div className="flex items-center gap-1">
+                              {permisosMantenimiento.some(pp => pp.perfil_id === p.id && pp.accion === 'manage_all' && pp.activo)
+                                ? <span className="chip chip-green" style={{ fontSize:'0.6rem' }}>Todas las sedes</span>
+                                : <span style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>Según rol</span>}
+                              {perfilActual?.rol?.toLowerCase() === 'admin' && (
+                                <button title="Editar permiso global de Mantenimiento" onClick={() => setMantenimientoPerfil(p)} className="btn-ghost" style={{ padding:'0.15rem 0.35rem', fontSize:'0.6rem' }}>
+                                  <Wrench size={10}/>
+                                </button>
+                              )}
+                            </div>}
                       </td>
                       <td>
                         {isEditing ? (

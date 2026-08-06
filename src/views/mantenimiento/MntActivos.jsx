@@ -501,7 +501,7 @@ function QRModal({ activo, onClose }) {
 }
 
 export default function MntActivos({ focusId, onCreateNovedad }) {
-  const { allowedSedeIds, rol, perfil } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds, rol, perfil } = useAuth()
   const canWrite = ['admin','encargado','editor'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [activos, setActivos] = useState([])
   const [sedes, setSedes]     = useState([])

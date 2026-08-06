@@ -799,7 +799,7 @@ export default function MntTickets({ focusId }) {
   const [filtroEstado, setFiltroEstado] = usePersistedState('mntTickets.filtroEstado', 'todos')
   const [filtroTipo, setFiltroTipo]     = usePersistedState('mntTickets.filtroTipo', 'todos')
   const [filtroSLA, setFiltroSLA]       = usePersistedState('mntTickets.filtroSLA', false)
-  const { allowedSedeIds, can, perfil } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds, can, perfil } = useAuth()
   const [soloMios, setSoloMios] = usePersistedState('mntTickets.soloMios', perfil?.rol === 'mnt_editor')
   const canManage = can('mantenimiento', 'manage')
   const canReport = canManage || can('mantenimiento', 'report')

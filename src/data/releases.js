@@ -1,7 +1,24 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.18";
+export const APP_VERSION = "2.7.19";
 
 export const RELEASES = [
+  {
+    version: "2.7.19",
+    date: "2026-08-06",
+    title: "Coordinación global de Mantenimiento",
+    functions: [
+      "Los administradores pueden otorgar gestión global de Mantenimiento sin cambiar el rol principal del usuario.",
+      "El alcance ampliado se aplica sólo a tickets, activos, preventivos, insumos, proveedores y responsables de Mantenimiento.",
+      "Pablo Fernández queda incorporado como Coordinador de Mantenimiento de segundo nivel para todas las sedes.",
+      "La cuenta vinculada conserva el rol de grupo y su alcance habitual en los demás módulos.",
+      "La administración de Usuarios muestra por separado el alcance de Compras y Mantenimiento.",
+    ],
+    problem: "Un responsable territorial no podía coordinar Mantenimiento en todas las sedes sin recibir permisos generales innecesarios.",
+    affectedUsers: "Coordinación de Mantenimiento, administradores y responsables de cada sede.",
+    usage: "En Usuarios, un administrador puede habilitar o quitar Todas las sedes en la columna Mantenimiento. El usuario debe volver a iniciar sesión para refrescar el permiso.",
+    examples: ["Revisar tickets de cualquier sede.", "Asignar responsables globales.", "Conservar el acceso territorial de comedores fuera de Mantenimiento."],
+    screenshots: [],
+  },
   {
     version: "2.7.18",
     date: "2026-08-06",

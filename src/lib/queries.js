@@ -1078,6 +1078,15 @@ export async function getPermisosCompras() {
   return data || [];
 }
 
+export async function getPermisosMantenimiento() {
+  const { data, error } = await db()
+    .from("perfil_permisos")
+    .select("id, perfil_id, accion, activo")
+    .eq("modulo", "mantenimiento");
+  if (error) throw error;
+  return data || [];
+}
+
 export async function setPermisoCompras({
   perfilId,
   accion,
@@ -1095,6 +1104,19 @@ export async function setPermisoCompras({
         created_by: createdBy,
       },
       { onConflict: "perfil_id,modulo,accion" },
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function setPermisoMantenimiento({ perfilId, activo, createdBy = null }) {
+  const { data, error } = await db()
+    .from("perfil_permisos")
+    .upsert(
+      { perfil_id:perfilId, modulo:"mantenimiento", accion:"manage_all", activo, created_by:createdBy },
+      { onConflict:"perfil_id,modulo,accion" },
     )
     .select()
     .single();

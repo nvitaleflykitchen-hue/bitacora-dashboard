@@ -516,7 +516,7 @@ function TabMatafuegos({ allowedSedeIds }) {
 // ───────────────────────── ROOT ─────────────────────────
 
 export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
-  const { rol, allowedSedeIds, perfil } = useAuth()
+  const { rol, mantenimientoSedeIds:allowedSedeIds, perfil } = useAuth()
   const canEditActivos = ['admin', 'editor', 'encargado', 'mnt_editor'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [tab, setTab] = useState('activos')
 
