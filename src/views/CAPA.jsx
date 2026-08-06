@@ -11,6 +11,9 @@ import { generarInformeCapaPDF } from '../lib/capaReportPdf'
 import { gestionHealth, isGestionProjectAction } from '../lib/gestionProjects'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import useFormDraft from '../hooks/useFormDraft'
+import FormDraftNotice from '../components/FormDraftNotice'
+import { confirmarAccionSensible } from '../lib/sensitiveActions'
 
 const ESTADOS_CAPA = ['Pendiente','En ejecución','Completada','Verificada']
 const TIPOS_CAPA   = ['Correctiva','Preventiva']
@@ -55,6 +58,14 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode =
     responsable: '', responsable_id:'', prioridad:'Media', fecha_limite: '', estado: 'Pendiente', evidencia: '',
     sede_id: '', auditoria_codigo: '', supervisor_id: '', colaborador_ids: [],
   })
+  const draftValue = { ...form, nombreProyecto }
+  const draft = useFormDraft({
+    key:`capa-${mode}-${user?.id || 'usuario'}`,
+    value:draftValue,
+    onRestore:data => { const { nombreProyecto: nombre = '', ...fields } = data; setNombreProyecto(nombre); setForm(current => ({ ...current, ...fields })) },
+    enabled:!loading,
+    isMeaningful:data => Boolean(data?.descripcion || data?.nombreProyecto || data?.evidencia || data?.responsable_id || data?.sede_id),
+  })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSedeChange = (sedeId) => {
@@ -97,6 +108,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode =
       if (archivos.length > 0 && created?.id) {
         await Promise.all(archivos.map(f => uploadAdjunto('capa', created.id, f)))
       }
+      draft.clearDraft()
       onCreated()
     } catch (err) {
       toast.error('Error: ' + mensajeError(err))
@@ -113,6 +125,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode =
           <button onClick={onClose} aria-label="Cerrar formulario" className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={draft.clearDraft} />
           {mode === 'gestion' && (
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Nombre del proyecto *</label>
@@ -777,7 +790,13 @@ function CapaAuditoria({ items, perfiles, canWrite, onEstadoChange, onReload, fo
   const handleEliminarPlan = async (grupo) => {
     const plan = await ensurePlan(grupo.auditoria_codigo)
     if (!plan) return toast.error('No se encontró el proyecto.')
-    if (!window.confirm(`¿Eliminar el proyecto "${plan.titulo || plan.objetivo || grupo.auditoria_codigo}" y todas sus acciones?`)) return
+    if (!await confirmarAccionSensible({
+      action:'eliminar',
+      subject:`el proyecto “${plan.titulo || plan.objetivo || grupo.auditoria_codigo}”`,
+      consequence:'Se eliminarán también todas sus acciones CAPA y dejarán de aparecer en los informes.',
+      recovery:'No existe papelera para proyectos CAPA. Para conservar trazabilidad, cancelá y cerrá o completá sus acciones.',
+      confirmText:'Eliminar proyecto',
+    })) return
     try {
       await deleteCapaProject(plan)
       toast.success('Proyecto eliminado.')

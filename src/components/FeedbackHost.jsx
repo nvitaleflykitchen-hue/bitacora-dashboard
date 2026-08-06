@@ -112,6 +112,8 @@ export default function FeedbackHost() {
                 <p className="font-metric" style={{ color: 'var(--text-dim)', fontSize: '0.75rem', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-line' }}>
                   {confirmData.mensaje}
                 </p>
+                {confirmData.consecuencia && <div style={{ marginTop:10, padding:'8px 10px', background:'rgba(255,255,255,0.04)', borderRadius:4 }}><p style={{ color:'var(--text)', fontSize:'.72rem', fontWeight:700, margin:0 }}>Qué ocurrirá</p><p style={{ color:'var(--text-dim)', fontSize:'.72rem', lineHeight:1.45, margin:'3px 0 0' }}>{confirmData.consecuencia}</p></div>}
+                {confirmData.recuperacion && <div style={{ marginTop:8 }}><p style={{ color:'var(--text)', fontSize:'.72rem', fontWeight:700, margin:0 }}>Recuperación</p><p style={{ color:'var(--text-dim)', fontSize:'.72rem', lineHeight:1.45, margin:'3px 0 0' }}>{confirmData.recuperacion}</p></div>}
               </div>
             </div>
             {confirmData.input && (

@@ -15,6 +15,7 @@ import { format } from 'date-fns'
 import useFormDraft from '../hooks/useFormDraft'
 import FormDraftNotice from '../components/FormDraftNotice'
 import { normalizeReportContext, reportContextDraftKey } from '../lib/reportContext'
+import { confirmarAccionSensible } from '../lib/sensitiveActions'
 
 const ESTADOS_GENERALES = [
   { val: 'Sin novedades',        color: '#39FF14', bg: 'rgba(57,255,20,0.12)',  label: 'Sin novedades' },
@@ -810,8 +811,8 @@ export default function MobileReporte({ onBack, onSuccess, context: rawContext =
     return () => window.removeEventListener('beforeunload', warnBeforeUnload)
   }, [hasUnsavedChanges, enviado])
 
-  const requestBack = () => {
-    if (!hasUnsavedChanges || enviado || window.confirm('Hay datos sin enviar. ¿Querés salir y descartarlos?')) onBack()
+  const requestBack = async () => {
+    if (!hasUnsavedChanges || enviado || await confirmarAccionSensible({ action:'descartar', subject:'el reporte sin enviar', consequence:'Se cerrará el formulario. El borrador local seguirá disponible para retomarlo durante 7 días.', recovery:'Volvé a Nuevo reporte desde este mismo dispositivo para recuperar la carga.', confirmText:'Salir del reporte' })) onBack()
   }
 
   // Cargar sedes

@@ -8,6 +8,8 @@ import { useAuth } from '../lib/auth'
 import NCFicha from './NCFicha'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import useFormDraft from '../hooks/useFormDraft'
+import FormDraftNotice from '../components/FormDraftNotice'
 
 const ESTADOS_NC = ['Abierta','En proceso','Cerrada','Verificada']
 const CATEGORIAS_NC = ['Higiene','Producción','Servicio','Infraestructura','Proceso','Proveedor','Otro']
@@ -32,6 +34,13 @@ function NCForm({ onClose, onCreated, sedes, rol, ncOrigen }) {
     producto: '', marca: '', lote: '', presentacion: '', proveedor: '',
     fecha_recepcion: '', vencimiento: '',
   })
+  const draft = useFormDraft({
+    key:`no-conformidad-${user?.id || 'usuario'}-${ncOrigen?.id || 'nueva'}`,
+    value:form,
+    setValue:setForm,
+    enabled:!loading,
+    isMeaningful:data => Boolean(data?.descripcion || data?.causa_raiz || data?.producto || data?.proveedor || data?.responsable),
+  })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSedeChange = (id) => {
@@ -54,6 +63,7 @@ function NCForm({ onClose, onCreated, sedes, rol, ncOrigen }) {
         created_by: perfil?.id || null,
         nc_origen_id: ncOrigen?.id || null,
       })
+      draft.clearDraft()
       onCreated(nc)
     } catch (err) {
       toast.error('Error: ' + mensajeError(err))
@@ -78,6 +88,7 @@ function NCForm({ onClose, onCreated, sedes, rol, ncOrigen }) {
           <button onClick={onClose} aria-label="Cerrar formulario" className="btn-ghost p-1.5" style={{ padding:'0.3rem' }}><X size={15} /></button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={draft.clearDraft} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Sede</label>
