@@ -8,6 +8,7 @@ import Escalamientos from './Escalamientos'
 import Calendario from './Calendario'
 import { isQualityOnlyProfile } from '../lib/access'
 import usePersistedState from '../hooks/usePersistedState'
+import OperationalStateChip from '../components/OperationalStateChip'
 
 const TABS = [
   { id:'bandeja', label:'Trabajo' },
@@ -305,10 +306,11 @@ function Bandeja({ onNavigate }) {
                   <div className="font-metric text-xs" style={{ color:'var(--phosphor)' }}>{item.module}</div>
                   <div className="min-w-0">
                     <div className="font-semibold text-sm truncate" style={{ color:'var(--text)' }}>{item.title || 'Sin descripción'}</div>
+                    <div className="hidden lg:flex mt-1"><OperationalStateChip estado={item.status} showStage /></div>
                     <div className="flex flex-wrap gap-2 mt-1 lg:hidden text-xs" style={{ color:'var(--text-dim)' }}>
                       <span>{item.site || 'Gestión'}</span>
                       <span>{item.owner || 'Sin responsable'}</span>
-                      <span>{item.status || 'Pendiente'}</span>
+                      <OperationalStateChip estado={item.status || 'Pendiente'} showStage />
                     </div>
                   </div>
                   <div className="hidden lg:block text-xs truncate pr-3" style={{ color:'var(--text-dim)' }}>{item.site || 'Gestión'}</div>

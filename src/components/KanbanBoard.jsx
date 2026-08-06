@@ -7,6 +7,7 @@ import { fmtFecha } from '../lib/dateUtils'
 import ComentariosHilo from './ComentariosHilo'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import { operationalStateLabel } from '../lib/operationalStates'
 
 const ESTADOS = ['Pendiente','En proceso','Resuelto','Cancelado']
 
@@ -344,7 +345,7 @@ function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
         disabled={readOnly}
         className="input-dark w-full"
         style={{ fontSize:'0.7rem', padding:'0.3rem 0.5rem' }}>
-        {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
+        {ESTADOS.map(e => <option key={e} value={e}>{operationalStateLabel(e, { includeStage:true })}</option>)}
       </select>
 
       {/* Subtareas — siempre visible */}
@@ -413,7 +414,7 @@ export default function KanbanBoard({ tareas, onRefresh, readOnly = false, focus
           <div key={estado} className="flex flex-col gap-2">
             <div className="flex items-center justify-between px-3 py-2 rounded"
               style={{ background:bg, border:`1px solid ${bg.replace('0.', '0.3')}` }}>
-              <span className="font-metric font-bold text-xs tracking-wider uppercase" style={{ color }}>{estado}</span>
+              <span className="font-metric font-bold text-xs tracking-wider uppercase" style={{ color }}>{operationalStateLabel(estado, { includeStage:true })}</span>
               <span className="font-metric font-bold text-xs" style={{ color }}>{byEstado[estado].length}</span>
             </div>
             <div className="flex flex-col gap-2">

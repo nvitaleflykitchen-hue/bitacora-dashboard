@@ -10,6 +10,7 @@ import { fmtFecha } from '../lib/dateUtils'
 import { confirmar, pedirTexto, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { agruparRecibidosPorSede, buildRetiroMessage, DESTINOS_INVENTARIO, whatsappRetiroHref } from '../lib/comprasEntrega'
+import { operationalStateLabel } from '../lib/operationalStates'
 
 const ESTADOS   = ['Pendiente','Observado','Aprobado','Enviado','En compra','Recibido','Cumplido','Rechazado','Cancelado']
 const KANBAN_ACTIVOS = ['Pendiente','Aprobado','Enviado','En compra','Recibido']
@@ -950,7 +951,7 @@ export default function Requerimientos({ focusId }) {
               <p style={{ color:EST_COLOR[estado], fontSize:'1rem', fontWeight:800 }}>
                 {estado === 'Pendiente' ? byEstado.Pendiente.length + byEstado.Observado.length : byEstado[estado].length}
               </p>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>{estado}</p>
+              <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>{operationalStateLabel(estado, { includeStage:true })}</p>
               {estado === 'Pendiente' && byEstado.Observado.length > 0 && (
                 <p style={{ color:'#FB923C', fontSize:'0.6rem', marginTop:2 }}>{byEstado.Observado.length} observado{byEstado.Observado.length===1?'':'s'}</p>
               )}
@@ -987,7 +988,7 @@ export default function Requerimientos({ focusId }) {
           <label style={{ color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.08em', display:'block', marginBottom:3 }}>ESTADO</label>
           <select style={SEL} value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}>
             <option value="">Todos</option>
-            {ESTADOS.map(s=><option key={s} value={s}>{s}</option>)}
+            {ESTADOS.map(s=><option key={s} value={s}>{operationalStateLabel(s, { includeStage:true })}</option>)}
           </select>
         </div>
         <div>
@@ -1057,7 +1058,7 @@ export default function Requerimientos({ focusId }) {
             return (
               <div key={estado} style={{ display:'flex', flexDirection:'column', gap:8, minWidth:160 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', borderRadius:5, background:bg, border:`1px solid ${bg.replace('0.0','0.2')}` }}>
-                  <span style={{ color, fontSize:'0.62rem', fontFamily:'monospace', fontWeight:700, letterSpacing:'0.08em' }}>{estado.toUpperCase()}</span>
+                  <span style={{ color, fontSize:'0.62rem', fontFamily:'monospace', fontWeight:700, letterSpacing:'0.08em' }}>{operationalStateLabel(estado, { includeStage:true }).toUpperCase()}</span>
                   <span style={{ color, fontSize:'0.62rem', fontWeight:700 }}>{items.length}</span>
                 </div>
                 {items.map(r=>(
