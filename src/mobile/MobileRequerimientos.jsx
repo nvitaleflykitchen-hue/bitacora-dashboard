@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, confirmarEntregaCompras } from '../lib/queries'
 import { useAuth } from '../lib/auth'
+import usePersistedState from '../hooks/usePersistedState'
 import { isQualityOnlyProfile } from '../lib/access'
 import { ShoppingCart, ChevronDown, FileText, Plus, X } from 'lucide-react'
 import { format } from 'date-fns'
@@ -187,7 +188,9 @@ export default function MobileRequerimientos() {
   const canRequest = (can('compras', 'request') || canManage) && !isQualityOnlyProfile(perfil)
   const [reqs, setReqs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filtro, setFiltro] = useState('activos')
+  const [filtro, setFiltro] = usePersistedState(`mobile.${perfil?.id || 'anon'}.requerimientos.filtro`, 'activos', {
+    validate: value => ['activos', 'todos'].includes(value),
+  })
   const [sedes, setSedes] = useState([])
   const [selectedSede, setSelectedSede] = useState(null)
   const [showCreate, setShowCreate] = useState(false)

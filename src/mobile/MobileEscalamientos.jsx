@@ -11,6 +11,7 @@ import ComentariosHilo from '../components/ComentariosHilo'
 import { ESCALAMIENTO_ESTADO_COLOR } from '../lib/estados'
 import SkeletonTable from '../components/SkeletonTable'
 import EmptyState from '../components/EmptyState'
+import usePersistedState from '../hooks/usePersistedState'
 const ESTADO_COLOR = Object.fromEntries(
   Object.entries(ESCALAMIENTO_ESTADO_COLOR).map(([k, c]) => [k, { color: c, bg: `${c}1A` }])
 )
@@ -27,11 +28,13 @@ const TIPO_COLOR = {
 const ESTADOS = ['Pendiente', 'En gestión', 'Resuelto']
 
 export default function MobileEscalamientos() {
-  const { allowedSedeIds, can } = useAuth()
+  const { allowedSedeIds, can, perfil } = useAuth()
   const canManage = can('escalamientos', 'manage')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filtro, setFiltro] = useState('Pendiente')
+  const [filtro, setFiltro] = usePersistedState(`mobile.${perfil?.id || 'anon'}.escalamientos.filtro`, 'Pendiente', {
+    validate: value => [...ESTADOS, 'todos'].includes(value),
+  })
   const [updating, setUpdating] = useState(null)
   
   const [selRegId, setSelRegId] = useState(null)

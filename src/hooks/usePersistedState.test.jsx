@@ -14,7 +14,12 @@ describe('usePersistedState', () => {
   it('persiste cambios de filtros', () => {
     const { result } = renderHook(() => usePersistedState('flota.prioridad', ''))
     act(() => result.current[1]('critica'))
-    expect(JSON.parse(localStorage.getItem('bd.flota.prioridad'))).toBe('critica')
+    expect(JSON.parse(localStorage.getItem('bd.flota.prioridad')).value).toBe('critica')
+  })
+
+  it('descarta valores que ya no son válidos', () => {
+    localStorage.setItem('bd.mobile.tab', JSON.stringify('admin'))
+    const { result } = renderHook(() => usePersistedState('mobile.tab', 'home', { validate:value => ['home','tareas'].includes(value) }))
+    expect(result.current[0]).toBe('home')
   })
 })
-
