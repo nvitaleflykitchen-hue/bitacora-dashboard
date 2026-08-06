@@ -2,6 +2,8 @@
 // Organizado por módulo. Cada módulo tiene: id, label, icon, intro y secciones[].
 // Cada sección tiene: title y body (array de párrafos o bloques).
 
+export const HELP_MANUAL_UPDATED_AT = '2026-08-06'
+
 export const HELP_MODULES = [
   {
     id: 'general',
@@ -32,6 +34,22 @@ export const HELP_MODULES = [
           'La contraseña debe tener al menos 6 caracteres.',
         ],
       },
+      {
+        title: 'Orientarse en la aplicación',
+        body: [
+          'En escritorio, el menú lateral reúne los módulos principales. Las funciones menos frecuentes aparecen dentro de Más o Más herramientas para mantener las pantallas despejadas.',
+          'En celular, la barra inferior muestra las cinco áreas de uso habitual. Abrí Más para encontrar Trabajo diario, Gestión e Información y cuenta.',
+          'La aplicación conserva por usuario la última sección y los filtros principales. Si querés volver al estado inicial, usá Limpiar filtros en la pantalla correspondiente.',
+          'El resumen superior de alertas agrupa los avisos por destino. Elegí Ver alertas para desplegar el detalle y entrar al módulo que requiere atención.',
+        ],
+      },
+      {
+        title: 'Ayuda y actualizaciones',
+        body: [
+          'El botón ? abre esta Central de ayuda desde cualquier pantalla. Elegí un módulo en el índice o usá Imprimir para obtener el manual completo y guardarlo como PDF.',
+          'Actualizaciones explica qué cambió en cada versión y cómo usarlo. El Tablón se reserva para comunicaciones operativas, avisos de sedes y cumpleaños.',
+        ],
+      },
     ],
   },
   {
@@ -56,6 +74,23 @@ export const HELP_MODULES = [
           '4. Podés adjuntar fotos o imágenes desde la cámara o la galería.',
           '5. Si la novedad requiere acción de otra área, usá el botón "Escalar" para derivarla (Mantenimiento, Calidad, Compras, etc.).',
           '6. Tocá "Enviar" para guardar el reporte.',
+        ],
+      },
+      {
+        title: 'Crear una novedad desde una ficha',
+        body: [
+          'Desde la ficha de una persona, sede, activo o vehículo elegí Crear novedad. La aplicación preselecciona la sede y la entidad de origen y las valida contra tu alcance antes de habilitar el envío.',
+          'Completá la descripción y los datos propios del módulo. Después de guardar, volverás a la ficha desde la que comenzaste.',
+          'Los borradores contextuales se guardan separados de un reporte general. Antes de enviar, verificá siempre que el encabezado muestre la entidad correcta.',
+        ],
+      },
+      {
+        title: 'Borradores, errores y recuperación',
+        body: [
+          'En celular, Nuevo Reporte guarda automáticamente la carga en el dispositivo. Si cerrás o cambiás de pantalla, al volver con el mismo usuario se ofrece recuperar el borrador.',
+          'Los adjuntos no se guardan dentro del borrador por seguridad del navegador: después de recuperar una carga, seleccioná nuevamente fotos y archivos.',
+          'Si faltan datos obligatorios, revisá el resumen de errores y usá sus accesos para ir directamente a cada campo. Elegí Descartar sólo cuando quieras comenzar de cero.',
+          'Al enviarse correctamente, el borrador se elimina. Mientras se procesa el envío, no vuelvas a tocar el botón: la aplicación bloquea los dobles envíos inmediatos.',
         ],
       },
       {
@@ -114,21 +149,37 @@ export const HELP_MODULES = [
   },
   {
     id: 'pendientes',
-    label: 'Pendientes',
+    label: 'Bandeja',
     icon: '⏳',
-    intro: 'Gestión de escalamientos, tareas asignadas y seguimiento de alertas.',
+    intro: 'Bandeja única para priorizar tareas, CAPA, proyectos, escalamientos, tickets y compras.',
     sections: [
       {
-        title: '¿Qué muestra Pendientes?',
+        title: '¿Qué muestra la Bandeja?',
         body: [
-          'Muestra todas las novedades que fueron escaladas y requieren acción de tu parte o de tu área.',
-          'También incluye tareas asignadas y escalamientos vencidos que no fueron resueltos.',
+          'La Bandeja reúne el trabajo que requiere seguimiento: tareas, CAPA, proyectos, escalamientos, tickets y compras, respetando tus permisos y sedes.',
+          'Los indicadores Total, Vencidos/alta, Sin responsable, Próximos 7 días y Míos aplican el filtro correspondiente con un solo clic.',
+          'Cuando un escalamiento ya generó un ticket vinculado, se muestra el ticket como trabajo operativo y no se duplica el pendiente.',
+        ],
+      },
+      {
+        title: 'Cumpleaños del equipo',
+        body: [
+          'El Tablón muestra los cumpleaños de hoy y los próximos siete días usando la fecha de nacimiento registrada en la ficha privada de RR. HH.',
+          'Durante el cumpleaños, si la persona tiene teléfono cargado, elegí Saludar para abrir WhatsApp con un mensaje preparado. Revisalo antes de enviarlo: la aplicación no envía mensajes automáticamente.',
+        ],
+      },
+      {
+        title: 'Filtrar y retomar el trabajo',
+        body: [
+          'Elegí el foco, área, prioridad, vista o búsqueda que necesites. La Bandeja conserva esa selección por usuario cuando entrás a un elemento y luego regresás.',
+          'Usá Limpiar filtros para quitar todas las condiciones y recuperar la vista general. Un estado vacío debe indicar si no existe trabajo o si los filtros no encontraron resultados.',
+          'Los estados comparten seis conceptos: Pendiente, En curso, Bloqueado, Observado, Finalizado y Cancelado. La etapa particular del módulo puede aparecer como información secundaria.',
         ],
       },
       {
         title: 'Resolver un escalamiento',
         body: [
-          '1. Entrá a Pendientes y buscá el escalamiento en cuestión.',
+          '1. Entrá a Bandeja y buscá el escalamiento en cuestión.',
           '2. Abrilo para ver el detalle de la novedad original.',
           '3. Agregá una respuesta o resolución y marcalo como resuelto.',
           '4. El área que escaló recibirá la notificación.',
@@ -138,7 +189,7 @@ export const HELP_MODULES = [
         title: 'Escalamientos vencidos',
         body: [
           'Los escalamientos que superan el plazo configurado sin respuesta se marcan en rojo como "vencidos" y generan una alerta en el sistema.',
-          'Revisá Pendientes regularmente para evitar acumulación.',
+          'Revisá la Bandeja regularmente para evitar acumulación.',
         ],
       },
     ],
@@ -176,6 +227,14 @@ export const HELP_MODULES = [
           'Ingresá a Equipo, buscá a la persona y abrí su ficha. Las pestañas reúnen datos y puesto, documentación, evaluaciones, historial, logros, RR. HH. y formularios.',
           'Usá el lápiz junto al nombre para corregir datos personales, puesto, área o sedes asignadas. Una persona puede pertenecer a más de una sede.',
           'No elimines una ficha con actividad vinculada. Usá “Enviar a obsoletos” o el flujo de baja para retirarla del equipo activo conservando su trazabilidad.',
+        ],
+      },
+      {
+        title: 'Navegación y acciones de la ficha',
+        body: [
+          'La ficha deja visible Mensaje como contacto frecuente. Abrí Más acciones para Llamar, Email, Credencial y operaciones administrativas.',
+          'Las pestañas principales reúnen Info y puesto, Documentación, Evaluaciones, Historial y RR. HH. Logros y Formularios se encuentran dentro de Más.',
+          'Desde Crear novedad podés registrar un hecho de esa persona con la sede y la ficha ya seleccionadas. Al guardar, regresás a la misma persona.',
         ],
       },
       {
@@ -258,6 +317,14 @@ export const HELP_MODULES = [
         ],
       },
       {
+        title: 'Coordinación global de Mantenimiento',
+        body: [
+          'Un administrador puede dar alcance de Mantenimiento para todas las sedes sin modificar el rol principal ni ampliar permisos en otros módulos.',
+          'La habilitación se realiza en Usuarios, columna Mantenimiento, mediante Todas las sedes. Después del cambio, el usuario debe cerrar sesión y volver a ingresar.',
+          'El alcance global permite coordinar tickets, activos, preventivos, insumos, proveedores y responsables de Mantenimiento. Pablo Fernández está configurado como coordinador de segundo nivel.',
+        ],
+      },
+      {
         title: 'Trabajo desde el celular',
         body: [
           'Los usuarios de Gestión Mantenimiento ingresan directamente a Mi trabajo y solo ven los tickets que tienen asignados.',
@@ -272,6 +339,7 @@ export const HELP_MODULES = [
           'El inventario de activos incluye todos los equipos e instalaciones de cada sede: cámaras, freezers, equipos de frío, instalaciones eléctricas, etc.',
           'Podés ver el historial de mantenimiento de cada activo y programarle planes preventivos.',
           'Para registrar un activo: Mantenimiento → Activos → Nuevo.',
+          'Desde la ficha de un activo elegí Crear novedad para informar una falla sin volver a seleccionar equipo ni sede. También podés asociar un activo desde Equipos / Mantenimiento al crear un reporte general.',
         ],
       },
       {
@@ -343,6 +411,14 @@ export const HELP_MODULES = [
         ],
       },
       {
+        title: 'Historial por vehículo y PDF',
+        body: [
+          'Ingresá a Flota → Tickets y elegí Por unidad. Seleccioná un vehículo para reunir sus tickets abiertos y resueltos, novedades operativas, kilometraje y costos registrados.',
+          'Usá Exportar PDF para descargar la ficha histórica con estados, prioridades, diagnósticos, responsables, costos y novedades.',
+          'Desde la ficha del vehículo también podés elegir Crear novedad. La unidad queda preseleccionada y, después de guardar, volvés a su ficha.',
+        ],
+      },
+      {
         title: 'Mantenimiento preventivo',
         body: [
           'La pestaña Preventivo muestra los planes de mantenimiento programados para vehículos: revisiones periódicas, cambios de aceite, etc.',
@@ -382,6 +458,7 @@ export const HELP_MODULES = [
           'El módulo CAPA permite registrar y hacer seguimiento de las acciones tomadas para resolver no conformidades y evitar que se repitan.',
           'Cada CAPA tiene: descripción de la acción, responsable, fecha límite y estado de cumplimiento.',
           'Las CAPA vencidas o próximas a vencer aparecen destacadas.',
+          'Las altas de No Conformidades y CAPA guardan borradores locales durante siete días. Al regresar desde el mismo dispositivo podés recuperar la carga, excepto los adjuntos.',
         ],
       },
     ],
@@ -399,6 +476,15 @@ export const HELP_MODULES = [
           '2. Describí qué necesitás: producto/servicio, cantidad, urgencia y sede.',
           '3. El requerimiento queda en estado "Pendiente" hasta que un encargado o editor lo gestione.',
           'También podés crear un requerimiento al escalar una novedad: elegí "Compras" como área destino.',
+          'El formulario guarda un borrador local. Si muestra un resumen de errores, seleccioná cada aviso para completar directamente el campo pendiente.',
+        ],
+      },
+      {
+        title: 'Contactos rápidos',
+        body: [
+          'Abrí Contactos para llamar, enviar WhatsApp o escribir un email sin salir del módulo.',
+          'Administradores y editores pueden elegir Editar contactos para agregar, modificar o desactivar registros, vincularlos con usuarios y asignarlos a una o varias sedes.',
+          'Al cerrar la edición, el directorio se actualiza para mostrar los cambios recientes.',
         ],
       },
       {
@@ -409,6 +495,45 @@ export const HELP_MODULES = [
           '• Aprobado: fue autorizado para su compra.',
           '• Resuelto: el pedido fue realizado o el insumo fue entregado.',
           '• Rechazado: no procede o fue cancelado.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'mobile',
+    label: 'Uso desde el celular',
+    icon: '📱',
+    intro: 'Accesos rápidos, favoritos, recientes y recuperación segura del trabajo en mobile.',
+    sections: [
+      {
+        title: 'Navegación principal',
+        body: [
+          'La barra inferior reúne cinco destinos de uso frecuente. Las demás funciones están en Más, ordenadas como Trabajo diario, Gestión e Información y cuenta.',
+          'La primera apertura de un módulo puede mostrar Cargando sección durante un instante. Es normal: mobile descarga cada sección cuando realmente se necesita.',
+          'La aplicación recuerda la última pestaña, el módulo abierto dentro de Más y los filtros principales para que puedas retomar el trabajo.',
+        ],
+      },
+      {
+        title: 'Favoritos y recientes',
+        body: [
+          'En Más, tocá la estrella de un módulo para fijarlo en Favoritos. Los últimos cuatro módulos utilizados aparecen automáticamente en Recientes.',
+          'Favoritos y recientes pertenecen al usuario en ese dispositivo y sólo muestran opciones que sus permisos permiten.',
+          'Usá Limpiar recientes cuando quieras borrar ese historial. Esta acción no elimina favoritos ni datos operativos.',
+        ],
+      },
+      {
+        title: 'Formularios y conexión',
+        body: [
+          'Nuevo Reporte, tareas, compras, tickets, No Conformidades, CAPA y otros formularios extensos pueden conservar un borrador local según el tipo de carga.',
+          'Un aviso indica si se recuperó o guardó un borrador. Los archivos y fotos deben elegirse nuevamente porque el navegador no los conserva.',
+          'Antes de descartar, cerrar, rechazar, anular o eliminar, leé la confirmación: explica qué ocurrirá y si existe una forma de recuperación.',
+        ],
+      },
+      {
+        title: 'Acciones y estados vacíos',
+        body: [
+          'Las acciones importantes muestran un nombre visible, por ejemplo Crear CAPA, Agregar persona, Volver o Limpiar filtros. No dependas sólo del ícono.',
+          'Si una lista está vacía, usá la acción propuesta para crear el primer registro, quitar filtros o actualizar. Si aparece un error de carga, elegí Reintentar.',
         ],
       },
     ],
@@ -438,6 +563,14 @@ export const HELP_MODULES = [
           'La app se adapta al dispositivo. En celular, la interfaz está optimizada para operaciones en campo: nuevo reporte, checklists, novedades del turno.',
           'En computadora, tenés acceso a todos los módulos de gestión con más detalle y opciones de administración.',
           'El rol Operario solo puede usar la versión móvil.',
+        ],
+      },
+      {
+        title: 'Permisos especiales por módulo',
+        body: [
+          'Además del rol principal, un administrador puede otorgar alcances específicos para Compras o Mantenimiento. Estos permisos no habilitan automáticamente otras áreas.',
+          'El alcance global de Mantenimiento permite administrar todas las sedes dentro de ese módulo conservando el alcance territorial habitual en el resto de la aplicación.',
+          'Después de modificar permisos, el usuario debe cerrar sesión y volver a ingresar para actualizar su acceso.',
         ],
       },
     ],

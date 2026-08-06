@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { HELP_MODULES } from '../data/helpContent'
+import { HELP_MANUAL_UPDATED_AT, HELP_MODULES } from '../data/helpContent'
 import { APP_VERSION } from '../data/releases'
 
 /* ── Print styles ──────────────────────────────────────────────────────────
@@ -13,6 +13,9 @@ const PRINT_CSS = `
   #help-print-root { display: block !important; }
   #help-print-root { font-family: Arial, sans-serif; color: #111; }
   .help-print-module { page-break-inside: avoid; margin-bottom: 2rem; }
+  .help-print-cover { page-break-after: always; min-height: 80vh; display: flex; flex-direction: column; justify-content: center; }
+  .help-print-index { columns: 2; padding-left: 1.25rem; }
+  .help-print-index li { font-size: 0.85rem; margin-bottom: 0.35rem; }
   .help-print-module h2 { font-size: 1.15rem; font-weight: 700; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 0.5rem; }
   .help-print-section { margin-bottom: 1rem; }
   .help-print-section h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
@@ -33,12 +36,23 @@ function injectPrintStyles() {
 
 /* ── PrintRoot: nodo oculto que contiene el manual completo para imprimir ── */
 function PrintRoot() {
+  const updatedAt = new Date(`${HELP_MANUAL_UPDATED_AT}T12:00:00`).toLocaleDateString('es-AR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  })
+
   return (
     <div id="help-print-root">
-      <h1 style={{ fontSize:'1.4rem', marginBottom:'0.25rem' }}>Manual de Uso — Fly Gestión</h1>
-      <p style={{ fontSize:'0.78rem', color:'#555', marginBottom:'2rem' }}>
-        Sistema de operaciones · {new Date().toLocaleDateString('es-AR', { year:'numeric', month:'long' })}
-      </p>
+      <div className="help-print-cover">
+        <p style={{ fontSize:'0.8rem', fontWeight:700, marginBottom:'0.5rem' }}>FLY GESTIÓN</p>
+        <h1 style={{ fontSize:'2rem', marginBottom:'0.4rem' }}>Manual de Uso</h1>
+        <p style={{ fontSize:'0.9rem', color:'#555', marginBottom:'2rem' }}>
+          Versión de la aplicación {APP_VERSION} · Actualizado el {updatedAt}
+        </p>
+        <h2 style={{ fontSize:'1rem', marginBottom:'0.5rem' }}>Contenido</h2>
+        <ol className="help-print-index">
+          {HELP_MODULES.map(mod => <li key={mod.id}>{mod.label}</li>)}
+        </ol>
+      </div>
       {HELP_MODULES.map(mod => (
         <div key={mod.id} className="help-print-module">
           <h2>{mod.icon} {mod.label}</h2>
@@ -58,6 +72,7 @@ function PrintRoot() {
 /* ── Panel principal ────────────────────────────────────────────────────── */
 export default function HelpPanel({ onClose }) {
   const [activeModule, setActiveModule] = useState(HELP_MODULES[0].id)
+  const updatedAt = new Date(`${HELP_MANUAL_UPDATED_AT}T12:00:00`).toLocaleDateString('es-AR')
 
   useEffect(() => {
     // Inyectar CSS de impresión mientras el panel esté montado
@@ -105,7 +120,7 @@ export default function HelpPanel({ onClose }) {
               📖 Manual de Uso
             </p>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', marginTop: 2 }}>
-              Central de ayuda · Fly Gestión
+              Central de ayuda · v{APP_VERSION} · Actualizado {updatedAt}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -213,7 +228,7 @@ export default function HelpPanel({ onClose }) {
           flexShrink: 0,
         }}>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.6rem' }}>
-            {HELP_MODULES.length} módulos · Presioná Esc para cerrar
+            {HELP_MODULES.length} módulos · Manual v{APP_VERSION} · Presioná Esc para cerrar
           </p>
           <p style={{ color: 'rgba(57,255,20,0.25)', fontSize: '0.6rem' }}>
             Fly Gestión · v{APP_VERSION}
