@@ -6,6 +6,7 @@ import AdjuntosPanel from '../components/AdjuntosPanel'
 import PageHeader from '../components/PageHeader'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
+import OperationalStateChip from '../components/OperationalStateChip'
 import { generarInformeCapaPDF } from '../lib/capaReportPdf'
 import { gestionHealth, isGestionProjectAction } from '../lib/gestionProjects'
 import { toast } from '../lib/feedback'
@@ -32,11 +33,7 @@ function vencimientoChip(fechaLimite, estado) {
 }
 
 function estadoChip(estado) {
-  if (estado === 'Pendiente')    return <span className="chip chip-gray">{estado}</span>
-  if (estado === 'En ejecución') return <span className="chip chip-blue">{estado}</span>
-  if (estado === 'Completada')   return <span className="chip chip-yellow">{estado}</span>
-  if (estado === 'Verificada')   return <span className="chip chip-green">{estado}</span>
-  return <span className="chip chip-gray">{estado}</span>
+  return <OperationalStateChip estado={estado} showStage />
 }
 
 function codigoProyectoGestion(nombre) {

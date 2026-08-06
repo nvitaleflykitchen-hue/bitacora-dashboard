@@ -19,6 +19,7 @@ import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import usePersistedState from '../../hooks/usePersistedState'
 import { generarReporteEficienciaMnt } from '../../lib/mntEficienciaPdf'
+import { operationalStateLabel } from '../../lib/operationalStates'
 
 function exportTicketsCSV(tickets, responsables) {
   const headers = ['#','Descripción','Activo','Tipo','Prioridad','Estado','Responsable','Sede','Apertura','Fecha límite','Cierre','Días abierto','Costo real']
@@ -918,7 +919,7 @@ export default function MntTickets({ focusId }) {
         <span style={{ borderLeft: '1px solid rgba(57,255,20,0.08)', margin: '0 0.25rem', height: 16 }} />
         {['todos', ...ESTADOS].map(s => (
           <button key={s} onClick={() => setFiltroEstado(s)} style={SEL(filtroEstado === s)}>
-            {s === 'todos' ? 'Todos' : s.replace('_',' ')}
+            {s === 'todos' ? 'Todos' : operationalStateLabel(s, { includeStage:true })}
           </button>
         ))}
         <span style={{ borderLeft: '1px solid rgba(57,255,20,0.08)', margin: '0 0.25rem', height: 16 }} />
@@ -967,7 +968,7 @@ export default function MntTickets({ focusId }) {
                 {responsables.find(r => r.id === t.responsable_id)?.nombre || t.responsable || '—'}
               </p>
               <Badge text={t.tipo} color={t.tipo === 'correctivo' ? '#F97316' : '#3B82F6'} />
-              <Badge text={t.estado} color={ESTADO_COLOR[t.estado] || '#555'} />
+              <Badge text={operationalStateLabel(t.estado, { includeStage:true })} color={ESTADO_COLOR[t.estado] || '#555'} />
               <Badge text={t.prioridad} color={PRIORIDAD_COLOR[t.prioridad] || '#555'} />
               <div style={{ textAlign: 'right' }}>
                 <p style={{ color: 'var(--text-dim)', fontSize: '0.65rem', fontFamily: 'var(--font-metric)' }}>{fmtFecha(t.fecha_creacion || t.created_at)}</p>

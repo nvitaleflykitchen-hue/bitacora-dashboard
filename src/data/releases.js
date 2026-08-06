@@ -1,7 +1,25 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.11";
+export const APP_VERSION = "2.7.12";
 
 export const RELEASES = [
+  {
+    version: "2.7.12",
+    date: "2026-08-06",
+    title: "Fase 7: estados consistentes",
+    functions: [
+      "Nuevo diccionario transversal con seis estados humanos: Pendiente, En curso, Bloqueado, Observado, Finalizado y Cancelado.",
+      "Las variantes propias de cada módulo se presentan bajo el mismo concepto sin modificar los valores almacenados en la base.",
+      "La etapa interna se conserva como contexto secundario, por ejemplo En curso · En compra o Finalizado · Resuelto.",
+      "Bandeja, Tareas, Escalamientos, Compras y Mantenimiento utilizan las mismas equivalencias visuales.",
+      "Los tickets mobile muestran las mismas etiquetas que la versión de escritorio.",
+      "Los estados desconocidos mantienen su texto original para evitar clasificaciones inventadas.",
+    ],
+    problem: "Cada módulo utilizaba vocabularios diferentes para situaciones equivalentes, aumentando el aprendizaje y el riesgo de interpretar mal el avance de un trabajo.",
+    affectedUsers: "Todos los usuarios que consultan o gestionan trabajo en más de un módulo.",
+    usage: "Leé primero el estado común. Cuando exista una etapa específica del módulo, aparecerá después del separador como información complementaria.",
+    examples: ["Abierto y Pendiente se reconocen como Pendiente.", "En gestión, En ejecución y En compra se reconocen como En curso.", "Resuelto, Cumplido y Verificado se reconocen como Finalizado."],
+    screenshots: [],
+  },
   {
     version: "2.7.11",
     date: "2026-08-06",

@@ -7,6 +7,8 @@ import TicketRapidoModal from '../components/TicketRapidoModal'
 import ComentariosHilo from '../components/ComentariosHilo'
 import PageHeader from '../components/PageHeader'
 import { RefreshCw, CheckCircle, LayoutGrid, List as ListIcon, Wrench, MessageSquare, X } from 'lucide-react'
+import OperationalStateChip from '../components/OperationalStateChip'
+import { operationalStateLabel } from '../lib/operationalStates'
 
 const TIPO_COLOR = {
   'Compras':       '#50b4ff',
@@ -17,11 +19,6 @@ const TIPO_COLOR = {
   'Coordinación':  '#f472b6',
   'Dirección':     '#FF2A2A',
   'Otro':          '#9ca3af',
-}
-const ESTADO_STYLE = {
-  'Pendiente':  { chip: 'chip-yellow' },
-  'En gestión': { chip: 'chip-blue'   },
-  'Resuelto':   { chip: 'chip-green'  },
 }
 const ESTADOS    = ['Pendiente', 'En gestión', 'Resuelto']
 const TIPOS      = Object.keys(TIPO_COLOR)
@@ -187,7 +184,7 @@ export default function Escalamientos({ focusId }) {
           <label className="font-metric text-xs tracking-wider uppercase mb-1 block" style={{ color:'var(--text-dim)' }}>Estado</label>
           <select className="input-dark" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
             <option value="">Todos</option>
-            {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
+            {ESTADOS.map(s => <option key={s} value={s}>{operationalStateLabel(s, { includeStage:true })}</option>)}
           </select>
         </div>
         <div>
@@ -233,7 +230,7 @@ export default function Escalamientos({ focusId }) {
                 className="rounded p-2.5" style={{ borderRadius:'3px', border:`1px solid ${col.border}`, background: col.bg, minHeight: 220 }}>
                 <div className="flex items-center justify-between mb-2.5 px-0.5">
                   <span style={{ color: col.color, fontWeight:700, fontSize:'0.72rem', textTransform:'uppercase', letterSpacing:'0.04em' }}>
-                    {col.estado}
+                    {operationalStateLabel(col.estado, { includeStage:true })}
                   </span>
                   <span style={{ color: col.color, fontSize:'0.7rem', fontWeight:700 }}>{colItems.length}</span>
                 </div>
@@ -319,7 +316,6 @@ export default function Escalamientos({ focusId }) {
               <tbody>
                 {items.map(e => {
                   const tipoColor = TIPO_COLOR[e.tipo] || '#9ca3af'
-                  const estChip   = ESTADO_STYLE[e.estado]?.chip || 'chip-gray'
                   return (
                     <tr key={e.id}>
                       <td>
@@ -351,7 +347,7 @@ export default function Escalamientos({ focusId }) {
                         {e.reportante || '—'}
                       </td>
                       <td>
-                        <span className={`chip ${estChip}`} style={{ fontSize:'0.6rem' }}>{e.estado}</span>
+                        <OperationalStateChip estado={e.estado} showStage />
                       </td>
                       <td>
                         <div className="flex items-center gap-1.5 flex-wrap">

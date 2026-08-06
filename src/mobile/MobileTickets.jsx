@@ -15,6 +15,7 @@ import {
 import SkeletonTable from '../components/SkeletonTable'
 import { generarReporteEficienciaMnt } from '../lib/mntEficienciaPdf'
 import { useBackHandler } from '../lib/backStack'
+import { operationalStateLabel } from '../lib/operationalStates'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import {
   enrichMobileTickets,
@@ -136,7 +137,7 @@ function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, 
               {ticket.prioridad}
             </span>
             <span style={{ background: `${eColor}22`, color: eColor, fontSize: '0.6rem', padding: '0.2rem 0.45rem', borderRadius: 12, fontWeight: 700, textTransform: 'uppercase' }}>
-              {ticket.estado?.replace('_', ' ')}
+              {operationalStateLabel(ticket.estado, { includeStage:true })}
             </span>
           </div>
         </div>
@@ -169,7 +170,7 @@ function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, 
               style={{ fontSize: '0.82rem', padding: '0.45rem 0.6rem' }}
             >
               {ESTADOS.map(e => (
-                <option key={e} value={e}>{e.replace('_', ' ').charAt(0).toUpperCase() + e.replace('_', ' ').slice(1)}</option>
+                <option key={e} value={e}>{operationalStateLabel(e, { includeStage:true })}</option>
               ))}
             </select>
           </Section>
@@ -336,7 +337,7 @@ function TicketCard({ t, onClick }) {
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ background: `${eColor}22`, color: eColor, fontSize: '0.6rem', padding: '0.15rem 0.4rem', borderRadius: 12, fontWeight: 700, textTransform: 'uppercase' }}>
-            {t.estado?.replace('_', ' ')}
+            {operationalStateLabel(t.estado, { includeStage:true })}
           </span>
           {t.sede && <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem' }}>{t.sede}</span>}
           {t.fecha_limite && (
