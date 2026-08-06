@@ -12,6 +12,7 @@ import HelpPanel from './components/HelpPanel'
 import WhatsNewModal from './components/WhatsNewModal'
 import { hasSeenLatestRelease } from './data/releases'
 import { normalizeReportContext } from './lib/reportContext'
+import { readAppRoute, writeAppRoute } from './lib/navigationRoutes'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
 const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
@@ -177,16 +178,9 @@ function AppInner() {
   const [reportContext, setReportContext] = useState(null)
   const [showHelp, setShowHelp] = useState(false)
   const [showWhatsNew, setShowWhatsNew] = useState(false)
-  const [navigationTarget, setNavigationTarget] = useState(() => {
-    const p = new URLSearchParams(window.location.search)
-    return p.get('targetType') || p.get('targetId')
-      ? { type:p.get('targetType'), id:p.get('targetId'), sedeId:p.get('targetSedeId') }
-      : null
-  })
+  const [navigationTarget, setNavigationTarget] = useState(() => readAppRoute().target)
   const [activeView, setActiveView] = useState(() => {
-    const p = new URLSearchParams(window.location.search)
-    if (p.get('scan') === 'activo' && p.get('id')) return 'qrActivo'
-    const requestedView = p.get('view')
+    const requestedView = readAppRoute().view
     return requestedView && ALL_VIEWS[requestedView] ? requestedView : 'inicio'
   })
 
@@ -243,16 +237,7 @@ function AppInner() {
     if (!ALL_VIEWS[view] || !canAccessView(rol, view, perfil)) return
     setActiveView(view)
     setNavigationTarget(target)
-    const url = new URL(window.location.href)
-    url.search = ''
-    url.searchParams.set('view', view)
-    if (target?.type) {
-      url.searchParams.set('targetType', target.type || '')
-    }
-    if (target?.id) {
-      url.searchParams.set('targetId', target.id)
-      if (target.sedeId) url.searchParams.set('targetSedeId', target.sedeId)
-    }
+    const url = writeAppRoute(window.location.href, view, target)
     window.history.replaceState({}, '', url)
   }
 

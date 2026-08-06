@@ -1,7 +1,24 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.17";
+export const APP_VERSION = "2.7.18";
 
 export const RELEASES = [
+  {
+    version: "2.7.18",
+    date: "2026-08-06",
+    title: "Fase 13: rendimiento y navegaciÃ³n",
+    functions: [
+      "Mobile descarga cada mÃ³dulo cuando se abre, reduciendo el peso de la carga inicial.",
+      "La pestaÃ±a, el mÃ³dulo de MÃ¡s y los filtros principales se conservan por usuario en el dispositivo.",
+      "Los filtros persistidos se validan y pueden recuperarse aunque cambie el formato de almacenamiento.",
+      "La navegaciÃ³n por URL conserva la vista y la entidad de origen mediante una capa centralizada.",
+      "Notificaciones y bÃºsqueda comparten el mismo mapa de destinos mobile para evitar rutas inconsistentes.",
+    ],
+    problem: "Al volver a la aplicaciÃ³n se perdÃ­an filtros y contexto, mientras que mobile cargaba mÃ³dulos que el usuario quizÃ¡ no iba a abrir.",
+    affectedUsers: "Todos los usuarios de mobile y quienes abren fichas o enlaces contextuales desde escritorio.",
+    usage: "NavegÃ¡ y filtrÃ¡ normalmente: al regresar desde el mismo dispositivo se recuperarÃ¡ el contexto vÃ¡lido. La primera apertura de cada mÃ³dulo puede mostrar Cargando secciÃ³n durante un instante.",
+    examples: ["Volver a Tickets conservando Activos.", "Retomar el Ãºltimo mÃ³dulo abierto dentro de MÃ¡s.", "Abrir una ficha desde un enlace sin perder la entidad seleccionada."],
+    screenshots: [],
+  },
   {
     version: "2.7.17",
     date: "2026-08-06",

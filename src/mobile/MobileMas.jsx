@@ -1,21 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { BarChart3, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Megaphone, Phone, Sparkles, Star, Users, Wrench } from 'lucide-react'
-import MobileCapa from './MobileCapa'
-import MobilePersonal from './MobilePersonal'
-import MobileMantenimiento from './MobileMantenimiento'
-import MobileIndicadores from './MobileIndicadores'
-import MobileTablon from './MobileTablon'
-import MobileContactos from './MobileContactos'
-import MobileActualizaciones from './MobileActualizaciones'
-import MobileEscalamientos from './MobileEscalamientos'
-import MobileChecklist from './MobileChecklist'
-import MobileRequerimientos from './MobileRequerimientos'
-import MobileFlota from './MobileFlota'
-import AuditoriasInternas from '../views/AuditoriasInternas'
 import { useAuth } from '../lib/auth'
 import { canAccessView } from '../lib/access'
 import { useBackHandler } from '../lib/backStack'
 import { clearMobileRecents, loadMobileShortcuts, recordMobileRecent, saveMobileShortcuts, toggleMobileFavorite } from '../lib/mobileShortcuts'
+
+const MobileCapa = lazy(() => import('./MobileCapa'))
+const MobilePersonal = lazy(() => import('./MobilePersonal'))
+const MobileMantenimiento = lazy(() => import('./MobileMantenimiento'))
+const MobileIndicadores = lazy(() => import('./MobileIndicadores'))
+const MobileTablon = lazy(() => import('./MobileTablon'))
+const MobileContactos = lazy(() => import('./MobileContactos'))
+const MobileActualizaciones = lazy(() => import('./MobileActualizaciones'))
+const MobileEscalamientos = lazy(() => import('./MobileEscalamientos'))
+const MobileChecklist = lazy(() => import('./MobileChecklist'))
+const MobileRequerimientos = lazy(() => import('./MobileRequerimientos'))
+const MobileFlota = lazy(() => import('./MobileFlota'))
+const AuditoriasInternas = lazy(() => import('../views/AuditoriasInternas'))
 
 const MODULES = [
   { key:'escalamientos', label:'Escalamientos', sub:'Casos que requieren seguimiento', icon:ClipboardCheck, view:'escalamientos' },
@@ -120,6 +121,7 @@ export default function MobileMas({ initialModule = null, userId = null, focusCo
           <ChevronLeft size={17} aria-hidden="true" /> Más
         </button>
         <div style={{ flex:1, minHeight:0 }}>
+          <Suspense fallback={<div style={{ minHeight:160, display:'grid', placeItems:'center', color:'var(--text-dim)', fontSize:'.8rem' }}>Cargando módulo…</div>}>
           {mod.key === 'calidad' && <MobileCapa />}
           {mod.key === 'auditorias' && <div className="mobile-scroll" style={{ height:'100%', overflowY:'auto', padding:'1rem' }}><AuditoriasInternas /></div>}
           {mod.key === 'personal' && <MobilePersonal focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
@@ -132,6 +134,7 @@ export default function MobileMas({ initialModule = null, userId = null, focusCo
           {mod.key === 'escalamientos' && <MobileEscalamientos />}
           {mod.key === 'checklist' && <MobileChecklist onBack={() => setActive(null)} />}
           {mod.key === 'compras' && <MobileRequerimientos />}
+          </Suspense>
         </div>
       </div>
     )

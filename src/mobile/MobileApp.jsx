@@ -1,14 +1,6 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect, useMemo } from 'react'
 import MobileHome from './MobileHome'
 import PullToRefresh from './PullToRefresh'
-import MobileReporte from './MobileReporte'
-import MobileTareas from './MobileTareas'
-import MobileSedes from './MobileSedes'
-import MobileEscalamientos from './MobileEscalamientos'
-import MobileChecklist from './MobileChecklist'
-import MobileTickets from './MobileTickets'
-import MobileRequerimientos from './MobileRequerimientos'
-import MobileMas from './MobileMas'
 import GlobalSearch from '../components/GlobalSearch'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
@@ -19,6 +11,19 @@ import { User, ShoppingCart } from 'lucide-react'
 import { initBackNavigation, useBackHandler } from '../lib/backStack'
 import WhatsNewModal from '../components/WhatsNewModal'
 import { APP_NAME, APP_VERSION, hasSeenLatestRelease } from '../data/releases'
+import usePersistedState from '../hooks/usePersistedState'
+import { mobileDestinationForView } from '../lib/navigationRoutes'
+
+const MobileReporte = lazy(() => import('./MobileReporte'))
+const MobileTareas = lazy(() => import('./MobileTareas'))
+const MobileSedes = lazy(() => import('./MobileSedes'))
+const MobileEscalamientos = lazy(() => import('./MobileEscalamientos'))
+const MobileChecklist = lazy(() => import('./MobileChecklist'))
+const MobileTickets = lazy(() => import('./MobileTickets'))
+const MobileRequerimientos = lazy(() => import('./MobileRequerimientos'))
+const MobileMas = lazy(() => import('./MobileMas'))
+
+const MobileLoading = () => <div style={{ minHeight:180, display:'grid', placeItems:'center', color:'var(--text-dim)', fontSize:'.8rem' }}>Cargando sección…</div>
 
 const NAV = [
   { key: 'home',          label: 'Inicio',    icon: '⌂' },
@@ -40,15 +45,20 @@ export default function MobileApp() {
   const canReport = !isQualityOnly && !isComprasOnly && !isMaintenanceEditor && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
   const canUseChecklist = rol !== 'consultor'
   // 'operario': rol acotado a Inicio (Nuevo Reporte) + Checklist, nada más.
-  const navAllowed = isSafetyOnly
+  const navAllowed = useMemo(() => isSafetyOnly
     ? new Set(['tareas', 'sedes', 'tickets', 'compras', 'mas'])
-    : (isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (isComprasOnly ? new Set(['home', 'compras']) : (isMaintenanceEditor ? new Set(['tickets', 'sedes', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null))))
-  const bottomNavAllowed = navAllowed || new Set(['home', 'tareas', 'sedes', 'tickets', 'mas'])
-  const [tab, setTab] = useState(isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home')))
+    : (isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (isComprasOnly ? new Set(['home', 'compras']) : (isMaintenanceEditor ? new Set(['tickets', 'sedes', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null)))),
+  [isSafetyOnly, isQualityOnly, isComprasOnly, isMaintenanceEditor, rol])
+  const bottomNavAllowed = useMemo(
+    () => navAllowed || new Set(['home', 'tareas', 'sedes', 'tickets', 'mas']),
+    [navAllowed],
+  )
+  const initialTab = isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home'))
+  const [tab, setTab] = usePersistedState(`mobile.${user?.id}.tab`, initialTab, { validate:value => NAV.some(item => item.key === value) || value === 'perfil' })
   const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
   const [showSearch, setShowSearch] = useState(false)
-  const [masModule, setMasModule] = useState(isSafetyOnly || isQualityOnly ? 'calidad' : null)
+  const [masModule, setMasModule] = usePersistedState(`mobile.${user?.id}.masModule`, isSafetyOnly || isQualityOnly ? 'calidad' : null)
   const [showWhatsNew, setShowWhatsNew] = useState(() => user?.id ? !hasSeenLatestRelease(user.id) : false)
   const [reportContext, setReportContext] = useState(null)
   const [returnContext, setReturnContext] = useState(null)
@@ -71,6 +81,9 @@ export default function MobileApp() {
   useEffect(() => {
     if (user?.id && !hasSeenLatestRelease(user.id)) setShowWhatsNew(true)
   }, [user?.id])
+  useEffect(() => {
+    if (!bottomNavAllowed.has(tab) && tab !== 'perfil') setTab(initialTab)
+  }, [bottomNavAllowed, tab, initialTab, setTab])
 
   // Botón atrás del celular: navegar en vez de cerrar la app.
   const tabInicio = isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : 'home')
@@ -81,36 +94,15 @@ export default function MobileApp() {
 
   const handleNotificationNavigate = (view) => {
     setScreen('main')
-    if (view === 'calidadHub') { setMasModule('calidad'); setTab('mas') }
-    else if (view === 'mantenimientoHub') { setMasModule('mantenimiento'); setTab('mas') }
-    else if (view === 'mntTickets') { setTab('tickets') }
-    else if (view === 'requerimientos') { setTab('compras') }
-    else if (view === 'tareas') { setTab('tareas') }
-    else if (view === 'escalamientos') { setTab('escalamientos') }
-    else if (view === 'sedesHub' || view === 'sede') { setTab('sedes') }
+    const destination = mobileDestinationForView(view)
+    if (destination.module) setMasModule(destination.module)
+    setTab(destination.tab)
   }
 
   const handleSearchNavigate = (view) => {
-    if (view === 'tareas') {
-      setTab('tareas')
-    } else if (view === 'escalamientos') {
-      setTab('escalamientos')
-    } else if (view === 'requerimientos') {
-      setTab('compras')
-    } else if (view === 'sedesHub' || view === 'sede') {
-      setTab('sedes')
-    } else if (view === 'mntTickets') {
-      setTab('tickets')
-    } else if (['mntActivos', 'mntInsumos', 'mntKanban', 'mntPlanes', 'mntProveedores', 'mntMatafuegos', 'mntResponsables'].includes(view)) {
-      setMasModule('mantenimiento')
-      setTab('mas')
-    } else if (view === 'noConformidades' || view === 'capa') {
-      setMasModule('calidad')
-      setTab('mas')
-    } else if (view === 'equipo') {
-      setMasModule('personal')
-      setTab('mas')
-    }
+    const destination = mobileDestinationForView(view)
+    if (destination.module) setMasModule(destination.module)
+    setTab(destination.tab)
   }
 
   const handleLogout = async () => {
@@ -196,7 +188,7 @@ export default function MobileApp() {
       <div style={{ flex: 1, minHeight: 0 }}>
         <PullToRefresh onRefresh={() => setRefreshKey(k => k + 1)}>
           <div key={refreshKey} style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {renderContent()}
+            <Suspense fallback={<MobileLoading />}>{renderContent()}</Suspense>
           </div>
         </PullToRefresh>
       </div>

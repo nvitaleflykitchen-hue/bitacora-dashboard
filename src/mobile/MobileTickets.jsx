@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getTickets, updateTicket, getResponsablesMnt, getSedes, getActivos } from '../lib/queries'
 import { useAuth } from '../lib/auth'
+import usePersistedState from '../hooks/usePersistedState'
 import { ChevronRight, ChevronLeft, Wrench, Calendar, MessageCircle, Mail, Plus, RefreshCw, AlertTriangle, FileText } from 'lucide-react'
 import { fmtFecha } from '../lib/dateUtils'
 import TicketRapidoModal from '../components/TicketRapidoModal'
@@ -364,7 +365,11 @@ export default function MobileTickets() {
   const [catalogsReady, setCatalogsReady] = useState(false)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
-  const [filtro, setFiltro] = useState(isMaintenanceEditor ? 'mios' : 'activos')
+  const [filtro, setFiltro] = usePersistedState(
+    `mobile.${perfil?.id || 'anon'}.tickets.filtro`,
+    isMaintenanceEditor ? 'mios' : 'activos',
+    { validate: value => ['mios', 'activos', 'todos', 'historial'].includes(value) },
+  )
   const [selectedSede, setSelectedSede] = useState(null)
   const [selectedTicket, setSelectedTicket] = useState(null)
   useBackHandler(() => setSelectedTicket(null), !!selectedTicket)
