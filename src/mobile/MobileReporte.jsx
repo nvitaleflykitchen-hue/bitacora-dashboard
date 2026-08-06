@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   getSedes, createRegistro, createRequerimiento,
   getActivos, getPersonasBySede, createVehiculoNovedadConTicket, createPersonaNovedad,
@@ -12,6 +12,8 @@ import { getOperationalOrigin, REPORT_ACTIVITY_LEVELS, REPORT_TURNS } from '../l
 import { uploadAdjunto } from '../lib/adjuntos'
 import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, Plus, X, Paperclip, FileText, Clock, Truck, User, Plane } from 'lucide-react'
 import { format } from 'date-fns'
+import useFormDraft from '../hooks/useFormDraft'
+import FormDraftNotice from '../components/FormDraftNotice'
 
 const ESTADOS_GENERALES = [
   { val: 'Sin novedades',        color: '#39FF14', bg: 'rgba(57,255,20,0.12)',  label: 'Sin novedades' },
@@ -749,9 +751,47 @@ export default function MobileReporte({ onBack, onSuccess }) {
   const [archivos, setArchivos] = useState([]) // [{ id, file, preview }]
   const [adjuntosErrores, setAdjuntosErrores] = useState(0)
 
+  const restoreDraft = useCallback(data => {
+    if (data.sedeId) setSedeId(data.sedeId)
+    setTurno(data.turno || '')
+    setNivelActividad(data.nivelActividad || 'Normal')
+    setEstadoGeneral(data.estadoGeneral || 'Sin novedades')
+    if (data.modulos) setModulos(data.modulos)
+    setVehiculoNovedades(data.vehiculoNovedades || [])
+    setPersonaNovedades(data.personaNovedades || [])
+    setVueloEstados(data.vueloEstados || {})
+    setVuelosAdHoc(data.vuelosAdHoc || [])
+    ;[
+      ['op1Prod',setOp1Prod], ['op1Serv',setOp1Serv], ['op1Reutilizable',setOp1Reutilizable], ['op1Descarte',setOp1Descarte],
+      ['op2Prod',setOp2Prod], ['op2Serv',setOp2Serv], ['op2Reutilizable',setOp2Reutilizable], ['op2Descarte',setOp2Descarte],
+      ['vegProd',setVegProd], ['vegServ',setVegServ], ['vegReutilizable',setVegReutilizable], ['vegDescarte',setVegDescarte],
+      ['ensaladaProd',setEnsaladaProd], ['ensaladaReutilizable',setEnsaladaReutilizable], ['ensaladaDescarte',setEnsaladaDescarte],
+      ['postreProd',setPostreProd], ['postreReutilizable',setPostreReutilizable], ['postreDescarte',setPostreDescarte],
+    ].forEach(([field, setter]) => setter(data[field] || ''))
+  }, [])
+
+  const draftPayload = useMemo(() => ({
+    sedeId, turno, nivelActividad, estadoGeneral, modulos, vehiculoNovedades, personaNovedades,
+    vueloEstados, vuelosAdHoc, op1Prod, op1Serv, op1Reutilizable, op1Descarte,
+    op2Prod, op2Serv, op2Reutilizable, op2Descarte, vegProd, vegServ, vegReutilizable,
+    vegDescarte, ensaladaProd, ensaladaReutilizable, ensaladaDescarte, postreProd,
+    postreReutilizable, postreDescarte,
+  }), [sedeId, turno, nivelActividad, estadoGeneral, modulos, vehiculoNovedades, personaNovedades,
+    vueloEstados, vuelosAdHoc, op1Prod, op1Serv, op1Reutilizable, op1Descarte, op2Prod, op2Serv,
+    op2Reutilizable, op2Descarte, vegProd, vegServ, vegReutilizable, vegDescarte, ensaladaProd,
+    ensaladaReutilizable, ensaladaDescarte, postreProd, postreReutilizable, postreDescarte])
+
+  const draft = useFormDraft({
+    key:`reporte-mobile-${perfil?.id || 'usuario'}`,
+    value:draftPayload,
+    onRestore:restoreDraft,
+    enabled:!enviado,
+    isMeaningful:data => Boolean(data?.turno || Object.values(data?.modulos || {}).some(modulo => modulo.items?.length) || data?.vehiculoNovedades?.length || data?.personaNovedades?.length || data?.vuelosAdHoc?.length),
+  })
+
   const hasUnsavedChanges = Boolean(
     turno || nivelActividad !== 'Normal' || estadoGeneral !== 'Sin novedades' ||
-    modulos.some(modulo => modulo.estado !== 'Sin novedad' || modulo.items?.length) ||
+    Object.values(modulos).some(modulo => modulo.estado !== 'Sin novedad' || modulo.items?.length) ||
     vehiculoNovedades.length || personaNovedades.length || vuelosAdHoc.length || archivos.length ||
     [op1Prod, op1Serv, op1Reutilizable, op1Descarte, op2Prod, op2Serv, op2Reutilizable, op2Descarte,
       vegProd, vegServ, vegReutilizable, vegDescarte, ensaladaProd, ensaladaReutilizable,
@@ -1183,6 +1223,7 @@ export default function MobileReporte({ onBack, onSuccess }) {
           sede_nombre: sedeSel?.nombre || '',
         })
       }
+      draft.clearDraft()
       setEnviado(true)
       if (compras.length === 0) setTimeout(() => onSuccess(), 1500)
     } catch (err) {
@@ -1387,6 +1428,7 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
 
       {/* Body scrollable */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+        <div style={{ marginBottom:'1rem' }}><FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} /></div>
         
         {/* Novedades del turno anterior */}
         {novedadesAnteriores && (

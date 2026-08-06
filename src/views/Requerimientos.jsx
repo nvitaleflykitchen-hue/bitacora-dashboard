@@ -11,6 +11,9 @@ import { confirmar, pedirTexto, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { agruparRecibidosPorSede, buildRetiroMessage, DESTINOS_INVENTARIO, whatsappRetiroHref } from '../lib/comprasEntrega'
 import { operationalStateLabel } from '../lib/operationalStates'
+import useFormDraft from '../hooks/useFormDraft'
+import FormDraftNotice from '../components/FormDraftNotice'
+import FormErrorSummary from '../components/FormErrorSummary'
 
 const ESTADOS   = ['Pendiente','Observado','Aprobado','Enviado','En compra','Recibido','Cumplido','Rechazado','Cancelado']
 const KANBAN_ACTIVOS = ['Pendiente','Aprobado','Enviado','En compra','Recibido']
@@ -321,6 +324,14 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
   const [archivos, setArchivos] = useState([])
   const [showOrigen, setShowOrigen] = useState(false)
   const [origenData, setOrigenData] = useState(null)
+  const [formErrors, setFormErrors] = useState([])
+  const draft = useFormDraft({
+    key:`requerimiento-${perfil?.id || 'usuario'}`,
+    value:form,
+    setValue:setForm,
+    enabled:!editing,
+    isMeaningful:data => Boolean(data?.descripcion?.trim() || data?.justificacion?.trim() || data?.cantidad),
+  })
   const set = (k,v) => setForm(f=>({...f,[k]:v}))
 
   const handleVerOrigen = async () => {
@@ -336,9 +347,14 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.descripcion.trim()) return
+    const errors = []
+    if (!form.descripcion.trim()) errors.push({ field:'requerimiento-descripcion', label:'Descripción', message:'es obligatoria' })
     if (editing && ['Observado','Rechazado'].includes(form.estado) && form.estado !== activeReq.estado && !form.observacion_aprobacion.trim()) {
-      toast.warn('Escribí el motivo de la observación o rechazo antes de cambiar el estado.')
+      errors.push({ field:'requerimiento-observacion', label:'Motivo', message:'es obligatorio para observar o rechazar' })
+    }
+    setFormErrors(errors)
+    if (errors.length) {
+      toast.warn('Revisá los campos indicados antes de guardar.')
       return
     }
     setSaving(true)
@@ -362,6 +378,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
       }
       setSavedReq(saved)
       setJustCreated(!editing)
+      if (!editing) draft.clearDraft()
       await onSaved()
     } catch(err) { toast.error('Error: ' + mensajeError(err)) }
     finally { setSaving(false) }
@@ -388,6 +405,11 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding:'1rem 1.25rem', display:'flex', flexDirection:'column', gap:12 }}>
+          <FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={!editing ? () => {
+            draft.clearDraft()
+            setForm(f => ({ ...f, descripcion:'', cantidad:'', unidad_medida:'', justificacion:'', funcion:'', sector_maquina:'', proveedor_sugerido:'', comentarios:'', imagen_url:'', fecha_necesidad:'' }))
+          } : undefined} />
+          <FormErrorSummary errors={formErrors} />
           {contenidoBloqueado && (
             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 11px', border:'1px solid rgba(245,158,11,0.3)', background:'rgba(245,158,11,0.07)', color:'#F59E0B', borderRadius:3, fontSize:'0.68rem' }}>
               <Lock size={13}/>
@@ -420,8 +442,9 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
           {/* Descripción */}
           <div>
             <label style={L}>Descripción / Código del artículo *</label>
-            <textarea disabled={contenidoBloqueado} required rows={2} className="input-dark" value={form.descripcion}
-              onChange={e=>set('descripcion',e.target.value)}
+            <textarea id="requerimiento-descripcion" name="requerimiento-descripcion" disabled={contenidoBloqueado} required rows={2} className="input-dark" value={form.descripcion}
+              aria-invalid={formErrors.some(error => error.field === 'requerimiento-descripcion')}
+              onChange={e=>{ set('descripcion',e.target.value); setFormErrors(errors => errors.filter(error => error.field !== 'requerimiento-descripcion')) }}
               placeholder="Descripción del repuesto, pieza, máquina, herramienta, insumo, etc."
               style={{ resize:'vertical' }}/>
           </div>
@@ -548,8 +571,9 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
           {editing && ['Observado','Rechazado'].includes(form.estado) && (
             <div>
               <label style={L}>Motivo / consulta al solicitante *</label>
-              <textarea rows={2} className="input-dark" value={form.observacion_aprobacion}
-                onChange={e=>set('observacion_aprobacion',e.target.value)}
+              <textarea id="requerimiento-observacion" name="requerimiento-observacion" rows={2} className="input-dark" value={form.observacion_aprobacion}
+                aria-invalid={formErrors.some(error => error.field === 'requerimiento-observacion')}
+                onChange={e=>{ set('observacion_aprobacion',e.target.value); setFormErrors(errors => errors.filter(error => error.field !== 'requerimiento-observacion')) }}
                 placeholder="Indicá qué información debe corregirse o el motivo del rechazo..."
                 style={{ resize:'vertical' }}/>
             </div>

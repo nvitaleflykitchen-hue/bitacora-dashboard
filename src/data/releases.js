@@ -1,7 +1,26 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.12";
+export const APP_VERSION = "2.7.13";
 
 export const RELEASES = [
+  {
+    version: "2.7.13",
+    date: "2026-08-06",
+    title: "Fase 8: formularios y borradores",
+    functions: [
+      "Nuevo Reporte mobile guarda automáticamente sede, turno, módulos, novedades, vuelos y cantidades mientras se completa.",
+      "Tareas, requerimientos de compra y tickets de mantenimiento recuperan cargas interrumpidas en el mismo dispositivo.",
+      "Los formularios informan cuándo recuperaron o guardaron un borrador y permiten descartarlo explícitamente.",
+      "Los borradores se separan por usuario y tipo de formulario para evitar mezclar cargas.",
+      "Al guardar o enviar correctamente, el borrador local se elimina automáticamente.",
+      "Tareas, Compras y Mantenimiento muestran un resumen de errores con accesos directos a los campos pendientes.",
+      "Los adjuntos no se almacenan en el borrador local y deben seleccionarse nuevamente por seguridad del navegador.",
+    ],
+    problem: "Una interrupción, cierre accidental o pérdida de conexión podía obligar a reconstruir formularios extensos y los errores se comunicaban de manera aislada.",
+    affectedUsers: "Personal operativo que carga reportes desde mobile y usuarios que crean tareas, compras o tickets de mantenimiento.",
+    usage: "Completá el formulario normalmente. Si salís y volvés desde el mismo dispositivo, la aplicación recuperará la carga. Usá Descartar para empezar de cero.",
+    examples: ["Retomar un reporte de turno después de cambiar de pantalla.", "Volver a un requerimiento sin reescribir descripción y cantidades.", "Ir directamente desde el resumen de errores al campo obligatorio pendiente."],
+    screenshots: [],
+  },
   {
     version: "2.7.12",
     date: "2026-08-06",

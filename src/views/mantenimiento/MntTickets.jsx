@@ -20,6 +20,9 @@ import EmptyState from '../../components/EmptyState'
 import usePersistedState from '../../hooks/usePersistedState'
 import { generarReporteEficienciaMnt } from '../../lib/mntEficienciaPdf'
 import { operationalStateLabel } from '../../lib/operationalStates'
+import useFormDraft from '../../hooks/useFormDraft'
+import FormDraftNotice from '../../components/FormDraftNotice'
+import FormErrorSummary from '../../components/FormErrorSummary'
 
 function exportTicketsCSV(tickets, responsables) {
   const headers = ['#','Descripción','Activo','Tipo','Prioridad','Estado','Responsable','Sede','Apertura','Fecha límite','Cierre','Días abierto','Costo real']
@@ -446,6 +449,14 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
   const [saving, setSaving] = useState(false)
   const [archivos, setArchivos] = useState([])
   const [err, setErr]       = useState(null)
+  const [formErrors, setFormErrors] = useState([])
+  const draft = useFormDraft({
+    key:`ticket-mantenimiento-${perfil?.id || 'usuario'}`,
+    value:form,
+    setValue:setForm,
+    enabled:isNew,
+    isMeaningful:data => Boolean(data?.descripcion?.trim() || data?.diagnostico?.trim() || data?.activo_id),
+  })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   // Si el usuario solo tiene una sede asignada (ej: encargado), el ticket nuevo
@@ -466,7 +477,11 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
 
   const handleSave = async () => {
     if (readOnly) return
-    if (!form.descripcion) { setErr('La descripción es obligatoria'); return }
+    const errors = !form.descripcion?.trim()
+      ? [{ field:'ticket-descripcion', label:'Descripción', message:'es obligatoria' }]
+      : []
+    setFormErrors(errors)
+    if (errors.length) { setErr(null); return }
     setSaving(true); setErr(null)
     try {
       const activo = activos.find(a => a.id === form.activo_id)
@@ -498,6 +513,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
         if (archivos.length > 0) {
           await Promise.all(archivos.map(f => uploadAdjunto('ticket', created.id, f)))
         }
+        draft.clearDraft()
       } else {
         const cambios = []
         for (const campo of ['estado','prioridad','responsable_id','diagnostico','costo','presupuesto_estado','oc_estado','costo_real','costo_estimado']) {
@@ -561,6 +577,11 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
 
         {tab === 'datos' && (
           <fieldset disabled={readOnly} style={{ border:0, margin:0, padding:0, minWidth:0 }}>
+            {isNew && <div style={{ marginBottom:'0.85rem' }}><FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={() => {
+              draft.clearDraft()
+              setForm(f => ({ ...f, descripcion:'', diagnostico:'', activo_id:null, activo_nombre:'', proveedor_id:null, responsable_id:null, fecha_limite:null, costo:null, presupuesto:null }))
+            }} /></div>}
+            <FormErrorSummary errors={formErrors} />
             {/* Tipo + Prioridad */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW}>
@@ -580,7 +601,9 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
             {/* Descripción */}
             <div style={ROW}>
               <label style={LABEL}>Descripción *</label>
-              <textarea required value={form.descripcion} onChange={e=>set('descripcion',e.target.value)} rows={3} style={{...INPUT, resize:'vertical'}} placeholder="Ej: Pierde aceite en compresor principal" />
+              <textarea id="ticket-descripcion" name="ticket-descripcion" required value={form.descripcion}
+                aria-invalid={formErrors.some(error => error.field === 'ticket-descripcion')}
+                onChange={e=>{ set('descripcion',e.target.value); setFormErrors([]) }} rows={3} style={{...INPUT, resize:'vertical'}} placeholder="Ej: Pierde aceite en compresor principal" />
             </div>
 
             {/* Activo + Proveedor */}
