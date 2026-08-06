@@ -6,32 +6,39 @@ const CACHE_TTL_MS = 30_000
 const cache = new Map()
 
 export function normalizeWorkItems({ tareas = [], capas = [], escalamientos = [], tickets = [], compras = [] }) {
+  const escalamientoIdsConTicket = new Set(
+    tickets.map(item => item.escalamiento_id).filter(Boolean).map(String),
+  )
   const items = [
     ...tareas.map(item => ({
-      id:`tarea-${item.id}`, module:'Tarea', title:item.titulo, status:item.estado,
+      id:`tarea-${item.id}`, entityId:item.id, entityType:'tarea', module:'Tarea', title:item.titulo, status:item.estado,
       site:item.sede_nombre || item.sedes?.nombre, owner:item.responsable, priority:item.prioridad,
       date:item.fecha_limite || item.created_at, target:'tareas', ownerId:item.responsable_id || null,
+      sedeId:item.sede_id || null,
     })),
     ...capas.filter(item => !['Completada','Verificada'].includes(item.estado)).map(item => ({
-      id:`capa-${item.id}`, module:isGestionProjectAction(item) ? 'Proyecto' : 'CAPA', title:item.descripcion, status:item.estado,
+      id:`capa-${item.id}`, entityId:item.id, entityType:'capa', module:isGestionProjectAction(item) ? 'Proyecto' : 'CAPA', title:item.descripcion, status:item.estado,
       site:item.sede_nombre || item.sedes?.nombre, owner:item.perfiles?.nombre || item.responsable,
       ownerId:item.responsable_id || null, priority:item.prioridad || 'Media',
       date:item.fecha_limite || item.created_at, target:isGestionProjectAction(item) ? 'proyectosGestion' : 'capa', project:item.auditoria_codigo,
+      sedeId:item.sede_id || null,
     })),
-    ...escalamientos.filter(item => item.estado !== 'Resuelto').map(item => ({
-      id:`escalamiento-${item.id}`, module:'Escalamiento', title:item.descripcion, status:item.estado,
+    ...escalamientos.filter(item => item.estado !== 'Resuelto' && !escalamientoIdsConTicket.has(String(item.id))).map(item => ({
+      id:`escalamiento-${item.id}`, entityId:item.id, entityType:'escalamiento', module:'Escalamiento', title:item.descripcion, status:item.estado,
       site:item.sede_nombre, owner:item.reportante, priority:'Alta',
-      date:item.fecha_reporte || item.created_at, target:'escalamientos',
+      date:item.fecha_reporte || item.created_at, target:'escalamientos', sedeId:item.sede_id || null,
     })),
     ...tickets.filter(item => !['resuelto','rechazado'].includes(item.estado)).map(item => ({
-      id:`ticket-${item.id}`, module:'Mantenimiento', title:item.descripcion, status:item.estado,
+      id:`ticket-${item.id}`, entityId:item.id, entityType:'ticket', module:'Mantenimiento', title:item.descripcion, status:item.estado,
       site:item.sede_nombre || item.sede, owner:item.responsable_nombre || item.responsable, priority:item.prioridad,
-      date:item.fecha_limite || item.created_at, target:'mntTickets',
+      date:item.fecha_limite || item.created_at, target:'mntTickets', ownerId:item.responsable_id || null,
+      sedeId:item.sede_id || null, linkedEscalamientoId:item.escalamiento_id || null,
     })),
     ...compras.filter(item => !['Cumplido','Rechazado','Cancelado'].includes(item.estado)).map(item => ({
-      id:`compra-${item.id}`, module:'Compra', title:item.descripcion, status:item.estado,
+      id:`compra-${item.id}`, entityId:item.id, entityType:'requerimiento', module:'Compra', title:item.descripcion, status:item.estado,
       site:item.sede_nombre || item.sedes?.nombre, owner:item.solicitante, priority:item.urgencia,
       date:item.fecha_necesidad || item.created_at, target:'requerimientos',
+      ownerId:item.comprador_id || item.responsable_id || null, sedeId:item.sede_id || null,
     })),
   ]
 
