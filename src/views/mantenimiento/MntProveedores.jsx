@@ -72,7 +72,7 @@ function ProveedorModal({ proveedor, sedes, onClose, onSaved }) {
 }
 
 export default function MntProveedores({ focusId }) {
-  const { allowedSedeIds } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds } = useAuth()
   const [proveedores, setProveedores] = useState([])
   const [sedes, setSedes]     = useState([])
   const [loading, setLoading] = useState(true)

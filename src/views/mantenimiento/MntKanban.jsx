@@ -497,7 +497,7 @@ function Column({ col, tickets, responsables, onDrop, onCardClick }) {
 
 // ─── KANBAN MAIN ─────────────────────────────────────────────────────────────
 export default function MntKanban() {
-  const { allowedSedeIds } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds } = useAuth()
   const [tickets, setTickets]           = useState([])
   const [responsables, setResponsables] = useState([])
   const [activos, setActivos]           = useState([])

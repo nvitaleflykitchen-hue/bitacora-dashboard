@@ -229,7 +229,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
 }
 
 export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
-  const { allowedSedeIds, rol, perfil } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds, rol, perfil } = useAuth()
   const canWrite = ['admin','editor','encargado','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [vehiculos, setVehiculos] = useState([])
   const [sedes, setSedes] = useState([])

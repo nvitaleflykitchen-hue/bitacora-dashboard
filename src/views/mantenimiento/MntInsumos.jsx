@@ -5,7 +5,7 @@ import { useAuth } from '../../lib/auth'
 import PageHeader from '../../components/PageHeader'
 
 export default function MntInsumos({ focusId }) {
-  const { allowedSedeIds } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds } = useAuth()
   const [insumos, setInsumos] = useState([])
   const [sedes, setSedes] = useState([])
   const [sedeId, setSedeId] = useState('')

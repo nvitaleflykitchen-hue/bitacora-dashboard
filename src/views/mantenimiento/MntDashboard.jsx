@@ -45,7 +45,7 @@ const tabStyle = active => ({
 })
 
 export default function MntDashboard({ onNavigate }) {
-  const { allowedSedeIds } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds } = useAuth()
   const [kpis, setKpis]       = useState(null)
   const [tickets, setTickets] = useState([])
   const [sedes, setSedes]     = useState([])

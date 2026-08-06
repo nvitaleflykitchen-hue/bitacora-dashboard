@@ -355,7 +355,7 @@ function TicketCard({ t, onClick }) {
 
 // ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
 export default function MobileTickets() {
-  const { allowedSedeIds, can, perfil } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds, can, perfil } = useAuth()
   const isMaintenanceEditor = perfil?.rol === 'mnt_editor'
   const canManage = can('mantenimiento', 'manage') || can('mantenimiento', 'edit')
   const [tickets, setTickets] = useState([])

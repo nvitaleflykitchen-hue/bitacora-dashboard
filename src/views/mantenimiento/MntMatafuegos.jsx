@@ -80,7 +80,7 @@ function MatafuegoModal({ item, sedes, onClose, onSaved }) {
 }
 
 export default function MntMatafuegos({ focusId }) {
-  const { allowedSedeIds } = useAuth()
+  const { mantenimientoSedeIds:allowedSedeIds } = useAuth()
   const [items, setItems]   = useState([])
   const [sedes, setSedes]   = useState([])
   const [loading, setLoading] = useState(true)
