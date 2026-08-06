@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import { confirmarAccionSensible } from '../lib/sensitiveActions'
 
 const STATUS = {
   borrador: '#94a3b8', solicitado: '#38bdf8', aprobado: '#39FF14',
@@ -68,6 +69,7 @@ export default function VacacionesPanel({ personas = [], sedes = [], canManage =
   }
 
   const decide = async (id, estado) => {
+    if (estado === 'rechazado' && !await confirmarAccionSensible({ action:'rechazar', subject:'la solicitud de vacaciones', consequence:'La solicitud dejará de estar pendiente y no reservará esas fechas.', recovery:'La persona podrá presentar una nueva solicitud corregida; esta decisión seguirá visible en el historial.', confirmText:'Rechazar solicitud' })) return
     const { data:{ user } } = await supabase.auth.getUser()
     const { error } = await supabase.schema('equipo').from('vacaciones').update({ estado, aprobado_por:user?.id || null, aprobado_at:new Date().toISOString() }).eq('id', id)
     if (error) return toast.error('No se pudo actualizar: ' + mensajeError(error))

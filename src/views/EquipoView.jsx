@@ -55,6 +55,7 @@ import {
 import { fmtFechaLarga } from "../lib/dateUtils";
 import { CRITERIOS_GUIA, ESCALA_GUIA, RECORDATORIO_ESCALA } from "../data/evaluacionGuia";
 import { confirmar, pedirTexto, toast } from "../lib/feedback";
+import { confirmarAccionSensible } from "../lib/sensitiveActions";
 import { mensajeError } from "../lib/errores";
 import PersonalNovedadesReportModal from "../components/PersonalNovedadesReportModal";
 import {
@@ -3142,9 +3143,9 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
   };
 
   const reactivarPersona = async (persona) => {
-    const motivo = window.prompt("Motivo de la reactivación (obligatorio):");
+    const motivo = await pedirTexto({ titulo:"Reactivar persona", mensaje:"Indicá el motivo de la reactivación. Quedará registrado en su historial.", placeholder:"Motivo obligatorio", confirmText:"Continuar" });
     if (!motivo?.trim()) return;
-    if (!(await confirmar({ titulo: "Reactivar persona", mensaje: "La ficha volverá al equipo activo y la reactivación quedará registrada.", confirmText: "Reactivar" }))) return;
+    if (!(await confirmarAccionSensible({ action:"cerrar", title:"Confirmar reactivación", subject:`la ficha de ${persona.nombre} ${persona.apellido || ""}`, consequence:"La persona volverá al equipo activo y la reactivación quedará registrada.", recovery:"Podrá volver a darse de baja mediante el flujo habitual, sin perder este antecedente.", confirmText:"Reactivar persona" }))) return;
     const ahora = new Date().toISOString();
     const { error } = await supabase.schema("equipo").from("personas").update({
       activo: true,

@@ -7,6 +7,7 @@ import { CheckSquare, Square, Plus, X, ChevronDown, ChevronRight, Play, Clipboar
 import PageHeader from '../../components/PageHeader'
 import { toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
+import { confirmarAccionSensible } from '../../lib/sensitiveActions'
 
 const FREC_COLOR = { DIARIA:'#39FF14', SEMANAL:'#3B82F6', MENSUAL:'#F59E0B', TRIMESTRAL:'#8B5CF6', ANUAL:'#F97316', POR_KM:'#EC4899' }
 const CAT_COLOR  = { inspeccion:'#50b4ff', limpieza:'#39FF14', lubricacion:'#ffb400', ajuste:'#f97316', reemplazo:'#ff5050', medicion:'#c084fc' }
@@ -214,6 +215,7 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
   }
 
   const removeTarea = async (id) => {
+    if (!await confirmarAccionSensible({ action:'eliminar', subject:'la tarea del checklist', consequence:'La tarea dejará de formar parte de las próximas ejecuciones del plan.', recovery:'No hay papelera. Podés volver a crear una tarea equivalente manualmente.', confirmText:'Eliminar tarea' })) return
     await supabase.from('plan_checklist').delete().eq('id', id)
     setChecklist(c => c.filter(i => i.id !== id))
   }

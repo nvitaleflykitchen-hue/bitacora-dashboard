@@ -18,6 +18,7 @@ import BibliotecaRecursos from '../components/BibliotecaRecursos'
 import EvaluacionesAnalysisPanel from '../components/EvaluacionesAnalysisPanel'
 import { analizarObjetividadEvaluacion } from '../lib/evaluacionObjetividad'
 import EmptyState from '../components/EmptyState'
+import { confirmarAccionSensible } from '../lib/sensitiveActions'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -669,8 +670,8 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
   }
 
   const reactivar = async (persona) => {
-    const motivo = window.prompt('Motivo de la reactivación (obligatorio):')
-    if (!motivo?.trim() || !window.confirm('¿Confirmar reactivación?')) return
+    const motivo = await pedirTexto({ titulo:'Reactivar persona', mensaje:'Indicá el motivo de la reactivación. Quedará registrado en su historial.', placeholder:'Motivo obligatorio', confirmText:'Continuar' })
+    if (!motivo?.trim() || !await confirmarAccionSensible({ action:'cerrar', title:'Confirmar reactivación', subject:`la ficha de ${persona.nombre} ${persona.apellido || ''}`, consequence:'La persona volverá al equipo activo y la reactivación quedará registrada.', recovery:'Podrá volver a darse de baja mediante el flujo habitual, sin perder este antecedente.', confirmText:'Reactivar persona' })) return
     const ahora = new Date().toISOString()
     const { error } = await supabase.schema('equipo').from('personas').update({
       activo:true, fecha_baja:null, motivo_baja:null, observaciones_baja:null,

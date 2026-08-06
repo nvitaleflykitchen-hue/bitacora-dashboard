@@ -9,6 +9,7 @@ import PageHeader from '../../components/PageHeader'
 import { uploadAdjunto } from '../../lib/adjuntos'
 import ComentariosHilo from '../../components/ComentariosHilo'
 import { toast } from '../../lib/feedback'
+import { confirmarAccionSensible } from '../../lib/sensitiveActions'
 import { mensajeError } from '../../lib/errores'
 
 import {
@@ -226,6 +227,7 @@ function CostosTab({ ticket, form, set }) {
   }
 
   const removeItem = async (id) => {
+    if (!await confirmarAccionSensible({ action:'eliminar', subject:'el costo del ticket', consequence:'El importe se quitará del detalle y cambiará el total calculado del ticket.', recovery:'No hay papelera para costos; deberás volver a cargarlo si fue eliminado por error.', confirmText:'Eliminar costo' })) return
     await supabase.from('mnt_ticket_costos').delete().eq('id', id)
     loadItems()
   }
@@ -482,6 +484,16 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
       : []
     setFormErrors(errors)
     if (errors.length) { setErr(null); return }
+    if (!isNew && ticket.estado !== form.estado && ['resuelto','rechazado','cerrado'].includes(form.estado)) {
+      const action = form.estado === 'rechazado' ? 'rechazar' : 'cerrar'
+      if (!await confirmarAccionSensible({
+        action,
+        subject:`el ticket #${ticket.numero || ticket.id}`,
+        consequence: form.estado === 'rechazado' ? 'El ticket saldrá de las bandejas activas y quedará registrado como rechazado.' : 'El ticket saldrá de pendientes, se detendrá su SLA y se registrará la fecha de cierre.',
+        recovery:'Un usuario con permisos de edición puede reabrirlo desde su ficha; el historial conservará ambos cambios.',
+        confirmText:form.estado === 'rechazado' ? 'Rechazar ticket' : 'Cerrar ticket',
+      })) return
+    }
     setSaving(true); setErr(null)
     try {
       const activo = activos.find(a => a.id === form.activo_id)

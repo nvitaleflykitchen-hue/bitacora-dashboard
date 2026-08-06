@@ -780,7 +780,9 @@ export default function Requerimientos({ focusId }) {
     if (estado === 'Rechazado') {
       comentario = (await pedirTexto({
         titulo: 'Rechazar requerimiento',
-        mensaje: 'Indicá el motivo del rechazo:',
+        mensaje: 'Indicá el motivo del rechazo. Será visible en la trazabilidad del requerimiento.',
+        consecuencia:'El requerimiento saldrá de las columnas activas y no continuará hacia Compras.',
+        recuperacion:'Puede volver a Pendiente desde la misma ficha si corresponde corregirlo; el rechazo seguirá registrado.',
         confirmText: estado,
       })) || ''
       if (!comentario) return

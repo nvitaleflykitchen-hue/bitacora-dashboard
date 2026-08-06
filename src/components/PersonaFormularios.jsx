@@ -16,6 +16,7 @@ import {
   updateApprovedDisciplinaryRequest,
 } from '../lib/disciplinaryWorkflow'
 import { confirmar, toast } from '../lib/feedback'
+import { confirmarAccionSensible } from '../lib/sensitiveActions'
 import { mensajeError } from '../lib/errores'
 
 function localToday() {
@@ -95,13 +96,9 @@ export default function PersonaFormularios({ persona, compact = false, onRegiste
 
   const review = async (request, approved) => {
     const action = approved ? 'aprobar' : 'rechazar'
-    const ok = await confirmar({
-      titulo: approved ? 'Aprobar apercibimiento' : 'Rechazar solicitud',
-      mensaje: `¿Confirmás que querés ${action} esta solicitud?`,
-      confirmText: approved ? 'Aprobar' : 'Rechazar',
-      cancelText: 'Volver',
-      danger: !approved,
-    })
+    const ok = approved
+      ? await confirmar({ titulo:'Aprobar apercibimiento', mensaje:'La solicitud quedará aprobada y lista para notificar.', consecuencia:'Todavía no se incorporará al historial laboral hasta confirmar la notificación.', recuperacion:'Antes de notificar puede revisarse desde esta misma sección.', confirmText:'Aprobar', cancelText:'Volver' })
+      : await confirmarAccionSensible({ action:'rechazar', subject:'la solicitud de apercibimiento', consequence:'No se emitirá el apercibimiento ni se agregará un antecedente al historial laboral.', recovery:'Puede generarse una nueva solicitud corregida; la decisión quedará en la trazabilidad.', confirmText:'Rechazar solicitud' })
     if (!ok) return
     setSaving(true)
     const { error } = await reviewDisciplinaryRequest(request.id, approved, user.id, reviewNotes[request.id])

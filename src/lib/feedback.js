@@ -26,6 +26,15 @@ toast.warn  = (m, o) => toast(m, 'warn', o)
  */
 export function confirmar(config) {
   const detail = typeof config === 'string' ? { mensaje: config } : { ...config }
+  if (detail.danger && detail.peligro == null) detail.peligro = true
+  const sensitiveVerb = String(detail.confirmText || '').trim().toLowerCase().match(/^(eliminar|anular|rechazar|descartar|quitar)/)?.[1]
+  if (sensitiveVerb) {
+    detail.consecuencia ||= `La acción “${detail.confirmText}” se aplicará inmediatamente y quedará reflejada en el sistema.`
+    detail.recuperacion ||= sensitiveVerb === 'descartar'
+      ? 'Se conservará únicamente la última versión guardada o el borrador disponible.'
+      : 'Si este módulo no ofrece reapertura o papelera, la acción no podrá deshacerse desde la aplicación.'
+    detail.cancelText ||= 'Volver'
+  }
   return new Promise(resolve => {
     detail.resolve = resolve
     window.dispatchEvent(new CustomEvent('app:confirm', { detail }))

@@ -9,6 +9,7 @@ import PageHeader from '../../components/PageHeader'
 import { descargarHistorialVehiculoPdf } from '../../lib/vehiculoHistorialPdf'
 import { vehiculoEstadoFromDb, vehiculoEstadoToDb } from '../../lib/vehiculoTicketState'
 import usePersistedState from '../../hooks/usePersistedState'
+import { confirmarAccionSensible } from '../../lib/sensitiveActions'
 
 const COLS = [
   { id:'abierto',     label:'Nuevo',       color:'#50b4ff' },
@@ -54,8 +55,8 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm)
-  const requestClose = () => {
-    if (!isDirty || window.confirm('Hay cambios sin guardar. ¿Querés descartarlos?')) onClose()
+  const requestClose = async () => {
+    if (!isDirty || await confirmarAccionSensible({ action:'descartar', subject:'los cambios del ticket', consequence:'Se perderán las modificaciones que todavía no guardaste.', recovery:'El ticket conservará la última versión guardada.', confirmText:'Descartar cambios' })) onClose()
   }
 
   useEffect(() => {
@@ -72,6 +73,9 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
   async function save() {
     if (!form.activo_nombre.trim()) { setErr('La patente es obligatoria'); return }
     if (!form.descripcion.trim())   { setErr('La descripción es obligatoria'); return }
+    if (!isNew && ticket.estado !== form.estado && ['resuelto','rechazado'].includes(form.estado)) {
+      if (!await confirmarAccionSensible({ action:form.estado === 'rechazado' ? 'rechazar' : 'cerrar', subject:`el ticket de ${ticket.activo_nombre}`, consequence:'Saldrá del tablero activo y el cambio quedará registrado en el historial del vehículo.', recovery:'Puede reabrirse editando nuevamente su estado; el historial anterior se conserva.' })) return
+    }
     setSaving(true); setErr(null)
     const payload = {
       ...form,

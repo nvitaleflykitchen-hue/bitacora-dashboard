@@ -1,7 +1,26 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.16";
+export const APP_VERSION = "2.7.17";
 
 export const RELEASES = [
+  {
+    version: "2.7.17",
+    date: "2026-08-06",
+    title: "Fase 12: formularios y acciones sensibles",
+    functions: [
+      "No Conformidades, acciones CAPA y proyectos de gestiÃ³n guardan borradores locales durante siete dÃ­as.",
+      "Eliminar, anular, rechazar, cerrar y descartar utilizan una Ãºnica confirmaciÃ³n coherente en toda la aplicaciÃ³n.",
+      "Las confirmaciones explican quÃ© cambiarÃ¡ y cÃ³mo recuperar la operaciÃ³n, o advierten cuando no existe recuperaciÃ³n.",
+      "Los cierres y rechazos de tickets informan su efecto sobre pendientes, SLA e historial antes de aplicarse.",
+      "Vacaciones, apercibimientos y requerimientos explican el impacto del rechazo y la posibilidad de volver a solicitar o reabrir.",
+      "Se eliminaron las confirmaciones y solicitudes de motivo nativas del navegador.",
+      "El inventario de formularios documenta quÃ© cargas necesitan borrador y quÃ© acciones requieren confirmaciÃ³n.",
+    ],
+    problem: "Las acciones sensibles usaban mensajes desiguales y algunos formularios largos de Calidad podÃ­an perderse al cerrar o interrumpir la carga.",
+    affectedUsers: "Todos los usuarios que crean formularios o gestionan cierres, rechazos, anulaciones y eliminaciones.",
+    usage: "LeÃ© las secciones QuÃ© ocurrirÃ¡ y RecuperaciÃ³n antes de confirmar. Si interrumpÃ­s una NC o CAPA, volvÃ© al formulario desde el mismo dispositivo para recuperar el borrador.",
+    examples: ["Cerrar un ticket conociendo su efecto sobre el SLA.", "Rechazar vacaciones sabiendo cÃ³mo volver a solicitarlas.", "Retomar una No Conformidad sin reescribir los datos de producto."],
+    screenshots: [],
+  },
   {
     version: "2.7.16",
     date: "2026-08-06",

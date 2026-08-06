@@ -4,6 +4,7 @@ import { UserCircle, Plus, X, Edit2, Trash2, Phone, Mail, Clock, Shield, Save } 
 import PageHeader from '../../components/PageHeader'
 import { confirmar, toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
+import { confirmarAccionSensible } from '../../lib/sensitiveActions'
 
 const CATEGORIAS = [
   'Edificio','Equipos grandes','Equipos medianos','Equipos chicos',
@@ -204,7 +205,11 @@ function ReglasTab({ responsables }) {
     })
     load()
   }
-  const delRegla = async id => { await supabase.schema('mantenimiento').from('reglas_escalacion').delete().eq('id',id); load() }
+  const delRegla = async id => {
+    if (!await confirmarAccionSensible({ action:'eliminar', subject:'la regla de escalación', consequence:'Los nuevos tickets dejarán de usar esta asignación automática.', recovery:'No existe papelera; podés crear nuevamente la misma regla.', confirmText:'Eliminar regla' })) return
+    await supabase.schema('mantenimiento').from('reglas_escalacion').delete().eq('id',id)
+    load()
+  }
 
   const pc = { alta:'#ff5050', media:'#ffb400', baja:'#50b4ff' }
   const TH = { padding:'6px 10px', textAlign:'left', fontSize:'0.6rem', color:'rgba(57,255,20,0.5)', fontFamily:'monospace', letterSpacing:'0.1em', fontWeight:600 }
