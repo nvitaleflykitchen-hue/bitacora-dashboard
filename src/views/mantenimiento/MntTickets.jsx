@@ -469,7 +469,10 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
     }
   }, [sedes, isNew, form.sede_id])
 
-  const activoObj   = activos.find(a => a.id === form.activo_id)
+  const activosSede = form.sede_id
+    ? activos.filter(a => String(a.sede_id) === String(form.sede_id))
+    : []
+  const activoObj   = activos.find(a => String(a.id) === String(form.activo_id))
   const activoTipo  = activoObj?.tipo?.toUpperCase() || null
   const esVehiculo  = activoTipo === 'VEHICULO'
   const tiposDisp   = TICKET_TIPOS_VALIDOS
@@ -496,7 +499,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
     }
     setSaving(true); setErr(null)
     try {
-      const activo = activos.find(a => a.id === form.activo_id)
+      const activo = activos.find(a => String(a.id) === String(form.activo_id))
       const payload = {
         ...form,
         tipo: tipoValido ? form.tipo : tiposDisp[0],
@@ -622,10 +625,18 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW}>
                 <label style={LABEL}>{esVehiculo ? 'Vehículo' : 'Activo / Equipo'}</label>
-                <select value={form.activo_id||''} onChange={e=>set('activo_id',e.target.value||null)} style={INPUT}>
-                  <option value="">Sin activo</option>
-                  {activos.map(a=><option key={a.id} value={a.id}>{a.nombre}{a.codigo_interno?` (${a.codigo_interno})`:''}</option>)}
+                <select
+                  value={form.activo_id||''}
+                  disabled={!form.sede_id}
+                  onChange={e=>set('activo_id',e.target.value||null)}
+                  style={{ ...INPUT, opacity:form.sede_id ? 1 : 0.55 }}
+                >
+                  <option value="">{form.sede_id ? 'Sin activo' : 'Seleccioná una sede primero'}</option>
+                  {activosSede.map(a=><option key={a.id} value={a.id}>{a.nombre}{a.codigo_interno?` (${a.codigo_interno})`:''}</option>)}
                 </select>
+                {form.sede_id && activosSede.length === 0 && (
+                  <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:4 }}>No hay activos cargados para esta sede.</p>
+                )}
               </div>
               <div style={ROW}>
                 <label style={LABEL}>{esVehiculo ? 'Taller / Mecánico' : 'Proveedor / Taller'}</label>
@@ -644,8 +655,17 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                   value={form.sede_id||''}
                   onChange={e => {
                      const s = (sedes||[]).find(x => x.id === Number(e.target.value))
-                     set('sede_id', s ? s.id : null)
-                     set('sede', s ? s.nombre : '')
+                     setForm(current => {
+                       const activoActual = activos.find(a => String(a.id) === String(current.activo_id))
+                       const perteneceASede = s && activoActual && String(activoActual.sede_id) === String(s.id)
+                       return {
+                         ...current,
+                         sede_id: s ? s.id : null,
+                         sede: s ? s.nombre : '',
+                         activo_id: perteneceASede ? current.activo_id : null,
+                         activo_nombre: perteneceASede ? current.activo_nombre : '',
+                       }
+                     })
                    }}
                   style={INPUT}
                 >
@@ -811,7 +831,9 @@ export default function MntTickets({ focusId }) {
     setLoading(true)
     const tfiltros = sedeId ? { sede_id: Number(sedeId) } : {}
     Promise.all([
-      getTickets({ ...tfiltros, sedeIds: allowedSedeIds || undefined }), getActivos(sedeId ? { sede_id: Number(sedeId) } : {}), getProveedores(),
+      getTickets({ ...tfiltros, sedeIds: allowedSedeIds || undefined }),
+      getActivos(sedeId ? { sede_id: Number(sedeId) } : { sedeIds: allowedSedeIds || undefined }),
+      getProveedores(),
       supabase.from('mnt_responsables').select('id,nombre,rol,telefono,email').eq('activo',true).order('nombre')
     ])
       .then(([t, a, p, r]) => {
