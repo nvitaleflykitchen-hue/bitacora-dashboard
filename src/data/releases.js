@@ -1,7 +1,26 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.14";
+export const APP_VERSION = "2.7.15";
 
 export const RELEASES = [
+  {
+    version: "2.7.15",
+    date: "2026-08-06",
+    title: "Fase 10: cierre de deuda mobile",
+    functions: [
+      "Checklist, Calidad, Escalamientos y Personal aumentan sus textos operativos esenciales a un mínimo de 12 píxeles.",
+      "Las altas de CAPA, no conformidades y personas muestran acciones con texto visible en lugar de depender sólo del símbolo +.",
+      "Checklist incorpora botones Volver identificables y una salida clara cuando una sede no tiene controles configurados.",
+      "Calidad permite crear el primer registro directamente desde el estado vacío, respetando los permisos existentes.",
+      "Escalamientos permite quitar filtros o actualizar desde el estado vacío y presenta acciones de comentarios, tickets y estados con nombres completos.",
+      "Personal permite limpiar búsqueda y filtros cuando no encuentra resultados y volver a la lista desde Bajas vacías.",
+      "La sección Recientes de Más puede limpiarse manualmente sin afectar los favoritos.",
+    ],
+    problem: "Varias vistas mobile conservaban textos demasiado pequeños, acciones importantes representadas sólo por íconos y estados vacíos sin un siguiente paso claro.",
+    affectedUsers: "Personal operativo, responsables y administradores que utilizan Checklist, Calidad, Escalamientos o Equipo desde teléfonos.",
+    usage: "Usá las acciones con nombre visible en cada pantalla. En Más, elegí Limpiar recientes cuando quieras reiniciar únicamente ese historial.",
+    examples: ["Crear la primera CAPA desde una lista vacía.", "Quitar un filtro de escalamientos sin regresar manualmente.", "Limpiar búsqueda y sede en Equipo con una sola acción."],
+    screenshots: [],
+  },
   {
     version: "2.7.14",
     date: "2026-08-06",

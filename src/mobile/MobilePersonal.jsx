@@ -17,11 +17,12 @@ import { Download, Share2, Copy } from 'lucide-react'
 import BibliotecaRecursos from '../components/BibliotecaRecursos'
 import EvaluacionesAnalysisPanel from '../components/EvaluacionesAnalysisPanel'
 import { analizarObjetividadEvaluacion } from '../lib/evaluacionObjetividad'
+import EmptyState from '../components/EmptyState'
 
 function SedePill({ label, active, onClick }) {
   return (
     <button onClick={onClick} style={{
-      flexShrink: 0, padding: '0.22rem 0.6rem', borderRadius: 20, fontSize: '0.62rem',
+      flexShrink: 0, padding: '0.22rem 0.6rem', borderRadius: 20, fontSize: '0.75rem',
       fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
       background: active ? 'rgba(57,255,20,0.15)' : 'rgba(255,255,255,0.05)',
       border: active ? '1px solid rgba(57,255,20,0.4)' : '1px solid rgba(255,255,255,0.08)',
@@ -149,7 +150,7 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
           <button onClick={onClose} aria-label="Cerrar formulario" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
         <Card style={{ background: 'rgba(57,255,20,0.04)', border: '1px solid rgba(57,255,20,0.12)' }}>
-          <p style={{ fontSize: '0.58rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 7 }}>Personal evaluado</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 7 }}>Personal evaluado</p>
           {[
             ['Nombre', [persona?.nombre, persona?.apellido].filter(Boolean).join(' ')],
             ['DNI', persona?.dni], ['Legajo', persona?.legajo], ['Puesto', persona?.puesto],
@@ -157,27 +158,27 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
             ['Ingreso', persona?.fecha_ingreso ? fmtFechaLarga(persona.fecha_ingreso) : null],
           ].filter(([, value]) => value).map(([label, value]) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
-              <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>{label}</span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text)', textAlign: 'right' }}>{value}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{label}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text)', textAlign: 'right' }}>{value}</span>
             </div>
           ))}
         </Card>
         <BibliotecaRecursos compact categoria="Evaluaciones de desempeño" />
-        <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: 10 }}>Escala: 1 = muy bajo, 3 = aceptable, 5 = excelente. Dejá sin calificar si no aplica.</p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: 10 }}>Escala: 1 = muy bajo, 3 = aceptable, 5 = excelente. Dejá sin calificar si no aplica.</p>
 
         {[['evaluador_nombre', 'Evaluador', 'Ej: María González'], ['evaluador_cargo', 'Cargo evaluador', 'Ej: Jefe de Cocina'], ['periodo', 'Período', 'Ej: Q2 2026']].map(([k, l, ph]) => (
           <div key={k} style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>{l}</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>{l}</label>
             <input className="input-dark w-full" value={form[k]} onChange={e => set(k, e.target.value)} placeholder={ph} />
           </div>
         ))}
 
         {EVAL_FIELDS.map(b => (
           <div key={b.bloque} style={{ marginBottom: 12 }}>
-            <p style={{ fontSize: '0.68rem', color: 'var(--phosphor)', fontWeight: 700, marginBottom: 6 }}>{b.bloque.toUpperCase()}</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--phosphor)', fontWeight: 700, marginBottom: 6 }}>{b.bloque.toUpperCase()}</p>
             {b.items.map(([k, l]) => (
               <div key={k} style={{ marginBottom: 8 }}>
-                <label style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: 3, display: 'block' }}>{l}</label>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: 3, display: 'block' }}>{l}</label>
                 <ScoreSelect value={form[k]} onChange={v => set(k, v)} />
               </div>
             ))}
@@ -192,11 +193,11 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
         )}
 
         <div style={{ marginBottom: 10 }}>
-          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Observaciones RRHH</label>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Observaciones RRHH</label>
           <textarea className="input-dark w-full" rows={2} value={form.observaciones_rrhh} onChange={e => set('observaciones_rrhh', e.target.value)} placeholder="Ej: Buen desempeño general" />
         </div>
         <div style={{ marginBottom: 10 }}>
-          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sugerencias</label>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sugerencias</label>
           <textarea className="input-dark w-full" rows={2} value={form.sugerencias_evaluador} onChange={e => set('sugerencias_evaluador', e.target.value)} placeholder="Ej: Reforzar manejo de tiempos" />
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -208,16 +209,16 @@ function QuickEvalModal({ persona, onClose, onSaved }) {
           background: analisis.bloqueantes > 0 ? 'rgba(255,68,68,0.08)' : analisis.revisiones > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(57,255,20,0.06)',
           border: analisis.bloqueantes > 0 ? '1px solid rgba(255,68,68,0.35)' : analisis.revisiones > 0 ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgba(57,255,20,0.25)',
         }}>
-          <p style={{ fontSize: '0.65rem', fontWeight: 800, color: analisis.bloqueantes > 0 ? '#ff6b6b' : analisis.revisiones > 0 ? '#f59e0b' : '#39FF14' }}>
+          <p style={{ fontSize: '0.75rem', fontWeight: 800, color: analisis.bloqueantes > 0 ? '#ff6b6b' : analisis.revisiones > 0 ? '#f59e0b' : '#39FF14' }}>
             CONTROL DE OBJETIVIDAD · CALIDAD {analisis.calidad}%
           </p>
           {analisis.hallazgos.map(hallazgo => (
             <div key={hallazgo.codigo} style={{ marginTop: 8 }}>
-              <p style={{ fontSize: '0.68rem', fontWeight: 700, color: hallazgo.severidad === 'bloqueante' ? '#ff6b6b' : '#f59e0b' }}>{hallazgo.titulo}</p>
-              <p style={{ fontSize: '0.64rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>{hallazgo.detalle}</p>
+              <p style={{ fontSize: '0.75rem', fontWeight: 700, color: hallazgo.severidad === 'bloqueante' ? '#ff6b6b' : '#f59e0b' }}>{hallazgo.titulo}</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>{hallazgo.detalle}</p>
             </div>
           ))}
-          {!analisis.hallazgos.length && <p style={{ fontSize: '0.66rem', color: 'var(--text-dim)', marginTop: 6 }}>Sin inconsistencias automáticas. Requiere validación humana.</p>}
+          {!analisis.hallazgos.length && <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 6 }}>Sin inconsistencias automáticas. Requiere validación humana.</p>}
         </Card>
 
         <button onClick={submit} disabled={saving} className="btn-primary w-full" style={{ padding: '0.75rem' }}>
@@ -262,21 +263,21 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
           <h2 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1rem' }}>Nuevo registro</h2>
           <button onClick={onClose} aria-label="Cerrar detalle" style={{ background: 'none', border: 'none', color: 'var(--text-dim)' }}><X size={18} /></button>
         </div>
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Tipo *</label>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Tipo *</label>
         <select className="input-dark w-full" value={form.tipo} onChange={e => set('tipo', e.target.value)} style={{ marginBottom: 12 }}>
           {tiposDisponibles.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fecha *</label>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fecha *</label>
         <input type="date" className="input-dark w-full" value={form.fecha} onChange={e => set('fecha', e.target.value)} style={{ marginBottom: 12 }} />
         {form.tipo === 'suspension' && (
           <>
-            <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Días de suspensión</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Días de suspensión</label>
             <input type="number" className="input-dark w-full" value={form.dias_suspension} onChange={e => set('dias_suspension', e.target.value)} placeholder="Ej: 3" style={{ marginBottom: 12 }} />
           </>
         )}
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Descripción *</label>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Descripción *</label>
         <textarea className="input-dark w-full" rows={3} value={form.descripcion} onChange={e => set('descripcion', e.target.value)} placeholder="Ej: Llegó 40 minutos tarde sin avisar" style={{ marginBottom: 12 }} />
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Registrado por</label>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Registrado por</label>
         <input className="input-dark w-full" value={form.registrado_por} onChange={e => set('registrado_por', e.target.value)} placeholder="Ej: Carlos Ruiz" style={{ marginBottom: 16 }} />
         <button onClick={submit} disabled={saving} className="btn-primary w-full" style={{ padding: '0.75rem' }}>
           {saving ? 'Guardando...' : 'Guardar registro'}
@@ -336,13 +337,13 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
         </div>
         {[['nombre', 'Nombre *', 'Ej: Juan'], ['apellido', 'Apellido', 'Ej: Pérez'], ['legajo', 'N.º de legajo', 'Ej: FK-00125'], ['dni', 'DNI', 'Ej: 34567890'], ['puesto', 'Puesto', 'Ej: Cocinero'], ['area', 'Área', 'Ej: Cocina'], ['telefono', 'Teléfono', 'Ej: 1145678900'], ['email', 'Email', 'Ej: juan.perez@email.com']].map(([k, l, ph]) => (
           <div key={k} style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>{l}</label>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>{l}</label>
             <input className="input-dark w-full" value={form[k]} onChange={e => set(k, e.target.value)} placeholder={ph} />
           </div>
         ))}
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fecha de ingreso</label>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fecha de ingreso</label>
         <input type="date" className="input-dark w-full" value={form.fecha_ingreso} onChange={e => set('fecha_ingreso', e.target.value)} style={{ marginBottom: 16 }} />
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede {requireSede?'*':''}</label>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede {requireSede?'*':''}</label>
         <select className="input-dark w-full" value={form.sede_ids[0]||''} onChange={e=>set('sede_ids',e.target.value?[Number(e.target.value)]:[])} style={{marginBottom:16}}>
           {!requireSede&&<option value="">Equipo central (sin sede)</option>}
           {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
@@ -454,8 +455,8 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
   return (
     <div className="mobile-scroll" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ padding: '0.75rem 1rem 0', flexShrink: 0 }}>
-        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--phosphor)', fontSize: '0.75rem', fontWeight: 600, marginBottom: 10 }}>
-          <ChevronLeft size={15} /> Equipo
+        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--phosphor)', fontSize: '0.75rem', fontWeight: 600, marginBottom: 10, minHeight:44, padding:'0.4rem 0.6rem' }}>
+          <ChevronLeft size={17} aria-hidden="true" /> Volver a Equipo
         </button>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <PersonaAvatar persona={persona} size={64} />
@@ -466,9 +467,9 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
         </div>
         {canManage && <PersonaFotoEditor persona={persona} compact showAvatar={false} onChanged={load} />}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--phosphor)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
-          {mailLink && <a href={mailLink} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text)', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, textDecoration: 'none' }}><Mail size={11} /> Email</a>}
-          {canDelete && <button onClick={deletePersona} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,42,42,0.12)', color:'#ff5c5c', border:'1px solid rgba(255,42,42,0.3)', padding:'0.35rem 0.7rem', borderRadius:6, fontSize:'0.65rem', fontWeight:700 }}><Trash2 size={11} /> Eliminar</button>}
+          {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--phosphor)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
+          {mailLink && <a href={mailLink} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text)', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Mail size={11} /> Email</a>}
+          {canDelete && <button onClick={deletePersona} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,42,42,0.12)', color:'#ff5c5c', border:'1px solid rgba(255,42,42,0.3)', padding:'0.35rem 0.7rem', borderRadius:6, fontSize:'0.75rem', fontWeight:700 }}><Trash2 size={11} /> Eliminar</button>}
         </div>
       </div>
 
@@ -480,7 +481,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
         ].map(k => (
           <div key={k.label} style={{ flex: 1, background: 'var(--surface)', borderRadius: 8, padding: '0.5rem', textAlign: 'center' }}>
             <p style={{ fontWeight: 800, fontSize: '1rem', color: k.color || 'var(--phosphor)' }}>{k.value}</p>
-            <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{k.label}</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{k.label}</p>
           </div>
         ))}
       </div>
@@ -494,7 +495,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
           ...(canManage ? [['formularios', 'Formularios']] : []),
         ].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
-            padding: '0.35rem 0.7rem', borderRadius: 14, fontSize: '0.68rem', fontWeight: 700, border: 'none', whiteSpace: 'nowrap',
+            padding: '0.35rem 0.7rem', borderRadius: 14, fontSize: '0.75rem', fontWeight: 700, border: 'none', whiteSpace: 'nowrap',
             background: tab === id ? 'rgba(57,255,20,0.15)' : 'var(--surface)', color: tab === id ? 'var(--phosphor)' : 'var(--text-dim)',
           }}>{label}</button>
         ))}
@@ -507,19 +508,19 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
               ['Fecha de ingreso', persona.fecha_ingreso ? fmtFechaLarga(persona.fecha_ingreso) : null]]
               .filter(([, v]) => v).map(([l, v]) => (
                 <div key={l} style={{ marginBottom: 8 }}>
-                  <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{l}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{l}</p>
                   <p style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{v}</p>
                 </div>
               ))}
             {persona.descripcion_puesto && (
               <div style={{ marginTop: 8 }}>
-                <p style={{ fontSize: '0.6rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 4 }}>Descripción del puesto</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 4 }}>Descripción del puesto</p>
                 <p style={{ fontSize: '0.78rem', color: 'var(--text)', lineHeight: 1.5 }}>{persona.descripcion_puesto}</p>
               </div>
             )}
             {persona.procesos?.length > 0 && (
               <div style={{ marginTop: 10 }}>
-                <p style={{ fontSize: '0.6rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 4 }}>Procesos que ejecuta</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--phosphor)', textTransform: 'uppercase', marginBottom: 4 }}>Procesos que ejecuta</p>
                 {persona.procesos.map((p, i) => <p key={i} style={{ fontSize: '0.78rem', color: 'var(--text)', marginBottom: 3 }}>▸ {p}</p>)}
               </div>
             )}
@@ -529,7 +530,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
         {tab === 'evaluaciones' && (
           <>
             {canManage && (
-              <button onClick={() => setShowEval(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', padding: '0.5rem 0.8rem', marginBottom: 12 }}>
+              <button onClick={() => setShowEval(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', padding: '0.5rem 0.8rem', marginBottom: 12 }}>
                 <Plus size={12} /> Nueva evaluación
               </button>
             )}
@@ -538,21 +539,21 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
               <Card key={ev.id}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div>
-                    <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{ev.periodo || 'Sin período'} · {fmtFechaLarga(ev.fecha_evaluacion)}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{ev.periodo || 'Sin período'} · {fmtFechaLarga(ev.fecha_evaluacion)}</p>
                     <p style={{ fontSize: '0.78rem', color: 'var(--text)' }}>{ev.evaluador_nombre || 'Evaluador no especificado'}</p>
                   </div>
                   {ev.puntaje_calculado && (
                     <div style={{ textAlign: 'right' }}>
                       <p style={{ fontWeight: 800, fontSize: '1.2rem', color: RESULTADO_COLOR[ev.resultado_global] }}>{ev.puntaje_calculado}</p>
-                      <p style={{ fontSize: '0.6rem', color: RESULTADO_COLOR[ev.resultado_global] }}>{ev.resultado_global}</p>
+                      <p style={{ fontSize: '0.75rem', color: RESULTADO_COLOR[ev.resultado_global] }}>{ev.resultado_global}</p>
                     </div>
                   )}
                 </div>
-                {ev.observaciones_rrhh && <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>📝 {ev.observaciones_rrhh}</p>}
+                {ev.observaciones_rrhh && <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>📝 {ev.observaciones_rrhh}</p>}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                  <button onClick={() => downloadEvaluacionPersonalPdf(persona, ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem' }}><Download size={12} /> PDF</button>
-                  <button onClick={() => shareEvaluacion(ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem' }}><Share2 size={12} /> Compartir</button>
-                  <button onClick={() => copyEvaluacion(ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem' }}><Copy size={12} /> Copiar</button>
+                  <button onClick={() => downloadEvaluacionPersonalPdf(persona, ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem' }}><Download size={12} /> PDF</button>
+                  <button onClick={() => shareEvaluacion(ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem' }}><Share2 size={12} /> Compartir</button>
+                  <button onClick={() => copyEvaluacion(ev)} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem' }}><Copy size={12} /> Copiar</button>
                 </div>
               </Card>
             ))}
@@ -562,7 +563,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
         {tab === 'historial' && (
           <>
             {canManage && (
-              <button onClick={() => setShowHist(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', padding: '0.5rem 0.8rem', marginBottom: 12 }}>
+              <button onClick={() => setShowHist(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', padding: '0.5rem 0.8rem', marginBottom: 12 }}>
                 <Plus size={12} /> Agregar registro
               </button>
             )}
@@ -572,12 +573,12 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
                 <div style={{ width: 8, height: 8, borderRadius: 4, background: TIPO_COLOR[h.tipo] || 'var(--phosphor)', marginTop: 4, flexShrink: 0 }} />
                 <div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 2 }}>
-                    <span style={{ fontSize: '0.6rem', color: TIPO_COLOR[h.tipo], textTransform: 'uppercase', fontWeight: 700 }}>{h.tipo.replace('_', ' ')}</span>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{fmtFechaLarga(h.fecha)}</span>
-                    {h.dias_suspension && <span style={{ fontSize: '0.6rem', color: '#FF2A2A' }}>({h.dias_suspension} días)</span>}
+                    <span style={{ fontSize: '0.75rem', color: TIPO_COLOR[h.tipo], textTransform: 'uppercase', fontWeight: 700 }}>{h.tipo.replace('_', ' ')}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{fmtFechaLarga(h.fecha)}</span>
+                    {h.dias_suspension && <span style={{ fontSize: '0.75rem', color: '#FF2A2A' }}>({h.dias_suspension} días)</span>}
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text)' }}>{h.descripcion}</p>
-                  {h.registrado_por && <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: 2 }}>Por: {h.registrado_por}</p>}
+                  {h.registrado_por && <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>Por: {h.registrado_por}</p>}
                   <AdjuntosPanel
                     entityType="historial_personal"
                     entityId={h.id}
@@ -599,7 +600,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
                 <span style={{ fontSize: '1.3rem' }}>{l.icono || '🏆'}</span>
                 <div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text)' }}>{l.nombre}</p>
-                  <p style={{ fontSize: '0.6rem', color: 'var(--phosphor)' }}>+{l.puntos} pts · {fmtFechaLarga(l.fecha)}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--phosphor)' }}>+{l.puntos} pts · {fmtFechaLarga(l.fecha)}</p>
                 </div>
               </Card>
             ))}
@@ -694,23 +695,23 @@ export default function MobilePersonal() {
       <div style={{ padding: '1.25rem 1rem 0.75rem', flexShrink: 0 }}>
         <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.75rem' }}>{isQualityOnly ? 'Equipo Calidad' : isSafetyOnly ? 'Personal · Seguridad e Higiene' : 'Equipo'}</h1>
         <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--surface)', padding: '0.2rem', borderRadius: 20, marginBottom: '0.75rem' }}>
-          <button onClick={() => setView('lista')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'lista' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'lista' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
+          <button onClick={() => setView('lista')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'lista' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'lista' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
             <Users size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Lista
           </button>
-          <button onClick={() => setView('analisis')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'analisis' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'analisis' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
+          <button onClick={() => setView('analisis')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'analisis' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'analisis' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
             <Star size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Análisis
           </button>
-          <button onClick={() => setView('recursos')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'recursos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'recursos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Recursos</button>
-          {!isQualityOnly && <button onClick={() => setView('bajas')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'bajas' ? 'rgba(245,158,11,0.15)' : 'transparent', color: view === 'bajas' ? '#F59E0B' : 'var(--text-dim)' }}>
+          <button onClick={() => setView('recursos')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'recursos' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'recursos' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Recursos</button>
+          {!isQualityOnly && <button onClick={() => setView('bajas')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'bajas' ? 'rgba(245,158,11,0.15)' : 'transparent', color: view === 'bajas' ? '#F59E0B' : 'var(--text-dim)' }}>
             Bajas ({bajas.length})
           </button>}
-          {!isQualityOnly && <button onClick={() => setView('vacaciones')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700, border: 'none', background: view === 'vacaciones' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'vacaciones' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Vacaciones</button>}
+          {!isQualityOnly && <button onClick={() => setView('vacaciones')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'vacaciones' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'vacaciones' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Vacaciones</button>}
         </div>
         {view === 'lista' && (
           <>
             <div style={{ position: 'relative', marginBottom: sedes.length > 1 ? '0.5rem' : 0 }}>
               <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
-              <input className="input-dark w-full" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 30 }} />
+              <input className="input-dark w-full" aria-label="Buscar personas" placeholder="Buscar por nombre, legajo o puesto..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 30 }} />
             </div>
             {(sedes.length > 0 || personas.some(p => !p.sede_ids?.length && !p.sede_id)) && (
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }} className="hide-scrollbar">
@@ -729,20 +730,20 @@ export default function MobilePersonal() {
             <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
           </div>
         ) : view === 'lista' ? (
-          filtered.length === 0 ? <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', textAlign: 'center', marginTop: '2rem' }}>Sin resultados.</p> :
+          filtered.length === 0 ? <EmptyState icono={Users} titulo="No encontramos personas" detalle="Probá con otro nombre o quitá el filtro de sede." accion="Limpiar búsqueda y filtros" onAccion={() => { setSearch(''); setSelectedSede(null) }} /> :
           filtered.map(p => {
             const puntaje = p.puntaje_promedio || 0
             const res = puntaje > 0 ? getResultado(puntaje) : null
             return (
-              <button key={p.id} onClick={() => setSelectedId(p.id)} style={{ width: '100%', textAlign: 'left', background: 'var(--surface)', border: 'none', borderRadius: 10, padding: '0.85rem', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button key={p.id} onClick={() => setSelectedId(p.id)} style={{ width: '100%', textAlign: 'left', background: 'var(--surface)', border: 'none', borderRadius: 10, padding: '0.85rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <PersonaAvatar persona={p} size={42} />
                 <div style={{ flex: 1 }}>
                   <p style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.85rem' }}>{p.nombre} {p.apellido || ''}</p>
-                  <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem', marginTop: 2 }}>{p.puesto || '—'}</p>
+                  <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: 2 }}>{p.puesto || '—'}</p>
                   <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                    {p.puntos_total > 0 && <span style={{ fontSize: '0.62rem', color: 'var(--phosphor)' }}>⭐ {p.puntos_total}pts</span>}
-                    {res && <span style={{ fontSize: '0.62rem', color: RESULTADO_COLOR[res] }}>{res}</span>}
-                    {(p.incidentes || 0) > 0 && <span style={{ fontSize: '0.62rem', color: '#F59E0B' }}>⚠ {p.incidentes}</span>}
+                    {p.puntos_total > 0 && <span style={{ fontSize: '0.75rem', color: 'var(--phosphor)' }}>⭐ {p.puntos_total}pts</span>}
+                    {res && <span style={{ fontSize: '0.75rem', color: RESULTADO_COLOR[res] }}>{res}</span>}
+                    {(p.incidentes || 0) > 0 && <span style={{ fontSize: '0.75rem', color: '#F59E0B' }}>⚠ {p.incidentes}</span>}
                   </div>
                 </div>
                 <ChevronRight size={15} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
@@ -752,11 +753,11 @@ export default function MobilePersonal() {
         ) : view === 'vacaciones' ? (
           <VacacionesPanel personas={personas} sedes={sedes} canManage={canManage} compact />
         ) : view === 'bajas' ? (
-          bajas.length === 0 ? <p style={{ color:'var(--text-dim)', textAlign:'center', marginTop:'2rem' }}>No hay bajas registradas.</p> : bajas.map(p => (
-            <div key={p.id} style={{ background:'var(--surface)', borderRadius:10, padding:'0.85rem', marginBottom:'0.6rem', display:'flex', gap:10, alignItems:'center' }}>
+          bajas.length === 0 ? <EmptyState icono={Users} titulo="No hay bajas registradas" detalle="Las personas dadas de baja aparecerán en esta sección." accion="Volver a la lista" onAccion={() => setView('lista')} /> : bajas.map(p => (
+            <div key={p.id} style={{ background:'var(--surface)', borderRadius:10, padding:'0.85rem', marginBottom:'0.75rem', display:'flex', gap:10, alignItems:'center' }}>
               <PersonaAvatar persona={p} size={42} />
-              <div style={{ flex:1 }}><p style={{ color:'var(--text)', fontWeight:600 }}>{p.nombre} {p.apellido || ''}</p><p style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>{p.puesto || 'Sin puesto'}</p></div>
-              <div style={{ textAlign:'right' }}><p style={{ color:'#F59E0B', fontSize:'0.62rem', textTransform:'uppercase' }}>{(p.motivo_baja || 'otro').replaceAll('_',' ')}</p><p style={{ color:'var(--text-dim)', fontSize:'0.62rem' }}>{p.fecha_baja || 'Sin fecha'}</p>{canManage && <button className="btn-ghost" style={{ marginTop:6, fontSize:'0.6rem' }} onClick={() => reactivar(p)}>REACTIVAR</button>}</div>
+              <div style={{ flex:1 }}><p style={{ color:'var(--text)', fontWeight:600 }}>{p.nombre} {p.apellido || ''}</p><p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{p.puesto || 'Sin puesto'}</p></div>
+              <div style={{ textAlign:'right' }}><p style={{ color:'#F59E0B', fontSize:'0.75rem', textTransform:'uppercase' }}>{(p.motivo_baja || 'otro').replaceAll('_',' ')}</p><p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>{p.fecha_baja || 'Sin fecha'}</p>{canManage && <button className="btn-ghost" style={{ marginTop:6, fontSize:'0.75rem' }} onClick={() => reactivar(p)}>REACTIVAR</button>}</div>
             </div>
           ))
         ) : view === 'analisis' ? (
@@ -773,11 +774,11 @@ export default function MobilePersonal() {
 
       {canManage && (
         <button onClick={() => setShowNew(true)} style={{
-          position: 'absolute', bottom: '1.5rem', right: '1.5rem', width: 50, height: 50, borderRadius: 25,
-          background: 'var(--phosphor)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'absolute', bottom: '1.5rem', right: '1.5rem', minHeight:48, borderRadius:24, padding:'0.7rem 1rem',
+          background: 'var(--phosphor)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap:6, fontSize:'0.78rem', fontWeight:800,
           boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10,
         }}>
-          <Plus size={24} />
+          <Plus size={18} aria-hidden="true" /> Nueva persona
         </button>
       )}
 

@@ -10,6 +10,7 @@ import ComentariosHilo from '../components/ComentariosHilo'
 
 import { ESCALAMIENTO_ESTADO_COLOR } from '../lib/estados'
 import SkeletonTable from '../components/SkeletonTable'
+import EmptyState from '../components/EmptyState'
 const ESTADO_COLOR = Object.fromEntries(
   Object.entries(ESCALAMIENTO_ESTADO_COLOR).map(([k, c]) => [k, { color: c, bg: `${c}1A` }])
 )
@@ -104,17 +105,17 @@ export default function MobileEscalamientos() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{ padding: '1rem 1rem 0.6rem', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <h1 style={{ color: 'var(--text)', fontSize: '1.1rem', fontWeight: 700 }}>Escalamientos</h1>
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             {pendientes > 0 && (
-              <span style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 4, padding: '0.1rem 0.5rem', fontSize: '0.65rem', color: '#F59E0B', fontWeight: 700 }}>
-                {pendientes} pend.
+              <span style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 4, padding: '0.1rem 0.5rem', fontSize: '0.75rem', color: '#F59E0B', fontWeight: 700 }}>
+                {pendientes} pendientes
               </span>
             )}
             {enGestion > 0 && (
-              <span style={{ background: 'rgba(80,180,255,0.12)', border: '1px solid rgba(80,180,255,0.3)', borderRadius: 4, padding: '0.1rem 0.5rem', fontSize: '0.65rem', color: '#50b4ff', fontWeight: 700 }}>
-                {enGestion} en gest.
+              <span style={{ background: 'rgba(80,180,255,0.12)', border: '1px solid rgba(80,180,255,0.3)', borderRadius: 4, padding: '0.1rem 0.5rem', fontSize: '0.75rem', color: '#50b4ff', fontWeight: 700 }}>
+                {enGestion} en gestión
               </span>
             )}
           </div>
@@ -125,7 +126,7 @@ export default function MobileEscalamientos() {
           {['todos', ...ESTADOS].map(f => (
             <button key={f} onClick={() => setFiltro(f)}
               style={{
-                padding: '0.3rem 0.75rem', borderRadius: 20, fontSize: '0.65rem', fontWeight: 600,
+                padding: '0.3rem 0.75rem', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
                 border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                 background: filtro === f ? 'rgba(249,115,22,0.15)' : 'var(--surface)',
                 color: filtro === f ? '#F97316' : 'var(--text-dim)',
@@ -141,30 +142,33 @@ export default function MobileEscalamientos() {
         {loading ? (
           <SkeletonTable filas={6} columnas={2} />
         ) : filtrados.length === 0 ? (
-          <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
-            <p style={{ color: 'var(--phosphor)', fontSize: '1.8rem', marginBottom: '0.5rem' }}>✓</p>
-            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Sin escalamientos {filtro !== 'todos' ? `"${filtro}"` : 'activos'}</p>
-          </div>
+          <EmptyState
+            icono={MessageSquare}
+            titulo={filtro !== 'todos' ? `No hay escalamientos en “${filtro}”` : 'No hay escalamientos activos'}
+            detalle={filtro !== 'todos' ? 'Probá quitando el filtro para consultar todos los casos.' : 'Los casos que requieran seguimiento aparecerán acá.'}
+            accion={filtro !== 'todos' ? 'Ver todos' : 'Actualizar'}
+            onAccion={filtro !== 'todos' ? () => setFiltro('todos') : load}
+          />
         ) : filtrados.map(e => {
           const est = ESTADO_COLOR[e.estado] || ESTADO_COLOR['Pendiente']
           const tipoColor = TIPO_COLOR[e.tipo] || '#9ca3af'
           return (
             <div key={e.id} style={{
               background: 'var(--surface)', borderRadius: 10, padding: '0.9rem 1rem',
-              marginBottom: '0.6rem',
+              marginBottom: '0.75rem',
               borderLeft: `3px solid ${tipoColor}`,
             }}>
               {/* Tipo + Sede + Estado */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                 <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  <span style={{ background: `${tipoColor}22`, border: `1px solid ${tipoColor}66`, borderRadius: 4, padding: '0.15rem 0.5rem', fontSize: '0.62rem', color: tipoColor, fontWeight: 700 }}>
+                  <span style={{ background: `${tipoColor}22`, border: `1px solid ${tipoColor}66`, borderRadius: 4, padding: '0.15rem 0.5rem', fontSize: '0.75rem', color: tipoColor, fontWeight: 700 }}>
                     {e.tipo || 'General'}
                   </span>
                   <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.82rem' }}>
                     {e.sede_nombre || '—'}
                   </span>
                 </div>
-                <span style={{ background: est.bg, borderRadius: 4, padding: '0.15rem 0.5rem', fontSize: '0.6rem', color: est.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                <span style={{ background: est.bg, borderRadius: 4, padding: '0.15rem 0.5rem', fontSize: '0.75rem', color: est.color, fontWeight: 700, whiteSpace: 'nowrap' }}>
                   {e.estado}
                 </span>
               </div>
@@ -175,36 +179,36 @@ export default function MobileEscalamientos() {
               </p>
 
               {/* Meta */}
-              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.6rem', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  {e.reportante && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.62rem' }}>{e.reportante}</span>}
+                  {e.reportante && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>{e.reportante}</span>}
                   {e.fecha_reporte && (
-                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.62rem' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>
                       {format(new Date(e.fecha_reporte + 'T12:00:00'), "d MMM", { locale: es })}
                     </span>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   {e.registro_id && (
-                    <button onClick={() => setSelRegId(e.registro_id)} className="btn-ghost" style={{ padding: '0.15rem 0.5rem', fontSize: '0.6rem' }}>
+                    <button onClick={() => setSelRegId(e.registro_id)} className="btn-ghost" style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}>
                       Ver reporte
                     </button>
                   )}
-                  <button onClick={() => setSelComentarioId(e.id)} className="btn-ghost flex items-center gap-1" style={{ padding: '0.15rem 0.5rem', fontSize: '0.6rem' }}>
-                    <MessageSquare size={11} /> Comentarios
+                  <button onClick={() => setSelComentarioId(e.id)} className="btn-ghost flex items-center gap-1" style={{ padding: '0.45rem 0.65rem', fontSize: '0.75rem' }}>
+                    <MessageSquare size={15} aria-hidden="true" /> Ver comentarios
                   </button>
                 </div>
               </div>
 
               {canManage && e.tipo === 'Mantenimiento' && (
-                <div style={{ marginBottom: '0.6rem' }}>
+                <div style={{ marginBottom: '0.75rem' }}>
                   {tickets[e.id] ? (
-                    <span style={{ color: 'var(--phosphor)', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0', display: 'block' }}>
+                    <span style={{ color: 'var(--phosphor)', fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0', display: 'block' }}>
                       Ticket #{tickets[e.id].numero} generado
                     </span>
                   ) : (
-                    <button onClick={() => abrirGenerarTicket(e)} className="btn-ghost flex items-center gap-1" style={{ padding: '0.25rem 0.5rem', fontSize: '0.65rem', color: '#F59E0B', width: '100%', justifyContent: 'center', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 6 }}>
-                      <Wrench size={12} /> Generar Ticket de Mantenimiento
+                    <button onClick={() => abrirGenerarTicket(e)} className="btn-ghost flex items-center gap-1" style={{ padding: '0.55rem 0.7rem', fontSize: '0.75rem', color: '#F59E0B', width: '100%', justifyContent: 'center', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 6 }}>
+                      <Wrench size={15} aria-hidden="true" /> Generar ticket de mantenimiento
                     </button>
                   )}
                 </div>
@@ -217,13 +221,13 @@ export default function MobileEscalamientos() {
                     <button key={s} onClick={() => handleEstado(e.id, s)}
                       disabled={updating === e.id}
                       style={{
-                        padding: '0.3rem 0.7rem', borderRadius: 6, fontSize: '0.65rem', fontWeight: 600,
+                        padding: '0.3rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
                         cursor: updating === e.id ? 'wait' : 'pointer', border: 'none',
                         background: ESTADO_COLOR[s]?.bg || 'var(--surface)',
                         color: ESTADO_COLOR[s]?.color || 'var(--text-dim)',
                         opacity: updating === e.id ? 0.5 : 1,
                       }}>
-                      → {s}
+                      Cambiar a {s}
                     </button>
                   ))}
                 </div>

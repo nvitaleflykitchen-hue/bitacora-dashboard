@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  clearMobileRecents,
   loadMobileShortcuts,
   recordMobileRecent,
   sanitizeMobileShortcuts,
@@ -23,6 +24,7 @@ describe('mobileShortcuts', () => {
     expect(toggleMobileFavorite(base, 'flota').favorites).toEqual([])
     expect(toggleMobileFavorite(base, 'calidad').favorites).toEqual(['calidad', 'flota'])
     expect(recordMobileRecent(base, 'flota').recents).toEqual(['flota', 'personal'])
+    expect(clearMobileRecents(base)).toEqual({ favorites: ['flota'], recents: [] })
   })
 
   it('tolera almacenamiento inválido o no disponible', () => {

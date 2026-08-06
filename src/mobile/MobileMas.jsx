@@ -15,7 +15,7 @@ import AuditoriasInternas from '../views/AuditoriasInternas'
 import { useAuth } from '../lib/auth'
 import { canAccessView } from '../lib/access'
 import { useBackHandler } from '../lib/backStack'
-import { loadMobileShortcuts, recordMobileRecent, saveMobileShortcuts, toggleMobileFavorite } from '../lib/mobileShortcuts'
+import { clearMobileRecents, loadMobileShortcuts, recordMobileRecent, saveMobileShortcuts, toggleMobileFavorite } from '../lib/mobileShortcuts'
 
 const MODULES = [
   { key:'escalamientos', label:'Escalamientos', sub:'Casos que requieren seguimiento', icon:ClipboardCheck, view:'escalamientos' },
@@ -158,7 +158,12 @@ export default function MobileMas({ initialModule = null, userId = null }) {
 
           {recentModules.length > 0 && (
             <section aria-labelledby="mobile-more-recents">
-              <h2 id="mobile-more-recents" style={{ color:'var(--text-dim)', fontSize:'0.72rem', textTransform:'uppercase', letterSpacing:'0.08em', margin:'1rem 0 0.55rem' }}>Recientes</h2>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.75rem', margin:'1rem 0 0.55rem' }}>
+                <h2 id="mobile-more-recents" style={{ color:'var(--text-dim)', fontSize:'0.75rem', textTransform:'uppercase', letterSpacing:'0.08em' }}>Recientes</h2>
+                <button type="button" onClick={() => setShortcuts(current => clearMobileRecents(current))} className="btn-ghost" style={{ minHeight:44, padding:'0.45rem 0.7rem', fontSize:'0.75rem' }}>
+                  Limpiar recientes
+                </button>
+              </div>
               {recentModules.map(mod => (
                 <ModuleCard key={`recent-${mod.key}`} mod={mod} onOpen={openModule} favorite={false} onToggleFavorite={toggleFavorite} compact />
               ))}
