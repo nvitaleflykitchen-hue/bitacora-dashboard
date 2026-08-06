@@ -42,6 +42,7 @@ import VacacionesPanel from "../components/VacacionesPanel";
 import PersonaRrhhPanel from "../components/PersonaRrhhPanel";
 import BibliotecaRecursos from "../components/BibliotecaRecursos";
 import EvaluacionesAnalysisPanel from "../components/EvaluacionesAnalysisPanel";
+import OverflowTabs from "../components/OverflowTabs";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
 import {
@@ -3204,6 +3205,19 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
   );
 
   const periodosPrueba = personas.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=-30 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
+  const primaryTabs = [
+    ["lista", "LISTA"], ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
+    ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
+  ].filter(([id]) => !isQualityOnly || ["lista", "analisis", "recursos"].includes(id))
+    .map(([id, label]) => ({ id, label }));
+  const secondaryTabs = [
+    ...(canManage ? [["periodo-prueba", `PERÍODO DE PRUEBA (${periodosPrueba.length})`]] : []),
+    ...(isAdmin ? [["credenciales", "CREDENCIALES EMITIDAS"]] : []),
+    ["bajas", `HISTORIAL DE BAJAS (${bajas.length})`],
+    ...(canManage ? [["duplicados", `DUPLICADOS (${duplicados.length})`]] : []),
+    ["reclutamiento", "SELECCIÓN"], ["contactos", "CONTACTOS"],
+  ].filter(([id]) => !isQualityOnly || ["lista", "analisis", "recursos"].includes(id))
+    .map(([id, label]) => ({ id, label }));
 
   const RESULTADO_COLOR = {
     Bajo: "#ff4444",
@@ -3370,7 +3384,14 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
         className="px-6 py-2 flex items-center gap-4"
         style={{ borderBottom: "1px solid rgba(57,255,20,0.06)" }}
       >
-        <div className="flex gap-0">
+        <OverflowTabs
+          primaryTabs={primaryTabs}
+          secondaryTabs={secondaryTabs}
+          activeTab={tab}
+          onChange={setTab}
+          ariaLabel="Secciones de Equipo"
+        />
+        <div className="hidden">
           {[
             ["lista", "LISTA"],
             ["analisis", "ANÁLISIS"],

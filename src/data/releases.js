@@ -1,7 +1,22 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.7";
+export const APP_VERSION = "2.7.8";
 
 export const RELEASES = [
+  {
+    version: "2.7.8",
+    date: "2026-08-05",
+    title: "Equipo: navegación compacta",
+    functions: [
+      "Equipo muestra cinco secciones principales y agrupa las herramientas ocasionales en un menú Más.",
+      "Período de prueba, Credenciales, Historial de bajas, Duplicados, Selección y Contactos siguen disponibles sin ocupar toda la barra.",
+      "El menú indica cuándo una herramienta secundaria está activa y se cierra al elegir, tocar afuera o presionar Escape.",
+    ],
+    problem: "La barra de Equipo mostraba once opciones simultáneas, partía textos en varias líneas y mezclaba vistas frecuentes con herramientas administrativas.",
+    affectedUsers: "Administradores, responsables de RR. HH. y usuarios de consulta del módulo Equipo.",
+    usage: "Usá las cinco vistas visibles para el trabajo frecuente y abrí Más para acceder a las herramientas administrativas.",
+    examples: ["Abrir Historial de bajas desde Más.", "Consultar Duplicados sin recargar la barra principal."],
+    screenshots: [],
+  },
   {
     version: "2.7.7",
     date: "2026-08-05",
