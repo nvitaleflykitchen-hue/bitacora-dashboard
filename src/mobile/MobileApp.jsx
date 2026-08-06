@@ -24,7 +24,7 @@ const NAV = [
   { key: 'home',          label: 'Inicio',    icon: '⌂' },
   { key: 'tareas',        label: 'Tareas',    icon: '✓' },
   { key: 'sedes',         label: 'Sedes',     icon: '⊞' },
-  { key: 'escalamientos', label: 'Escalam.',  icon: '⚠' },
+  { key: 'escalamientos', label: 'Alertas',   icon: '⚠' },
   { key: 'checklist',     label: 'Checklist', icon: '☑' },
   { key: 'tickets',       label: 'Tickets',   icon: '🔧' },
   { key: 'compras',       label: 'Compras',   icon: '🛒' },
@@ -123,7 +123,7 @@ export default function MobileApp() {
     if (tab === 'checklist')     return <MobileChecklist onBack={() => setTab('home')} onGoTareas={() => setTab('tareas')} />
     if (tab === 'tickets')       return <MobileTickets />
     if (tab === 'compras')       return <MobileRequerimientos />
-    if (tab === 'mas')           return <MobileMas initialModule={masModule} />
+    if (tab === 'mas')           return <MobileMas key={`${user?.id || 'anon'}-${rol}`} initialModule={masModule} userId={user?.id} />
     if (tab === 'perfil')        return <MobilePerfil perfil={perfil} onLogout={handleLogout} />
     return null
   }
@@ -150,8 +150,8 @@ export default function MobileApp() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {!isQualityOnly && !isComprasOnly && <NotificationCenter onNavigate={handleNotificationNavigate} />}
-          <button onClick={() => setTab('perfil')} style={{ background: 'none', border: 'none', padding: 0, color: tab === 'perfil' ? 'var(--phosphor)' : 'var(--text-dim)', display: 'flex' }}>
-            <User size={18} />
+          <button type="button" onClick={() => setTab('perfil')} aria-label="Abrir mi perfil" aria-current={tab === 'perfil' ? 'page' : undefined} style={{ background:'none', border:'none', padding:0, color:tab === 'perfil' ? 'var(--phosphor)' : 'var(--text-dim)', display:'grid', placeItems:'center', minWidth:44, minHeight:44 }}>
+            <User size={20} aria-hidden="true" />
           </button>
           <span style={{
             background: 'rgba(57,255,20,0.1)', color: 'var(--phosphor)',
@@ -162,11 +162,11 @@ export default function MobileApp() {
           </span>
           {/* Boton reporte rapido en header */}
           {screen === 'main' && canReport && (
-            <button onClick={() => setScreen('reporte')}
+            <button type="button" onClick={() => setScreen('reporte')}
               style={{
                 background: 'var(--phosphor)', color: '#0A0A0E',
                 border: 'none', borderRadius: 6, cursor: 'pointer',
-                fontSize: '0.65rem', fontWeight: 800, padding: '0.3rem 0.6rem'
+                fontSize: '0.72rem', fontWeight: 800, padding: '0.45rem 0.7rem', minHeight:44
               }}>
               + Reporte
             </button>
@@ -189,26 +189,26 @@ export default function MobileApp() {
 
       {/* Bottom nav */}
       {screen === 'main' && (
-        <nav style={{
+        <nav aria-label="Navegación principal" style={{
           background: 'var(--surface)',
           borderTop: '1px solid rgba(57,255,20,0.1)',
           display: 'flex',
           padding: '0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom))',
         }}>
           {NAV.filter(n => bottomNavAllowed.has(n.key) && (canUseChecklist || n.key !== 'checklist')).map(n => (
-            <button key={n.key} onClick={() => { setMasModule(null); setTab(n.key) }}
+            <button type="button" key={n.key} onClick={() => { setMasModule(null); setTab(n.key) }} aria-label={n.label} aria-current={tab === n.key ? 'page' : undefined}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', gap: '0.15rem', background: 'none', border: 'none',
-                cursor: 'pointer', padding: '0.35rem 0', minWidth: 0, minHeight: 48,
+                cursor: 'pointer', padding: '0.35rem 0', minWidth: 0, minHeight: 52,
               }}>
               <span style={{
-                fontSize: '0.9rem', lineHeight: 1,
+                fontSize: '1rem', lineHeight: 1,
                 color: tab === n.key ? (n.key === 'escalamientos' ? '#F97316' : 'var(--phosphor)') : 'var(--text-dim)',
                 transition: 'color 0.15s'
               }}>{n.icon}</span>
               <span style={{
-                fontSize: '0.6rem', letterSpacing: '0.01em',
+                fontSize: '0.7rem', letterSpacing: '0.01em',
                 color: tab === n.key ? (n.key === 'escalamientos' ? '#F97316' : 'var(--phosphor)') : 'var(--text-dim)',
                 fontWeight: tab === n.key ? 700 : 400,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center'
@@ -240,7 +240,7 @@ function MobilePerfil({ perfil, onLogout }) {
   }
   return (
     <div className="mobile-scroll" style={{ padding: '1.5rem 1rem', height: '100%' }}>
-      <h1 style={{ color: 'var(--text)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Mi Perfil</h1>
+      <h1 style={{ color: 'var(--text)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Mi perfil</h1>
 
       <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '1.25rem', marginBottom: '1rem' }}>
         <p style={{ color: 'var(--text)', fontWeight: 700, fontSize: '1.05rem' }}>{perfil?.nombre || '—'}</p>
@@ -291,7 +291,7 @@ function MobilePerfil({ perfil, onLogout }) {
           fontWeight: 600, fontSize: '0.9rem', border: '1px solid rgba(255,42,42,0.2)',
           cursor: 'pointer'
         }}>
-        Cerrar Sesion
+        Cerrar sesión
       </button>
     </div>
   )

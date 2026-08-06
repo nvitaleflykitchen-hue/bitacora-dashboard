@@ -1,7 +1,26 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.13";
+export const APP_VERSION = "2.7.14";
 
 export const RELEASES = [
+  {
+    version: "2.7.14",
+    date: "2026-08-06",
+    title: "Fase 9: navegación mobile optimizada",
+    functions: [
+      "Más incorpora favoritos personales para mantener los módulos habituales siempre a mano.",
+      "Los últimos cuatro módulos abiertos aparecen automáticamente en Recientes, sin duplicar los que ya son favoritos.",
+      "Los accesos adicionales se ordenan en Trabajo diario, Gestión e Información y cuenta.",
+      "Favoritos y recientes se guardan por usuario en el dispositivo y se depuran si cambian sus permisos.",
+      "La navegación inferior utiliza textos más claros, mayor legibilidad e indica la sección activa a lectores de pantalla.",
+      "Perfil, Nuevo reporte, Volver y las estrellas cuentan con áreas táctiles de al menos 44 píxeles.",
+      "Se revisaron títulos, ayudas y acentos de las pantallas principales de navegación mobile.",
+    ],
+    problem: "En mobile, Más exigía recorrer una lista extensa, no priorizaba los módulos habituales y algunos controles importantes tenían áreas táctiles pequeñas.",
+    affectedUsers: "Todos los usuarios que trabajan desde teléfonos o dispositivos táctiles.",
+    usage: "Abrí Más y tocá la estrella de los módulos que usás seguido. Los demás accesos utilizados quedarán disponibles temporalmente en Recientes.",
+    examples: ["Fijar Flota y Mantenimiento como favoritos.", "Volver a Compras desde Recientes.", "Encontrar Directorio y Actualizaciones dentro de Información y cuenta."],
+    screenshots: [],
+  },
   {
     version: "2.7.13",
     date: "2026-08-06",
