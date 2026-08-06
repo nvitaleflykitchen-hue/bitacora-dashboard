@@ -123,7 +123,7 @@ export default function MobileMas({ initialModule = null, userId = null, focusCo
         <div style={{ flex:1, minHeight:0 }}>
           <Suspense fallback={<div style={{ minHeight:160, display:'grid', placeItems:'center', color:'var(--text-dim)', fontSize:'.8rem' }}>Cargando módulo…</div>}>
           {mod.key === 'calidad' && <MobileCapa />}
-          {mod.key === 'auditorias' && <div className="mobile-scroll" style={{ height:'100%', overflowY:'auto', padding:'1rem' }}><AuditoriasInternas /></div>}
+          {mod.key === 'auditorias' && <AuditoriasInternas mobile />}
           {mod.key === 'personal' && <MobilePersonal focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
           {mod.key === 'mantenimiento' && <MobileMantenimiento focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
           {mod.key === 'indicadores' && <MobileIndicadores />}

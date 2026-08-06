@@ -494,7 +494,7 @@ function FindingForm({ audit, onClose, onSaved }) {
   );
 }
 
-function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
+function AuditDetail({ id, sedes, plantillas, perfiles, onBack, mobile = false }) {
   const { user, perfil, can } = useAuth();
   const [audit, setAudit] = useState(null),
     [answers, setAnswers] = useState({}),
@@ -503,25 +503,32 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
     [editing, setEditing] = useState(false),
     [resumenFinal, setResumenFinal] = useState(""),
     [conclusiones, setConclusiones] = useState(""),
-    [modoEdicion, setModoEdicion] = useState(false);
+    [modoEdicion, setModoEdicion] = useState(false),
+    [mobileQuestionIndex, setMobileQuestionIndex] = useState(0);
   const load = useCallback(async () => {
     try {
       const a = await getAuditoriaInterna(id);
       setAudit(a);
       setResumenFinal(a.resumen || "");
       setConclusiones(a.conclusiones || "");
-      setAnswers(
-        Object.fromEntries(
-          (a.auditoria_respuestas || []).map((r) => [
-            r.pregunta_id,
-            { valor: r.valor, observacion: r.observacion || "" },
-          ]),
-        ),
+      const loadedAnswers = Object.fromEntries(
+        (a.auditoria_respuestas || []).map((r) => [
+          r.pregunta_id,
+          { valor: r.valor, observacion: r.observacion || "" },
+        ]),
       );
+      setAnswers(loadedAnswers);
+      if (mobile) {
+        const loadedQuestions = a.auditoria_plantillas?.auditoria_secciones?.flatMap(
+          (section) => section.auditoria_preguntas || [],
+        ) || [];
+        const firstPending = loadedQuestions.findIndex((question) => !loadedAnswers[question.id]?.valor);
+        setMobileQuestionIndex(firstPending >= 0 ? firstPending : loadedQuestions.length);
+      }
     } catch (e) {
       toast.error(mensajeError(e));
     }
-  }, [id]);
+  }, [id, mobile]);
   useEffect(() => {
     load();
   }, [load]);
@@ -591,7 +598,7 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
       toast.ok("Informe copiado para compartir.");
     }
   };
-  const save = async (finalize = false) => {
+  const save = async (finalize = false, quiet = false, reloadAfter = true) => {
     setBusy(true);
     try {
       const rows = questions
@@ -619,10 +626,12 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
           ...(finalize ? { fecha_finalizacion: new Date().toISOString() } : {}),
         });
       }
-      toast.ok(finalize ? "Auditoría finalizada." : "Avance guardado.");
-      await load();
+      if (!quiet) toast.ok(finalize ? "Auditoría finalizada." : "Avance guardado.");
+      if (reloadAfter) await load();
+      return true;
     } catch (e) {
       toast.error(mensajeError(e));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -688,6 +697,108 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
       toast.error(mensajeError(e));
     }
   };
+  if (mobile && !esInforme) {
+    const currentQuestion = questions[mobileQuestionIndex] || null;
+    const currentAnswer = currentQuestion ? (answers[currentQuestion.id] || {}) : {};
+    const currentSection = currentQuestion
+      ? audit.auditoria_plantillas?.auditoria_secciones?.find((section) =>
+          section.auditoria_preguntas?.some((question) => question.id === currentQuestion.id),
+        )
+      : null;
+    const progress = questions.length ? Math.round((answered / questions.length) * 100) : 0;
+    const continueMobile = async () => {
+      if (!currentAnswer.valor) {
+        toast.warn("Elegí el resultado del punto antes de continuar.");
+        return;
+      }
+      if (["Parcial", "No cumple"].includes(currentAnswer.valor) && !currentAnswer.observacion?.trim()) {
+        toast.warn("Describí el desvío antes de continuar.");
+        return;
+      }
+      if (await save(false, true, false)) {
+        setMobileQuestionIndex((index) => Math.min(index + 1, questions.length));
+        window.requestAnimationFrame(() => document.getElementById("mobile-audit-top")?.scrollIntoView());
+      }
+    };
+
+    return (
+      <div id="mobile-audit-top" className="mobile-scroll" style={{ height:"100%", overflowY:"auto", padding:"0.75rem 1rem 7rem" }}>
+        <button type="button" className="btn-ghost" onClick={onBack} style={{ minHeight:44, marginBottom:8 }}>← Auditorías</button>
+        <div style={{ display:"flex", justifyContent:"space-between", gap:12, alignItems:"flex-start" }}>
+          <div>
+            <h2 style={{ color:"var(--phosphor)", fontWeight:800, fontSize:"1.05rem" }}>{audit.codigo}</h2>
+            <p style={{ color:"var(--text-dim)", fontSize:"0.78rem", marginTop:3 }}>{audit.sedes?.nombre} · {audit.tipo_auditoria}</p>
+          </div>
+          <span className="chip" style={{ color:STATUS_COLOR[audit.estado], flexShrink:0 }}>{audit.estado}</span>
+        </div>
+
+        <div style={{ margin:"14px 0 16px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", color:"var(--text-dim)", fontSize:"0.72rem", marginBottom:6 }}>
+            <span>{answered} de {questions.length} puntos</span><strong style={{ color:"var(--phosphor)" }}>{progress}%</strong>
+          </div>
+          <div style={{ height:8, borderRadius:999, background:"rgba(255,255,255,.08)", overflow:"hidden" }}>
+            <div style={{ width:`${progress}%`, height:"100%", background:"var(--phosphor)", transition:"width .2s ease" }} />
+          </div>
+        </div>
+
+        {currentQuestion ? (
+          <section className="glass rounded" style={{ padding:"1rem", border:"1px solid rgba(57,255,20,.14)" }}>
+            <p style={{ color:"var(--text-dim)", fontSize:"0.7rem", marginBottom:8 }}>
+              {currentSection?.codigo}. {currentSection?.nombre} · Punto {mobileQuestionIndex + 1} de {questions.length}
+            </p>
+            <h3 style={{ color:"var(--text)", fontWeight:750, fontSize:"1rem", lineHeight:1.45 }}>
+              {currentQuestion.codigo} {currentQuestion.pregunta}
+              {currentQuestion.requisito_critico && <span style={{ color:"#ef4444" }}> · CRÍTICO</span>}
+            </h3>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:16 }}>
+              {VALUES.map((value) => {
+                const active = currentAnswer.valor === value;
+                const color = value === "Cumple" ? "#39ff14" : value === "Parcial" ? "#f59e0b" : value === "No cumple" ? "#ef4444" : "#94a3b8";
+                return <button type="button" key={value} onClick={() => setAnswers((state) => ({ ...state, [currentQuestion.id]:{ ...currentAnswer, valor:value } }))}
+                  style={{ minHeight:52, borderRadius:8, border:`1px solid ${active ? color : "rgba(255,255,255,.12)"}`, background:active ? `${color}18` : "rgba(255,255,255,.03)", color:active ? color : "var(--text-dim)", fontWeight:750, fontSize:"0.8rem" }}>
+                  {value}
+                </button>;
+              })}
+            </div>
+            {currentAnswer.valor && currentAnswer.valor !== "Cumple" && (
+              <label style={{ display:"block", color:"var(--text-dim)", fontSize:"0.75rem", marginTop:16 }}>
+                {currentAnswer.valor === "No observado" ? "Motivo u observación" : "Describí el desvío *"}
+                <textarea className="input-dark" rows="3" style={{ marginTop:6, fontSize:"0.9rem" }} placeholder="Qué observaste y qué acción inmediata se tomó"
+                  value={currentAnswer.observacion || ""} onChange={(event) => setAnswers((state) => ({ ...state, [currentQuestion.id]:{ ...currentAnswer, observacion:event.target.value } }))} />
+              </label>
+            )}
+            <div style={{ marginTop:16 }}>
+              <AdjuntosPanel entityType="auditoria_respuesta_evidencia" entityId={`${audit.id}:${currentQuestion.id}`} compact camera label="Foto o evidencia del punto" />
+            </div>
+            {["Parcial", "No cumple"].includes(currentAnswer.valor) && (
+              <button type="button" className="btn-ghost" onClick={() => setFinding(true)} style={{ width:"100%", minHeight:48, marginTop:12 }}>
+                <Plus size={15} /> Registrar también como hallazgo
+              </button>
+            )}
+          </section>
+        ) : (
+          <section className="glass rounded" style={{ padding:"1rem" }}>
+            <h3 style={{ color:"var(--phosphor)", fontWeight:800 }}>Revisión final</h3>
+            <p style={{ color:"var(--text-dim)", fontSize:"0.8rem", lineHeight:1.5, marginTop:5 }}>Revisá el resultado, completá el cierre y finalizá cuando no queden puntos pendientes.</p>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:12 }}>
+              {[["Cumple",scoreSummary.cumple,"#39ff14"],["Parcial",scoreSummary.parcial,"#f59e0b"],["No cumple",scoreSummary.noCumple,"#ef4444"],["Sin responder",scoreSummary.sinResponder,"#94a3b8"]].map(([label,value,color]) =>
+                <div key={label} style={{ border:"1px solid rgba(255,255,255,.08)", borderRadius:8, padding:10 }}><small style={{ color }}>{label}</small><strong style={{ display:"block", marginTop:3 }}>{value}</strong></div>)}
+            </div>
+            <label style={{ display:"block", color:"var(--text-dim)", fontSize:"0.75rem", marginTop:14 }}>Resumen ejecutivo<textarea className="input-dark" rows="3" style={{ marginTop:5 }} value={resumenFinal} onChange={(event) => setResumenFinal(event.target.value)} /></label>
+            <label style={{ display:"block", color:"var(--text-dim)", fontSize:"0.75rem", marginTop:12 }}>Conclusiones y prioridades<textarea className="input-dark" rows="3" style={{ marginTop:5 }} value={conclusiones} onChange={(event) => setConclusiones(event.target.value)} /></label>
+            <button type="button" className="btn-ghost" onClick={() => setFinding(true)} style={{ width:"100%", minHeight:48, marginTop:12 }}><Plus size={15} /> Agregar hallazgo</button>
+            <button type="button" className="btn-primary" disabled={busy || scoreSummary.sinResponder > 0} onClick={() => save(true)} style={{ width:"100%", minHeight:52, marginTop:10 }}>Finalizar auditoría</button>
+          </section>
+        )}
+
+        {currentQuestion && <div style={{ position:"fixed", left:0, right:0, bottom:"calc(64px + env(safe-area-inset-bottom))", zIndex:30, display:"flex", gap:8, padding:"0.65rem 1rem", background:"var(--surface)", borderTop:"1px solid rgba(57,255,20,.15)" }}>
+          <button type="button" className="btn-ghost" disabled={mobileQuestionIndex === 0 || busy} onClick={() => setMobileQuestionIndex((index) => Math.max(0, index - 1))} style={{ minHeight:48, flex:"0 0 42%" }}>← Anterior</button>
+          <button type="button" className="btn-primary" disabled={busy} onClick={continueMobile} style={{ minHeight:48, flex:1 }}>{busy ? "Guardando…" : mobileQuestionIndex === questions.length - 1 ? "Revisar cierre" : "Guardar y seguir →"}</button>
+        </div>}
+        {finding && <FindingForm audit={audit} onClose={() => setFinding(false)} onSaved={() => { setFinding(false); load(); }} />}
+      </div>
+    );
+  }
   return (
     <div className="h-full min-h-0 overflow-y-auto space-y-4 pr-1 pb-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1083,7 +1194,7 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack }) {
   );
 }
 
-export default function AuditoriasInternas({ sedeId = null }) {
+export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
   const { perfil } = useAuth();
   const [rows, setRows] = useState([]),
     [sedes, setSedes] = useState([]),
@@ -1121,6 +1232,7 @@ export default function AuditoriasInternas({ sedeId = null }) {
         sedes={sedes}
         plantillas={plantillas}
         perfiles={perfiles}
+        mobile={mobile}
         onBack={() => {
           setSelected(null);
           load();
@@ -1139,24 +1251,24 @@ export default function AuditoriasInternas({ sedeId = null }) {
       email === "mriviere@flykitchen.com.ar"
     : canManageAudit(perfil, selectedSede?.tipo);
   return (
-    <div className="h-full min-h-0 overflow-y-auto space-y-4 pr-1 pb-6">
-      <div className="flex items-center justify-between">
+    <div className={mobile ? "mobile-scroll" : "h-full min-h-0 overflow-y-auto space-y-4 pr-1 pb-6"} style={mobile ? { height:"100%", overflowY:"auto", padding:"0.75rem 1rem 1rem" } : undefined}>
+      <div className={mobile ? "flex flex-col gap-3" : "flex items-center justify-between"}>
         <div>
           <h2 className="font-title font-bold text-lg flex items-center gap-2">
             <ClipboardCheck style={{ color: "var(--phosphor)" }} /> Auditorías
             internas
           </h2>
-          <p className="text-sm" style={{ color: "var(--text-dim)" }}>
+          <p className="text-sm" style={{ color: "var(--text-dim)", lineHeight:1.45 }}>
             Planificación, relevamiento, hallazgos, evidencias y seguimiento
             CAPA por sede.
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-ghost" onClick={load}>
-            <RefreshCw size={14} />
+        <div className="flex gap-2" style={mobile ? { width:"100%" } : undefined}>
+          <button className="btn-ghost" onClick={load} aria-label="Actualizar auditorías" style={mobile ? { minWidth:48, minHeight:48 } : undefined}>
+            <RefreshCw size={14} />{mobile ? " Actualizar" : null}
           </button>
           {canCreate && (
-            <button className="btn-primary" onClick={() => setModal(true)}>
+            <button className="btn-primary" onClick={() => setModal(true)} style={mobile ? { flex:1, minHeight:48 } : undefined}>
               <Plus size={14} /> Nueva auditoría
             </button>
           )}
@@ -1217,6 +1329,7 @@ export default function AuditoriasInternas({ sedeId = null }) {
                   </span>
                   <span>{open} hallazgos abiertos</span>
                 </div>
+                {mobile && <span style={{ display:"block", color:"var(--phosphor)", fontSize:"0.78rem", fontWeight:700, marginTop:12 }}>{["Finalizada","Cerrada"].includes(a.estado) ? "Ver informe →" : "Continuar auditoría →"}</span>}
               </button>
             );
           })}
