@@ -12,6 +12,7 @@ import {
 import { notifyHighPriority, notifyComentario } from "./pushNotifications";
 import { buildComedoresMetricas } from "./comedoresMetricas";
 import { enrichAuditRowsWithReporters } from "./auditoriaAttribution";
+import { filterMaintenanceTickets } from "./maintenanceTickets";
 
 // ─── SEDES ────────────────────────────────────────────────────────────────────
 
@@ -2139,11 +2140,11 @@ export async function registrarMovimiento(payload) {
 export async function getKPIsMantenimiento(sedeId = null, sedeIds = null) {
   let tq = supabase
     .from("mnt_tickets")
-    .select("estado, tipo, prioridad, sede_id");
+    .select("estado, tipo, prioridad, sede_id, categoria, activo_id");
   let aq = supabase
     .from("mnt_activos")
     .select(
-      "estado, tipo, sede_id, vencimiento_seguro, vencimiento_vtv, vencimiento_senasa, vencimiento_rmtsa",
+      "id, estado, tipo, sede_id, vencimiento_seguro, vencimiento_vtv, vencimiento_senasa, vencimiento_rmtsa",
     );
   let mq = supabase
     .from("mnt_matafuegos")
@@ -2159,6 +2160,7 @@ export async function getKPIsMantenimiento(sedeId = null, sedeIds = null) {
   }
   const [{ data: tickets }, { data: activos }, { data: matafuegos }] =
     await Promise.all([tq, aq, mq]);
+  const maintenanceTickets = filterMaintenanceTickets(tickets || [], activos || []);
   const hoy = new Date().toISOString().split("T")[0];
   const docVencida = (a) =>
     [
@@ -2168,9 +2170,9 @@ export async function getKPIsMantenimiento(sedeId = null, sedeIds = null) {
       a.vencimiento_rmtsa,
     ].some((f) => f && f < hoy);
   return {
-    ticketsAbiertos: (tickets || []).filter((t) => t.estado === "abierto")
+    ticketsAbiertos: maintenanceTickets.filter((t) => t.estado === "abierto")
       .length,
-    ticketsCriticos: (tickets || []).filter(
+    ticketsCriticos: maintenanceTickets.filter(
       (t) => t.prioridad === "critica" && t.estado !== "resuelto",
     ).length,
     activosEnReparacion: (activos || []).filter(
@@ -2183,7 +2185,7 @@ export async function getKPIsMantenimiento(sedeId = null, sedeIds = null) {
       (a) => a.tipo === "VEHICULO" && docVencida(a),
     ).length,
     totalActivos: (activos || []).length,
-    totalTickets: (tickets || []).length,
+    totalTickets: maintenanceTickets.length,
   };
 }
 

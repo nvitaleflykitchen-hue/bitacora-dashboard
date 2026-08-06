@@ -19,6 +19,7 @@ import {
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import usePersistedState from '../../hooks/usePersistedState'
+import { filterMaintenanceAssets, filterMaintenanceTickets } from '../../lib/maintenanceTickets'
 import { generarReporteEficienciaMnt } from '../../lib/mntEficienciaPdf'
 import { operationalStateLabel } from '../../lib/operationalStates'
 import useFormDraft from '../../hooks/useFormDraft'
@@ -840,8 +841,9 @@ export default function MntTickets({ focusId }) {
       const tFilt = (allowedSedeIds !== null && !sedeId)
         ? t.filter(tk => allowedSedeIds.includes(tk.sede_id))
         : t
-      const tNoVeh = tFilt.filter(tk => tk.categoria !== 'Vehiculos')
-      setTickets(tNoVeh); setActivos(a); setProveedores(p); setResponsables(r.data||[])
+      const activosMantenimiento = filterMaintenanceAssets(a)
+      const tNoVeh = filterMaintenanceTickets(tFilt, a)
+      setTickets(tNoVeh); setActivos(activosMantenimiento); setProveedores(p); setResponsables(r.data||[])
 
       // Deep-link desde notificación
       const dl = window.__pendingDeepLink

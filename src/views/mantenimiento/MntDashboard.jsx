@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../../lib/auth'
-import { getKPIsMantenimiento, getTickets, getSedes } from '../../lib/queries'
+import { getActivos, getKPIsMantenimiento, getTickets, getSedes } from '../../lib/queries'
 import PageHeader from '../../components/PageHeader'
+import { filterMaintenanceTickets } from '../../lib/maintenanceTickets'
 
 import { TICKET_ESTADO_COLOR as ESTADO_COLOR, PRIORIDAD_COLOR } from '../../lib/estados'
 
@@ -64,7 +65,8 @@ export default function MntDashboard({ onNavigate }) {
     Promise.all([
       getKPIsMantenimiento(sid, allowedSedeIds),
       getTickets(sid ? { sede_id: sid } : { sedeIds: allowedSedeIds || undefined }),
-    ]).then(([k,t]) => { setKpis(k); setTickets(t) })
+      getActivos(sid ? { sede_id: sid } : { sedeIds: allowedSedeIds || undefined }),
+    ]).then(([k,t,a]) => { setKpis(k); setTickets(filterMaintenanceTickets(t, a)) })
       .finally(() => setLoading(false))
   }, [sedeId, allowedSedeIds])
 

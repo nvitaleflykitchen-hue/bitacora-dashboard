@@ -6,6 +6,7 @@ import { mensajeError } from '../lib/errores'
 import SkeletonTable from '../components/SkeletonTable'
 import EmptyState from '../components/EmptyState'
 import { CalendarClock, Truck, Phone, Mail, ChevronRight, Users, Star } from 'lucide-react'
+import { filterMaintenanceTickets } from '../lib/maintenanceTickets'
 
 // Tabs extra del hub de Mantenimiento mobile: Planes, Proveedores,
 // Responsables y Tablero (kanban simplificado). Lectura + acciones mínimas
@@ -175,7 +176,7 @@ export function TabTablero({ allowedSedeIds, canManage }) {
   const load = useCallback(() => {
     setLoading(true)
     getTickets({ sedeIds: allowedSedeIds || undefined })
-      .then(t => setTickets((t || []).filter(x =>
+      .then(t => setTickets(filterMaintenanceTickets(t).filter(x =>
         !['resuelto', 'rechazado'].includes(x.estado) &&
         (allowedSedeIds === null || allowedSedeIds === undefined || allowedSedeIds.includes(x.sede_id)))))
       .catch(e => toast.error(mensajeError(e)))

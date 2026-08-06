@@ -24,6 +24,7 @@ import {
   isClosedMaintenanceTicket,
   sortMobileMaintenanceWork,
 } from '../lib/mobileMaintenance'
+import { filterMaintenanceTickets } from '../lib/maintenanceTickets'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -413,7 +414,7 @@ export default function MobileTickets() {
       responsable_id: ownResponsible?.id,
     })
       .then(data => {
-        const enriched = enrichMobileTickets(data, sedes, activos)
+        const enriched = enrichMobileTickets(filterMaintenanceTickets(data, activos), sedes, activos)
         setTickets(sortMobileMaintenanceWork(enriched))
       })
       .catch(console.error)
