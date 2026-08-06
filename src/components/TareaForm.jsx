@@ -8,6 +8,9 @@ import { useAuth } from '../lib/auth'
 import { isQualityOnlyProfile } from '../lib/access'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
+import useFormDraft from '../hooks/useFormDraft'
+import FormDraftNotice from './FormDraftNotice'
+import FormErrorSummary from './FormErrorSummary'
 
 export const CATEGORIAS = [
   { key: 'A', label: 'Producción / Servicio del turno' },
@@ -124,6 +127,14 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
     intervinientes: Array.isArray(tareaEditar?.intervinientes) ? tareaEditar.intervinientes : [],
   })
   const [nuevoInterviniente, setNuevoInterviniente] = useState('')
+  const [formErrors, setFormErrors] = useState([])
+  const draft = useFormDraft({
+    key:`tarea-${perfil?.id || 'usuario'}`,
+    value:form,
+    setValue:setForm,
+    enabled:!tareaEditar && !registroOrigen && !initialValues,
+    isMeaningful:data => Boolean(data?.titulo?.trim() || data?.descripcion?.trim()),
+  })
 
   const esAdminTareas = ['admin', 'editor'].includes(perfil?.rol)
   const misSedes = allowedSedeIds
@@ -177,6 +188,10 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const errors = []
+    if (!form.titulo.trim()) errors.push({ field:'tarea-titulo', label:'Título', message:'es obligatorio' })
+    setFormErrors(errors)
+    if (errors.length) return
     setLoading(true)
     try {
       const payload = {
@@ -202,6 +217,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
         }
         onCreated?.(tarea)
       }
+      draft.clearDraft()
     } catch (err) {
       toast.error(`Error al ${tareaEditar ? 'guardar' : 'crear'} tarea: ` + mensajeError(err))
     } finally {
@@ -221,12 +237,18 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4" style={{ overflowY:'auto', flex:1, minHeight:0 }}>
+          <FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={() => {
+            draft.clearDraft()
+            setForm(f => ({ ...f, titulo:'', descripcion:'', responsable:'', responsable_id:'', contacto_id:'', fecha_limite:'', intervinientes:[] }))
+          }} />
+          <FormErrorSummary errors={formErrors} />
           <div>
             <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
               Título *
             </label>
-            <input required className="input-dark" value={form.titulo}
-              onChange={e => set('titulo', e.target.value)} placeholder="Ej: Revisar cámara de frío 2" />
+            <input id="tarea-titulo" name="tarea-titulo" required className="input-dark" value={form.titulo}
+              aria-invalid={formErrors.some(error => error.field === 'tarea-titulo')}
+              onChange={e => { set('titulo', e.target.value); setFormErrors(errors => errors.filter(error => error.field !== 'tarea-titulo')) }} placeholder="Ej: Revisar cámara de frío 2" />
           </div>
 
           <div>
