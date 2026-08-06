@@ -313,7 +313,7 @@ function Column({ col, tickets, onDrop, onCardClick }) {
 // ─── HISTORIAL POR UNIDAD ─────────────────────────────────────────────────────
 const vehicleKey = value => String(value || '').trim().toUpperCase().replace(/\s+/g, ' ')
 
-function HistorialPorUnidad({ tickets, novedades }) {
+function HistorialPorUnidad({ tickets, novedades, onCreateNovedad }) {
   const [selected, setSelected] = useState(null)
 
   const idByName = [...tickets, ...novedades].reduce((acc,item) => {
@@ -350,6 +350,8 @@ function HistorialPorUnidad({ tickets, novedades }) {
 
   const hist = selected ? byPatente[selected] : []
   const novedadesUnidad = selected ? (novedadesByPatente[selected] || []) : []
+  const unidadOrigen = selected ? [...hist, ...novedadesUnidad][0] : null
+  const unidadId = selected?.startsWith('id:') ? selected.slice(3) : unidadOrigen?.activo_id
   const costoTotal = hist.reduce((s,t) => s+(t.costo_real||0), 0)
   const lastKm = hist.reduce((m,t) => Math.max(m, t.lectura_km||0), 0)
 
@@ -418,6 +420,9 @@ function HistorialPorUnidad({ tickets, novedades }) {
                 style={{ marginLeft:'auto', alignSelf:'center', display:'flex', alignItems:'center', gap:6 }}>
                 <Download size={13}/> Exportar PDF
               </button>
+              {onCreateNovedad && unidadId && unidadOrigen?.sede_id && (
+                <button className='btn-primary' onClick={() => onCreateNovedad({ type:'vehiculo', id:unidadId, label:labels[selected], sedeId:unidadOrigen.sede_id, sedeLabel:unidadOrigen.sede_nombre, returnView:'mntVehiculos' })}>+ Crear novedad</button>
+              )}
             </div>
             <div style={{ marginTop:16 }}>
               <p style={{ color:'var(--phosphor)', fontSize:'0.65rem', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:8 }}>Novedades operativas</p>
@@ -478,7 +483,7 @@ function HistorialPorUnidad({ tickets, novedades }) {
   )
 }
 
-export default function MntVehiculos({ focusId }) {
+export default function MntVehiculos({ focusId, onCreateNovedad }) {
   const { rol, perfil } = useAuth()
   const canWrite = (rol === 'admin' || rol === 'editor' || rol === 'encargado' || rol === 'flota') && !isQualityOnlyProfile(perfil)
 
@@ -644,7 +649,7 @@ export default function MntVehiculos({ focusId }) {
           ))}
         </div>
       ) : (
-        <HistorialPorUnidad tickets={tickets} novedades={novedades} />
+        <HistorialPorUnidad tickets={tickets} novedades={novedades} onCreateNovedad={onCreateNovedad} />
       )}
     </div>
   )

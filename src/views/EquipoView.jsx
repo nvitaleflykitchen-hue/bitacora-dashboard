@@ -95,7 +95,7 @@ function textoPeriodoPrueba(dias) { if (dias<0) return `Vencido hace ${Math.abs(
 // ──────────────────────────────────────────────
 // PersonaFicha — vista interna de ficha individual
 // ──────────────────────────────────────────────
-function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
+function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNovedad }) {
   const { can, perfil, user } = useAuth();
   const canManage = can("equipo", "manage");
   const canDelete = canDeletePerson(user?.id);
@@ -814,6 +814,9 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
           <span><strong style={{color:persona.incidentes > 0 ? 'var(--warn)' : 'var(--phosphor)'}}>{persona.incidentes || 0}</strong> incidentes</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && (
+            <button onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnView:'equipo' })} className="btn-ghost" style={{ fontSize:'.7rem' }}>+ Novedad</button>
+          )}
           {waLink ? <a href={waLink} target="_blank" rel="noreferrer" className="btn-primary flex items-center gap-1.5" style={{fontSize:'.7rem',textDecoration:'none'}}><MessageCircle size={12}/> Mensaje</a>
             : <span className="btn-ghost flex items-center gap-1.5 opacity-40" title="Cargá un teléfono para habilitar WhatsApp"><MessageCircle size={12}/> Mensaje</span>}
           <ActionOverflowMenu items={actionItems} />
@@ -3040,7 +3043,7 @@ ${form.observaciones || "[Completar]"}`;
   );
 }
 
-export default function EquipoView({ onNavigate, focusId, focusType }) {
+export default function EquipoView({ onNavigate, focusId, focusType, onCreateNovedad }) {
   const { can, allowedSedeIds, perfil, user } = useAuth();
   const isQualityOnly = isQualityOnlyProfile(perfil);
   const isSafetyOnly = isSafetyOnlyProfile(perfil);
@@ -3271,6 +3274,7 @@ export default function EquipoView({ onNavigate, focusId, focusType }) {
             setSelectedId(null);
             load();
           }}
+          onCreateNovedad={onCreateNovedad}
         />
       </div>
     );

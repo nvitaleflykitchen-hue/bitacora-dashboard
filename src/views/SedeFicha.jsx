@@ -242,7 +242,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
   )
 }
 
-export default function SedeFicha({ onNavigate, focusId }) {
+export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
   const { allowedSedeIds, can } = useAuth()
   const canManage = can('sedes', 'manage')
   const [sedes, setSedes]         = useState([])
@@ -453,6 +453,7 @@ export default function SedeFicha({ onNavigate, focusId }) {
               </div>
             </div>
             <div style={{ display:'flex', gap:8, flexShrink:0, alignItems:'center' }}>
+              {onCreateNovedad && <button onClick={() => onCreateNovedad({ type:'sede', id:sede.id, label:sede.nombre, sedeId:sede.id, sedeLabel:sede.nombre, returnView:'sedeFicha' })} className="btn-primary" style={{ fontSize:'0.7rem', padding:'5px 10px' }}>+ NOVEDAD</button>}
               {sede.en_pausa && (
                 <span style={{ fontFamily:'monospace', fontSize:'0.68rem', fontWeight:700, color:'#F59E0B', background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.3)', padding:'5px 10px', borderRadius:2 }}>
                   ⏸ EN PAUSA

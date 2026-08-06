@@ -51,7 +51,7 @@ function Field({ label, value }) {
 
 // ───────────────────────── ACTIVOS ─────────────────────────
 
-function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated }) {
+function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated, onCreateNovedad }) {
   const [historial, setHistorial] = useState([])
   const [loadingHist, setLoadingHist] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -99,6 +99,7 @@ function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 1rem 1rem', minHeight: 0 }}>
+        {onCreateNovedad && activo.sede_id && <button className="btn-primary w-full" style={{ marginBottom:10, minHeight:44 }} onClick={() => onCreateNovedad({ type:'activo', id:activo.id, label:activo.nombre, sedeId:activo.sede_id, sedeLabel:sedeName, returnModule:'mantenimiento' })}>+ Crear novedad de este activo</button>}
         {!editing ? (
           <>
             <Card>
@@ -236,7 +237,9 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
   )
 }
 
-function TabActivos({ allowedSedeIds, canEdit }) {
+function TabActivos({ allowedSedeIds, canEdit, focusContext, onCreateNovedad }) {
+  const focusType = focusContext?.type
+  const focusId = focusContext?.id
   const [items, setItems] = useState([])
   const [sedes, setSedes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -250,15 +253,17 @@ function TabActivos({ allowedSedeIds, canEdit }) {
       getActivos({ sedeIds: allowedSedeIds || undefined }),
       getSedes(allowedSedeIds),
     ]).then(([activos, sedesData]) => {
-      setItems(activos.filter(a => a.tipo !== 'VEHICULO'))
+      const filtered = activos.filter(a => a.tipo !== 'VEHICULO')
+      setItems(filtered)
+      if (focusType === 'activo') setSelected(filtered.find(a => String(a.id) === String(focusId)) || null)
       setSedes(sedesData)
     }).catch(console.error).finally(() => setLoading(false))
-  }, [allowedSedeIds])
+  }, [allowedSedeIds, focusType, focusId])
 
   useEffect(() => { load() }, [load])
 
   if (selected) {
-    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} onBack={() => setSelected(null)} onUpdated={() => { load(); setSelected(null) }} />
+    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} onBack={() => setSelected(null)} onUpdated={() => { load(); setSelected(null) }} onCreateNovedad={onCreateNovedad} />
   }
 
   const filtered = items.filter(a => !search || (a.nombre + ' ' + (a.codigo_interno || '') + ' ' + (a.categoria || '')).toLowerCase().includes(search.toLowerCase()))
@@ -510,7 +515,7 @@ function TabMatafuegos({ allowedSedeIds }) {
 
 // ───────────────────────── ROOT ─────────────────────────
 
-export default function MobileMantenimiento() {
+export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
   const { rol, allowedSedeIds, perfil } = useAuth()
   const canEditActivos = ['admin', 'editor', 'encargado', 'mnt_editor'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [tab, setTab] = useState('activos')
@@ -545,7 +550,7 @@ export default function MobileMantenimiento() {
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
-        {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} />}
+        {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
         {tab === 'insumos' && <TabInsumos />}
         {tab === 'matafuegos' && <TabMatafuegos allowedSedeIds={allowedSedeIds} />}
         {tab === 'tablero' && <TabTablero allowedSedeIds={allowedSedeIds} canManage={canEditActivos} />}

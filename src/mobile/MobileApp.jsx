@@ -50,6 +50,23 @@ export default function MobileApp() {
   const [showSearch, setShowSearch] = useState(false)
   const [masModule, setMasModule] = useState(isSafetyOnly || isQualityOnly ? 'calidad' : null)
   const [showWhatsNew, setShowWhatsNew] = useState(() => user?.id ? !hasSeenLatestRelease(user.id) : false)
+  const [reportContext, setReportContext] = useState(null)
+  const [returnContext, setReturnContext] = useState(null)
+
+  const openContextualReport = context => {
+    setReportContext(context)
+    setReturnContext(context)
+    setScreen('reporte')
+  }
+  const closeReport = () => { setScreen('main'); setReportContext(null) }
+  const finishReport = () => {
+    const origin = returnContext
+    setScreen('main')
+    setReportContext(null)
+    if (!origin) { setTab(isSafetyOnly ? 'tareas' : 'home'); return }
+    if (origin.type === 'sede') setTab('sedes')
+    else { setMasModule(origin.returnModule); setTab('mas') }
+  }
 
   useEffect(() => {
     if (user?.id && !hasSeenLatestRelease(user.id)) setShowWhatsNew(true)
@@ -111,19 +128,20 @@ export default function MobileApp() {
     if (screen === 'reporte') {
       return (
         <MobileReporte
-          onBack={() => setScreen('main')}
-          onSuccess={() => { setScreen('main'); setTab(isSafetyOnly ? 'tareas' : 'home') }}
+          context={reportContext}
+          onBack={closeReport}
+          onSuccess={finishReport}
         />
       )
     }
     if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} />
     if (tab === 'tareas')        return <MobileTareas />
-    if (tab === 'sedes')         return <MobileSedes />
+    if (tab === 'sedes')         return <MobileSedes focusContext={returnContext} onCreateNovedad={canReport ? openContextualReport : null} />
     if (tab === 'escalamientos') return <MobileEscalamientos />
     if (tab === 'checklist')     return <MobileChecklist onBack={() => setTab('home')} onGoTareas={() => setTab('tareas')} />
     if (tab === 'tickets')       return <MobileTickets />
     if (tab === 'compras')       return <MobileRequerimientos />
-    if (tab === 'mas')           return <MobileMas key={`${user?.id || 'anon'}-${rol}`} initialModule={masModule} userId={user?.id} />
+    if (tab === 'mas')           return <MobileMas key={`${user?.id || 'anon'}-${rol}-${returnContext?.id || ''}`} initialModule={masModule} userId={user?.id} focusContext={returnContext} onCreateNovedad={canReport ? openContextualReport : null} />
     if (tab === 'perfil')        return <MobilePerfil perfil={perfil} onLogout={handleLogout} />
     return null
   }
