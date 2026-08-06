@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ClipboardCheck, Building2, ShoppingCart, Wrench, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { ClipboardCheck, Building2, ShoppingCart, Wrench, Search, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ROLE_LABELS } from '../lib/access'
 import DashboardGlobal from './DashboardGlobal'
@@ -7,6 +7,7 @@ import SedeEncargadoView from './SedeEncargadoView'
 import { getDirectorio } from '../lib/queries'
 import { phoneHref, whatsappHref } from '../lib/phoneUtils'
 import MiGestionPanel from '../components/MiGestionPanel'
+import usePersistedState from '../hooks/usePersistedState'
 
 const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
 const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
@@ -113,12 +114,12 @@ function ContactChip({ c }) {
 }
 
 function ContactosSection() {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = usePersistedState('inicio.contactos.abiertos', false)
   const [allContactos, setAllContactos] = useState([])
 
   useEffect(() => {
-    getDirectorio().then(data => setAllContactos(data || [])).catch(() => {})
-  }, [])
+    if (open && allContactos.length === 0) getDirectorio().then(data => setAllContactos(data || [])).catch(() => {})
+  }, [open, allContactos.length])
 
   // Agrupar por módulo, solo módulos con datos
   const byModulo = {}
@@ -128,14 +129,14 @@ function ContactosSection() {
   }
   const sections = MODULO_ORDER.filter(k => byModulo[k]?.length > 0)
 
-  if (sections.length === 0) return null
-
   return (
     <div className="px-4 md:px-6 pb-2">
       {/* Header colapsable */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-controls="inicio-contactos"
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           background: 'none', border: 'none', cursor: 'pointer',
@@ -152,7 +153,8 @@ function ContactosSection() {
       </button>
 
       {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        <div id="inicio-contactos" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          {allContactos.length === 0 && <p className="font-metric" style={{fontSize:'.65rem',color:'var(--text-dim)'}}>Cargando directorio…</p>}
           {sections.map(key => (
             <div key={key}>
               <p style={{ color: 'var(--text-dim)', fontSize: '0.6rem', letterSpacing: '0.1em', fontFamily: 'var(--font-metric, monospace)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
@@ -168,6 +170,21 @@ function ContactosSection() {
         </div>
       )}
     </div>
+  )
+}
+
+function DashboardSection({ Dashboard, onNavigate }) {
+  const [open, setOpen] = usePersistedState('inicio.dashboard.abierto', false)
+  return (
+    <section className="px-4 md:px-6 pb-5">
+      <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-controls="inicio-dashboard"
+        className="glass w-full p-3 flex items-center gap-3 text-left">
+        <BarChart3 size={16} style={{color:'var(--phosphor)'}} />
+        <span className="flex-1"><strong style={{display:'block',fontSize:'.78rem',color:'var(--text)'}}>Resumen operativo</strong><small style={{color:'var(--text-dim)'}}>Estado por sede, escalamientos y métricas globales</small></span>
+        {open ? <ChevronUp size={14} style={{color:'var(--text-dim)'}}/> : <ChevronDown size={14} style={{color:'var(--text-dim)'}}/>}
+      </button>
+      {open && <div id="inicio-dashboard" className="mt-3"><Dashboard onNavigate={onNavigate} /></div>}
+    </section>
   )
 }
 
@@ -208,7 +225,7 @@ export default function InicioRol({ onNavigate, onOpenSearch }) {
       </section>
       <MiGestionPanel onNavigate={onNavigate} />
       <ContactosSection />
-      <Dashboard onNavigate={onNavigate} />
+      <DashboardSection Dashboard={Dashboard} onNavigate={onNavigate} />
     </div>
   )
 }

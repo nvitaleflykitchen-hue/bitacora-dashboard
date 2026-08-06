@@ -4,6 +4,7 @@ import { getAlertas, autoEscalarTickets } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { canAccessView, isComprasOnlyProfile, isQualityOnlyProfile } from '../lib/access'
 import usePersistedState from '../hooks/usePersistedState'
+import { groupOperationalAlerts } from '../lib/alertGroups'
 
 const NIVEL_STYLE = {
   critico:     { bg: 'rgba(255,42,42,0.08)',  border: 'rgba(255,42,42,0.35)',  color: '#ff5050', dot: '#ff2a2a' },
@@ -43,6 +44,7 @@ export default function AlertaBanner({ onNavigate }) {
   const criticas = visibles.filter(a => a.nivel === 'critico')
   const advertencias = visibles.filter(a => a.nivel === 'advertencia')
   const informativas = visibles.filter(a => a.nivel === 'info')
+  const grupos = groupOperationalAlerts(visibles)
 
   // Si no hay nada que mostrar, no renderizar
   if (!loading && visibles.length === 0) return null
@@ -99,12 +101,13 @@ export default function AlertaBanner({ onNavigate }) {
             VERIFICANDO ALERTAS...
           </span>
         ) : (
-          visibles.map(alerta => {
-            const s = NIVEL_STYLE[alerta.nivel] || NIVEL_STYLE.info
+          grupos.map(grupo => {
+            const s = NIVEL_STYLE[grupo.nivel] || NIVEL_STYLE.info
             return (
               <button
-                key={alerta.id}
-                onClick={() => onNavigate?.(alerta.navegarA)}
+                key={grupo.id}
+                onClick={() => onNavigate?.(grupo.navegarA)}
+                title={grupo.items.map(item => item.mensaje).join(' · ')}
                 style={{
                   background: s.bg,
                   border: `1px solid ${s.border}`,
@@ -123,7 +126,7 @@ export default function AlertaBanner({ onNavigate }) {
                   width: '5px', height: '5px', borderRadius: '50%',
                   background: s.dot, flexShrink: 0,
                   boxShadow: `0 0 4px ${s.dot}`,
-                  animation: alerta.nivel === 'critico' ? 'pulse-green 1.5s infinite' : 'none',
+                  animation: grupo.nivel === 'critico' ? 'pulse-green 1.5s infinite' : 'none',
                 }} />
                 <span style={{
                   fontFamily: 'Roboto Mono, monospace',
@@ -133,8 +136,9 @@ export default function AlertaBanner({ onNavigate }) {
                   textTransform: 'uppercase',
                   whiteSpace: 'nowrap',
                 }}>
-                  {alerta.mensaje}
+                  {grupo.label} · {grupo.total}
                 </span>
+                {grupo.items.length > 1 && <span style={{ fontSize:'0.54rem', color:s.color, opacity:.7 }}>{grupo.items.length} tipos</span>}
                 <ChevronRight size={8} style={{ color: s.color, opacity: 0.6 }} />
               </button>
             )
