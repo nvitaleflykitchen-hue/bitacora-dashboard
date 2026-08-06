@@ -1,7 +1,25 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.19";
+export const APP_VERSION = "2.7.20";
 
 export const RELEASES = [
+  {
+    version: "2.7.20",
+    date: "2026-08-06",
+    title: "Auditorías mobile guiadas",
+    functions: [
+      "Auditorías internas cuenta con un recorrido específico para celulares en lugar de reutilizar la pantalla de escritorio.",
+      "Cada punto se responde en una pantalla con cuatro resultados claros, observación, foto o evidencia y acceso directo para registrar un hallazgo.",
+      "Guardar y seguir conserva el avance antes de mostrar el punto siguiente.",
+      "Al abrir una auditoría en curso, mobile retoma automáticamente el primer punto pendiente.",
+      "La barra de progreso muestra respuestas completadas, total y porcentaje de avance.",
+      "La revisión final resume los resultados e impide finalizar mientras existan puntos sin responder.",
+    ],
+    problem: "El acceso mobile existía, pero mostraba la pantalla completa de escritorio y hacía difícil avanzar durante un recorrido real con decenas de puntos y evidencias.",
+    affectedUsers: "Auditores internos, Calidad, Seguridad e Higiene y responsables autorizados que relevan sedes desde el celular.",
+    usage: "En mobile abrí Más > Auditorías internas, elegí una auditoría y respondé cada punto. Adjuntá la evidencia, registrá el hallazgo si corresponde y usá Guardar y seguir. Al terminar, revisá el resumen y finalizá.",
+    examples: ["Tomar una foto en el punto auditado y continuar sin volver al listado.", "Retomar automáticamente el primer punto pendiente después de interrumpir el recorrido."],
+    screenshots: [],
+  },
   {
     version: "2.7.19",
     date: "2026-08-06",

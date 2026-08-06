@@ -440,6 +440,8 @@ export const HELP_MODULES = [
           'Cada punto se evalúa como Cumple, Parcial, No cumple o No observado. Los puntos Parcial o No cumple deben llevar una observación y pueden originar un hallazgo con criticidad, responsable, plazo y evidencia.',
           'Calidad y Seguridad e Higiene pueden auditar todas las sedes. Miguel Riviere puede gestionar auditorías de aeropuertos. Los responsables territoriales pueden consultar y aportar respuestas o evidencias en sus sedes.',
           'Desde el celular, usá “Tomar foto” debajo de cada punto para abrir la cámara trasera. También podés elegir imágenes de la galería o adjuntar documentos.',
+          'En mobile, cada punto aparece como un paso independiente. Elegí el resultado, describí los desvíos y usá Guardar y seguir: el avance se guarda antes de abrir el punto siguiente.',
+          'Si interrumpís el recorrido, al volver se abre el primer punto pendiente. La revisión final muestra el resumen y no permite finalizar mientras queden puntos sin responder.',
           'En los hallazgos, cargá por separado la evidencia inicial y la evidencia de corrección o cierre. Usá “Editar” para actualizar los datos generales sin cambiar la plantilla.',
           'Desde un hallazgo se puede generar una No Conformidad y su CAPA. La auditoría se considera finalizada cuando el relevamiento, los hallazgos y el porcentaje estén completos; el cierre definitivo requiere verificar las acciones.',
         ],
