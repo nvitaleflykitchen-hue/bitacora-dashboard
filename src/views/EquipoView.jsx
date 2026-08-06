@@ -43,6 +43,7 @@ import PersonaRrhhPanel from "../components/PersonaRrhhPanel";
 import BibliotecaRecursos from "../components/BibliotecaRecursos";
 import EvaluacionesAnalysisPanel from "../components/EvaluacionesAnalysisPanel";
 import OverflowTabs from "../components/OverflowTabs";
+import ActionOverflowMenu from "../components/ActionOverflowMenu";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
 import {
@@ -722,6 +723,21 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
 
   const puntaje = Math.min(5, persona.puntaje_promedio || 0);
   const resultadoLabel = puntaje > 0 ? getResultado(puntaje) : "—";
+  const fichaPrimaryTabs = [
+    ["info", "INFO & PUESTO"], ["documentacion", "DOCUMENTACIÓN"],
+    ["evaluaciones", "EVALUACIONES"], ["historial", "HISTORIAL"],
+    ...(perfil?.rol === "admin" ? [["rrhh", "RR. HH."]] : []),
+  ].map(([id, label]) => ({ id, label }));
+  const fichaSecondaryTabs = [
+    ["logros", "LOGROS"], ...(canManage ? [["formularios", "FORMULARIOS"]] : []),
+  ].map(([id, label]) => ({ id, label }));
+  const actionItems = [
+    { id:"call", label:"Llamar", icon:Phone, href:persona.telefono ? `tel:${phoneDigits}` : null, disabled:!persona.telefono, hint:!persona.telefono ? "Sin teléfono" : null },
+    { id:"email", label:"Email", icon:Mail, href:mailLink, disabled:!mailLink, hint:!mailLink ? "Sin email" : null },
+    ...(canManageCredentials ? [{ id:"credential", label:"Credencial", icon:CreditCard, onClick:() => setShowCredential(true) }] : []),
+    ...(canManage ? [{ id:"obsolete", label:"Enviar a obsoletos", icon:Archive, onClick:sendPersonaToObsolete, disabled:saving, tone:"warning", separated:true }] : []),
+    ...(canDelete ? [{ id:"delete", label:"Eliminar ficha", icon:Trash2, onClick:deletePersona, tone:"danger", separated:!canManage }] : []),
+  ];
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -791,7 +807,18 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
             {persona.puesto || "—"} {persona.area ? `· ${persona.area}` : ""}
           </p>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-wrap font-metric" style={{fontSize:'.62rem',color:'var(--text-dim)'}}>
+          <span>Puntaje <strong style={{color:puntaje > 0 ? 'var(--phosphor)' : 'var(--text-dim)'}}>{puntaje > 0 ? puntaje.toFixed(1) : '—'}</strong></span>
+          <span>Resultado <strong style={{color:puntaje > 0 ? RESULTADO_COLOR[resultadoLabel] : 'var(--text-dim)'}}>{resultadoLabel}</strong></span>
+          <span><strong style={{color:'var(--phosphor)'}}>{persona.logros_count || 0}</strong> logros</span>
+          <span><strong style={{color:persona.incidentes > 0 ? 'var(--warn)' : 'var(--phosphor)'}}>{persona.incidentes || 0}</strong> incidentes</span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {waLink ? <a href={waLink} target="_blank" rel="noreferrer" className="btn-primary flex items-center gap-1.5" style={{fontSize:'.7rem',textDecoration:'none'}}><MessageCircle size={12}/> Mensaje</a>
+            : <span className="btn-ghost flex items-center gap-1.5 opacity-40" title="Cargá un teléfono para habilitar WhatsApp"><MessageCircle size={12}/> Mensaje</span>}
+          <ActionOverflowMenu items={actionItems} />
+        </div>
+        <div className="hidden">
           {canManage && (
             <button
               onClick={sendPersonaToObsolete}
@@ -861,7 +888,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
 
       {/* KPI bar */}
       <div
-        className="grid grid-cols-4 gap-0"
+        className="hidden"
         style={{ borderBottom: "1px solid rgba(57,255,20,0.08)" }}
       >
         {[
@@ -909,9 +936,11 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
 
       {/* Tabs */}
       <div
-        className="flex gap-0 px-6 pt-3"
+        className="px-6 pt-3"
         style={{ borderBottom: "1px solid rgba(57,255,20,0.08)" }}
       >
+        <OverflowTabs primaryTabs={fichaPrimaryTabs} secondaryTabs={fichaSecondaryTabs} activeTab={tab} onChange={setTab} ariaLabel="Secciones de la ficha personal" />
+        <div className="hidden">
         {[
           ["info", "INFO & PUESTO"],
           ["documentacion", "DOCUMENTACIÓN"],
@@ -939,6 +968,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
             {label}
           </button>
         ))}
+        </div>
       </div>
 
       {/* Body */}
@@ -947,7 +977,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
         {tab === "info" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="glass p-4 space-y-3">
+              <div className="glass p-4 grid grid-cols-2 gap-x-6 gap-y-3 [&>p:first-child]:col-span-2">
                 <p
                   className="font-metric text-xs"
                   style={{ color: "var(--phosphor)", letterSpacing: "0.08em" }}
@@ -988,7 +1018,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack }) {
                   ) : null,
                 )}
               </div>
-              <div className="glass p-4 space-y-3">
+              <div className="glass p-4 grid grid-cols-2 gap-x-6 gap-y-3 [&>p:first-child]:col-span-2">
                 <p
                   className="font-metric text-xs"
                   style={{ color: "var(--phosphor)", letterSpacing: "0.08em" }}
