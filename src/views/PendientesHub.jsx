@@ -7,9 +7,10 @@ import Tareas from './Tareas'
 import Escalamientos from './Escalamientos'
 import Calendario from './Calendario'
 import { isQualityOnlyProfile } from '../lib/access'
+import usePersistedState from '../hooks/usePersistedState'
 
 const TABS = [
-  { id:'bandeja', label:'Bandeja' },
+  { id:'bandeja', label:'Trabajo' },
   { id:'tareas', label:'Tareas' },
   { id:'escalamientos', label:'Escalamientos' },
   { id:'calendario', label:'Calendario' },
@@ -17,12 +18,17 @@ const TABS = [
 
 const VIEW_MODES = [
   { id:'prioridad', label:'Prioridad' },
-  { id:'sin_responsable', label:'Sin responsable' },
-  { id:'mios', label:'Mis pendientes' },
   { id:'por_area', label:'Por área' },
 ]
 
 const FILTER_ALL = 'todos'
+const SMART_FILTERS = {
+  ALL:'todos',
+  CRITICAL:'criticos',
+  UNASSIGNED:'sin_responsable',
+  DUE_SOON:'proximos',
+  MINE:'mios',
+}
 
 const normalize = value => String(value || '').trim().toLowerCase()
 const isHighPriority = value => ['alta', 'critica', 'crítica', 'urgente'].includes(normalize(value))
@@ -104,14 +110,15 @@ const chipClassForPriority = item => {
 
 const uniqueSorted = values => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
 
-function MetricCard({ label, value, tone = 'green', onClick }) {
+function MetricCard({ label, value, tone = 'green', onClick, active = false }) {
   const color = tone === 'red' ? 'var(--alert)' : tone === 'yellow' ? 'var(--warn)' : 'var(--phosphor)'
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className="glass text-left p-3 rounded hover:border-green-500/30"
-      style={{ borderColor:tone === 'red' ? 'rgba(255,42,42,0.28)' : tone === 'yellow' ? 'rgba(245,158,11,0.28)' : undefined }}
+      style={{ borderColor:active ? color : tone === 'red' ? 'rgba(255,42,42,0.28)' : tone === 'yellow' ? 'rgba(245,158,11,0.28)' : undefined }}
     >
       <div className="kpi-value" style={{ fontSize:'1.35rem', color }}>{value}</div>
       <div className="kpi-label">{label}</div>
@@ -124,10 +131,12 @@ function Bandeja({ onNavigate }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [viewMode, setViewMode] = useState('prioridad')
-  const [moduleFilter, setModuleFilter] = useState(FILTER_ALL)
-  const [priorityFilter, setPriorityFilter] = useState(FILTER_ALL)
-  const [query, setQuery] = useState('')
+  const [viewMode, setViewMode] = usePersistedState('bandeja.vista', 'prioridad')
+  const [smartFilter, setSmartFilter] = usePersistedState('bandeja.foco', SMART_FILTERS.ALL)
+  const [moduleFilter, setModuleFilter] = usePersistedState('bandeja.area', FILTER_ALL)
+  const [priorityFilter, setPriorityFilter] = usePersistedState('bandeja.prioridad', FILTER_ALL)
+  const [query, setQuery] = usePersistedState('bandeja.busqueda', '')
+  const effectiveViewMode = VIEW_MODES.some(mode => mode.id === viewMode) ? viewMode : 'prioridad'
 
   const load = useCallback(async (force = false) => {
     setLoading(true)
@@ -161,23 +170,41 @@ function Bandeja({ onNavigate }) {
       .filter(item => moduleFilter === FILTER_ALL || item.module === moduleFilter)
       .filter(item => priorityFilter === FILTER_ALL || item.priority === priorityFilter)
       .filter(item => {
+        if (smartFilter === SMART_FILTERS.CRITICAL) return isOverdue(item) || isHighPriority(item.priority)
+        if (smartFilter === SMART_FILTERS.UNASSIGNED) return isUnassigned(item)
+        if (smartFilter === SMART_FILTERS.DUE_SOON) return isDueSoon(item)
+        if (smartFilter === SMART_FILTERS.MINE) return isMine(item, perfil)
+        return true
+      })
+      .filter(item => {
         if (!term) return true
         return [item.title, item.site, item.owner, item.module, item.status, item.priority]
           .some(value => normalize(value).includes(term))
       })
       .filter(item => {
-        if (viewMode === 'sin_responsable') return isUnassigned(item)
-        if (viewMode === 'mios') return isMine(item, perfil)
         return true
       })
       .sort((a, b) => {
-        if (viewMode === 'por_area') {
+        if (effectiveViewMode === 'por_area') {
           const byModule = String(a.module || '').localeCompare(String(b.module || ''), 'es')
           if (byModule !== 0) return byModule
         }
         return priorityRank(a) - priorityRank(b) || new Date(a.date || 0) - new Date(b.date || 0)
       })
-  }, [items, moduleFilter, priorityFilter, query, viewMode, perfil])
+  }, [items, moduleFilter, priorityFilter, query, effectiveViewMode, smartFilter, perfil])
+
+  const clearFilters = () => {
+    setSmartFilter(SMART_FILTERS.ALL)
+    setModuleFilter(FILTER_ALL)
+    setPriorityFilter(FILTER_ALL)
+    setQuery('')
+  }
+
+  const openItem = item => onNavigate(item.target, {
+    type:item.entityType,
+    id:item.entityId,
+    sedeId:item.sedeId,
+  })
 
   const shownItems = filteredItems.slice(0, 100)
 
@@ -185,7 +212,7 @@ function Bandeja({ onNavigate }) {
     <div className="h-full overflow-y-auto p-4 md:p-6">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Centro de pendientes</h2>
+          <h2 className="font-title font-bold" style={{ color:'var(--text)' }}>Bandeja única</h2>
           <p className="text-xs mt-1" style={{ color:'var(--text-dim)' }}>
             Priorizá vencidos, sin responsable y pendientes propios antes de revisar el resto.
           </p>
@@ -198,11 +225,11 @@ function Bandeja({ onNavigate }) {
       {error && <div className="rounded p-3 mb-3" role="alert" style={{ color:'var(--alert)', border:'1px solid rgba(255,42,42,0.25)' }}>{error}</div>}
 
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-2 mb-4">
-        <MetricCard label="Total" value={metrics.total} onClick={() => setViewMode('prioridad')} />
-        <MetricCard label="Vencidos / alta" value={metrics.critical} tone={metrics.critical ? 'red' : 'green'} onClick={() => setViewMode('prioridad')} />
-        <MetricCard label="Sin responsable" value={metrics.unassigned} tone={metrics.unassigned ? 'yellow' : 'green'} onClick={() => setViewMode('sin_responsable')} />
-        <MetricCard label="Próx. 7 días" value={metrics.dueSoon} onClick={() => setViewMode('prioridad')} />
-        <MetricCard label="Míos" value={metrics.mine} onClick={() => setViewMode('mios')} />
+        <MetricCard label="Total" value={metrics.total} active={smartFilter === SMART_FILTERS.ALL} onClick={() => setSmartFilter(SMART_FILTERS.ALL)} />
+        <MetricCard label="Vencidos / alta" value={metrics.critical} active={smartFilter === SMART_FILTERS.CRITICAL} tone={metrics.critical ? 'red' : 'green'} onClick={() => setSmartFilter(SMART_FILTERS.CRITICAL)} />
+        <MetricCard label="Sin responsable" value={metrics.unassigned} active={smartFilter === SMART_FILTERS.UNASSIGNED} tone={metrics.unassigned ? 'yellow' : 'green'} onClick={() => setSmartFilter(SMART_FILTERS.UNASSIGNED)} />
+        <MetricCard label="Próx. 7 días" value={metrics.dueSoon} active={smartFilter === SMART_FILTERS.DUE_SOON} onClick={() => setSmartFilter(SMART_FILTERS.DUE_SOON)} />
+        <MetricCard label="Míos" value={metrics.mine} active={smartFilter === SMART_FILTERS.MINE} onClick={() => setSmartFilter(SMART_FILTERS.MINE)} />
       </div>
 
       <div className="glass rounded p-3 mb-4">
@@ -212,12 +239,17 @@ function Bandeja({ onNavigate }) {
               key={mode.id}
               type="button"
               onClick={() => setViewMode(mode.id)}
-              className={viewMode === mode.id ? 'btn-primary' : 'btn-ghost'}
+              className={effectiveViewMode === mode.id ? 'btn-primary' : 'btn-ghost'}
               style={{ fontSize:'0.62rem', padding:'0.35rem 0.65rem' }}
             >
               {mode.label}
             </button>
           ))}
+          {(smartFilter !== SMART_FILTERS.ALL || moduleFilter !== FILTER_ALL || priorityFilter !== FILTER_ALL || query) && (
+            <button type="button" onClick={clearFilters} className="btn-ghost" style={{ marginLeft:'auto', fontSize:'0.62rem' }}>
+              Limpiar filtros
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px] gap-2">
@@ -263,7 +295,7 @@ function Bandeja({ onNavigate }) {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => onNavigate(item.target)}
+                onClick={() => openItem(item)}
                 className="w-full text-left px-4 py-3 hover:bg-green-500/5 transition-colors"
               >
                 <div className="grid grid-cols-1 lg:grid-cols-[94px_150px_minmax(260px,1fr)_190px_170px_125px_132px] gap-2 lg:gap-0 lg:items-center">
@@ -317,8 +349,8 @@ export default function PendientesHub({ onNavigate }) {
 
   return (
     <WorkspaceTabs
-      title="Pendientes"
-      subtitle={isQualityOnly ? 'Bandeja acotada a tareas propias y de Calidad' : 'Centro operativo para tareas, escalamientos, mantenimiento y compras'}
+      title="Bandeja"
+      subtitle={isQualityOnly ? 'Trabajo propio y de Calidad en un solo lugar' : 'Tareas, escalamientos, mantenimiento, proyectos y compras sin duplicados'}
       tabs={tabs}
       activeTab={visibleTab}
       onTabChange={setActiveTab}

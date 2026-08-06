@@ -150,7 +150,7 @@ export function isQualityTeamPerson(persona, perfil = null) {
 export const PRIMARY_NAV = [
   { id:'inicio', label:'Inicio', icon:'home', roles:ALL_OPERATIONAL_ROLES },
   { id:'tablon', label:'Tablón', icon:'announcement', roles:ALL_OPERATIONAL_ROLES },
-  { id:'pendientes', label:'Pendientes', icon:'pending', roles:ALL_OPERATIONAL_ROLES },
+  { id:'pendientes', label:'Bandeja', icon:'pending', roles:ALL_OPERATIONAL_ROLES },
   { id:'proyectosGestion', label:'Proyectos', icon:'projects', roles:new Set(['admin','editor','consultor','grupo','encargado']) },
   { id:'sedesHub', label:'Sedes', icon:'sites', roles:ALL_OPERATIONAL_ROLES },
   { id:'requerimientos', label:'Compras', icon:'purchases', roles:ALL_OPERATIONAL_ROLES },

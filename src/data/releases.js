@@ -1,7 +1,25 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.10";
+export const APP_VERSION = "2.7.11";
 
 export const RELEASES = [
+  {
+    version: "2.7.11",
+    date: "2026-08-06",
+    title: "Fase 6: Bandeja única",
+    functions: [
+      "Pendientes pasa a llamarse Bandeja y concentra tareas, CAPA, proyectos, escalamientos, tickets y compras.",
+      "Los indicadores Total, Vencidos/alta, Sin responsable, Próximos 7 días y Míos aplican el filtro correspondiente con un solo clic.",
+      "La bandeja recuerda la vista, el foco, el área, la prioridad y la búsqueda elegidos por cada usuario.",
+      "Los escalamientos que ya generaron un ticket vinculado dejan de mostrarse como un segundo trabajo independiente.",
+      "Cada fila conserva el identificador y la sede del registro para navegar al elemento operativo correcto.",
+      "Un único botón permite limpiar todos los filtros activos.",
+    ],
+    problem: "La bandeja existente reunía fuentes distintas, pero algunos indicadores no filtraban, se perdía el contexto al volver y un mismo problema podía aparecer como escalamiento y ticket.",
+    affectedUsers: "Responsables, administradores, encargados y equipos operativos que priorizan trabajo entre varios módulos.",
+    usage: "Ingresá a Bandeja y elegí el foco de trabajo desde los indicadores superiores. La selección se conserva hasta que uses Limpiar filtros.",
+    examples: ["Ver únicamente lo vencido o crítico con un clic.", "Continuar trabajando con el mismo filtro al regresar a la Bandeja.", "Gestionar un ticket vinculado sin contar también su escalamiento como otra tarea."],
+    screenshots: [],
+  },
   {
     version: "2.7.10",
     date: "2026-08-05",

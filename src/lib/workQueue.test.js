@@ -28,4 +28,23 @@ describe('bandeja unificada', () => {
 
     expect(item).toMatchObject({ module:'Proyecto', target:'proyectosGestion' })
   })
+  it('evita duplicar un escalamiento cuando ya tiene un ticket operativo vinculado', () => {
+    const result = normalizeWorkItems({
+      escalamientos:[{ id:7, descripcion:'Falla del horno', estado:'Pendiente' }],
+      tickets:[{ id:12, descripcion:'Reparar horno', estado:'abierto', escalamiento_id:7 }],
+    })
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      id:'ticket-12', entityId:12, entityType:'ticket', linkedEscalamientoId:7,
+    })
+  })
+
+  it('conserva identificadores para abrir el registro exacto desde la bandeja', () => {
+    const [item] = normalizeWorkItems({
+      tareas:[{ id:33, titulo:'Confirmar entrega', estado:'Pendiente', sede_id:5 }],
+    })
+
+    expect(item).toMatchObject({ entityId:33, entityType:'tarea', sedeId:5, target:'tareas' })
+  })
 })
