@@ -11,6 +11,7 @@ import { canAccessView, getDefaultView, isComprasOnlyProfile, isQualityOnlyProfi
 import HelpPanel from './components/HelpPanel'
 import WhatsNewModal from './components/WhatsNewModal'
 import { hasSeenLatestRelease } from './data/releases'
+import { normalizeReportContext } from './lib/reportContext'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
 const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
@@ -173,6 +174,7 @@ function AppInner() {
   const [qrActivoId, setQrActivoId] = useState(() => new URLSearchParams(window.location.search).get('id'))
   const [showSearch, setShowSearch] = useState(false)
   const [showReporte, setShowReporte] = useState(false)
+  const [reportContext, setReportContext] = useState(null)
   const [showHelp, setShowHelp] = useState(false)
   const [showWhatsNew, setShowWhatsNew] = useState(false)
   const [navigationTarget, setNavigationTarget] = useState(() => {
@@ -256,11 +258,29 @@ function AppInner() {
 
   const ActiveView = ALL_VIEWS[activeView] || InicioRol
   const canReport = !isQualityOnly && !isComprasOnly && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
+  const openReport = context => {
+    if (!canReport) return
+    setReportContext(normalizeReportContext(context))
+    setShowReporte(true)
+  }
+  const closeReport = () => {
+    setShowReporte(false)
+    setReportContext(null)
+  }
+  const finishReport = () => {
+    const origin = reportContext
+    closeReport()
+    if (origin?.returnView) navigate(origin.returnView, {
+      type: origin.type,
+      id: origin.type === 'sede' ? origin.sedeId : origin.id,
+      sedeId: origin.sedeId,
+    })
+  }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background:'var(--abyss)' }}>
       <div className="scanline" />
-      <Sidebar activeView={activeView} onNavigate={navigate} onNuevoReporte={canReport ? () => setShowReporte(true) : null} />
+      <Sidebar activeView={activeView} onNavigate={navigate} onNuevoReporte={canReport ? () => openReport(null) : null} />
       <main className="flex-1 flex flex-col overflow-hidden pt-12 md:pt-0">
         <AlertaBanner onNavigate={navigate} />
         {showSearch && !isQualityOnly && !isComprasOnly && (
@@ -275,6 +295,7 @@ function AppInner() {
                 focusId={navigationTarget?.id || null}
                 focusType={navigationTarget?.type || null}
                 focusSedeId={navigationTarget?.sedeId || null}
+                onCreateNovedad={canReport ? openReport : null}
               />
           }
         </Suspense>
@@ -331,8 +352,9 @@ function AppInner() {
           >
             <Suspense fallback={<ViewLoading />}>
               <MobileReporte
-                onBack={() => setShowReporte(false)}
-                onSuccess={() => setShowReporte(false)}
+                context={reportContext}
+                onBack={closeReport}
+                onSuccess={finishReport}
               />
             </Suspense>
           </div>

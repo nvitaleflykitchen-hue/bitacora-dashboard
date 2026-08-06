@@ -28,7 +28,9 @@ const ESTADO_CHIP = {
   'Operación condicionada': { bg: 'rgba(255,42,42,0.12)',  color: '#FF2A2A' },
 }
 
-export default function MobileSedes() {
+export default function MobileSedes({ focusContext, onCreateNovedad }) {
+  const focusType = focusContext?.type
+  const focusId = focusContext?.id
   const { can } = useAuth()
   const canManageSedes = can('sedes', 'manage')
   const [sedes, setSedes] = useState([])
@@ -81,6 +83,18 @@ export default function MobileSedes() {
     } catch (_) {}
     setLoadingRegistros(false)
   }
+
+  useEffect(() => {
+    if (focusType !== 'sede' || !sedes.length || selectedSede) return
+    const target = sedes.find(s => String(s.id) === String(focusId))
+    if (!target) return
+    setSelectedSede(target)
+    setLoadingRegistros(true)
+    getRegistrosBySede(target.id, diasFiltro)
+      .then(setSedeRegistros)
+      .catch(error => toast.error(mensajeError(error)))
+      .finally(() => setLoadingRegistros(false))
+  }, [focusType, focusId, sedes, selectedSede, diasFiltro])
 
   const cambiarDias = (d) => {
     setDiasFiltro(d)
@@ -159,6 +173,7 @@ export default function MobileSedes() {
           </div>
           {/* Filtro de días */}
           <div style={{ display: 'flex', gap: 6, marginTop: '0.65rem' }}>
+            {onCreateNovedad && <button className="btn-primary" style={{ minHeight:44 }} onClick={() => onCreateNovedad({ type:'sede', id:selectedSede.id, label:selectedSede.nombre, sedeId:selectedSede.id, sedeLabel:selectedSede.nombre })}>+ Crear novedad</button>}
             {[7, 30, 90].map(d => (
               <button
                 key={d}

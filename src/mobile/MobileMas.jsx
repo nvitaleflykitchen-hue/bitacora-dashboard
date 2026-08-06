@@ -73,7 +73,7 @@ function ModuleCard({ mod, onOpen, favorite, onToggleFavorite, compact = false }
   )
 }
 
-export default function MobileMas({ initialModule = null, userId = null }) {
+export default function MobileMas({ initialModule = null, userId = null, focusContext = null, onCreateNovedad = null }) {
   const { rol, perfil } = useAuth()
   const [active, setActive] = useState(initialModule)
   useBackHandler(() => setActive(null), !!active)
@@ -122,10 +122,10 @@ export default function MobileMas({ initialModule = null, userId = null }) {
         <div style={{ flex:1, minHeight:0 }}>
           {mod.key === 'calidad' && <MobileCapa />}
           {mod.key === 'auditorias' && <div className="mobile-scroll" style={{ height:'100%', overflowY:'auto', padding:'1rem' }}><AuditoriasInternas /></div>}
-          {mod.key === 'personal' && <MobilePersonal />}
-          {mod.key === 'mantenimiento' && <MobileMantenimiento />}
+          {mod.key === 'personal' && <MobilePersonal focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
+          {mod.key === 'mantenimiento' && <MobileMantenimiento focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
           {mod.key === 'indicadores' && <MobileIndicadores />}
-          {mod.key === 'flota' && <MobileFlota />}
+          {mod.key === 'flota' && <MobileFlota focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
           {mod.key === 'tablon' && <MobileTablon />}
           {mod.key === 'actualizaciones' && <MobileActualizaciones />}
           {mod.key === 'contactos' && <MobileContactos />}

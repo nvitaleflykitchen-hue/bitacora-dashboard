@@ -26,7 +26,7 @@ const estaVencido   = f => !!f && f < hoy()
 const proximoVencer = f => { if (!f) return false; const d = (new Date(f)-new Date())/86400000; return d>=0 && d<=30 }
 const docColor = f => estaVencido(f) ? '#FF2A2A' : proximoVencer(f) ? '#F59E0B' : f ? '#39FF14' : 'var(--text-dim)'
 
-function VehiculoModal({ vehiculo, sedes, onClose, onSaved }) {
+function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
   const isNew = !vehiculo?.id
   const { rol, perfil } = useAuth()
   const canEdit = ['admin','encargado','editor','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
@@ -207,6 +207,9 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved }) {
         {err && <p style={{ color:'#FF2A2A', fontSize:'0.8rem', marginBottom:'1rem' }}>{err}</p>}
 
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', marginTop:'1rem' }}>
+          {!isNew && !editing && onCreateNovedad && vehiculo?.sede_id && (
+            <button onClick={() => onCreateNovedad({ type:'vehiculo', id:vehiculo.id, label:vehiculo.nombre, sedeId:vehiculo.sede_id, sedeLabel:sedeName, returnView:'mntFlotaGestion' })} className='btn-primary'>+ Crear novedad</button>
+          )}
           {!isNew && !editing && canEdit && (
             <button onClick={() => setEditing(true)} className='btn-primary'>Editar</button>
           )}
@@ -225,7 +228,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved }) {
   )
 }
 
-export default function MntFlotaGestion({ focusId }) {
+export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
   const { allowedSedeIds, rol, perfil } = useAuth()
   const canWrite = ['admin','editor','encargado','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [vehiculos, setVehiculos] = useState([])
@@ -363,6 +366,7 @@ export default function MntFlotaGestion({ focusId }) {
           sedes={sedes}
           onClose={()=>setModal(null)}
           onSaved={()=>{ setModal(null); load() }}
+          onCreateNovedad={onCreateNovedad}
         />
       )}
     </div>

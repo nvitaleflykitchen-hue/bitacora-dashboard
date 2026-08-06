@@ -1,7 +1,24 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.15";
+export const APP_VERSION = "2.7.16";
 
 export const RELEASES = [
+  {
+    version: "2.7.16",
+    date: "2026-08-06",
+    title: "Fase 11: flujos contextuales",
+    functions: [
+      "Las fichas de activos, vehÃ­culos, sedes y personas permiten iniciar una novedad sin abandonar el contexto.",
+      "La sede y la entidad de origen quedan preseleccionadas y se verifican contra las opciones autorizadas antes de habilitar el envÃ­o.",
+      "Los borradores contextuales se guardan separados de los reportes generales para evitar cruces entre cargas.",
+      "DespuÃ©s de guardar, la aplicaciÃ³n vuelve a la ficha de origen tanto en escritorio como en mobile.",
+      "El acceso contextual reduce la selecciÃ³n manual de sede y entidad en uno o dos pasos por operaciÃ³n.",
+    ],
+    problem: "Para registrar una novedad vinculada, el usuario debÃ­a salir de la ficha, abrir un reporte general y volver a buscar la sede y la entidad.",
+    affectedUsers: "Responsables, administradores y personal operativo que registra novedades de mantenimiento, flota, sedes o equipo.",
+    usage: "AbrÃ­ la ficha correspondiente y elegÃ­ Crear novedad. ConfirmÃ¡ el origen verificado, completÃ¡ la descripciÃ³n y enviÃ¡; al finalizar volverÃ¡s a la misma ficha.",
+    examples: ["Informar una falla desde la ficha de un horno.", "Registrar una novedad desde un vehÃ­culo.", "Agregar un hecho laboral desde la ficha de una persona."],
+    screenshots: [],
+  },
   {
     version: "2.7.15",
     date: "2026-08-06",

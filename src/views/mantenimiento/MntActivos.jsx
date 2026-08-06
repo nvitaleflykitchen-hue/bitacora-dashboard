@@ -56,7 +56,7 @@ export const CATEGORIAS_OFICIALES = [
 ]
 
 
-function ActivoModal({ activo, sedes, onClose, onSaved }) {
+function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
   const isNew = !activo?.id
   const { rol, perfil } = useAuth()
   const canEdit = ['admin','encargado','editor'].includes(rol) && !isQualityOnlyProfile(perfil)
@@ -406,6 +406,9 @@ function ActivoModal({ activo, sedes, onClose, onSaved }) {
 
         {/* Footer */}
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', marginTop:'1rem' }}>
+          {!isNew && !editing && tab === 'ficha' && onCreateNovedad && activo?.sede_id && (
+            <button onClick={() => onCreateNovedad({ type:'activo', id:activo.id, label:activo.nombre, sedeId:activo.sede_id, sedeLabel:sedeName, returnView:'mntActivos' })} className='btn-primary'>+ Crear novedad</button>
+          )}
           {!isNew && !editing && canEdit && tab === 'ficha' && (
             <button onClick={() => setEditing(true)} className='btn-primary'>
               Editar
@@ -497,7 +500,7 @@ function QRModal({ activo, onClose }) {
   )
 }
 
-export default function MntActivos({ focusId }) {
+export default function MntActivos({ focusId, onCreateNovedad }) {
   const { allowedSedeIds, rol, perfil } = useAuth()
   const canWrite = ['admin','encargado','editor'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [activos, setActivos] = useState([])
@@ -631,6 +634,7 @@ export default function MntActivos({ focusId }) {
           sedes={sedes}
           onClose={()=>setModal(null)}
           onSaved={()=>{ setModal(null); load() }}
+          onCreateNovedad={onCreateNovedad}
         />
       )}
     </div>

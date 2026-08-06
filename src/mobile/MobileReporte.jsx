@@ -14,6 +14,7 @@ import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, Plus, X,
 import { format } from 'date-fns'
 import useFormDraft from '../hooks/useFormDraft'
 import FormDraftNotice from '../components/FormDraftNotice'
+import { normalizeReportContext, reportContextDraftKey } from '../lib/reportContext'
 
 const ESTADOS_GENERALES = [
   { val: 'Sin novedades',        color: '#39FF14', bg: 'rgba(57,255,20,0.12)',  label: 'Sin novedades' },
@@ -680,8 +681,12 @@ function ArchivoStagedItem({ item, onRemove }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function MobileReporte({ onBack, onSuccess }) {
+export default function MobileReporte({ onBack, onSuccess, context: rawContext = null }) {
   const { perfil, rol, allowedSedeIds } = useAuth()
+  const context = useMemo(() => normalizeReportContext(rawContext), [rawContext])
+  const contextAppliedRef = useRef(false)
+  const [contextVerified, setContextVerified] = useState(!context)
+  const [contextDataReady, setContextDataReady] = useState(false)
   const esOperario = rol === 'operario' // acotado a bitácora + checklist: sin tickets ni compras
   const [sedes,    setSedes]    = useState([])
   const [sedeId,   setSedeId]   = useState(null)
@@ -782,7 +787,7 @@ export default function MobileReporte({ onBack, onSuccess }) {
     ensaladaReutilizable, ensaladaDescarte, postreProd, postreReutilizable, postreDescarte])
 
   const draft = useFormDraft({
-    key:`reporte-mobile-${perfil?.id || 'usuario'}`,
+    key:`reporte-mobile-${perfil?.id || 'usuario'}-${reportContextDraftKey(context)}`,
     value:draftPayload,
     onRestore:restoreDraft,
     enabled:!enviado,
@@ -813,10 +818,11 @@ export default function MobileReporte({ onBack, onSuccess }) {
   useEffect(() => {
     getSedes(allowedSedeIds?.length ? allowedSedeIds : null).then(list => {
       setSedes(list)
-      if (list.length === 1) setSedeId(list[0].id)
+      const contextual = context && list.find(s => String(s.id) === context.sedeId)
+      if (contextual) setSedeId(contextual.id)
       else if (list.length > 0) setSedeId(list[0].id)
     }).catch(console.error)
-  }, [allowedSedeIds])
+  }, [allowedSedeIds, context])
 
   // Cargar novedades del turno anterior (módulos + vuelos del último reporte de la sede)
   useEffect(() => {
@@ -836,11 +842,47 @@ export default function MobileReporte({ onBack, onSuccess }) {
 
   // Cargar vehículos y personal asignados a la sede elegida
   useEffect(() => {
+    setContextDataReady(false)
     if (!sedeId) { setVehiculosSede([]); setEquiposSede([]); setPersonasSede([]); return }
-    getActivos({ tipo: 'VEHICULO', sede_id: sedeId }).then(setVehiculosSede).catch(console.error)
-    getActivos({ tipo: 'EQUIPO', sede_id: Number(sedeId) }).then(setEquiposSede).catch(console.error)
-    getPersonasBySede(sedeId).then(setPersonasSede).catch(console.error)
+    Promise.all([
+      getActivos({ tipo: 'VEHICULO', sede_id: sedeId }),
+      getActivos({ sede_id: Number(sedeId) }),
+      getPersonasBySede(sedeId),
+    ]).then(([vehiculos, equipos, personas]) => {
+      setVehiculosSede(vehiculos)
+      setEquiposSede(equipos.filter(item => item.tipo !== 'VEHICULO'))
+      setPersonasSede(personas)
+    }).catch(console.error).finally(() => setContextDataReady(true))
   }, [sedeId])
+
+  // Confirma la entidad contra las opciones autorizadas cargadas para la sede.
+  // Así, un identificador manipulado en navegación no puede quedar asociado.
+  useEffect(() => {
+    if (!context || contextAppliedRef.current || String(sedeId) !== context.sedeId) return
+    if (context.type === 'sede') {
+      if (sedes.some(s => String(s.id) === context.sedeId)) { contextAppliedRef.current = true; setContextVerified(true) }
+      return
+    }
+    if (context.type === 'activo') {
+      const activo = equiposSede.find(item => String(item.id) === context.id)
+      if (!activo) return
+      setModulos(prev => ({ ...prev, e: { items: [{ severidad:'Hay novedades', descripcion:'', privada:false, escalar:false, tipo_escalamiento:'', activo_id:activo.id, activo_nombre:activo.nombre, crear_ticket:!esOperario }] } }))
+      contextAppliedRef.current = true
+      setContextVerified(true)
+    } else if (context.type === 'vehiculo') {
+      const vehiculo = vehiculosSede.find(item => String(item.id) === context.id)
+      if (!vehiculo) return
+      setVehiculoNovedades([{ activo_id:vehiculo.id, activo_nombre:vehiculo.nombre, tipo:'Avería', descripcion:'', crearTicket:!esOperario, escalar:false, tipo_escalamiento:'' }])
+      contextAppliedRef.current = true
+      setContextVerified(true)
+    } else if (context.type === 'persona') {
+      const persona = personasSede.find(item => String(item.id) === context.id)
+      if (!persona) return
+      setPersonaNovedades([{ persona_id:persona.id, persona_nombre:`${persona.nombre || ''} ${persona.apellido || ''}`.trim(), categoria:'Otro', descripcion:'' }])
+      contextAppliedRef.current = true
+      setContextVerified(true)
+    }
+  }, [context, sedeId, sedes, equiposSede, vehiculosSede, personasSede, esOperario])
 
   const sedeSel = sedes.find(s => s.id === sedeId)
 
@@ -1429,6 +1471,16 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
       {/* Body scrollable */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
         <div style={{ marginBottom:'1rem' }}><FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} /></div>
+
+        {context && (
+          <div role="status" style={{ background:'rgba(57,255,20,0.08)', border:'1px solid rgba(57,255,20,0.28)', borderRadius:8, padding:'0.8rem 1rem', marginBottom:'1rem' }}>
+            <p style={{ color:'var(--phosphor)', fontSize:'0.72rem', fontWeight:800, textTransform:'uppercase', margin:0 }}>Novedad contextual</p>
+            <p style={{ color:'var(--text)', fontSize:'0.86rem', fontWeight:700, margin:'0.25rem 0 0' }}>{context.label}</p>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', margin:'0.2rem 0 0' }}>
+              {contextVerified ? 'Entidad verificada y preseleccionada.' : contextDataReady ? 'No se pudo verificar la entidad en esta sede.' : 'Verificando entidad y sede…'} {contextVerified && 'Al guardar volverás a la ficha de origen.'}
+            </p>
+          </div>
+        )}
         
         {/* Novedades del turno anterior */}
         {novedadesAnteriores && (
@@ -1496,7 +1548,7 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
               color: 'var(--phosphor)', fontSize: '0.9rem',
             }}>{sedeSel?.nombre}</div>
           ) : (
-            <select value={sedeId || ''} onChange={e => setSedeId(Number(e.target.value))}
+            <select value={sedeId || ''} disabled={Boolean(context)} onChange={e => setSedeId(Number(e.target.value))}
               style={{
                 width: '100%', padding: '0.8rem 1rem', borderRadius: 8,
                 background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)',
@@ -1838,13 +1890,13 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
         {/* Botón submit */}
         <button
           onClick={() => handleSubmit()}
-          disabled={loading || !sedeId || !turno}
+          disabled={loading || !sedeId || !turno || !contextVerified}
           style={{
             width: '100%', padding: '1rem', borderRadius: 10, cursor: loading ? 'wait' : 'pointer',
-            background: loading || !sedeId || !turno
+            background: loading || !sedeId || !turno || !contextVerified
               ? 'rgba(57,255,20,0.15)'
               : 'var(--phosphor)',
-            color: loading || !sedeId || !turno ? 'rgba(57,255,20,0.4)' : '#0A0A0E',
+            color: loading || !sedeId || !turno || !contextVerified ? 'rgba(57,255,20,0.4)' : '#0A0A0E',
             fontWeight: 800, fontSize: '1rem', border: 'none',
             transition: 'all 0.2s',
           }}>

@@ -356,7 +356,7 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
   )
 }
 
-function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
+function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad }) {
   const [persona, setPersona] = useState(null)
   const [evaluaciones, setEvaluaciones] = useState([])
   const [historial, setHistorial] = useState([])
@@ -467,6 +467,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
         </div>
         {canManage && <PersonaFotoEditor persona={persona} compact showAvatar={false} onChanged={load} />}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && <button className="btn-primary" style={{ minHeight:44 }} onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnModule:'personal' })}>+ Novedad</button>}
           {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--phosphor)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
           {mailLink && <a href={mailLink} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text)', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Mail size={11} /> Email</a>}
           {canDelete && <button onClick={deletePersona} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,42,42,0.12)', color:'#ff5c5c', border:'1px solid rgba(255,42,42,0.3)', padding:'0.35rem 0.7rem', borderRadius:6, fontSize:'0.75rem', fontWeight:700 }}><Trash2 size={11} /> Eliminar</button>}
@@ -625,7 +626,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack }) {
   )
 }
 
-export default function MobilePersonal() {
+export default function MobilePersonal({ focusContext, onCreateNovedad }) {
   const { can, perfil, allowedSedeIds, user } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
   const isSafetyOnly = isSafetyOnlyProfile(perfil)
@@ -652,18 +653,19 @@ export default function MobilePersonal() {
         const data = r.data || []
         const permitidas = isQualityOnly ? data.filter(p => isQualityTeamPerson(p, perfil)) : data
         setPersonas(permitidas)
+        if (focusContext?.type === 'persona' && permitidas.some(p => String(p.id) === String(focusContext.id))) setSelectedId(focusContext.id)
         const ids = new Set(permitidas.map(persona => String(persona.id)))
         setEvaluacionesEquipo((evaluacionesRes.data || []).filter(evaluacion => ids.has(String(evaluacion.persona_id))))
         setBajas(isQualityOnly ? [] : (bajasRes.data || []))
       })
       .finally(() => setLoading(false))
-  }, [isQualityOnly, perfil])
+  }, [isQualityOnly, perfil, focusContext])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { getSedes(allowedSedeIds || undefined).then(setSedes).catch(() => {}) }, [allowedSedeIds])
 
   if (selectedId) {
-    return <PersonaFicha personaId={selectedId} canManage={canManage} canDelete={canDeletePerson(user?.id)} onBack={() => { setSelectedId(null); load() }} />
+    return <PersonaFicha personaId={selectedId} canManage={canManage} canDelete={canDeletePerson(user?.id)} onBack={() => { setSelectedId(null); load() }} onCreateNovedad={onCreateNovedad} />
   }
 
   const reactivar = async (persona) => {

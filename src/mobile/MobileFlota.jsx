@@ -31,7 +31,9 @@ function estadoVencimientos(v) {
   return peor
 }
 
-export default function MobileFlota() {
+export default function MobileFlota({ focusContext, onCreateNovedad }) {
+  const focusType = focusContext?.type
+  const focusId = focusContext?.id
   const [tab, setTab] = useState('vehiculos')
   const [vehiculos, setVehiculos] = useState([])
   const [docs, setDocs] = useState([])
@@ -42,12 +44,14 @@ export default function MobileFlota() {
   useEffect(() => {
     Promise.all([getActivos({ tipo: 'VEHICULO' }), getPoes()])
       .then(([v, d]) => {
-        setVehiculos((v || []).filter(a => a.tipo === 'VEHICULO'))
+        const lista = (v || []).filter(a => a.tipo === 'VEHICULO')
+        setVehiculos(lista)
+        if (focusType === 'vehiculo') setSel(lista.find(item => String(item.id) === String(focusId)) || null)
         setDocs(d || [])
       })
       .catch(e => toast.error(mensajeError(e)))
       .finally(() => setLoading(false))
-  }, [])
+  }, [focusType, focusId])
 
   if (loading) return <SkeletonTable filas={6} columnas={2} />
 
@@ -62,6 +66,7 @@ export default function MobileFlota() {
         <p style={{ color: 'var(--text-dim)', fontSize: '0.7rem', margin: '4px 0 14px' }}>
           {sel.marca || ''} {sel.modelo || ''}{sel.km_actual ? ` · ${sel.km_actual} km` : ''} · {sel.sede_nombre || sel.sede || '—'}
         </p>
+        {onCreateNovedad && sel.sede_id && <button className="btn-primary w-full" style={{ marginBottom:12, minHeight:44 }} onClick={() => onCreateNovedad({ type:'vehiculo', id:sel.id, label:sel.nombre, sedeId:sel.sede_id, sedeLabel:sel.sede_nombre, returnModule:'flota' })}>+ Crear novedad del vehículo</button>}
         <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '0.85rem 1rem', marginBottom: '0.75rem' }}>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', margin: '0 0 8px' }}>VENCIMIENTOS</p>
           {VENCIMIENTOS.map(([campo, label]) => {
