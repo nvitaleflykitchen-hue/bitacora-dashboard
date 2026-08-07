@@ -1,7 +1,7 @@
 {
   "name": "bitacora-dashboard",
   "private": true,
-  "version": "2.7.20",
+  "version": "2.7.21",
   "type": "module",
   "scripts": {
     "dev": "vite",

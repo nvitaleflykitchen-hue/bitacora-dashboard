@@ -18,6 +18,7 @@ import BibliotecaRecursos from '../components/BibliotecaRecursos'
 import EvaluacionesAnalysisPanel from '../components/EvaluacionesAnalysisPanel'
 import { analizarObjetividadEvaluacion } from '../lib/evaluacionObjetividad'
 import EmptyState from '../components/EmptyState'
+import CapacitacionesRelacionadas from '../components/CapacitacionesRelacionadas'
 import { confirmarAccionSensible } from '../lib/sensitiveActions'
 
 function SedePill({ label, active, onClick }) {
@@ -564,6 +565,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
 
         {tab === 'historial' && (
           <>
+            <CapacitacionesRelacionadas personaId={personaId} title="Capacitaciones realizadas" />
             {canManage && (
               <button onClick={() => setShowHist(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', padding: '0.5rem 0.8rem', marginBottom: 12 }}>
                 <Plus size={12} /> Agregar registro

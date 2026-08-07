@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import OrganigramaView from "./OrganigramaView";
 import AdjuntosPanel from "../components/AdjuntosPanel";
+import CapacitacionesRelacionadas from "../components/CapacitacionesRelacionadas";
 import ContactosTab from "../components/ContactosTab";
 import DocumentacionChecklist from "../components/DocumentacionChecklist";
 import PersonaFormularios from "../components/PersonaFormularios";
@@ -1800,6 +1801,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         {/* ── HISTORIAL ── */}
         {tab === "historial" && (
           <div>
+            <CapacitacionesRelacionadas personaId={personaId} title="Capacitaciones realizadas" />
             <div className="flex justify-between items-center mb-4">
               <p
                 className="font-metric text-xs"
