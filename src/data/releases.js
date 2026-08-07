@@ -1,7 +1,22 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.23";
+export const APP_VERSION = "2.7.24";
 
 export const RELEASES = [
+  {
+    version: "2.7.24",
+    date: "2026-08-07",
+    title: "Todo el personal disponible en capacitaciones",
+    functions: [
+      "Las capacitaciones permiten convocar a cualquier persona activa, incluso si está en período de prueba, pertenece a otra sede o todavía no tiene sede asignada.",
+      "El personal de la sede elegida aparece primero y el buscador permite localizar rápidamente por nombre, apellido o puesto.",
+      "Cada persona se identifica como perteneciente a la sede de la capacitación o a otra sede/sin sede para evitar selecciones accidentales.",
+    ],
+    problem: "El selector solo mostraba personas vinculadas a la sede, por lo que algunos ingresos recientes o personas en período de prueba no podían agregarse.",
+    affectedUsers: "Calidad y responsables que organizan capacitaciones.",
+    usage: "Creá o abrí una capacitación y buscá a cualquier integrante activo. El personal de la sede se mostrará primero.",
+    examples: ["Agregar a una capacitación a una persona en período de prueba o temporalmente asignada a otra sede."],
+    screenshots: [],
+  },
   {
     version: "2.7.23",
     date: "2026-08-07",

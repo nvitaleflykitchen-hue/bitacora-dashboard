@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, CheckCircle2, Download, Plus, Save, Users, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { getPersonasBySede, getSedes } from '../lib/queries'
+import { getPersonasActivasParaCapacitacion, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
@@ -21,6 +21,7 @@ export default function Capacitaciones({ mobile = false }) {
   const [selected, setSelected] = useState(null)
   const [attendees, setAttendees] = useState([])
   const [people, setPeople] = useState([])
+  const [peopleSearch, setPeopleSearch] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -57,16 +58,29 @@ export default function Capacitaciones({ mobile = false }) {
       supabase.schema('bitacora').from('capacitacion_asistentes')
         .select('id,persona_id,estado,observaciones')
         .eq('capacitacion_id', item.id).order('created_at'),
-      getPersonasBySede(item.sede_id),
+      getPersonasActivasParaCapacitacion(),
     ])
     if (error) throw error
     const byId = new Map((sedePeople || []).map(person => [person.id, person]))
     setAttendees((data || []).map(row => ({ ...row, persona:byId.get(row.persona_id) || { nombre:'Persona', apellido:'no disponible' } })))
     setPeople(sedePeople || [])
+    setPeopleSearch('')
   }, [])
 
   const filtered = useMemo(() => filterSede ? items.filter(item => String(item.sede_id) === filterSede) : items, [filterSede, items])
   const selectedIds = useMemo(() => new Set(attendees.map(item => item.persona_id)), [attendees])
+  const visiblePeople = useMemo(() => {
+    const selectedSedeId = String(selected?.sede_id || '')
+    const term = peopleSearch.trim().toLocaleLowerCase('es')
+    return people
+      .filter(person => !term || `${person.apellido || ''} ${person.nombre || ''} ${person.puesto || ''}`.toLocaleLowerCase('es').includes(term))
+      .sort((a, b) => {
+        const aLocal = (a.sede_ids || []).some(id => String(id) === selectedSedeId)
+        const bLocal = (b.sede_ids || []).some(id => String(id) === selectedSedeId)
+        return Number(bLocal) - Number(aLocal)
+          || `${a.apellido || ''} ${a.nombre || ''}`.localeCompare(`${b.apellido || ''} ${b.nombre || ''}`, 'es')
+      })
+  }, [people, peopleSearch, selected?.sede_id])
   const presentCount = attendees.filter(item => item.estado === 'presente').length
   const percent = attendees.length ? Math.round(presentCount * 100 / attendees.length) : 0
 
@@ -133,7 +147,7 @@ export default function Capacitaciones({ mobile = false }) {
         <button className="btn-primary" style={{ minHeight:46, gridColumn:mobile?undefined:'1 / -1' }} disabled={saving || form.titulo.trim().length < 3 || !form.sede_id || !form.fecha || !form.instructor_nombre.trim()} onClick={createTraining}><Save size={16}/>{saving?'Guardando…':'Guardar y seleccionar asistentes'}</button>
       </div> : <>
         <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(4,1fr)', gap:8, marginBottom:14 }}><div className="glass p-3"><small>Fecha</small><strong style={{ display:'block' }}>{selected.fecha}</strong></div><div className="glass p-3"><small>Convocados</small><strong style={{ display:'block' }}>{attendees.length}</strong></div><div className="glass p-3"><small>Presentes</small><strong style={{ display:'block' }}>{presentCount}</strong></div><div className="glass p-3"><small>Asistencia</small><strong style={{ display:'block', color:'var(--phosphor)' }}>{percent}%</strong></div></div>
-        {canManage && selected.estado!=='realizada' && <><h4 style={{ marginBottom:8 }}>Personal activo de {selected.sedes?.nombre}</h4><div style={{ maxHeight:190, overflowY:'auto', border:'1px solid var(--line)', marginBottom:14 }}>{people.map(person => <div key={person.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderBottom:'1px solid var(--line)' }}><span style={{ fontSize:'.78rem' }}>{person.apellido}, {person.nombre} <small style={{ color:'var(--text-dim)' }}>· {person.puesto}</small></span><button className="btn-ghost" style={{ minHeight:40 }} disabled={selectedIds.has(person.id)} onClick={()=>addPerson(person)}>{selectedIds.has(person.id)?'Agregado':'+ Agregar'}</button></div>)}</div></>}
+        {canManage && selected.estado!=='realizada' && <><h4 style={{ marginBottom:4 }}>Todo el personal activo</h4><p style={{ color:'var(--text-dim)', fontSize:'.72rem', marginBottom:8 }}>Primero se muestra el personal de {selected.sedes?.nombre}. También podés agregar personas de otra sede o en período de prueba.</p><input className="input-dark" style={{ ...input, marginBottom:8 }} value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Buscar por nombre, apellido o puesto…"/><div style={{ maxHeight:240, overflowY:'auto', border:'1px solid var(--line)', marginBottom:14 }}>{visiblePeople.map(person => { const sameSede=(person.sede_ids || []).some(id=>String(id)===String(selected.sede_id)); return <div key={person.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'8px 10px', borderBottom:'1px solid var(--line)' }}><span style={{ fontSize:'.78rem' }}>{person.apellido}, {person.nombre} <small style={{ color:'var(--text-dim)' }}>· {person.puesto || 'Sin puesto'} · {sameSede?'Esta sede':'Otra sede / sin sede'}</small></span><button className="btn-ghost" style={{ minHeight:40, flexShrink:0 }} disabled={selectedIds.has(person.id)} onClick={()=>addPerson(person)}>{selectedIds.has(person.id)?'Agregado':'+ Agregar'}</button></div>})}{!visiblePeople.length&&<p style={{ color:'var(--text-dim)', fontSize:'.78rem', padding:12 }}>No se encontró personal con esa búsqueda.</p>}</div></>}
         <h4 style={{ marginBottom:8 }}><Users size={15} style={{ display:'inline', marginRight:6 }}/>Asistencia</h4><div style={{ display:'grid', gap:7 }}>{attendees.map(row => <div key={row.id} className="glass p-3" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}><span style={{ fontSize:'.8rem', fontWeight:600 }}>{row.persona?.apellido}, {row.persona?.nombre}</span><div style={{ display:'flex', gap:5 }}>{['convocado','presente','ausente'].map(status=><button key={status} className={row.estado===status?'btn-primary':'btn-ghost'} style={{ minHeight:40, fontSize:'.68rem' }} disabled={!canManage||selected.estado==='realizada'} onClick={()=>setAttendance(row,status)}>{status}</button>)}</div></div>)}</div>
         {!attendees.length && <p style={{ color:'var(--text-dim)', fontSize:'.8rem', padding:'12px 0' }}>Todavía no hay personas seleccionadas.</p>}
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:16 }}><button className="btn-ghost" style={{ minHeight:44 }} onClick={()=>descargarPlanillaCapacitacion(selected,attendees,selected.sedes?.nombre)}><Download size={15}/> Imprimir planilla</button>{canManage&&selected.estado!=='realizada'&&<button className="btn-primary" style={{ minHeight:44 }} onClick={finish}><CheckCircle2 size={15}/> Finalizar capacitación</button>}</div>
