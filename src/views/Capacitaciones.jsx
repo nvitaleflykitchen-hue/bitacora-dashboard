@@ -57,10 +57,11 @@ export default function Capacitaciones({ mobile = false }) {
   const percent = attendees.length ? Math.round(presentCount * 100 / attendees.length) : 0
 
   async function createTraining() {
-    if (!form.titulo.trim() || !form.sede_id || !form.fecha || !form.instructor_nombre.trim()) return toast.warn('Completá tema, sede, fecha e instructor.')
+    if (form.titulo.trim().length < 3) return toast.warn('El tema debe tener al menos 3 caracteres.')
+    if (!form.sede_id || !form.fecha || !form.instructor_nombre.trim()) return toast.warn('Completá sede, fecha e instructor.')
     setSaving(true)
     try {
-      const payload = { ...form, sede_id:Number(form.sede_id), duracion_minutos:form.duracion_minutos ? Number(form.duracion_minutos) : null, hora_inicio:form.hora_inicio || null }
+      const payload = { ...form, titulo:form.titulo.trim(), instructor_nombre:form.instructor_nombre.trim(), sede_id:Number(form.sede_id), duracion_minutos:form.duracion_minutos ? Number(form.duracion_minutos) : null, hora_inicio:form.hora_inicio || null }
       const { data, error } = await supabase.schema('bitacora').from('capacitaciones').insert(payload).select('*, sedes(nombre)').single()
       if (error) throw error
       setCreating(false); setForm(emptyForm()); await load(); await open(data)
@@ -105,7 +106,7 @@ export default function Capacitaciones({ mobile = false }) {
     {(creating || selected) && <div className="modal-overlay" style={{ zIndex:1100 }}><div className="glass" style={{ width:'min(760px,96vw)', maxHeight:'92vh', overflowY:'auto', padding:18 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}><h3 style={{ fontWeight:800 }}>{creating ? 'Nueva capacitación' : selected.titulo}</h3><button className="btn-ghost" style={{ minWidth:44, minHeight:44 }} onClick={() => { setCreating(false); setSelected(null) }}><X size={18}/></button></div>
       {creating ? <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr':'1fr 1fr', gap:10 }}>
-        <label style={{ gridColumn:mobile?undefined:'1 / -1' }}>Tema *<input className="input-dark" style={input} value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))}/></label>
+        <label style={{ gridColumn:mobile?undefined:'1 / -1' }}>Tema *<input className="input-dark" style={input} minLength={3} required value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))}/><small style={{ display:'block', marginTop:4, color:form.titulo.length>0&&form.titulo.trim().length<3?'#F59E0B':'var(--text-dim)' }}>Mínimo 3 caracteres.</small></label>
         <label>Sede *<select className="input-dark" style={input} value={form.sede_id} onChange={e=>setForm(f=>({...f,sede_id:e.target.value}))}><option value="">Seleccionar</option>{sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
         <label>Fecha *<input type="date" className="input-dark" style={input} value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))}/></label>
         <label>Instructor *<input className="input-dark" style={input} value={form.instructor_nombre} onChange={e=>setForm(f=>({...f,instructor_nombre:e.target.value}))}/></label>
@@ -114,7 +115,7 @@ export default function Capacitaciones({ mobile = false }) {
         <label>Duración (minutos)<input type="number" min="1" className="input-dark" style={input} value={form.duracion_minutos} onChange={e=>setForm(f=>({...f,duracion_minutos:e.target.value}))}/></label>
         <label style={{ gridColumn:mobile?undefined:'1 / -1' }}>Objetivo<textarea className="input-dark" style={input} rows="2" value={form.objetivo} onChange={e=>setForm(f=>({...f,objetivo:e.target.value}))}/></label>
         <label><input type="checkbox" checked={form.planificada} onChange={e=>setForm(f=>({...f,planificada:e.target.checked}))}/> Planificada</label><label><input type="checkbox" checked={form.material_entregado} onChange={e=>setForm(f=>({...f,material_entregado:e.target.checked}))}/> Se entrega material didáctico</label>
-        <button className="btn-primary" style={{ minHeight:46, gridColumn:mobile?undefined:'1 / -1' }} disabled={saving} onClick={createTraining}><Save size={16}/>{saving?'Guardando…':'Guardar y seleccionar asistentes'}</button>
+        <button className="btn-primary" style={{ minHeight:46, gridColumn:mobile?undefined:'1 / -1' }} disabled={saving || form.titulo.trim().length < 3 || !form.sede_id || !form.fecha || !form.instructor_nombre.trim()} onClick={createTraining}><Save size={16}/>{saving?'Guardando…':'Guardar y seleccionar asistentes'}</button>
       </div> : <>
         <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(4,1fr)', gap:8, marginBottom:14 }}><div className="glass p-3"><small>Fecha</small><strong style={{ display:'block' }}>{selected.fecha}</strong></div><div className="glass p-3"><small>Convocados</small><strong style={{ display:'block' }}>{attendees.length}</strong></div><div className="glass p-3"><small>Presentes</small><strong style={{ display:'block' }}>{presentCount}</strong></div><div className="glass p-3"><small>Asistencia</small><strong style={{ display:'block', color:'var(--phosphor)' }}>{percent}%</strong></div></div>
         {canManage && selected.estado!=='realizada' && <><h4 style={{ marginBottom:8 }}>Personal activo de {selected.sedes?.nombre}</h4><div style={{ maxHeight:190, overflowY:'auto', border:'1px solid var(--line)', marginBottom:14 }}>{people.map(person => <div key={person.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderBottom:'1px solid var(--line)' }}><span style={{ fontSize:'.78rem' }}>{person.apellido}, {person.nombre} <small style={{ color:'var(--text-dim)' }}>· {person.puesto}</small></span><button className="btn-ghost" style={{ minHeight:40 }} disabled={selectedIds.has(person.id)} onClick={()=>addPerson(person)}>{selectedIds.has(person.id)?'Agregado':'+ Agregar'}</button></div>)}</div></>}

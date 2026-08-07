@@ -1,7 +1,21 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.21";
+export const APP_VERSION = "2.7.22";
 
 export const RELEASES = [
+  {
+    version: "2.7.22",
+    date: "2026-08-07",
+    title: "Permisos y validación de capacitaciones",
+    functions: [
+      "Los responsables de sede pueden crear y completar capacitaciones únicamente en las sedes que tienen asignadas.",
+      "El formulario explica que el tema requiere al menos tres caracteres y evita enviar datos incompletos.",
+    ],
+    problem: "La interfaz habilitaba la carga para responsables de sede, pero la política de base la rechazaba; además, un tema demasiado corto devolvía un mensaje técnico.",
+    affectedUsers: "Calidad y responsables autorizados de sede.",
+    usage: "Ingresá en Calidad > Capacitaciones, completá un tema de al menos tres caracteres y continuá con la selección de asistentes.",
+    examples: ["Un encargado registra una capacitación para una de sus sedes asignadas."],
+    screenshots: [],
+  },
   {
     version: "2.7.21",
     date: "2026-08-07",
