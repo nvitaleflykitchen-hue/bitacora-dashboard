@@ -1,7 +1,26 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.20";
+export const APP_VERSION = "2.7.21";
 
 export const RELEASES = [
+  {
+    version: "2.7.21",
+    date: "2026-08-07",
+    title: "Capacitaciones con asistencia y trazabilidad",
+    functions: [
+      "Calidad incorpora un registro de capacitaciones por sede con fecha, instructor, duración, objetivo y planificación.",
+      "La selección de asistentes muestra únicamente al personal activo vinculado con la sede elegida.",
+      "La asistencia puede marcarse como convocado, presente o ausente y calcula automáticamente el porcentaje alcanzado.",
+      "La app genera una planilla de asistencia lista para imprimir, con hasta veinte firmas por página y páginas adicionales cuando corresponda.",
+      "El material de apoyo y la planilla firmada pueden adjuntarse o fotografiarse como evidencia de la capacitación.",
+      "Cada capacitación finalizada queda vinculada con la ficha de la sede y con el historial de las personas presentes.",
+      "El flujo está disponible tanto en escritorio como en la sección Más de mobile.",
+    ],
+    problem: "Las capacitaciones y sus planillas firmadas se conservaban fuera del sistema, sin una relación verificable con la sede ni con el historial de quienes asistieron.",
+    affectedUsers: "Calidad, Recursos Humanos, responsables de sede y personal capacitado.",
+    usage: "En Calidad > Capacitaciones creá el evento, elegí la sede, agregá asistentes, imprimí la planilla y marcá la asistencia. Después subí la planilla firmada y finalizá la capacitación.",
+    examples: ["Registrar una capacitación BPM y comprobar el porcentaje de asistencia de la sede.", "Consultar desde una ficha personal todas las capacitaciones realizadas."],
+    screenshots: [],
+  },
   {
     version: "2.7.20",
     date: "2026-08-06",

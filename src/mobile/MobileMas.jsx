@@ -17,6 +17,7 @@ const MobileChecklist = lazy(() => import('./MobileChecklist'))
 const MobileRequerimientos = lazy(() => import('./MobileRequerimientos'))
 const MobileFlota = lazy(() => import('./MobileFlota'))
 const AuditoriasInternas = lazy(() => import('../views/AuditoriasInternas'))
+const Capacitaciones = lazy(() => import('../views/Capacitaciones'))
 
 const MODULES = [
   { key:'escalamientos', label:'Escalamientos', sub:'Casos que requieren seguimiento', icon:ClipboardCheck, view:'escalamientos' },
@@ -24,6 +25,7 @@ const MODULES = [
   { key:'compras', label:'Compras', sub:'Requerimientos y seguimiento', icon:ClipboardList, view:'requerimientos' },
   { key:'calidad', label:'Calidad', sub:'CAPA y no conformidades', icon:ClipboardList, view:'calidadHub' },
   { key:'auditorias', label:'Auditorías internas', sub:'Relevamiento, fotos y hallazgos', icon:ClipboardCheck, view:'calidadHub' },
+  { key:'capacitaciones', label:'Capacitaciones', sub:'Asistencia, material y planillas firmadas', icon:Users, view:'calidadHub' },
   { key:'personal', label:'Personal', sub:'Equipo y Recursos Humanos', icon:Users, view:'equipo' },
   { key:'mantenimiento', label:'Mantenimiento', sub:'Activos, insumos y matafuegos', icon:Wrench, view:'mantenimientoHub' },
   { key:'indicadores', label:'Indicadores', sub:'Panel y calendario', icon:BarChart3, view:'calendario' },
@@ -124,6 +126,7 @@ export default function MobileMas({ initialModule = null, userId = null, focusCo
           <Suspense fallback={<div style={{ minHeight:160, display:'grid', placeItems:'center', color:'var(--text-dim)', fontSize:'.8rem' }}>Cargando módulo…</div>}>
           {mod.key === 'calidad' && <MobileCapa />}
           {mod.key === 'auditorias' && <AuditoriasInternas mobile />}
+          {mod.key === 'capacitaciones' && <Capacitaciones mobile />}
           {mod.key === 'personal' && <MobilePersonal focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
           {mod.key === 'mantenimiento' && <MobileMantenimiento focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
           {mod.key === 'indicadores' && <MobileIndicadores />}
