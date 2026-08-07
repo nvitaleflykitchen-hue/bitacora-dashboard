@@ -7,12 +7,14 @@ import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import { descargarPlanillaCapacitacion } from '../lib/capacitacionPdf'
+import useFormDraft from '../hooks/useFormDraft'
+import FormDraftNotice from '../components/FormDraftNotice'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const emptyForm = () => ({ titulo:'', objetivo:'', sede_id:'', fecha:today(), hora_inicio:'', duracion_minutos:'', instructor_nombre:'', instructor_tipo:'interno', instructor_area:'', instructor_procedencia:'', planificada:true, material_entregado:false, observaciones:'' })
 
 export default function Capacitaciones({ mobile = false }) {
-  const { allowedSedeIds, can } = useAuth()
+  const { user, allowedSedeIds, can } = useAuth()
   const canManage = can('calidad', 'manage')
   const [items, setItems] = useState([])
   const [sedes, setSedes] = useState([])
@@ -23,6 +25,18 @@ export default function Capacitaciones({ mobile = false }) {
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [filterSede, setFilterSede] = useState('')
+  const draft = useFormDraft({
+    key:user?.id ? `capacitacion-${user.id}` : null,
+    value:form,
+    setValue:setForm,
+    enabled:creating,
+    isMeaningful:value => Boolean(
+      value?.titulo?.trim() || value?.sede_id || value?.instructor_nombre?.trim()
+      || value?.objetivo?.trim() || value?.hora_inicio || value?.duracion_minutos
+      || value?.instructor_area?.trim() || value?.instructor_procedencia?.trim()
+      || value?.observaciones?.trim() || value?.material_entregado || value?.planificada === false
+    ),
+  })
 
   const load = useCallback(async () => {
     const [{ data, error }, sedeRows] = await Promise.all([
@@ -64,7 +78,7 @@ export default function Capacitaciones({ mobile = false }) {
       const payload = { ...form, titulo:form.titulo.trim(), instructor_nombre:form.instructor_nombre.trim(), sede_id:Number(form.sede_id), duracion_minutos:form.duracion_minutos ? Number(form.duracion_minutos) : null, hora_inicio:form.hora_inicio || null }
       const { data, error } = await supabase.schema('bitacora').from('capacitaciones').insert(payload).select('*, sedes(nombre)').single()
       if (error) throw error
-      setCreating(false); setForm(emptyForm()); await load(); await open(data)
+      draft.clearDraft(); setCreating(false); setForm(emptyForm()); await load(); await open(data)
       toast.success('Capacitación creada. Ahora seleccioná a los asistentes.')
     } catch (error) { toast.error(mensajeError(error)) } finally { setSaving(false) }
   }
@@ -106,6 +120,7 @@ export default function Capacitaciones({ mobile = false }) {
     {(creating || selected) && <div className="modal-overlay" style={{ zIndex:1100 }}><div className="glass" style={{ width:'min(760px,96vw)', maxHeight:'92vh', overflowY:'auto', padding:18 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}><h3 style={{ fontWeight:800 }}>{creating ? 'Nueva capacitación' : selected.titulo}</h3><button className="btn-ghost" style={{ minWidth:44, minHeight:44 }} onClick={() => { setCreating(false); setSelected(null) }}><X size={18}/></button></div>
       {creating ? <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr':'1fr 1fr', gap:10 }}>
+        <div style={{ gridColumn:mobile?undefined:'1 / -1' }}><FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={() => { draft.clearDraft(); setForm(emptyForm()) }} /></div>
         <label style={{ gridColumn:mobile?undefined:'1 / -1' }}>Tema *<input className="input-dark" style={input} minLength={3} required value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))}/><small style={{ display:'block', marginTop:4, color:form.titulo.length>0&&form.titulo.trim().length<3?'#F59E0B':'var(--text-dim)' }}>Mínimo 3 caracteres.</small></label>
         <label>Sede *<select className="input-dark" style={input} value={form.sede_id} onChange={e=>setForm(f=>({...f,sede_id:e.target.value}))}><option value="">Seleccionar</option>{sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
         <label>Fecha *<input type="date" className="input-dark" style={input} value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))}/></label>

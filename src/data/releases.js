@@ -1,7 +1,22 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.22";
+export const APP_VERSION = "2.7.23";
 
 export const RELEASES = [
+  {
+    version: "2.7.23",
+    date: "2026-08-07",
+    title: "Borradores automáticos de capacitaciones",
+    functions: [
+      "El formulario de nueva capacitación guarda automáticamente el avance por usuario y dispositivo.",
+      "Al volver al formulario, la app recupera tema, sede, instructor, fechas y demás datos cargados.",
+      "El aviso de borrador permite descartarlo de forma explícita y el borrador se limpia después de guardar correctamente.",
+    ],
+    problem: "Cerrar el formulario, recargar o salir de la app podía hacer perder una capacitación todavía no guardada, especialmente desde mobile.",
+    affectedUsers: "Calidad y responsables que registran capacitaciones desde escritorio o celular.",
+    usage: "Comenzá a completar la capacitación normalmente. Si salís, al volver verás Borrador recuperado; usá Descartar solo si querés empezar de cero.",
+    examples: ["Continuar en el mismo celular una capacitación interrumpida antes de seleccionar asistentes."],
+    screenshots: [],
+  },
   {
     version: "2.7.22",
     date: "2026-08-07",
