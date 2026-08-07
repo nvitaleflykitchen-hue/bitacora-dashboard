@@ -1412,6 +1412,20 @@ export async function getPersonasBySede(sedeId) {
   return (data || []).filter((p) => p.sede_ids && p.sede_ids.includes(sedeId));
 }
 
+// Catálogo completo para capacitaciones. Una persona puede participar aunque
+// esté en período de prueba, pertenezca a otra sede o todavía no tenga sede
+// asignada. Solo se excluyen las bajas/inactivas.
+export async function getPersonasActivasParaCapacitacion() {
+  const { data, error } = await supabase
+    .from("v_personas")
+    .select("id, nombre, apellido, puesto, sede_ids, fecha_ingreso")
+    .eq("activo", true)
+    .order("apellido")
+    .order("nombre");
+  if (error) throw error;
+  return data || [];
+}
+
 export async function getPersonasMencionables() {
   const perfiles = (await getPerfiles()).filter(
     (perfil) => perfil.activo !== false,
