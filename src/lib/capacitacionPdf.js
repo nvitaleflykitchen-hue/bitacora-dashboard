@@ -35,7 +35,9 @@ function drawHeader(doc, page, pages) {
   doc.setDrawColor(45)
   doc.setLineWidth(0.22)
   doc.line(left, 32, right, 32)
-  doc.line(logoRight, top, logoRight, 40)
+  // El separador del logo pertenece sólo a la fila superior. Si baja hasta
+  // la fila de responsables, atraviesa el texto "Responsable de recursos".
+  doc.line(logoRight, top, logoRight, 32)
   doc.line(metaLeft, top, metaLeft, 40)
   doc.line(76, 32, 76, headerBottom)
   doc.line(metaLeft, 32, metaLeft, headerBottom)
