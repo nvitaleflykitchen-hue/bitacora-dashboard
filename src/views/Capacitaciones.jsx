@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, CheckCircle2, Download, Plus, Save, Users, X } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Download, Pencil, Plus, Save, Users, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { getPersonasActivasParaCapacitacion, getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
@@ -14,8 +14,9 @@ const today = () => new Date().toISOString().slice(0, 10)
 const emptyForm = () => ({ titulo:'', objetivo:'', sede_id:'', fecha:today(), hora_inicio:'', duracion_minutos:'', instructor_nombre:'', instructor_tipo:'interno', instructor_area:'', instructor_procedencia:'', planificada:true, material_entregado:false, observaciones:'' })
 
 export default function Capacitaciones({ mobile = false }) {
-  const { user, allowedSedeIds, can } = useAuth()
+  const { user, perfil, allowedSedeIds, can } = useAuth()
   const canManage = can('calidad', 'manage')
+  const isAdmin = perfil?.rol === 'admin'
   const [items, setItems] = useState([])
   const [sedes, setSedes] = useState([])
   const [selected, setSelected] = useState(null)
@@ -25,6 +26,7 @@ export default function Capacitaciones({ mobile = false }) {
   const [form, setForm] = useState(emptyForm)
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingFinished, setEditingFinished] = useState(false)
   const [filterSede, setFilterSede] = useState('')
   const draft = useFormDraft({
     key:user?.id ? `capacitacion-${user.id}` : null,
@@ -53,6 +55,7 @@ export default function Capacitaciones({ mobile = false }) {
   useEffect(() => { load().catch(error => toast.error(mensajeError(error))) }, [load])
 
   const open = useCallback(async item => {
+    setEditingFinished(false)
     setSelected(item)
     const [{ data, error }, sedePeople] = await Promise.all([
       supabase.schema('bitacora').from('capacitacion_asistentes')
@@ -83,6 +86,7 @@ export default function Capacitaciones({ mobile = false }) {
   }, [people, peopleSearch, selected?.sede_id])
   const presentCount = attendees.filter(item => item.estado === 'presente').length
   const percent = attendees.length ? Math.round(presentCount * 100 / attendees.length) : 0
+  const canEditAttendance = canManage && (selected?.estado !== 'realizada' || (isAdmin && editingFinished))
 
   async function createTraining() {
     if (form.titulo.trim().length < 3) return toast.warn('El tema debe tener al menos 3 caracteres.')
@@ -98,16 +102,19 @@ export default function Capacitaciones({ mobile = false }) {
   }
 
   async function addPerson(person) {
+    if (!canEditAttendance) return toast.error('Sólo un administrador puede editar una capacitación finalizada.')
     try {
       const { data, error } = await supabase.schema('bitacora').from('capacitacion_asistentes')
         .insert({ capacitacion_id:selected.id, persona_id:person.id, estado:'convocado' })
         .select('id,persona_id,estado,observaciones').single()
       if (error) throw error
       setAttendees(current => [...current, { ...data, persona:person }])
+      toast.success(`${person.apellido || ''}, ${person.nombre || ''} fue agregado a la capacitación.`)
     } catch (error) { toast.error(mensajeError(error)) }
   }
 
   async function setAttendance(row, estado) {
+    if (!canEditAttendance) return toast.error('Sólo un administrador puede editar una capacitación finalizada.')
     const { error } = await supabase.schema('bitacora').from('capacitacion_asistentes').update({ estado, updated_at:new Date().toISOString() }).eq('id', row.id)
     if (error) return toast.error(mensajeError(error))
     setAttendees(current => current.map(item => item.id === row.id ? { ...item, estado } : item))
@@ -117,7 +124,7 @@ export default function Capacitaciones({ mobile = false }) {
     if (!attendees.length) return toast.warn('Agregá al menos una persona antes de finalizar.')
     const { error } = await supabase.schema('bitacora').from('capacitaciones').update({ estado:'realizada', finalizada_at:new Date().toISOString(), updated_at:new Date().toISOString() }).eq('id', selected.id)
     if (error) return toast.error(mensajeError(error))
-    const updated = { ...selected, estado:'realizada' }; setSelected(updated); setItems(current => current.map(item => item.id === updated.id ? updated : item)); toast.success('Capacitación finalizada y registrada en los historiales.')
+    const updated = { ...selected, estado:'realizada' }; setEditingFinished(false); setSelected(updated); setItems(current => current.map(item => item.id === updated.id ? updated : item)); toast.success('Capacitación finalizada y registrada en los historiales.')
   }
 
   const input = { width:'100%', minHeight:44 }
@@ -132,7 +139,7 @@ export default function Capacitaciones({ mobile = false }) {
       <div style={{ display:'grid', gridTemplateColumns:mobile ? '1fr' : 'repeat(auto-fill,minmax(290px,1fr))', gap:10 }}>{filtered.map(item => { const total=item.capacitacion_asistentes?.length || 0; const present=item.capacitacion_asistentes?.filter(row=>row.estado==='presente').length || 0; return <button key={item.id} type="button" onClick={() => open(item).catch(error=>toast.error(mensajeError(error)))} className="glass" style={{ padding:14, textAlign:'left', border:item.estado==='realizada'?'1px solid rgba(57,255,20,.28)':'1px solid var(--line)', minHeight:112 }}><div style={{ display:'flex', justifyContent:'space-between', gap:8 }}><strong>{item.titulo}</strong><span style={{ color:item.estado==='realizada'?'var(--phosphor)':'#F59E0B', fontSize:'.65rem', textTransform:'uppercase' }}>{item.estado}</span></div><p style={{ color:'var(--text-dim)', fontSize:'.75rem', marginTop:8 }}>{item.sedes?.nombre} · {item.fecha}</p><p style={{ color:'var(--text-dim)', fontSize:'.72rem', marginTop:5 }}>{item.instructor_nombre}</p>{total>0 && <p style={{ color:'var(--phosphor)', fontSize:'.72rem', marginTop:6 }}>{present}/{total} presentes · {Math.round(present*100/total)}%</p>}</button>})}</div>}
 
     {(creating || selected) && <div className="modal-overlay" style={{ zIndex:1100 }}><div className="glass" style={{ width:'min(760px,96vw)', maxHeight:'92vh', overflowY:'auto', padding:18 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}><h3 style={{ fontWeight:800 }}>{creating ? 'Nueva capacitación' : selected.titulo}</h3><button className="btn-ghost" style={{ minWidth:44, minHeight:44 }} onClick={() => { setCreating(false); setSelected(null) }}><X size={18}/></button></div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginBottom:14 }}><h3 style={{ fontWeight:800 }}>{creating ? 'Nueva capacitación' : selected.titulo}</h3><div style={{ display:'flex', gap:8 }}>{!creating&&isAdmin&&selected.estado==='realizada'&&<button className={editingFinished?'btn-primary':'btn-ghost'} style={{ minHeight:44 }} onClick={()=>setEditingFinished(value=>!value)}><Pencil size={15}/>{editingFinished?'Finalizar edición':'Editar asistencia'}</button>}<button className="btn-ghost" style={{ minWidth:44, minHeight:44 }} onClick={() => { setCreating(false); setSelected(null); setEditingFinished(false); load().catch(error=>toast.error(mensajeError(error))) }}><X size={18}/></button></div></div>
       {creating ? <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr':'1fr 1fr', gap:10 }}>
         <div style={{ gridColumn:mobile?undefined:'1 / -1' }}><FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={() => { draft.clearDraft(); setForm(emptyForm()) }} /></div>
         <label style={{ gridColumn:mobile?undefined:'1 / -1' }}>Tema *<input className="input-dark" style={input} minLength={3} required value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))}/><small style={{ display:'block', marginTop:4, color:form.titulo.length>0&&form.titulo.trim().length<3?'#F59E0B':'var(--text-dim)' }}>Mínimo 3 caracteres.</small></label>
@@ -147,8 +154,8 @@ export default function Capacitaciones({ mobile = false }) {
         <button className="btn-primary" style={{ minHeight:46, gridColumn:mobile?undefined:'1 / -1' }} disabled={saving || form.titulo.trim().length < 3 || !form.sede_id || !form.fecha || !form.instructor_nombre.trim()} onClick={createTraining}><Save size={16}/>{saving?'Guardando…':'Guardar y seleccionar asistentes'}</button>
       </div> : <>
         <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(4,1fr)', gap:8, marginBottom:14 }}><div className="glass p-3"><small>Fecha</small><strong style={{ display:'block' }}>{selected.fecha}</strong></div><div className="glass p-3"><small>Convocados</small><strong style={{ display:'block' }}>{attendees.length}</strong></div><div className="glass p-3"><small>Presentes</small><strong style={{ display:'block' }}>{presentCount}</strong></div><div className="glass p-3"><small>Asistencia</small><strong style={{ display:'block', color:'var(--phosphor)' }}>{percent}%</strong></div></div>
-        {canManage && selected.estado!=='realizada' && <><h4 style={{ marginBottom:4 }}>Todo el personal activo</h4><p style={{ color:'var(--text-dim)', fontSize:'.72rem', marginBottom:8 }}>Primero se muestra el personal de {selected.sedes?.nombre}. También podés agregar personas de otra sede o en período de prueba.</p><input className="input-dark" style={{ ...input, marginBottom:8 }} value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Buscar por nombre, apellido o puesto…"/><div style={{ maxHeight:240, overflowY:'auto', border:'1px solid var(--line)', marginBottom:14 }}>{visiblePeople.map(person => { const sameSede=(person.sede_ids || []).some(id=>String(id)===String(selected.sede_id)); return <div key={person.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'8px 10px', borderBottom:'1px solid var(--line)' }}><span style={{ fontSize:'.78rem' }}>{person.apellido}, {person.nombre} <small style={{ color:'var(--text-dim)' }}>· {person.puesto || 'Sin puesto'} · {sameSede?'Esta sede':'Otra sede / sin sede'}</small></span><button className="btn-ghost" style={{ minHeight:40, flexShrink:0 }} disabled={selectedIds.has(person.id)} onClick={()=>addPerson(person)}>{selectedIds.has(person.id)?'Agregado':'+ Agregar'}</button></div>})}{!visiblePeople.length&&<p style={{ color:'var(--text-dim)', fontSize:'.78rem', padding:12 }}>No se encontró personal con esa búsqueda.</p>}</div></>}
-        <h4 style={{ marginBottom:8 }}><Users size={15} style={{ display:'inline', marginRight:6 }}/>Asistencia</h4><div style={{ display:'grid', gap:7 }}>{attendees.map(row => <div key={row.id} className="glass p-3" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}><span style={{ fontSize:'.8rem', fontWeight:600 }}>{row.persona?.apellido}, {row.persona?.nombre}</span><div style={{ display:'flex', gap:5 }}>{['convocado','presente','ausente'].map(status=><button key={status} className={row.estado===status?'btn-primary':'btn-ghost'} style={{ minHeight:40, fontSize:'.68rem' }} disabled={!canManage||selected.estado==='realizada'} onClick={()=>setAttendance(row,status)}>{status}</button>)}</div></div>)}</div>
+        {canEditAttendance && <><h4 style={{ marginBottom:4 }}>Todo el personal activo</h4><p style={{ color:'var(--text-dim)', fontSize:'.72rem', marginBottom:8 }}>Primero se muestra el personal de {selected.sedes?.nombre}. También podés agregar personas de otra sede o en período de prueba.</p><input className="input-dark" style={{ ...input, marginBottom:8 }} value={peopleSearch} onChange={event=>setPeopleSearch(event.target.value)} placeholder="Buscar por nombre, apellido o puesto…"/><div style={{ maxHeight:240, overflowY:'auto', border:'1px solid var(--line)', marginBottom:14 }}>{visiblePeople.map(person => { const sameSede=(person.sede_ids || []).some(id=>String(id)===String(selected.sede_id)); return <div key={person.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'8px 10px', borderBottom:'1px solid var(--line)' }}><span style={{ fontSize:'.78rem' }}>{person.apellido}, {person.nombre} <small style={{ color:'var(--text-dim)' }}>· {person.puesto || 'Sin puesto'} · {sameSede?'Esta sede':'Otra sede / sin sede'}</small></span><button className="btn-ghost" style={{ minHeight:40, flexShrink:0 }} disabled={selectedIds.has(person.id)} onClick={()=>addPerson(person)}>{selectedIds.has(person.id)?'Agregado':'+ Agregar'}</button></div>})}{!visiblePeople.length&&<p style={{ color:'var(--text-dim)', fontSize:'.78rem', padding:12 }}>No se encontró personal con esa búsqueda.</p>}</div></>}
+        <h4 style={{ marginBottom:8 }}><Users size={15} style={{ display:'inline', marginRight:6 }}/>Asistencia</h4><div style={{ display:'grid', gap:7 }}>{attendees.map(row => <div key={row.id} className="glass p-3" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}><span style={{ fontSize:'.8rem', fontWeight:600 }}>{row.persona?.apellido}, {row.persona?.nombre}</span><div style={{ display:'flex', gap:5 }}>{['convocado','presente','ausente'].map(status=><button key={status} className={row.estado===status?'btn-primary':'btn-ghost'} style={{ minHeight:40, fontSize:'.68rem' }} disabled={!canEditAttendance} onClick={()=>setAttendance(row,status)}>{status}</button>)}</div></div>)}</div>
         {!attendees.length && <p style={{ color:'var(--text-dim)', fontSize:'.8rem', padding:'12px 0' }}>Todavía no hay personas seleccionadas.</p>}
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:16 }}><button className="btn-ghost" style={{ minHeight:44 }} onClick={()=>descargarPlanillaCapacitacion(selected,attendees,selected.sedes?.nombre)}><Download size={15}/> Imprimir planilla</button>{canManage&&selected.estado!=='realizada'&&<button className="btn-primary" style={{ minHeight:44 }} onClick={finish}><CheckCircle2 size={15}/> Finalizar capacitación</button>}</div>
         <AdjuntosPanel entityType="capacitacion" entityId={selected.id} readOnly={!canManage} camera label="Material y planilla firmada" />
