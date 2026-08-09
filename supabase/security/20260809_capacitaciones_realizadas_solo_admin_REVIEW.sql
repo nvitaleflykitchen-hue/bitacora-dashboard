@@ -21,14 +21,10 @@ using (
   )
 )
 with check (
+  -- WITH CHECK evalúa la fila nueva. Se conserva el alcance territorial para
+  -- que un gestor autorizado pueda finalizar una capacitación pendiente.
+  -- El USING anterior evalúa la fila vieja y bloquea correcciones posteriores.
   bitacora.puede_responder_auditoria_sede(sede_id)
-  and (
-    estado <> 'realizada'
-    or exists (
-      select 1 from bitacora.perfiles p
-      where p.id = (select auth.uid()) and p.activo is true and p.rol = 'admin'
-    )
-  )
 );
 
 create policy capacitacion_asistentes_insert on bitacora.capacitacion_asistentes
