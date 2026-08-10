@@ -129,6 +129,17 @@ export async function updateIdValidation(id, projectId, changes) {
   return data
 }
 
+export async function deleteIdValidation(id, projectId) {
+  const { data, error } = await table('id_validaciones').delete().eq('id', id).select().single()
+  if (error) throw error
+  try {
+    await addIdEvent(projectId, 'validacion_retirada', `Validación de ${data.area} retirada por un administrador`, { validacion_id:id })
+  } catch (eventError) {
+    console.warn('[I+D] La validación se retiró, pero no se pudo registrar el evento', eventError)
+  }
+  return data
+}
+
 export async function addIdEvent(projectId, type, summary, data = {}) {
   const { data:row, error } = await table('id_eventos').insert({
     proyecto_id:projectId,

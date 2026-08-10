@@ -2,7 +2,7 @@
 // Organizado por módulo. Cada módulo tiene: id, label, icon, intro y secciones[].
 // Cada sección tiene: title y body (array de párrafos o bloques).
 
-export const HELP_MANUAL_UPDATED_AT = '2026-08-06'
+export const HELP_MANUAL_UPDATED_AT = '2026-08-10'
 
 export const HELP_MODULES = [
   {
@@ -14,7 +14,7 @@ export const HELP_MODULES = [
       {
         title: '¿Qué es Fly Gestión?',
         body: [
-          'Fly Gestión es la plataforma integral de gestión de la empresa. La bitácora operativa es su base para registrar novedades y mantener trazabilidad, y se complementa con tareas, personal, mantenimiento, flota, calidad y compras.',
+          'Fly Gestión es la plataforma integral de gestión de la empresa. La bitácora operativa es su base para registrar novedades y mantener trazabilidad, y se complementa con tareas, personal, mantenimiento, flota, calidad, compras e Investigación y Desarrollo (I+D).',
           'Cada área tiene su módulo. Dependiendo de tu rol (encargado, sede, flota, etc.) vas a ver solo lo que te corresponde.',
         ],
       },
@@ -297,6 +297,8 @@ export const HELP_MODULES = [
         body: [
           'Informe de novedades reúne novedades del período y antecedentes disciplinarios vinculados a las personas y sedes seleccionadas.',
           'En el tablero global, Informe de gestión permite elegir fechas, una o varias sedes y los temas del resumen: Operación, Escalamientos, Mantenimiento, Flota, Compras, Calidad, Tareas y RR. HH.',
+          'Para el seguimiento mensual, elegí el primer y último día del mes y usá Calcular indicadores. La vista Global empresa consolida los casos reales de todas las sedes seleccionadas; el selector también permite abrir el resultado individual de cada sede.',
+          'El índice mensual pondera Cumplimiento (30%), Documentación (20%), Gestión (25%), Compromiso operativo (15%) y Mejora continua (10%). Cada indicador muestra su numerador y denominador. Cuando no existen casos aplicables se informa S/D y ese eje no reduce el promedio.',
           'El PDF incluye únicamente el alcance seleccionado. Revisá siempre el período y las sedes antes de descargarlo.',
         ],
       },
@@ -461,6 +463,61 @@ export const HELP_MODULES = [
           'Cada CAPA tiene: descripción de la acción, responsable, fecha límite y estado de cumplimiento.',
           'Las CAPA vencidas o próximas a vencer aparecen destacadas.',
           'Las altas de No Conformidades y CAPA guardan borradores locales durante siete días. Al regresar desde el mismo dispositivo podés recuperar la carga, excepto los adjuntos.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'id',
+    label: 'I+D',
+    icon: '🧪',
+    intro: 'Gestión trazable de desarrollos, versiones, pruebas, opiniones y validaciones técnicas.',
+    sections: [
+      {
+        title: 'Qué se gestiona en I+D',
+        body: [
+          'El módulo I+D centraliza desarrollos de productos, materias primas, proveedores, procesos, costos, rendimiento, presentación, vida útil, conservación y requerimientos especiales.',
+          'Cada proyecto tiene un código único, objetivo, categoría, origen, responsable, sede o alcance corporativo, prioridad, fecha objetivo, etapa, situación y próximo paso.',
+          'El tablero muestra proyectos activos, pendientes de validación, demorados y pausados. Usá Proyectos para buscar y filtrar el historial completo.',
+        ],
+      },
+      {
+        title: 'Crear y organizar un proyecto',
+        body: [
+          '1. Ingresá a I+D y elegí Nuevo proyecto.',
+          '2. Describí el desarrollo y su objetivo verificable. Seleccioná categoría, origen, responsable, sede, prioridad y fecha objetivo.',
+          '3. Definí un próximo paso concreto para que el proyecto no quede detenido sin una acción visible.',
+          '4. Dentro del proyecto, actualizá la etapa y la situación a medida que avance. Las etapas van desde Idea hasta Seguimiento.',
+          'En Equipo, elegí Incorporar y buscá personas por nombre, apellido, puesto o correo. Se pueden incorporar empleados aunque todavía no tengan acceso a la aplicación; solamente quienes tengan usuario podrán editar o recibir tareas dentro de la app.',
+        ],
+      },
+      {
+        title: 'Versiones y pruebas',
+        body: [
+          'Antes de ensayar una alternativa, creá una versión con su formulación, cambios y proceso. Las versiones conservan el historial técnico y no se reemplazan entre sí.',
+          'Para registrar una prueba, completá fecha, versión, proveedor, proceso realizado y las mediciones que correspondan: temperatura, tiempo, rendimiento, merma y costo.',
+          'En Participantes y opiniones, buscá a cada persona y registrá su opinión individual: aprobar, aprobar con ajustes, repetir la prueba o rechazar. También podés agregar el motivo u observación de cada participante.',
+          'El resultado de la prueba se calcula automáticamente por mayoría. Ante un empate, la aplicación aplica el criterio más conservador. El responsable no modifica ese resultado: redacta una conclusión técnica a partir de las opiniones y mediciones y, cuando corresponde, define el próximo ajuste.',
+          'Las pruebas históricas creadas antes de incorporar las opiniones individuales continúan visibles con su resultado original.',
+        ],
+      },
+      {
+        title: 'Validaciones técnicas',
+        body: [
+          'Solicitá una validación cuando exista una versión o definición que deba ser revisada por Calidad, Producción, Operaciones, Costos, Compras, Cliente o Dirección.',
+          'Seleccioná el área, el validador responsable y la versión a validar. La validación queda pendiente hasta que responda la persona asignada.',
+          'El validador debe elegir una decisión y desarrollar un fundamento técnico indicando qué revisó, qué evidencia consideró y por qué corresponde esa decisión. No se admite resolver la validación con un clic sin explicación.',
+          'Si la decisión es Aprobado con condiciones, también debe detallar la condición o el ajuste requerido. El fundamento y las condiciones quedan visibles en el proyecto para mantener trazabilidad.',
+          'El responsable del proyecto puede solicitar y consultar validaciones, pero no debe responder en nombre del validador asignado.',
+          'Si una validación fue cargada por error o solamente como prueba, un administrador puede retirarla desde la tarjeta de validación. La aplicación solicita confirmación antes de eliminarla.',
+        ],
+      },
+      {
+        title: 'Actividad, archivos y criterios de cierre',
+        body: [
+          'Actividad y archivos reúne adjuntos, comentarios e historial de eventos. Usá esta pestaña para conservar fichas técnicas, cotizaciones, imágenes, resultados, informes y acuerdos vinculados al desarrollo.',
+          'Un proyecto debe avanzar de etapa solamente cuando la evidencia necesaria esté registrada. Una prueba aprobada no reemplaza las validaciones requeridas y una validación favorable no reemplaza las mediciones de la prueba.',
+          'Antes de completar el proyecto, verificá que exista una versión definida, pruebas suficientes, conclusiones, validaciones aplicables y un próximo paso de implementación o seguimiento.',
         ],
       },
     ],

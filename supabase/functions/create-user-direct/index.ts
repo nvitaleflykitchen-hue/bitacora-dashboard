@@ -12,9 +12,11 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl,
+      serviceRoleKey,
       { db: { schema: 'bitacora' } }
     )
 
@@ -37,10 +39,48 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Se requiere rol admin' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const { email, nombre, rol, telefono } = await req.json()
+    const input = await req.json()
+    let { persona_id } = input
+    let { email, nombre, rol, telefono } = input
+
+    const allowedRoles = new Set(['admin', 'editor', 'encargado', 'consultor', 'grupo', 'sede', 'operario', 'flota', 'mnt_editor'])
+    if (!allowedRoles.has(String(rol || '').toLowerCase())) {
+      return new Response(JSON.stringify({ error: 'Tipo de acceso inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    let persona = null
+    if (persona_id) {
+      const personaResult = await supabaseAdmin
+        .rpc('get_persona_for_user_enable', { p_persona_id: persona_id })
+        .maybeSingle()
+      if (personaResult.error || !personaResult.data) {
+        return new Response(JSON.stringify({ error: 'No se encontró la persona indicada' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      persona = personaResult.data
+      persona_id = persona.id
+      if (!persona.activo) {
+        return new Response(JSON.stringify({ error: 'No se puede habilitar una persona inactiva' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      email = String(persona.email || '').trim().toLowerCase()
+      nombre = [persona.nombre, persona.apellido].filter(Boolean).join(' ')
+      telefono = persona.telefono || null
+    }
 
     if (!email || !nombre || !rol) {
       return new Response(JSON.stringify({ error: 'Email, nombre y rol son obligatorios' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    const { data: existingPerfil } = await supabaseAdmin.from('perfiles')
+      .select('id,email,nombre,rol,activo').ilike('email', email).maybeSingle()
+    if (existingPerfil) {
+      if (persona_id) {
+        const { data: linked, error: linkError } = await supabaseAdmin
+          .rpc('link_persona_to_profile', { p_persona_id: persona_id, p_perfil_id: existingPerfil.id })
+        if (linkError || !linked) throw linkError || new Error('No se pudo vincular el legajo')
+      }
+      return new Response(JSON.stringify({ data: { user: { id: existingPerfil.id, email }, perfil: existingPerfil, linked_existing: true } }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200,
+      })
     }
 
     // Create user in Auth without sending an email
@@ -60,14 +100,24 @@ serve(async (req) => {
       nombre: nombre,
       rol: rol,
       telefono: telefono || null,
+      sede_ids: persona?.sede_ids || null,
       activo: true,
       must_change_password: true
     }).select().single()
 
     if (insertError) {
-      // If we failed to create the profile for some reason, we return a success but with the error info 
-      // so the frontend can catch it and handle it or the user knows.
-      console.error("Error creating profile:", insertError)
+      await supabaseAdmin.auth.admin.deleteUser(newUserAuth.user.id)
+      throw insertError
+    }
+
+    if (persona_id) {
+      const { data: linked, error: linkError } = await supabaseAdmin
+        .rpc('link_persona_to_profile', { p_persona_id: persona_id, p_perfil_id: newUserAuth.user.id })
+      if (linkError || !linked) {
+        await supabaseAdmin.from('perfiles').delete().eq('id', newUserAuth.user.id)
+        await supabaseAdmin.auth.admin.deleteUser(newUserAuth.user.id)
+        throw linkError
+      }
     }
 
     return new Response(JSON.stringify({ data: { user: newUserAuth.user, perfil: newPerfil } }), {

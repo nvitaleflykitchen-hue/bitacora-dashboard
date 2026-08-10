@@ -82,9 +82,9 @@ function ObservationModal({ personas, onClose, onConfirm }) {
 
 const EQUIPO_COMPRAS = [
   {
-    nombre:'Ignacio Oyarzabal Indaburu', cargo:'Gerente de Compras', nivel:1,
+    nombre:'Diego Olivares', cargo:'Gerente de Compras', nivel:1,
     telefono:'+54 9 351 200-2939',
-    emails:['compras.gerencia@serviciosdrill.com.ar','ioyarzabalcompras@gmail.com'],
+    emails:['compras.gerencia@serviciosdrill.com.ar'],
     alcance:'Dirección y coordinación general del proceso de compras.',
   },
   {

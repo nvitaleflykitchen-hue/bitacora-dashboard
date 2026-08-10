@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { db, supabase } from './supabase'
 import { crearDoc, fechaArchivo } from './pdfKit'
+import { buildGestionScorecards } from './gestionKpis'
 
 export const GESTION_REPORT_SECTIONS = [
   { id: 'operacion', label: 'Operación y novedades' },
@@ -58,7 +59,7 @@ async function loadOperacion({ sedeIds, desde, hastaExclusivo }) {
 async function loadEscalamientos({ sedeIds, desde, hastaExclusivo }) {
   const { data, error } = await applySedes(
     db().from('escalamientos')
-      .select('id,sede_id,sede_nombre,estado,tipo,created_at')
+      .select('id,sede_id,sede_nombre,estado,tipo,fecha_reporte,created_at,updated_at')
       .gte('created_at', `${desde}T00:00:00`)
       .lt('created_at', `${hastaExclusivo}T00:00:00`),
     sedeIds,
@@ -70,7 +71,7 @@ async function loadEscalamientos({ sedeIds, desde, hastaExclusivo }) {
 async function loadMantenimiento({ sedeIds, desde, hastaExclusivo }) {
   const { data, error } = await applySedes(
     supabase.from('mnt_tickets')
-      .select('id,sede_id,sede,estado,prioridad,fecha_limite,created_at')
+      .select('id,sede_id,sede,estado,prioridad,fecha_limite,created_at,updated_at')
       .gte('created_at', `${desde}T00:00:00`)
       .lt('created_at', `${hastaExclusivo}T00:00:00`),
     sedeIds,
@@ -103,7 +104,7 @@ async function loadFlota({ sedeIds, desde, hastaExclusivo }) {
 async function loadCompras({ sedeIds, desde, hastaExclusivo }) {
   const { data, error } = await applySedes(
     db().from('requerimientos')
-      .select('id,sede_id,sede_nombre,estado,urgencia,created_at')
+      .select('id,sede_id,sede_nombre,estado,urgencia,created_at,updated_at')
       .gte('created_at', `${desde}T00:00:00`)
       .lt('created_at', `${hastaExclusivo}T00:00:00`),
     sedeIds,
@@ -116,21 +117,21 @@ async function loadCalidad({ sedeIds, desde, hastaExclusivo }) {
   const [ncResult, capaResult, auditsResult] = await Promise.all([
     applySedes(
       db().from('no_conformidades')
-        .select('id,sede_id,sede_nombre,estado,categoria,created_at')
+        .select('id,sede_id,sede_nombre,estado,categoria,created_at,updated_at')
         .gte('created_at', `${desde}T00:00:00`)
         .lt('created_at', `${hastaExclusivo}T00:00:00`),
       sedeIds,
     ),
     applySedes(
       db().from('capa')
-        .select('id,sede_id,sede_nombre,estado,prioridad,fecha_limite,created_at')
+        .select('id,sede_id,sede_nombre,estado,prioridad,fecha_limite,created_at,updated_at')
         .gte('created_at', `${desde}T00:00:00`)
         .lt('created_at', `${hastaExclusivo}T00:00:00`),
       sedeIds,
     ),
     applySedes(
       db().from('auditorias_internas')
-        .select('id,sede_id,estado,resultado,porcentaje_cumplimiento,created_at')
+        .select('id,sede_id,estado,resultado,porcentaje_cumplimiento,created_at,updated_at')
         .gte('created_at', `${desde}T00:00:00`)
         .lt('created_at', `${hastaExclusivo}T00:00:00`),
       sedeIds,
@@ -145,7 +146,7 @@ async function loadCalidad({ sedeIds, desde, hastaExclusivo }) {
 async function loadGestion({ sedeIds, desde, hastaExclusivo }) {
   const { data, error } = await applySedes(
     db().from('tareas')
-      .select('id,sede_id,estado,prioridad,fecha_limite,created_at')
+      .select('id,sede_id,estado,prioridad,fecha_limite,created_at,updated_at')
       .gte('created_at', `${desde}T00:00:00`)
       .lt('created_at', `${hastaExclusivo}T00:00:00`),
     sedeIds,
@@ -179,6 +180,37 @@ async function loadRrhh({ sedeIds, desde, hastaExclusivo }) {
   return { personas: personas || [], evaluaciones: evalResult.data || [], historial: historyResult.data || [] }
 }
 
+async function loadDocumentacion({ sedeIds }) {
+  const [personasResult, vehiculosResult] = await Promise.all([
+    supabase.schema('equipo').from('personas')
+      .select('id,nombre,apellido,sede_ids,activo')
+      .eq('activo', true)
+      .overlaps('sede_ids', sedeIds.map(Number)),
+    applySedes(
+      supabase.from('mnt_activos').select('id,nombre,sede_id,sede_nombre,estado').eq('tipo', 'VEHICULO'),
+      sedeIds,
+    ),
+  ])
+  if (personasResult.error) throw personasResult.error
+  if (vehiculosResult.error) throw vehiculosResult.error
+  const personas = personasResult.data || []
+  const vehiculos = vehiculosResult.data || []
+  const queries = [
+    personas.length ? db().from('documentacion_items').select('*').eq('entity_type', 'persona').in('entity_id', personas.map(item => String(item.id))) : Promise.resolve({ data:[], error:null }),
+    vehiculos.length ? db().from('documentacion_items').select('*').eq('entity_type', 'vehiculo').in('entity_id', vehiculos.map(item => String(item.id))) : Promise.resolve({ data:[], error:null }),
+    db().from('documentacion_items').select('*').eq('entity_type', 'sede').in('entity_id', sedeIds.map(String)),
+  ]
+  const [personaDocs, vehiculoDocs, sedeDocs] = await Promise.all(queries)
+  const error = personaDocs.error || vehiculoDocs.error || sedeDocs.error
+  if (error) throw error
+  return {
+    personas,
+    vehiculos,
+    sedes: sedeIds.map(id => ({ id })),
+    items: [...(personaDocs.data || []), ...(vehiculoDocs.data || []), ...(sedeDocs.data || [])],
+  }
+}
+
 const LOADERS = {
   operacion: loadOperacion,
   escalamientos: loadEscalamientos,
@@ -188,11 +220,13 @@ const LOADERS = {
   calidad: loadCalidad,
   gestion: loadGestion,
   rrhh: loadRrhh,
+  documentacion: loadDocumentacion,
 }
 
 export async function loadGestionGeneralReportData({ sedeIds, desde, hasta, sections }) {
   const hastaExclusivo = nextDay(hasta)
-  const entries = await Promise.all(sections.map(async section => [
+  const requested = Array.from(new Set([...sections, 'documentacion']))
+  const entries = await Promise.all(requested.map(async section => [
     section,
     await LOADERS[section]({ sedeIds, desde, hastaExclusivo }),
   ]))
@@ -230,6 +264,36 @@ export function createGestionGeneralReportPdf({ data, sedes, desde, hasta, secti
 
   ctx.titulo('Alcance del informe', 0)
   paragraph(ctx, sections.map(section => labels[section]).join(' · '))
+
+  const scorecards = buildGestionScorecards({ data, sedes, desde, hasta })
+  ctx.titulo('Índice global de gestión')
+  ctx.filaKpis([
+    ['Índice global', scorecards.global.score == null ? 'S/D' : `${scorecards.global.score}%`],
+    ...scorecards.global.dimensions.slice(0, 3).map(item => [item.label, item.score == null ? 'S/D' : `${item.score}%`, item.score != null && item.score < 70]),
+  ])
+  ctx.tabla([72, 25, 25, 25, 25], ['Sede', 'Índice', 'Cumpl.', 'Doc.', 'Gestión'],
+    scorecards.bySede.map(item => [
+      item.label.slice(0, 32),
+      item.score == null ? 'S/D' : `${item.score}%`,
+      item.dimensions[0].score == null ? 'S/D' : `${item.dimensions[0].score}%`,
+      item.dimensions[1].score == null ? 'S/D' : `${item.dimensions[1].score}%`,
+      item.dimensions[2].score == null ? 'S/D' : `${item.dimensions[2].score}%`,
+    ]),
+  )
+
+  ctx.titulo('Control documental y vencimientos')
+  ctx.tabla([45, 20, 20, 20, 22, 22, 22],
+    ['Alcance', 'Controlados', 'Vigentes', 'Próx. 30 d', 'Vencidos', 'Pendientes', 'Sin cargar'],
+    scorecards.global.documentation.map(item => [
+      ({persona:'Personal', vehiculo:'Vehículos', sede:'Sedes'})[item.type],
+      item.entities,
+      item.vigente,
+      item.proximo7 + item.proximo15 + item.proximo30,
+      item.vencido,
+      item.pendiente + item.observado,
+      item.sinCargar,
+    ]),
+  )
 
   if (data.operacion) {
     const novedades = data.operacion.filter(item => !['Sin novedades', 'Sin novedad', 'OK'].includes(item.estado_general)).length
@@ -308,7 +372,7 @@ export function createGestionGeneralReportPdf({ data, sedes, desde, hasta, secti
 }
 
 export async function generarInformeGestionGeneralPDF(options) {
-  const data = await loadGestionGeneralReportData(options)
+  const data = await loadGestionGeneralReportData({ ...options, sections:GESTION_REPORT_SECTIONS.map(item => item.id) })
   const ctx = createGestionGeneralReportPdf({ ...options, data })
   const name = `informe-gestion-${options.desde}-${options.hasta}-${fechaArchivo()}.pdf`
   ctx.guardar(name)

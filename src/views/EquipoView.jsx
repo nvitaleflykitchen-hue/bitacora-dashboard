@@ -45,6 +45,7 @@ import BibliotecaRecursos from "../components/BibliotecaRecursos";
 import EvaluacionesAnalysisPanel from "../components/EvaluacionesAnalysisPanel";
 import OverflowTabs from "../components/OverflowTabs";
 import ActionOverflowMenu from "../components/ActionOverflowMenu";
+import HabilitarUsuarioModal from "../components/HabilitarUsuarioModal";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
 import {
@@ -120,6 +121,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
   const [showEvalForm, setShowEvalForm] = useState(false);
   const [showHistorialForm, setShowHistorialForm] = useState(false);
   const [showEditPersona, setShowEditPersona] = useState(false);
+  const [showHabilitarUsuario, setShowHabilitarUsuario] = useState(false);
   const [saving, setSaving] = useState(false);
   const [evaluadorPersona, setEvaluadorPersona] = useState(null);
 
@@ -759,6 +761,13 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
           onPhotoChanged={load}
         />
       )}
+      {perfil?.rol === "admin" && showHabilitarUsuario && (
+        <HabilitarUsuarioModal
+          persona={persona}
+          onClose={() => setShowHabilitarUsuario(false)}
+          onCreated={load}
+        />
+      )}
 
       {/* Header */}
       <div
@@ -816,6 +825,22 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
           <span><strong style={{color:persona.incidentes > 0 ? 'var(--warn)' : 'var(--phosphor)'}}>{persona.incidentes || 0}</strong> incidentes</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {perfil?.rol === "admin" && !persona.perfil_id && (
+            <button
+              type="button"
+              onClick={() => setShowHabilitarUsuario(true)}
+              className="btn-ghost flex items-center gap-1.5"
+              style={{ fontSize: ".7rem", color: "var(--phosphor)" }}
+              title={persona.email ? "Crear acceso a Fly Gestión" : "Primero cargá el email en la ficha"}
+            >
+              <Users size={12} /> Habilitar usuario
+            </button>
+          )}
+          {perfil?.rol === "admin" && persona.perfil_id && (
+            <span className="font-metric flex items-center gap-1.5 px-2" style={{ color: "var(--phosphor)", fontSize: ".62rem" }}>
+              <ShieldCheck size={12} /> Usuario habilitado
+            </span>
+          )}
           {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && (
             <button onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnView:'equipo' })} className="btn-ghost" style={{ fontSize:'.7rem' }}>+ Novedad</button>
           )}
