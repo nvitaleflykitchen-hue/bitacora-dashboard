@@ -1,4 +1,4 @@
-import { db } from './supabase'
+import { db, supabase } from './supabase'
 
 const table = name => db().from(name)
 
@@ -14,6 +14,17 @@ export async function getIdProjects(filters = {}) {
     if (safe) query = query.or(`codigo.ilike.%${safe}%,titulo.ilike.%${safe}%,objetivo.ilike.%${safe}%,categoria.ilike.%${safe}%`)
   }
   const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+export async function getIdActivePeople() {
+  const { data, error } = await supabase.schema('equipo').from('personas')
+    .select('id,nombre,apellido,email,puesto,perfil_id,activo,duplicado_de')
+    .eq('activo', true)
+    .is('duplicado_de', null)
+    .order('apellido')
+    .order('nombre')
   if (error) throw error
   return data || []
 }
@@ -64,9 +75,13 @@ export async function getIdProjectBundle(projectId) {
 
 export async function addIdMember(payload) {
   const { data, error } = await table('id_proyecto_miembros')
-    .upsert(payload, { onConflict:'proyecto_id,perfil_id' }).select().single()
+    .insert(payload).select().single()
   if (error) throw error
-  await addIdEvent(payload.proyecto_id, 'miembro_asignado', 'Participante incorporado', { perfil_id:payload.perfil_id, rol_proyecto:payload.rol_proyecto })
+  await addIdEvent(payload.proyecto_id, 'miembro_asignado', 'Participante incorporado', {
+    perfil_id:payload.perfil_id || null,
+    persona_id:payload.persona_id || null,
+    rol_proyecto:payload.rol_proyecto,
+  })
   return data
 }
 
