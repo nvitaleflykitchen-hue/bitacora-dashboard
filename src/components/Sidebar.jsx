@@ -13,7 +13,7 @@ import {
   Wrench, Users, Menu, X, LogOut, KeyRound,
   Users2, ShoppingCart, Shield, ClipboardCheck, Megaphone, Plus, Truck,
   Sparkles, Activity,
-  FolderKanban,
+  FolderKanban, FlaskConical,
 } from 'lucide-react'
 import { APP_NAME, APP_VERSION } from '../data/releases'
 
@@ -129,6 +129,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
     updates: Sparkles,
     pending: ClipboardCheck,
     projects: FolderKanban,
+    research: FlaskConical,
     sites: Building2,
     purchases: ShoppingCart,
     maintenance: Wrench,

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Search, Ticket, Wrench, FileText, CheckSquare, Package, Building2,
   AlertTriangle, ShoppingCart, ClipboardList, Contact, Flame, ShieldCheck,
-  UserRound, Plane,
+  UserRound, Plane, FlaskConical,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -27,6 +27,7 @@ const RESULT_TYPES = {
   candidato:       { icon:UserRound,     color:'#a78bfa', label:'Candidato' },
   responsable:     { icon:Contact,       color:'#2dd4bf', label:'Responsable' },
   vuelo:           { icon:Plane,         color:'#818cf8', label:'Vuelo' },
+  id_proyecto:     { icon:FlaskConical,  color:'#39FF14', label:'Proyecto I+D' },
 }
 
 const QUICK_LINKS = [
@@ -39,9 +40,17 @@ const QUICK_LINKS = [
 
 async function buscarTodo(query) {
   if (!query || query.length < 2) return []
-  const { data, error } = await supabase.rpc('buscar_global', { p_query:query, p_limit:30 })
+  const safe = String(query).replace(/[%_,()]/g, ' ').trim()
+  const [globalResult, idResult] = await Promise.all([
+    supabase.rpc('buscar_global', { p_query:query, p_limit:30 }),
+    supabase.schema('bitacora').from('id_proyectos')
+      .select('id,codigo,titulo,categoria,etapa,sede_id')
+      .or(`codigo.ilike.%${safe}%,titulo.ilike.%${safe}%,objetivo.ilike.%${safe}%,categoria.ilike.%${safe}%`)
+      .limit(10),
+  ])
+  const { data, error } = globalResult
   if (error) throw error
-  return (data || []).map(result => ({
+  const globalRows = (data || []).map(result => ({
     tipo: result.tipo,
     id: result.id,
     titulo: result.titulo,
@@ -50,6 +59,12 @@ async function buscarTodo(query) {
     nav: result.vista === 'flotaGestion' ? 'flotaHub' : result.vista,
     sedeId: result.sede_id,
   }))
+  const idRows = (idResult.data || []).map(result => ({
+    tipo:'id_proyecto', id:result.id, titulo:result.titulo,
+    sub:`${result.codigo} · ${result.categoria}`,
+    estado:result.etapa, nav:'idHub', sedeId:result.sede_id,
+  }))
+  return [...idRows, ...globalRows]
 }
 
 export default function GlobalSearch({ onNavigate, onClose, mobile = false }) {

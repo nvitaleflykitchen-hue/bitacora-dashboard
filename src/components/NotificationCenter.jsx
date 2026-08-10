@@ -16,6 +16,8 @@ const ENTITY_VIEW = {
   escalamiento:   'escalamientos',
   anuncio:        'tablon',
   lote_preventivo:'mantenimientoHub',
+  id_proyecto:    'idHub',
+  id_validacion:  'idHub',
 }
 
 // Etiqueta de contexto según el tipo de entidad (o del comentario padre).
@@ -31,6 +33,8 @@ const TIPO_LABEL = {
   ticket: 'Ticket',
   anuncio: 'Tablón',
   lote_preventivo: 'Preventivo',
+  id_proyecto: 'Proyecto I+D',
+  id_validacion: 'Validación I+D',
 }
 
 function tiempoRelativo(iso) {
@@ -124,9 +128,14 @@ export default function NotificationCenter({ onNavigate }) {
       window.__pendingDeepLink = { tipo, id }
       window.dispatchEvent(new CustomEvent('bitacora:deeplink', { detail: { tipo, id } }))
     }
-    const view = (tipo && ENTITY_VIEW[tipo]) ||
-      (item.url ? new URL(item.url, window.location.origin).searchParams.get('view') : null)
-    if (view && onNavigate) onNavigate(view)
+    const notificationUrl = item.url ? new URL(item.url, window.location.origin) : null
+    const view = (tipo && ENTITY_VIEW[tipo]) || notificationUrl?.searchParams.get('view')
+    const target = notificationUrl ? {
+      type:notificationUrl.searchParams.get('targetType') || tipo,
+      id:notificationUrl.searchParams.get('targetId') || id,
+      sedeId:notificationUrl.searchParams.get('targetSedeId') || null,
+    } : (id ? { type:tipo, id } : null)
+    if (view && onNavigate) onNavigate(view, target)
     else if (item.url) window.location.assign(item.url)
     setOpen(false)
   }

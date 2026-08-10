@@ -1,7 +1,23 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.7.24";
+export const APP_VERSION = "2.8.0";
 
 export const RELEASES = [
+  {
+    version: "2.8.0",
+    date: "2026-08-10",
+    title: "Investigación y Desarrollo integrado",
+    functions: [
+      "Nuevo espacio I+D para administrar proyectos desde la idea hasta la implementación y el seguimiento.",
+      "Versiones técnicas, pruebas, resultados y aprobación de la alternativa elegida sin perder el historial.",
+      "Validaciones por área, responsables, equipo, comentarios, archivos, actividad, filtros y búsqueda global.",
+      "Permisos por rol, asignación y sede, con notificaciones automáticas a responsables y validadores.",
+    ],
+    problem: "Los desarrollos de productos, procesos y materias primas no contaban con un circuito único, trazable y conectado con Fly Gestión.",
+    affectedUsers: "Dirección, I+D, Calidad, Operaciones, Compras, Costos y responsables de sede que participen en cada proyecto.",
+    usage: "Ingresá en I+D desde el menú lateral, creá el proyecto y avanzá por versiones, pruebas y validaciones hasta aprobar la alternativa final.",
+    examples: ["Desarrollar una nueva receta, comparar pruebas y conservar la versión aprobada junto con todas las decisiones."],
+    screenshots: [],
+  },
   {
     version: "2.7.24",
     date: "2026-08-07",

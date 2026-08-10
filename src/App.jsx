@@ -31,6 +31,7 @@ const Calendario = lazy(() => import('./views/Calendario'))
 const NoConformidades = lazy(() => import('./views/NoConformidades'))
 const CAPA = lazy(() => import('./views/CAPA'))
 const ProyectosGestion = lazy(() => import('./views/ProyectosGestion'))
+const IdHub = lazy(() => import('./views/id/IdHub'))
 const Indicadores = lazy(() => import('./views/Indicadores'))
 const Tareas = lazy(() => import('./views/Tareas'))
 const Usuarios = lazy(() => import('./views/Usuarios'))
@@ -72,6 +73,7 @@ const ALL_VIEWS = {
   noConformidades: NoConformidades,
   capa:            CAPA,
   proyectosGestion: ProyectosGestion,
+  idHub:           IdHub,
   indicadores:     Indicadores,
   tareas:          Tareas,
   usuarios:        Usuarios,

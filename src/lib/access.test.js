@@ -13,12 +13,9 @@ describe('matriz de acceso', () => {
     expect(ROLES.filter(rol => !['admin', 'encargado'].includes(rol)).every(rol => !canAccessDisciplinaryNotebook(rol))).toBe(true)
   })
 
-  // Tope real hoy: admin/editor/consultor/grupo/encargado ven 9 accesos
-  // (6 operacionales + flotaHub + calidadHub + equipo). Antes de agregar
-  // flotaHub ya eran 8, por lo que el límite histórico de "siete" estaba
-  // desactualizado independientemente de este cambio.
-  it.each(ROLES)('limita el menú principal de %s a diez accesos', rol => {
-    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(10)
+  // I+D es un acceso principal porque conecta proyectos, pruebas y validaciones.
+  it.each(ROLES)('limita el menú principal de %s a once accesos', rol => {
+    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(11)
   })
 
   it('deja al consultor en modo lectura', () => {
@@ -81,7 +78,8 @@ describe('matriz de acceso', () => {
 
   it('acota el usuario de Calidad a pendientes, tareas, calidad y equipo propio', () => {
     const perfil = { id:'u1', nombre:'Tecnica Flykitchen', email:'tecnica@flykitchen.com.ar' }
-    expect(getPrimaryNav('editor', perfil).map(item => item.id)).toEqual(['pendientes', 'requerimientos', 'mantenimientoHub', 'flotaHub', 'calidadHub', 'equipo'])
+    expect(getPrimaryNav('editor', perfil).map(item => item.id)).toEqual(['pendientes', 'idHub', 'requerimientos', 'mantenimientoHub', 'flotaHub', 'calidadHub', 'equipo'])
+    expect(canAccessView('editor', 'idHub', perfil)).toBe(true)
     expect(canAccessView('editor', 'tareas', perfil)).toBe(true)
     expect(canAccessView('editor', 'requerimientos', perfil)).toBe(true)
     expect(canAccessView('editor', 'mantenimientoHub', perfil)).toBe(true)
