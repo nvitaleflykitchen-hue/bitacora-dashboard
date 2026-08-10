@@ -5,6 +5,7 @@ import { Calendar, User, Plus, X, Check, ChevronDown, Pencil, UserRoundPlus, Clo
 import TareaForm, { ShareButtons, getCategoriaLabel } from './TareaForm'
 import { fmtFecha } from '../lib/dateUtils'
 import ComentariosHilo from './ComentariosHilo'
+import CompromisoTareaPanel from './CompromisoTareaPanel'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { operationalStateLabel } from '../lib/operationalStates'
@@ -371,6 +372,7 @@ function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
             </p>
           )}
           <Intervinientes tareaId={tarea.id} intervinientes={tarea.intervinientes} onUpdate={onUpdate} readOnly={readOnly} />
+          <CompromisoTareaPanel tareaId={tarea.id} readOnly={readOnly} />
           <div>
             <span className="font-metric" style={{ color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.08em' }}>
               NOTAS DE RESOLUCIÓN

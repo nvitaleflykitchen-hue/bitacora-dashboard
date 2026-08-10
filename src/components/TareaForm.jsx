@@ -11,6 +11,7 @@ import { mensajeError } from '../lib/errores'
 import useFormDraft from '../hooks/useFormDraft'
 import FormDraftNotice from './FormDraftNotice'
 import FormErrorSummary from './FormErrorSummary'
+import CompromisoTareaPanel from './CompromisoTareaPanel'
 
 export const CATEGORIAS = [
   { key: 'A', label: 'Producción / Servicio del turno' },
@@ -125,6 +126,8 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
     fecha_limite: tareaEditar?.fecha_limite ? String(tareaEditar.fecha_limite).slice(0, 10) : '',
     estado:       tareaEditar?.estado       ?? TASK_STATES[0],
     intervinientes: Array.isArray(tareaEditar?.intervinientes) ? tareaEditar.intervinientes : [],
+    seguimiento_activo: tareaEditar?.seguimiento_activo ?? false,
+    evidencia_esperada: tareaEditar?.evidencia_esperada ?? '',
   })
   const [nuevoInterviniente, setNuevoInterviniente] = useState('')
   const [formErrors, setFormErrors] = useState([])
@@ -168,12 +171,10 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
   const handleResponsable = (source, id) => {
     if (source === 'perfil') {
       const p = perfiles.find(x => x.id === id)
-      set('responsable_id', id); set('contacto_id', '')
-      set('responsable', p?.nombre || '')
+      setForm(current => ({ ...current, responsable_id:id, contacto_id:'', responsable:p?.nombre || '', seguimiento_activo:Boolean(id) }))
     } else {
       const c = contactos.find(x => x.id === id)
-      set('contacto_id', id); set('responsable_id', '')
-      set('responsable', c?.nombre || '')
+      setForm(current => ({ ...current, contacto_id:id, responsable_id:'', responsable:c?.nombre || '', seguimiento_activo:false }))
     }
     setShared(false)
   }
@@ -190,6 +191,8 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
     e.preventDefault()
     const errors = []
     if (!form.titulo.trim()) errors.push({ field:'tarea-titulo', label:'Título', message:'es obligatorio' })
+    if (form.seguimiento_activo && !form.responsable_id) errors.push({ field:'tarea-responsable', label:'Responsable', message:'debe ser un usuario de la app para activar Pica Sesos' })
+    if (form.seguimiento_activo && !form.fecha_limite) errors.push({ field:'tarea-fecha', label:'Fecha límite', message:'es obligatoria para activar Pica Sesos' })
     setFormErrors(errors)
     if (errors.length) return
     setLoading(true)
@@ -206,6 +209,8 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
         contacto_id:   form.contacto_id || null,
         prioridad:     form.prioridad,
         intervinientes: form.intervinientes,
+        seguimiento_activo: Boolean(form.seguimiento_activo),
+        evidencia_esperada: form.evidencia_esperada.trim() || null,
       }
       if (tareaEditar) {
         const tarea = await updateTarea(tareaEditar.id, payload)
@@ -239,7 +244,11 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4" style={{ overflowY:'auto', flex:1, minHeight:0 }}>
           <FormDraftNotice recovered={draft.recovered} savedAt={draft.savedAt} onDiscard={() => {
             draft.clearDraft()
-            setForm(f => ({ ...f, titulo:'', descripcion:'', responsable:'', responsable_id:'', contacto_id:'', fecha_limite:'', intervinientes:[] }))
+            setForm(f => ({
+              ...f,
+              titulo:'', descripcion:'', responsable:'', responsable_id:'', contacto_id:'',
+              fecha_limite:'', intervinientes:[], seguimiento_activo:false, evidencia_esperada:'',
+            }))
           }} />
           <FormErrorSummary errors={formErrors} />
           <div>
@@ -284,7 +293,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
             <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
               Responsable
             </label>
-            <select className="input-dark" value={form.responsable_id || form.contacto_id}
+            <select id="tarea-responsable" className="input-dark" value={form.responsable_id || form.contacto_id}
               onChange={e => {
                 const [source, id] = e.target.value.split('::')
                 handleResponsable(source, id)
@@ -360,10 +369,25 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
             </div>
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Fecha límite</label>
-              <input type="date" className="input-dark" value={form.fecha_limite}
+              <input id="tarea-fecha" type="date" className="input-dark" value={form.fecha_limite}
                 onChange={e => set('fecha_limite', e.target.value)} />
             </div>
           </div>
+
+          <div className="rounded p-3 space-y-2" style={{ background:'rgba(57,255,20,.035)', border:'1px solid rgba(57,255,20,.14)' }}>
+            <label className="flex items-center gap-2" style={{ cursor:'pointer', color:'var(--text)', fontSize:'.72rem' }}>
+              <input type="checkbox" checked={form.seguimiento_activo} disabled={!form.responsable_id}
+                onChange={e=>set('seguimiento_activo',e.target.checked)} />
+              <strong>Seguimiento Pica Sesos</strong>
+            </label>
+            <p style={{ color:'var(--text-dim)', fontSize:'.62rem' }}>Disponible para usuarios de la app. Recordará, reclamará y escalará sin duplicar avisos.</p>
+            {form.seguimiento_activo&&<div>
+              <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Evidencia esperada</label>
+              <input className="input-dark w-full" value={form.evidencia_esperada} onChange={e=>set('evidencia_esperada',e.target.value)} placeholder="Ej: foto del equipo reparado o diagnóstico adjunto"/>
+            </div>}
+          </div>
+
+          {tareaEditar?.id&&<CompromisoTareaPanel tareaId={tareaEditar.id} />}
 
           {registroOrigen && (
             <div className="rounded px-3 py-2 text-xs"
