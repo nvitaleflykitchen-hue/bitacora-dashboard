@@ -3411,7 +3411,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
       {/* KPI strip */}
       <div
-        className="grid grid-cols-4 gap-0"
+        className="grid grid-cols-2 md:grid-cols-5 gap-0"
         style={{ borderBottom: "1px solid rgba(57,255,20,0.06)" }}
       >
         {[
@@ -3430,6 +3430,10 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
           {
             label: "LOGROS TOTALES",
             value: statsPersonas.reduce((s, p) => s + (p.logros_count || 0), 0),
+          },
+          {
+            label: "ENCUADRES CARGADOS",
+            value: `${statsPersonas.filter((p) => p.encuadre).length}/${statsPersonas.length}`,
           },
           {
             label: "CON INCIDENTES",
@@ -3794,12 +3798,13 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                                 <p
                                   style={{
                                     fontSize: "0.75rem",
-                                    color: "var(--text-dim)",
+                                    color: p.rol_operativo ? "var(--text)" : "var(--text-dim)",
                                   }}
                                 >
                                   {p.rol_operativo?.nombre || p.puesto || "Sin rol operativo"}
                                 </p>
                                 {p.puesto_cct && <p className="font-metric" style={{ fontSize: ".6rem", color: "var(--text-dim)", marginTop: 2 }}>CCT · NIVEL {p.puesto_cct.nivel} · {p.puesto_cct.nombre}</p>}
+                                {!p.encuadre && <span className="font-metric inline-flex mt-1 px-1.5 py-0.5 rounded" style={{ fontSize: ".56rem", color: "#f59e0b", background: "rgba(245,158,11,.08)", border: "1px solid rgba(245,158,11,.24)" }}>ENCUADRE PENDIENTE</span>}
                                 </div>
                               </div>
                               <ChevronRight
@@ -3815,6 +3820,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                               </div>
                             )}
                             {p.encuadre?.funcion_real && <div className="mt-2 px-2 py-1.5 rounded" style={{ background: "rgba(255,255,255,.025)", border: "1px solid rgba(255,255,255,.06)" }}><p style={{ fontSize: ".58rem", color: "var(--text-dim)" }}>FUNCIÓN REAL</p><p style={{ fontSize: ".7rem", color: "var(--text)" }}>{p.encuadre.funcion_real}</p></div>}
+                            {p.encuadre && <div className="grid grid-cols-2 gap-2 mt-2"><div><p style={{ fontSize: ".56rem", color: "var(--text-dim)" }}>SUPERVISIÓN</p><p style={{ fontSize: ".66rem", color: "var(--text)" }}>{p.encuadre.supervisor_persona_id ? "Asignada" : "Pendiente"}</p></div><div><p style={{ fontSize: ".56rem", color: "var(--text-dim)" }}>HORARIO</p><p style={{ fontSize: ".66rem", color: "var(--text-dim)" }}>Se habilitará por sede</p></div></div>}
                             {(p.telefono || p.email) && (
                               <div className="flex items-center gap-2 mt-2" onClick={(event) => event.stopPropagation()}>
                                 {p.telefono && (
