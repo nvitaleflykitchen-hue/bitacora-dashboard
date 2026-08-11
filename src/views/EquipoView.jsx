@@ -61,6 +61,7 @@ import { confirmarAccionSensible } from "../lib/sensitiveActions";
 import { mensajeError } from "../lib/errores";
 import PersonalNovedadesReportModal from "../components/PersonalNovedadesReportModal";
 import PersonaEncuadrePanel from "../components/PersonaEncuadrePanel";
+import HorariosDotacion from "../components/HorariosDotacion";
 import {
   downloadHistorialPersonalPdf,
   textoHistorialPersonal,
@@ -3288,7 +3289,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
   const periodosPrueba = personas.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=-30 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
   const primaryTabs = [
     ["lista", "LISTA"], ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
-    ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
+    ["horarios", "HORARIOS"], ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
   ].filter(([id]) => !isQualityOnly || ["lista", "analisis", "recursos"].includes(id))
     .map(([id, label]) => ({ id, label }));
   const secondaryTabs = [
@@ -3562,6 +3563,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
             focusCandidateId={focusType === "candidato" ? focusId : null}
             onBack={() => setTab("lista")}
           />
+        ) : tab === "horarios" ? (
+          <HorariosDotacion sedes={sedes} canManage={canManage} />
         ) : tab === "organigrama" ? (
           <OrganigramaView onNavigate={onNavigate} />
         ) : tab === "vacaciones" ? (
