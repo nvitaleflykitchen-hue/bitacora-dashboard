@@ -18,6 +18,7 @@ export function generarCronogramaMensual({ anio, mes, regimenCodigo, fechaAncla,
   const cargas=new Map(ordenadas.map(p=>[p.persona_id,0]));
   const ancla=new Date(`${fechaAncla||`${anio}-01-01`}T00:00:00Z`);
   const asignaciones=[]; const faltantes=[]; const estados=[];
+  const cargasTurno=new Map();
   for(let numero=1;numero<=days;numero++){
     const date=new Date(Date.UTC(anio,mes-1,numero)); const fecha=iso(date); const dia=weekday(date);
     const offset=Math.floor((date-ancla)/86400000);
@@ -40,6 +41,7 @@ export function generarCronogramaMensual({ anio, mes, regimenCodigo, fechaAncla,
         const index=ordenadas.indexOf(elegido); const marca=regimen.patron[((offset+index)%regimen.patron.length+regimen.patron.length)%regimen.patron.length];
         asignaciones.push({fecha,persona_id:elegido.persona_id,persona_nombre:elegido.persona_nombre,sector_id:req.sector_id,turno_id:req.turno_id,rol_operativo_id:req.rol_operativo_id,estado:marca==="M"?"media_jornada":"asignado",origen:"generado"});
         ocupadas.add(elegido.persona_id); cargas.set(elegido.persona_id,(cargas.get(elegido.persona_id)||0)+1);
+        cargasTurno.set(`${fecha}:${req.turno_id}`,(cargasTurno.get(`${fecha}:${req.turno_id}`)||0)+1);
       }
     }
     const cortado=turnos.find(t=>(t.tipo||t.nombre)==="Cortado");
@@ -52,6 +54,25 @@ export function generarCronogramaMensual({ anio, mes, regimenCodigo, fechaAncla,
         faltantes.splice(index,1);
       }
     }
+    // La cobertura de la plantilla expresa el mínimo requerido, no la totalidad
+    // de las personas que deben recibir horario. Completamos la jornada del resto
+    // priorizando los turnos configurados para su rol y usando los turnos normales
+    // de la sede como alternativa cuando el rol aún no tiene cobertura definida.
+    for(const persona of ordenadas){
+      const index=ordenadas.indexOf(persona);
+      const marca=regimen.patron[((offset+index)%regimen.patron.length+regimen.patron.length)%regimen.patron.length];
+      if(marca==="F"||!activeOn(persona,fecha)||ocupadas.has(persona.persona_id)||ausencias.some(a=>a.persona_id===persona.persona_id&&activeOn(a,fecha))) continue;
+      const delRolHoy=reqs.filter(n=>n.rol_operativo_id===persona.rol_operativo_id).map(n=>n.turno_id);
+      const delRol=necesidades.filter(n=>n.activo!==false&&n.rol_operativo_id===persona.rol_operativo_id).map(n=>n.turno_id);
+      const normales=turnos.filter(t=>(t.tipo||t.nombre)!=="Cortado").map(t=>t.id);
+      const opciones=[...new Set(delRolHoy.length?delRolHoy:delRol.length?delRol:normales)].filter(Boolean);
+      if(!opciones.length) continue;
+      const turnoId=[...opciones].sort((a,b)=>(cargasTurno.get(`${fecha}:${a}`)||0)-(cargasTurno.get(`${fecha}:${b}`)||0))[0];
+      asignaciones.push({fecha,persona_id:persona.persona_id,persona_nombre:persona.persona_nombre,sector_id:null,turno_id:turnoId,rol_operativo_id:persona.rol_operativo_id,estado:marca==="M"?"media_jornada":"asignado",origen:"complemento_dotacion"});
+      ocupadas.add(persona.persona_id);
+      cargas.set(persona.persona_id,(cargas.get(persona.persona_id)||0)+1);
+      cargasTurno.set(`${fecha}:${turnoId}`,(cargasTurno.get(`${fecha}:${turnoId}`)||0)+1);
+    }
   }
-  return {asignaciones,faltantes,estados,dias:days};
+  return {asignaciones,faltantes,estados,dias:days,complementarias:asignaciones.filter(x=>x.origen==="complemento_dotacion").length};
 }

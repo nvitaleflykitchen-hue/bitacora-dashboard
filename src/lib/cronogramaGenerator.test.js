@@ -28,4 +28,15 @@ describe("generarCronogramaMensual",()=>{
     expect(result.faltantes.some(x=>x.fecha<"2026-08-11")).toBe(false);
     expect(result.estados.find(x=>x.fecha==="2026-08-03"&&x.persona_id==="1")?.estado).toBe("fuera_periodo");
   });
+  it("asigna horario a toda persona disponible aunque supere la cobertura mínima",()=>{
+    const result=generarCronogramaMensual({anio:2026,mes:8,regimenCodigo:"6x1",fechaAncla:"2026-08-01",necesidades:[{dia_semana:1,cantidad_requerida:1,rol_operativo_id:"r",sector_id:"s",turno_id:"m"}],personas:[{persona_id:"1",rol_operativo_id:"r"},{persona_id:"2",rol_operativo_id:"r"}],turnos:[{id:"m",tipo:"Matutino",hora_desde:"06:00",hora_hasta:"14:00"}]});
+    const lunes=result.asignaciones.filter(x=>x.fecha==="2026-08-03");
+    expect(lunes).toHaveLength(2);
+    expect(lunes.some(x=>x.origen==="complemento_dotacion")).toBe(true);
+  });
+  it("usa turnos de sede como alternativa para roles sin cobertura",()=>{
+    const result=generarCronogramaMensual({anio:2026,mes:8,regimenCodigo:"6x1",fechaAncla:"2026-08-01",necesidades:[],personas:[{persona_id:"1",rol_operativo_id:"camarera"}],turnos:[{id:"m",tipo:"Matutino"},{id:"v",tipo:"Vespertino"},{id:"c",tipo:"Cortado"}]});
+    expect(result.asignaciones.some(x=>x.persona_id==="1"&&x.origen==="complemento_dotacion")).toBe(true);
+    expect(result.asignaciones.every(x=>x.turno_id!=="c")).toBe(true);
+  });
 });
