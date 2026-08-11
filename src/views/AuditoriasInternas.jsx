@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bot,
   ClipboardCheck,
+  CalendarDays,
+  UserRound,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
   Download,
   Mail,
   MessageCircle,
@@ -1194,6 +1199,27 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack, mobile = false }
   );
 }
 
+function AuditExecutiveCard({ audit, onOpen, mobile = false }) {
+  const e = audit.ejecutivo || {};
+  const scheduled = audit.estado === "Programada";
+  const auditDate = audit.fecha_auditoria || audit.fecha_programada;
+  const responsible = audit.responsable_interno_nombre || audit.auditor_nombre;
+  const risk = e.criticos > 0 || e.capa_vencidas > 0 ? {label:"Requiere intervención",color:"#ef4444"}
+    : e.hallazgos_total > 0 || e.capa_total > e.capa_cerradas ? {label:"Atención",color:"#f59e0b"}
+    : {label:"Controlado",color:"#39ff14"};
+  const variation = e.variacion_pp == null ? null : `${e.variacion_pp > 0 ? "↑" : e.variacion_pp < 0 ? "↓" : "→"} ${Math.abs(e.variacion_pp)} pp`;
+  return <button onClick={onOpen} className="glass rounded p-3 text-left w-full group transition-transform hover:-translate-y-0.5"
+    style={{border:"1px solid rgba(255,255,255,.11)",color:"inherit",background:"linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012))",minHeight:mobile?0:250}}>
+    <div className="flex justify-between gap-3"><div className="min-w-0"><strong className="font-metric text-sm" style={{color:"var(--phosphor)"}}>{audit.codigo}</strong><div className="font-title font-bold mt-1 truncate">{audit.sedes?.nombre}</div><div className="text-xs mt-1" style={{color:"var(--text-dim)"}}>{audit.origen || "Interna"}{audit.organismo_auditor ? ` · ${audit.organismo_auditor}` : ""}</div></div><span className="chip shrink-0" style={{color:STATUS_COLOR[audit.estado]||"var(--text-dim)"}}>{audit.estado}</span></div>
+    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] mt-2 pb-3" style={{color:"var(--text-dim)",borderBottom:"1px solid rgba(255,255,255,.08)"}}>{auditDate&&<span className="flex items-center gap-1"><CalendarDays size={12}/>{auditDate}</span>}{responsible&&<span className="flex items-center gap-1"><UserRound size={12}/>{responsible}</span>}</div>
+    {scheduled ? <div className="grid grid-cols-[70px_1fr] gap-3 pt-3 text-xs"><div className="flex items-center justify-center"><div className="w-14 h-14 rounded-full flex items-center justify-center" style={{border:"1px solid rgba(96,165,250,.45)",color:STATUS_COLOR.Programada}}><CalendarDays size={24}/></div></div><div className="space-y-1"><span style={{color:"var(--text-dim)"}}>Próxima auditoría</span><strong className="block text-sm">{auditDate||"Fecha pendiente"}</strong>{audit.auditoria_plantillas?.nombre&&<div>Checklist · {audit.auditoria_plantillas.nombre}</div>}{audit.normativa&&<div>Documentación / criterio informado</div>}{responsible&&<div>Responsable asignado</div>}</div>{audit.alcance&&<div className="col-span-2 truncate" style={{color:"var(--text-dim)"}}>Alcance: {audit.alcance}</div>}</div> : <>
+      <div className="grid grid-cols-[105px_1fr] gap-3 py-3" style={{borderBottom:"1px solid rgba(255,255,255,.08)"}}><div className="rounded p-2" style={{border:"1px solid rgba(255,255,255,.08)",background:"rgba(0,0,0,.16)"}}>{audit.porcentaje_cumplimiento!=null&&<div className="font-title font-bold text-2xl">{Number(audit.porcentaje_cumplimiento).toLocaleString("es-AR",{maximumFractionDigits:1})}%</div>}{variation&&<div className="font-metric text-sm mt-1">{variation}</div>}{e.puntaje_anterior!=null&&<div className="text-[10px] mt-1" style={{color:"var(--text-dim)"}}>vs. {Number(e.puntaje_anterior).toLocaleString("es-AR",{maximumFractionDigits:1})}% anterior</div>}</div><div><div className="font-title font-bold flex items-center gap-1.5"><AlertTriangle size={14}/>{e.hallazgos_total||0} hallazgos</div><div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] mt-1.5" style={{color:"var(--text-dim)"}}><span>● {e.hallazgos_nuevos||0} nuevos</span><span>● {e.reincidentes||0} reincidentes</span><span style={{color:e.criticos?"#ef4444":"var(--text-dim)"}}>● {e.criticos||0} críticos</span><span>● {e.nc_abiertas||0} NC abiertas</span></div>{e.riesgo_principal&&<div className="text-xs mt-2"><span style={{color:"var(--text-dim)"}}>Riesgo principal · </span>{e.riesgo_principal}</div>}</div></div>
+      <div className="grid grid-cols-2 gap-3 pt-3 text-xs"><div><span className="flex items-center gap-1" style={{color:"var(--text-dim)"}}><CheckCircle2 size={12}/>CAPA vinculado</span><strong className="block mt-1">{e.capa_cerradas||0}/{e.capa_total||0} cerradas · {e.capa_vencidas||0} vencidas</strong></div><div><span style={{color:"var(--text-dim)"}}>Estado</span><strong className="block mt-1" style={{color:risk.color}}>● {risk.label}</strong></div>{(e.proxima_accion||e.proximo_vencimiento)&&<div className="col-span-2 flex items-center gap-1" style={{color:"var(--text-dim)"}}><Clock3 size={12}/>Próxima acción: {[e.proxima_accion,e.proximo_vencimiento].filter(Boolean).join(" · ")}</div>}</div>
+    </>}
+    {mobile&&<span style={{display:"block",color:"var(--phosphor)",fontSize:"0.78rem",fontWeight:700,marginTop:12}}>{["Finalizada","Cerrada"].includes(audit.estado)?"Ver informe →":"Continuar auditoría →"}</span>}
+  </button>;
+}
+
 export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
   const { perfil } = useAuth();
   const [rows, setRows] = useState([]),
@@ -1256,7 +1282,6 @@ export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
         <div>
           <h2 className="font-title font-bold text-lg flex items-center gap-2">
             <ClipboardCheck style={{ color: "var(--phosphor)" }} /> Auditorías
-            internas
           </h2>
           <p className="text-sm" style={{ color: "var(--text-dim)", lineHeight:1.45 }}>
             Planificación, relevamiento, hallazgos, evidencias y seguimiento
@@ -1286,53 +1311,8 @@ export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
           Todavía no hay auditorías para este alcance.
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {rows.map((a) => {
-            const open = (a.auditoria_hallazgos || []).filter(
-              (h) => !["Cerrado", "Descartado"].includes(h.estado),
-            ).length;
-            return (
-              <button
-                key={a.id}
-                onClick={() => setSelected(a.id)}
-                className="glass rounded p-4 text-left"
-                style={{ border: "1px solid rgba(57,255,20,.12)" }}
-              >
-                <div className="flex justify-between">
-                  <div>
-                    <strong style={{ color: "var(--phosphor)" }}>
-                      {a.codigo}
-                    </strong>
-                    <div className="font-title font-bold mt-1">
-                      {a.sedes?.nombre}
-                    </div>
-                  </div>
-                  <span
-                    className="chip"
-                    style={{ color: STATUS_COLOR[a.estado] }}
-                  >
-                    {a.estado}
-                  </span>
-                </div>
-                <p
-                  className="text-xs mt-2"
-                  style={{ color: "var(--text-dim)" }}
-                >
-                  {a.tipo_auditoria} · {a.fecha_programada || "Sin fecha"} ·{" "}
-                  {a.auditor_nombre}
-                </p>
-                <div className="flex gap-4 mt-3 text-xs">
-                  <span>
-                    {a.porcentaje_cumplimiento == null
-                      ? "Sin puntaje"
-                      : `${a.porcentaje_cumplimiento}% cumplimiento`}
-                  </span>
-                  <span>{open} hallazgos abiertos</span>
-                </div>
-                {mobile && <span style={{ display:"block", color:"var(--phosphor)", fontSize:"0.78rem", fontWeight:700, marginTop:12 }}>{["Finalizada","Cerrada"].includes(a.estado) ? "Ver informe →" : "Continuar auditoría →"}</span>}
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
+          {rows.map((a) => <AuditExecutiveCard key={a.id} audit={a} mobile={mobile} onOpen={()=>setSelected(a.id)} />)}
         </div>
       )}
       {modal && (

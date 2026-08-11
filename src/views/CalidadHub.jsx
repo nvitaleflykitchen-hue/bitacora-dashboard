@@ -15,7 +15,7 @@ const TABS = [
   { id:'iso9001', label:'ISO 9001' },
   { id:'nc', label:'No conformidades' },
   { id:'capa', label:'CAPA' },
-  { id:'auditorias', label:'Auditorías internas' },
+  { id:'auditorias', label:'Auditorías' },
   { id:'capacitaciones', label:'Capacitaciones' },
   { id:'recursos', label:'Recursos BPM' },
   { id:'comedores', label:'Comedores' },

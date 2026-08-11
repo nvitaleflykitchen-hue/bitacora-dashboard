@@ -395,15 +395,58 @@ export async function getAuditoriasInternas(filtros = {}) {
   let query = db()
     .from("auditorias_internas")
     .select(
-      "*, sedes(id,nombre,tipo), auditoria_plantillas(id,codigo,nombre,version), auditoria_hallazgos(id,estado,criticidad,tipo)",
+      "*, sedes(id,nombre,tipo), auditoria_plantillas(id,codigo,nombre,version), auditoria_hallazgos(id,estado,criticidad,tipo,titulo,es_reincidente,no_conformidad_id,capa_id,fecha_limite)",
     )
+    .order("fecha_auditoria", { ascending: false, nullsFirst: false })
     .order("fecha_programada", { ascending: false })
     .order("created_at", { ascending: false });
   if (filtros.sedeId) query = query.eq("sede_id", filtros.sedeId);
   if (filtros.estado) query = query.eq("estado", filtros.estado);
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+  if (!rows.length) return rows;
+  const sedeIds = [...new Set(rows.map((a) => a.sede_id).filter(Boolean))];
+  const ncIds = [...new Set(rows.flatMap((a) => (a.auditoria_hallazgos || []).map((h) => h.no_conformidad_id)).filter(Boolean))];
+  const [historyResult, capaResult, ncResult] = await Promise.all([
+    db().from("auditorias_internas").select("id,sede_id,origen,organismo_auditor,fecha_auditoria,fecha_programada,porcentaje_cumplimiento").in("sede_id", sedeIds).order("fecha_auditoria", { ascending:false, nullsFirst:false }),
+    db().from("capa").select("id,codigo,estado,fecha_limite,fecha_cierre,auditoria_codigo,sede_id").in("sede_id", sedeIds),
+    ncIds.length ? db().from("no_conformidades").select("id,estado").in("id", ncIds) : Promise.resolve({data:[],error:null}),
+  ]);
+  if (historyResult.error) throw historyResult.error;
+  if (capaResult.error) throw capaResult.error;
+  if (ncResult.error) throw ncResult.error;
+  const histories = historyResult.data || [];
+  const allCapas = capaResult.data || [];
+  const ncById = new Map((ncResult.data || []).map((nc) => [nc.id,nc]));
+  const closedStates = new Set(["Completada","Verificada","Cerrada"]);
+  const today = new Date().toISOString().slice(0,10);
+  return rows.map((audit) => {
+    const findings = audit.auditoria_hallazgos || [];
+    const linkedCapaIds = new Set(findings.map((h) => h.capa_id).filter(Boolean));
+    const capas = allCapas.filter((c) => c.auditoria_codigo === audit.codigo || linkedCapaIds.has(c.id));
+    const currentDate = audit.fecha_auditoria || audit.fecha_programada;
+    const previous = histories.find((candidate) => {
+      const candidateDate = candidate.fecha_auditoria || candidate.fecha_programada;
+      return candidate.id !== audit.id && candidate.sede_id === audit.sede_id && candidate.origen === audit.origen
+        && (audit.origen !== "Externa" || candidate.organismo_auditor === audit.organismo_auditor)
+        && candidateDate && currentDate && candidateDate < currentDate;
+    });
+    const critical = findings.filter((h) => h.criticidad === "Crítica");
+    const pendingCapas = capas.filter((c) => !closedStates.has(c.estado));
+    const nextDue = pendingCapas.filter((c) => c.fecha_limite).sort((a,b) => a.fecha_limite.localeCompare(b.fecha_limite))[0] || null;
+    const riskArea = critical[0]?.titulo || [...(audit.resultados_area || [])].filter((r) => r.condicion !== "No aplica").sort((a,b) => (a.porcentaje ?? 101)-(b.porcentaje ?? 101))[0]?.nombre || findings.find((h) => !["Cerrado","Descartado"].includes(h.estado))?.titulo || null;
+    return {...audit, ejecutivo:{
+      variacion_pp: previous?.porcentaje_cumplimiento == null || audit.porcentaje_cumplimiento == null ? null : Number((audit.porcentaje_cumplimiento-previous.porcentaje_cumplimiento).toFixed(1)),
+      puntaje_anterior: previous?.porcentaje_cumplimiento ?? null,
+      hallazgos_total:findings.length, hallazgos_nuevos:findings.filter((h)=>!h.es_reincidente).length,
+      reincidentes:findings.filter((h)=>h.es_reincidente).length, criticos:critical.length,
+      nc_abiertas:findings.filter((h)=>{const nc=ncById.get(h.no_conformidad_id); return nc && !["Cerrada","Cerrado","Descartada","Descartado"].includes(nc.estado)}).length,
+      capa_total:capas.length, capa_cerradas:capas.filter((c)=>closedStates.has(c.estado)).length,
+      capa_vencidas:pendingCapas.filter((c)=>c.fecha_limite && c.fecha_limite<today).length,
+      riesgo_principal:riskArea, proximo_vencimiento:nextDue?.fecha_limite || null, proxima_accion:nextDue?.codigo || null,
+    }};
+  });
 }
 
 export async function getAuditoriaInterna(id) {
