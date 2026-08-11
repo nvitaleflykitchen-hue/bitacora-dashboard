@@ -320,6 +320,9 @@ export default function CronogramaMensual({
               {result.faltantes.length} COBERTURAS SIN ASIGNAR
             </span>
             <span style={{ color: "var(--text-dim)" }}>
+              {result.complementarias || 0} HORARIOS COMPLEMENTARIOS
+            </span>
+            <span style={{ color: "var(--text-dim)" }}>
               HORARIO ASIGNADO · F FRANCO · · DISPONIBLE · — FUERA DEL PERÍODO ·
               CM CARPETA MÉDICA · VAC VACACIONES
             </span>
@@ -340,7 +343,8 @@ export default function CronogramaMensual({
                     roles.find((r) => r.id === id)?.nombre || "Sin identificar",
                 )
                 .join(", ")}
-              . Agregalos a la plantilla para que reciban turnos.
+              . Reciben un horario complementario de la sede; agregalos a la
+              plantilla para definir su cobertura preferida.
             </div>
           )}
           <div style={{ overflowX: "auto" }}>
