@@ -435,6 +435,7 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
 }
 
 function QRModal({ activo, onClose }) {
+  const [compactSizeCm, setCompactSizeCm] = useState(5)
   const url = `${window.location.origin}/?scan=activo&id=${activo.id}`
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}&bgcolor=0A0A0E&color=39FF14&margin=10`
   const escapeHtml = value => String(value || '')
@@ -472,10 +473,35 @@ function QRModal({ activo, onClose }) {
     qrImage.onerror = () => { w.document.body.insertAdjacentHTML('beforeend', '<p style="color:#c00">No se pudo cargar el QR. Cerrá esta ventana e intentá nuevamente.</p>') }
   }
 
+  const printCompactLabel = () => {
+    const sizeCm = Math.min(12, Math.max(3, Number(compactSizeCm) || 5))
+    const sizeMm = sizeCm * 10
+    const code = activo.codigo_interno || activo.id
+    const w = window.open('', '_blank', 'width=400,height=500')
+    if (!w) return
+    const printQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=4`
+    w.document.write(`<!DOCTYPE html><html><head><title>QR ${escapeHtml(code)}</title>
+    <style>
+      @page { size:${sizeMm}mm ${sizeMm}mm; margin:0; }
+      * { box-sizing:border-box; }
+      html, body { width:${sizeMm}mm; height:${sizeMm}mm; margin:0; padding:0; background:#fff; color:#000; }
+      body { font-family:Arial,sans-serif; display:flex; align-items:center; justify-content:center; }
+      .compact-label { width:${sizeMm}mm; height:${sizeMm}mm; padding:2mm; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
+      img { width:calc(100% - 8mm); height:auto; max-height:calc(100% - 9mm); aspect-ratio:1; display:block; image-rendering:pixelated; }
+      .code { width:100%; margin:1mm 0 0; font-family:monospace; font-size:${Math.max(8, Math.min(16, sizeCm * 2.2))}px; line-height:1.1; font-weight:800; text-align:center; overflow-wrap:anywhere; }
+    </style></head><body><section class="compact-label"><img id="qr-compact" src="${printQrSrc}" alt="QR del activo"/><p class="code">${escapeHtml(code)}</p></section></body></html>`)
+    w.document.close()
+    const qrImage = w.document.getElementById('qr-compact')
+    const doPrint = () => setTimeout(() => { w.focus(); w.print() }, 100)
+    if (qrImage.complete && qrImage.naturalWidth > 0) doPrint()
+    else qrImage.onload = doPrint
+    qrImage.onerror = () => { w.document.body.insertAdjacentHTML('beforeend', '<p style="color:#c00">No se pudo cargar el QR.</p>') }
+  }
+
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:60 }}
       onClick={onClose}>
-      <div style={{ background:'var(--surface)', borderRadius:3, padding:'1.75rem', width:340, textAlign:'center' }}
+      <div style={{ background:'var(--surface)', borderRadius:3, padding:'1.75rem', width:380, textAlign:'center' }}
         onClick={e=>e.stopPropagation()}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
           <p style={{ color:'var(--text)', fontWeight:700, fontSize:'1rem' }}>QR — {activo.nombre}</p>
@@ -485,13 +511,21 @@ function QRModal({ activo, onClose }) {
           <img src={qrSrc} alt="QR" width={200} height={200} style={{ display:'block', imageRendering:'pixelated' }} />
         </div>
         <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', fontFamily:'monospace', wordBreak:'break-all', marginBottom:'1rem', padding:'0 0.5rem' }}>{url}</p>
-        <div style={{ display:'flex', gap:'0.6rem' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.75rem', marginBottom:'0.65rem', padding:'0.65rem', border:'1px solid rgba(255,255,255,0.08)', borderRadius:3 }}>
+          <label htmlFor="compact-qr-size" style={{ color:'var(--text-dim)', fontSize:'0.72rem', textAlign:'left' }}>Etiqueta QR + código<br/><strong style={{ color:'var(--text)' }}>Tamaño cuadrado</strong></label>
+          <div style={{ display:'flex', alignItems:'center', gap:5 }}><input id="compact-qr-size" type="number" min="3" max="12" step="0.5" value={compactSizeCm} onChange={e=>setCompactSizeCm(e.target.value)} style={{ width:62, background:'var(--bg-deep)', color:'var(--text)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:3, padding:'0.42rem', textAlign:'right' }}/><span style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>cm</span></div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem' }}>
           <button onClick={printLabel}
             style={{ flex:1, background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.65rem', fontWeight:700, cursor:'pointer', fontSize:'0.82rem' }}>
             🖨 Imprimir etiqueta
           </button>
+          <button onClick={printCompactLabel}
+            style={{ background:'rgba(255,255,255,0.04)', color:'var(--text)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:3, padding:'0.65rem', fontWeight:700, cursor:'pointer', fontSize:'0.82rem' }}>
+            🖨 Solo QR + código
+          </button>
           <a href={qrSrc} download={`qr-${activo.id}.png`} target="_blank" rel="noreferrer"
-            style={{ flex:1, background:'rgba(57,255,20,0.06)', color:'var(--text)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:'0.65rem', fontWeight:600, cursor:'pointer', fontSize:'0.82rem', textDecoration:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            style={{ gridColumn:'1 / -1', background:'rgba(57,255,20,0.06)', color:'var(--text)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:'0.65rem', fontWeight:600, cursor:'pointer', fontSize:'0.82rem', textDecoration:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
             ⬇ Descargar QR
           </a>
         </div>
