@@ -6,20 +6,60 @@ import { mensajeError } from "../lib/errores";
 import { toast } from "../lib/feedback";
 import CronogramaMensual from "./CronogramaMensual";
 
-const DIAS = [[1,"Lun"],[2,"Mar"],[3,"Mié"],[4,"Jue"],[5,"Vie"],[6,"Sáb"],[7,"Dom"]];
-const TIPOS_TURNO = ["Matutino","Vespertino","Nocturno","Intermedio","Cortado"];
+const DIAS = [
+  [1, "Lun"],
+  [2, "Mar"],
+  [3, "Mié"],
+  [4, "Jue"],
+  [5, "Vie"],
+  [6, "Sáb"],
+  [7, "Dom"],
+];
+const TIPOS_TURNO = [
+  "Matutino",
+  "Vespertino",
+  "Nocturno",
+  "Intermedio",
+  "Cortado",
+];
 
-export default function HorariosDotacion({ sedes = [], canManage = false, sedeContextId = null }) {
+export default function HorariosDotacion({
+  sedes = [],
+  canManage = false,
+  sedeContextId = null,
+}) {
   const { user } = useAuth();
   const [sedeId, setSedeId] = useState("");
-  const [data, setData] = useState({ catalogoSectores:[], sectores:[], turnos:[], plantillas:[], necesidades:[], roles:[], indisponibilidades:[] });
+  const [data, setData] = useState({
+    catalogoSectores: [],
+    sectores: [],
+    turnos: [],
+    plantillas: [],
+    necesidades: [],
+    roles: [],
+    indisponibilidades: [],
+  });
   const [plantillaId, setPlantillaId] = useState("");
   const [sector, setSector] = useState("");
-  const [turno, setTurno] = useState({ tipo:"", desde:"06:00", hasta:"14:00", desde2:"17:00", hasta2:"21:00" });
+  const [turno, setTurno] = useState({
+    tipo: "",
+    desde: "06:00",
+    hasta: "14:00",
+    desde2: "17:00",
+    hasta2: "21:00",
+  });
   const [plantilla, setPlantilla] = useState("");
-  const [need, setNeed] = useState({ sector_id:"", turno_id:"", rol_operativo_id:"", cantidad:1, dias:[1,2,3,4,5] });
+  const [need, setNeed] = useState({
+    sector_id: "",
+    turno_id: "",
+    rol_operativo_id: "",
+    cantidad: 1,
+    dias: [1, 2, 3, 4, 5],
+  });
 
-  const sedeContexto = sedes.find((item) => String(item.id) === String(sedeContextId));
+  const sedeContexto = sedes.find(
+    (item) => String(item.id) === String(sedeContextId),
+  );
   useEffect(() => {
     if (sedeContexto) {
       setSedeId(String(sedeContexto.id));
@@ -32,49 +72,774 @@ export default function HorariosDotacion({ sedes = [], canManage = false, sedeCo
   const load = useCallback(async () => {
     if (!sedeId) return;
     const sid = Number(sedeId);
-    const hoy=new Date().toISOString().slice(0,10);
-    const limite=new Date(Date.now()+30*86400000).toISOString().slice(0,10);
-    const [c,s,t,p,n,r,i] = await Promise.all([
-      supabase.schema("equipo").from("sectores_catalogo").select("codigo,nombre,orden").eq("activo",true).order("orden").order("nombre"),
-      supabase.schema("equipo").from("horario_sectores").select("*").eq("sede_id",sid).eq("activo",true).order("orden").order("nombre"),
-      supabase.schema("equipo").from("horario_turnos").select("*").eq("sede_id",sid).eq("activo",true).order("hora_desde"),
-      supabase.schema("equipo").from("horario_plantillas").select("*").eq("sede_id",sid).neq("estado","archivada").order("created_at",{ascending:false}),
-      supabase.schema("equipo").from("horario_necesidades").select("*").eq("sede_id",sid).eq("activo",true),
-      supabase.schema("equipo").from("roles_operativos").select("id,nombre,sede_id,activo").eq("activo",true).order("nombre"),
-      supabase.schema("bitacora").from("persona_novedades").select("id,persona_id,persona_nombre,motivo_ausencia,fecha_desde,fecha_hasta,fecha_reintegro_estimada,estado_documentacion,estado").eq("sede_id",sid).eq("categoria","Ausentismo").not("fecha_desde","is",null).lte("fecha_desde",limite).gte("fecha_hasta",hoy).neq("estado","Resuelto").order("fecha_desde"),
+    const hoy = new Date().toISOString().slice(0, 10);
+    const limite = new Date(Date.now() + 30 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const [c, s, t, p, n, r, i] = await Promise.all([
+      supabase
+        .schema("equipo")
+        .from("sectores_catalogo")
+        .select("codigo,nombre,orden")
+        .eq("activo", true)
+        .order("orden")
+        .order("nombre"),
+      supabase
+        .schema("equipo")
+        .from("horario_sectores")
+        .select("*")
+        .eq("sede_id", sid)
+        .eq("activo", true)
+        .order("orden")
+        .order("nombre"),
+      supabase
+        .schema("equipo")
+        .from("horario_turnos")
+        .select("*")
+        .eq("sede_id", sid)
+        .eq("activo", true)
+        .order("hora_desde"),
+      supabase
+        .schema("equipo")
+        .from("horario_plantillas")
+        .select("*")
+        .eq("sede_id", sid)
+        .neq("estado", "archivada")
+        .order("created_at", { ascending: false }),
+      supabase
+        .schema("equipo")
+        .from("horario_necesidades")
+        .select("*")
+        .eq("sede_id", sid)
+        .eq("activo", true),
+      supabase
+        .schema("equipo")
+        .from("roles_operativos")
+        .select("id,nombre,sede_id,activo")
+        .eq("activo", true)
+        .order("nombre"),
+      supabase
+        .schema("bitacora")
+        .from("persona_novedades")
+        .select(
+          "id,persona_id,persona_nombre,motivo_ausencia,fecha_desde,fecha_hasta,fecha_reintegro_estimada,estado_documentacion,estado",
+        )
+        .eq("sede_id", sid)
+        .eq("categoria", "Ausentismo")
+        .not("fecha_desde", "is", null)
+        .lte("fecha_desde", limite)
+        .gte("fecha_hasta", hoy)
+        .neq("estado", "Resuelto")
+        .order("fecha_desde"),
     ]);
-    const failed=[c,s,t,p,n,r,i].find(x=>x.error); if(failed) toast.error(mensajeError(failed.error));
-    const next={catalogoSectores:c.data||[],sectores:s.data||[],turnos:t.data||[],plantillas:p.data||[],necesidades:n.data||[],roles:(r.data||[]).filter(x=>!x.sede_id||x.sede_id===sid),indisponibilidades:i.data||[]};
-    setData(next); setPlantillaId(current=>next.plantillas.some(x=>x.id===current)?current:next.plantillas.find(x=>x.estado==="activa")?.id||next.plantillas[0]?.id||"");
-  },[sedeId]);
-  useEffect(()=>{load();},[load]);
+    const failed = [c, s, t, p, n, r, i].find((x) => x.error);
+    if (failed) toast.error(mensajeError(failed.error));
+    const next = {
+      catalogoSectores: c.data || [],
+      sectores: s.data || [],
+      turnos: t.data || [],
+      plantillas: p.data || [],
+      necesidades: n.data || [],
+      roles: (r.data || []).filter((x) => !x.sede_id || x.sede_id === sid),
+      indisponibilidades: i.data || [],
+    };
+    setData(next);
+    setPlantillaId((current) =>
+      next.plantillas.some((x) => x.id === current)
+        ? current
+        : next.plantillas.find((x) => x.estado === "activa")?.id ||
+          next.plantillas[0]?.id ||
+          "",
+    );
+  }, [sedeId]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const selected=data.plantillas.find(x=>x.id===plantillaId);
-  const rows=data.necesidades.filter(x=>x.plantilla_id===plantillaId);
-  const perDay=useMemo(()=>new Map(DIAS.map(([d])=>[d,rows.filter(x=>x.dia_semana===d).reduce((a,x)=>a+x.cantidad_requerida,0)])),[rows]);
-  const insert=async(table,payload,message)=>{const {error}=await supabase.schema("equipo").from(table).insert({...payload,created_by:user?.id||null,updated_by:user?.id||null});if(error)return toast.error(mensajeError(error));toast.ok(message);await load();};
-  const sectoresDisponibles=data.catalogoSectores.filter(item=>!data.sectores.some(sectorSede=>sectorSede.catalogo_codigo===item.codigo));
-  const addSector=async()=>{const item=data.catalogoSectores.find(x=>x.codigo===sector);if(!item)return toast.warn("Seleccioná un sector del catálogo.");await insert("horario_sectores",{sede_id:Number(sedeId),catalogo_codigo:item.codigo,nombre:item.nombre},"Sector habilitado para la sede.");setSector("");};
-  const tiposTurnoDisponibles=TIPOS_TURNO.filter(tipo=>!data.turnos.some(item=>(item.tipo||item.nombre)===tipo));
-  const addTurno=async()=>{if(!turno.tipo)return toast.warn("Seleccioná el tipo de turno.");if(turno.tipo==="Cortado"&&(!turno.desde2||!turno.hasta2))return toast.warn("Completá los dos rangos del turno cortado.");if(turno.tipo==="Cortado"&&!(turno.desde<turno.hasta&&turno.desde2<turno.hasta2&&turno.hasta<=turno.desde2))return toast.warn("Los rangos deben estar ordenados y no pueden superponerse.");await insert("horario_turnos",{sede_id:Number(sedeId),tipo:turno.tipo,nombre:turno.tipo,hora_desde:turno.desde,hora_hasta:turno.hasta,hora_desde_2:turno.tipo==="Cortado"?turno.desde2:null,hora_hasta_2:turno.tipo==="Cortado"?turno.hasta2:null},"Turno agregado.");setTurno({tipo:"",desde:"06:00",hasta:"14:00",desde2:"17:00",hasta2:"21:00"});};
-  const addPlantilla=async()=>{if(!plantilla.trim())return toast.warn("Indicá el nombre de la plantilla.");await insert("horario_plantillas",{sede_id:Number(sedeId),nombre:plantilla.trim(),estado:"borrador"},"Plantilla creada.");setPlantilla("");};
-  const addNeed=async()=>{if(!plantillaId||!need.sector_id||!need.turno_id||!need.rol_operativo_id||!need.dias.length)return toast.warn("Completá sector, turno, rol y días.");const payload=need.dias.map(d=>({plantilla_id:plantillaId,sede_id:Number(sedeId),sector_id:need.sector_id,turno_id:need.turno_id,rol_operativo_id:need.rol_operativo_id,dia_semana:d,cantidad_requerida:Number(need.cantidad),created_by:user?.id||null,updated_by:user?.id||null}));const {error}=await supabase.schema("equipo").from("horario_necesidades").upsert(payload,{onConflict:"plantilla_id,sector_id,turno_id,rol_operativo_id,dia_semana"});if(error)return toast.error(mensajeError(error));toast.ok("Dotación actualizada.");load();};
-  const activate=async()=>{if(!selected)return;const active=data.plantillas.filter(x=>x.estado==="activa"&&x.id!==selected.id);if(active.length){const {error}=await supabase.schema("equipo").from("horario_plantillas").update({estado:"archivada",updated_by:user?.id||null}).in("id",active.map(x=>x.id));if(error)return toast.error(mensajeError(error));}const {error}=await supabase.schema("equipo").from("horario_plantillas").update({estado:"activa",vigencia_desde:selected.vigencia_desde||new Date().toISOString().slice(0,10),updated_by:user?.id||null}).eq("id",selected.id);if(error)return toast.error(mensajeError(error));toast.ok("Plantilla activada.");load();};
-  const remove=async id=>{const {error}=await supabase.schema("equipo").from("horario_necesidades").update({activo:false,updated_by:user?.id||null}).eq("id",id);if(error)return toast.error(mensajeError(error));load();};
+  const selected = data.plantillas.find((x) => x.id === plantillaId);
+  const rows = data.necesidades.filter((x) => x.plantilla_id === plantillaId);
+  const perDay = useMemo(
+    () =>
+      new Map(
+        DIAS.map(([d]) => [
+          d,
+          rows
+            .filter((x) => x.dia_semana === d)
+            .reduce((a, x) => a + x.cantidad_requerida, 0),
+        ]),
+      ),
+    [rows],
+  );
+  const insert = async (table, payload, message) => {
+    const { error } = await supabase
+      .schema("equipo")
+      .from(table)
+      .insert({
+        ...payload,
+        created_by: user?.id || null,
+        updated_by: user?.id || null,
+      });
+    if (error) return toast.error(mensajeError(error));
+    toast.ok(message);
+    await load();
+  };
+  const sectoresDisponibles = data.catalogoSectores.filter(
+    (item) =>
+      !data.sectores.some(
+        (sectorSede) => sectorSede.catalogo_codigo === item.codigo,
+      ),
+  );
+  const addSector = async () => {
+    const item = data.catalogoSectores.find((x) => x.codigo === sector);
+    if (!item) return toast.warn("Seleccioná un sector del catálogo.");
+    await insert(
+      "horario_sectores",
+      {
+        sede_id: Number(sedeId),
+        catalogo_codigo: item.codigo,
+        nombre: item.nombre,
+      },
+      "Sector habilitado para la sede.",
+    );
+    setSector("");
+  };
+  const tiposTurnoDisponibles = TIPOS_TURNO.filter(
+    (tipo) => !data.turnos.some((item) => (item.tipo || item.nombre) === tipo),
+  );
+  const addTurno = async () => {
+    if (!turno.tipo) return toast.warn("Seleccioná el tipo de turno.");
+    if (turno.tipo === "Cortado" && (!turno.desde2 || !turno.hasta2))
+      return toast.warn("Completá los dos rangos del turno cortado.");
+    if (
+      turno.tipo === "Cortado" &&
+      !(
+        turno.desde < turno.hasta &&
+        turno.desde2 < turno.hasta2 &&
+        turno.hasta <= turno.desde2
+      )
+    )
+      return toast.warn(
+        "Los rangos deben estar ordenados y no pueden superponerse.",
+      );
+    await insert(
+      "horario_turnos",
+      {
+        sede_id: Number(sedeId),
+        tipo: turno.tipo,
+        nombre: turno.tipo,
+        hora_desde: turno.desde,
+        hora_hasta: turno.hasta,
+        hora_desde_2: turno.tipo === "Cortado" ? turno.desde2 : null,
+        hora_hasta_2: turno.tipo === "Cortado" ? turno.hasta2 : null,
+      },
+      "Turno agregado.",
+    );
+    setTurno({
+      tipo: "",
+      desde: "06:00",
+      hasta: "14:00",
+      desde2: "17:00",
+      hasta2: "21:00",
+    });
+  };
+  const addPlantilla = async () => {
+    if (!plantilla.trim())
+      return toast.warn("Indicá el nombre de la plantilla.");
+    await insert(
+      "horario_plantillas",
+      { sede_id: Number(sedeId), nombre: plantilla.trim(), estado: "borrador" },
+      "Plantilla creada.",
+    );
+    setPlantilla("");
+  };
+  const addNeed = async () => {
+    if (
+      !plantillaId ||
+      !need.sector_id ||
+      !need.turno_id ||
+      !need.rol_operativo_id ||
+      !need.dias.length
+    )
+      return toast.warn("Completá sector, turno, rol y días.");
+    const payload = need.dias.map((d) => ({
+      plantilla_id: plantillaId,
+      sede_id: Number(sedeId),
+      sector_id: need.sector_id,
+      turno_id: need.turno_id,
+      rol_operativo_id: need.rol_operativo_id,
+      dia_semana: d,
+      cantidad_requerida: Number(need.cantidad),
+      created_by: user?.id || null,
+      updated_by: user?.id || null,
+    }));
+    const { error } = await supabase
+      .schema("equipo")
+      .from("horario_necesidades")
+      .upsert(payload, {
+        onConflict:
+          "plantilla_id,sector_id,turno_id,rol_operativo_id,dia_semana",
+      });
+    if (error) return toast.error(mensajeError(error));
+    toast.ok("Dotación actualizada.");
+    load();
+  };
+  const activate = async () => {
+    if (!selected) return;
+    const active = data.plantillas.filter(
+      (x) => x.estado === "activa" && x.id !== selected.id,
+    );
+    if (active.length) {
+      const { error } = await supabase
+        .schema("equipo")
+        .from("horario_plantillas")
+        .update({ estado: "archivada", updated_by: user?.id || null })
+        .in(
+          "id",
+          active.map((x) => x.id),
+        );
+      if (error) return toast.error(mensajeError(error));
+    }
+    const { error } = await supabase
+      .schema("equipo")
+      .from("horario_plantillas")
+      .update({
+        estado: "activa",
+        vigencia_desde:
+          selected.vigencia_desde || new Date().toISOString().slice(0, 10),
+        updated_by: user?.id || null,
+      })
+      .eq("id", selected.id);
+    if (error) return toast.error(mensajeError(error));
+    toast.ok("Plantilla activada.");
+    load();
+  };
+  const remove = async (id) => {
+    const { error } = await supabase
+      .schema("equipo")
+      .from("horario_necesidades")
+      .update({ activo: false, updated_by: user?.id || null })
+      .eq("id", id);
+    if (error) return toast.error(mensajeError(error));
+    load();
+  };
 
-  if(!sedes.length)return <div className="glass p-8 text-center" style={{color:"var(--text-dim)"}}>No hay sedes disponibles.</div>;
-  return <div className="space-y-4 max-w-[1500px]">
-    <div className="glass p-4 flex flex-wrap items-center gap-4"><div className="flex-1"><p className="font-title font-bold" style={{color:"var(--phosphor)"}}>HORARIOS Y DOTACIÓN</p><p style={{color:"var(--text-dim)",fontSize:".7rem"}}>Definí primero la cobertura requerida. La asignación de personas se incorpora después.</p></div>{sedeContexto?<div className="px-3 py-2 min-w-[250px]" style={{border:"1px solid rgba(57,255,20,.18)",background:"rgba(57,255,20,.04)"}}><p className="font-metric" style={{fontSize:".55rem",color:"var(--text-dim)"}}>SEDE ACTUAL</p><p className="font-title font-bold" style={{fontSize:".8rem",color:"var(--text)"}}>{sedeContexto.nombre}</p></div>:<select className="input-dark min-w-[250px]" value={sedeId} onChange={e=>setSedeId(e.target.value)}>{sedes.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select>}</div>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[[Layers3,"Sectores",data.sectores.length],[Clock3,"Turnos",data.turnos.length],[CalendarDays,"Plantillas",data.plantillas.length],[Users,"Posiciones semanales",rows.reduce((a,x)=>a+x.cantidad_requerida,0)]].map(([Icon,label,value])=><div className="glass p-3 flex gap-3 items-center" key={label}><Icon size={18} style={{color:"var(--phosphor)"}}/><div><p className="font-title font-bold text-lg">{value}</p><p className="font-metric" style={{fontSize:".57rem",color:"var(--text-dim)"}}>{label.toUpperCase()}</p></div></div>)}</div>
-    {data.indisponibilidades.length>0&&<div className="glass p-4" style={{border:"1px solid rgba(245,158,11,.35)"}}><div className="flex items-center justify-between gap-3 mb-2"><div><p className="font-title font-bold" style={{color:"#f59e0b",fontSize:".82rem"}}>INDISPONIBILIDADES VIGENTES / PRÓXIMAS</p><p style={{color:"var(--text-dim)",fontSize:".66rem"}}>Períodos que deben contemplarse al cubrir los próximos 30 días.</p></div><span className="font-title font-bold" style={{color:"#f59e0b"}}>{data.indisponibilidades.length}</span></div><div className="flex flex-wrap gap-2">{data.indisponibilidades.map(x=><div key={x.id} className="px-3 py-2" style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.18)",fontSize:".68rem"}}><strong>{x.persona_nombre}</strong><span style={{color:"var(--text-dim)"}}> · {x.motivo_ausencia}<br/>{x.fecha_desde} → {x.fecha_hasta} · {x.estado_documentacion||'Sin documentación'}</span></div>)}</div></div>}
-    {canManage&&<div className="grid grid-cols-1 lg:grid-cols-3 gap-3"><Setup title="1 · SECTORES"><select className="input-dark flex-1" value={sector} onChange={e=>setSector(e.target.value)}><option value="">Seleccionar del catálogo...</option>{sectoresDisponibles.map(x=><option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}</select><Add onClick={addSector}/>{data.sectores.length>0&&<div className="w-full flex flex-wrap gap-1 mt-2">{data.sectores.map(x=><span key={x.id} className="font-metric px-2 py-1" style={{fontSize:".55rem",border:"1px solid rgba(57,255,20,.16)",color:"var(--text-dim)"}}>{x.nombre}</span>)}</div>}</Setup><Setup title="2 · TURNOS"><select className="input-dark w-full mb-2" value={turno.tipo} onChange={e=>setTurno({...turno,tipo:e.target.value})}><option value="">Seleccionar turno...</option>{tiposTurnoDisponibles.map(x=><option key={x} value={x}>{x}</option>)}</select><p className="font-metric w-full" style={{fontSize:".55rem",color:"var(--text-dim)"}}>RANGO {turno.tipo==="Cortado"?"1":"HORARIO"}</p><div className="flex gap-2 w-full"><input type="time" className="input-dark flex-1" value={turno.desde} onChange={e=>setTurno({...turno,desde:e.target.value})}/><input type="time" className="input-dark flex-1" value={turno.hasta} onChange={e=>setTurno({...turno,hasta:e.target.value})}/></div>{turno.tipo==="Cortado"&&<><p className="font-metric w-full mt-1" style={{fontSize:".55rem",color:"var(--text-dim)"}}>RANGO 2</p><div className="flex gap-2 w-full"><input type="time" className="input-dark flex-1" value={turno.desde2} onChange={e=>setTurno({...turno,desde2:e.target.value})}/><input type="time" className="input-dark flex-1" value={turno.hasta2} onChange={e=>setTurno({...turno,hasta2:e.target.value})}/></div></>}<div className="w-full flex justify-end"><Add onClick={addTurno}/></div>{data.turnos.length>0&&<div className="w-full space-y-1 mt-1">{data.turnos.map(x=><p key={x.id} style={{fontSize:".62rem",color:"var(--text-dim)"}}><strong style={{color:"var(--text)"}}>{x.tipo||x.nombre}</strong> · {String(x.hora_desde).slice(0,5)}–{String(x.hora_hasta).slice(0,5)}{x.hora_desde_2?` / ${String(x.hora_desde_2).slice(0,5)}–${String(x.hora_hasta_2).slice(0,5)}`:""}</p>)}</div>}</Setup><Setup title="3 · PLANTILLA"><input className="input-dark flex-1" value={plantilla} onChange={e=>setPlantilla(e.target.value)} placeholder="Ej. Operación habitual"/><Add onClick={addPlantilla}/></Setup></div>}
-    <div className="glass p-4"><div className="flex flex-wrap gap-3 mb-4"><select className="input-dark min-w-[260px]" value={plantillaId} onChange={e=>setPlantillaId(e.target.value)}><option value="">Seleccionar plantilla...</option>{data.plantillas.map(x=><option key={x.id} value={x.id}>{x.nombre} · {x.estado}</option>)}</select>{selected&&<span className="font-metric px-2 py-1" style={{fontSize:".58rem",color:selected.estado==="activa"?"var(--phosphor)":"#f59e0b"}}>{selected.estado.toUpperCase()}</span>}{canManage&&selected?.estado!=="activa"&&<button className="btn-ghost" onClick={activate}>Activar</button>}</div>
-      {!selected?<p style={{color:"var(--text-dim)",fontSize:".72rem"}}>Creá o seleccioná una plantilla.</p>:<>{canManage&&<div className="grid grid-cols-1 md:grid-cols-6 gap-2 p-3 mb-4" style={{border:"1px solid rgba(57,255,20,.12)"}}><Select value={need.sector_id} set={v=>setNeed({...need,sector_id:v})} label="Sector" items={data.sectores}/><Select value={need.turno_id} set={v=>setNeed({...need,turno_id:v})} label="Turno" items={data.turnos}/><div className="md:col-span-2"><Select value={need.rol_operativo_id} set={v=>setNeed({...need,rol_operativo_id:v})} label="Rol Fly" items={data.roles}/></div><input type="number" min="1" max="200" className="input-dark" value={need.cantidad} onChange={e=>setNeed({...need,cantidad:e.target.value})}/><button className="btn-primary flex justify-center items-center gap-1" onClick={addNeed}><Save size={12}/> Guardar</button><div className="md:col-span-6 flex flex-wrap gap-2">{DIAS.map(([d,l])=><label key={d} className="px-2 py-1" style={{border:"1px solid rgba(255,255,255,.1)",color:need.dias.includes(d)?"var(--phosphor)":"var(--text-dim)",fontSize:".68rem"}}><input className="mr-1" type="checkbox" checked={need.dias.includes(d)} onChange={()=>setNeed({...need,dias:need.dias.includes(d)?need.dias.filter(x=>x!==d):[...need.dias,d]})}/>{l}</label>)}</div>{!data.roles.length&&<p className="md:col-span-6" style={{color:"#f59e0b",fontSize:".68rem"}}>No hay roles Fly para esta sede. Crealos desde la ficha de un colaborador.</p>}</div>}
-      <div className="grid grid-cols-7 gap-2 mb-4">{DIAS.map(([d,l])=><div className="text-center p-2" key={d} style={{background:"rgba(255,255,255,.025)"}}><p className="font-metric" style={{fontSize:".57rem",color:"var(--text-dim)"}}>{l.toUpperCase()}</p><p className="font-title font-bold" style={{color:"var(--phosphor)"}}>{perDay.get(d)||0}</p></div>)}</div><table className="w-full" style={{fontSize:".7rem"}}><thead><tr style={{color:"var(--text-dim)"}}><th className="text-left py-2">Día</th><th className="text-left">Sector</th><th className="text-left">Turno</th><th className="text-left">Rol</th><th className="text-right">Cantidad</th><th/></tr></thead><tbody>{rows.sort((a,b)=>a.dia_semana-b.dia_semana).map(x=><tr key={x.id} style={{borderTop:"1px solid rgba(255,255,255,.05)"}}><td className="py-2">{DIAS.find(([d])=>d===x.dia_semana)?.[1]}</td><td>{data.sectores.find(v=>v.id===x.sector_id)?.nombre}</td><td>{data.turnos.find(v=>v.id===x.turno_id)?.nombre}</td><td>{data.roles.find(v=>v.id===x.rol_operativo_id)?.nombre}</td><td className="text-right font-bold">{x.cantidad_requerida}</td><td className="text-right">{canManage&&<button className="btn-ghost" onClick={()=>remove(x.id)}>Quitar</button>}</td></tr>)}{!rows.length&&<tr><td colSpan="6" className="text-center py-8" style={{color:"var(--text-dim)"}}>Sin necesidades cargadas.</td></tr>}</tbody></table></>}</div>
-    <CronogramaMensual sedeId={sedeId} plantillaId={plantillaId} necesidades={data.necesidades} turnos={data.turnos} sectores={data.sectores} roles={data.roles}/>
-  </div>;
+  if (!sedes.length)
+    return (
+      <div
+        className="glass p-8 text-center"
+        style={{ color: "var(--text-dim)" }}
+      >
+        No hay sedes disponibles.
+      </div>
+    );
+  return (
+    <div className="space-y-4 max-w-[1500px]">
+      <div className="glass p-4 flex flex-wrap items-center gap-4">
+        <div className="flex-1">
+          <p
+            className="font-title font-bold"
+            style={{ color: "var(--phosphor)" }}
+          >
+            HORARIOS Y DOTACIÓN
+          </p>
+          <p style={{ color: "var(--text-dim)", fontSize: ".7rem" }}>
+            Definí primero la cobertura requerida. La asignación de personas se
+            incorpora después.
+          </p>
+        </div>
+        {sedeContexto ? (
+          <div
+            className="px-3 py-2 min-w-[250px]"
+            style={{
+              border: "1px solid rgba(57,255,20,.18)",
+              background: "rgba(57,255,20,.04)",
+            }}
+          >
+            <p
+              className="font-metric"
+              style={{ fontSize: ".55rem", color: "var(--text-dim)" }}
+            >
+              SEDE ACTUAL
+            </p>
+            <p
+              className="font-title font-bold"
+              style={{ fontSize: ".8rem", color: "var(--text)" }}
+            >
+              {sedeContexto.nombre}
+            </p>
+          </div>
+        ) : (
+          <select
+            className="input-dark min-w-[250px]"
+            value={sedeId}
+            onChange={(e) => setSedeId(e.target.value)}
+          >
+            {sedes.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.nombre}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          [Layers3, "Sectores", data.sectores.length],
+          [Clock3, "Turnos", data.turnos.length],
+          [CalendarDays, "Plantillas", data.plantillas.length],
+          [
+            Users,
+            "Posiciones semanales",
+            rows.reduce((a, x) => a + x.cantidad_requerida, 0),
+          ],
+        ].map(([Icon, label, value]) => (
+          <div className="glass p-3 flex gap-3 items-center" key={label}>
+            <Icon size={18} style={{ color: "var(--phosphor)" }} />
+            <div>
+              <p className="font-title font-bold text-lg">{value}</p>
+              <p
+                className="font-metric"
+                style={{ fontSize: ".57rem", color: "var(--text-dim)" }}
+              >
+                {label.toUpperCase()}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {data.indisponibilidades.length > 0 && (
+        <div
+          className="glass p-4"
+          style={{ border: "1px solid rgba(245,158,11,.35)" }}
+        >
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div>
+              <p
+                className="font-title font-bold"
+                style={{ color: "#f59e0b", fontSize: ".82rem" }}
+              >
+                INDISPONIBILIDADES VIGENTES / PRÓXIMAS
+              </p>
+              <p style={{ color: "var(--text-dim)", fontSize: ".66rem" }}>
+                Períodos que deben contemplarse al cubrir los próximos 30 días.
+              </p>
+            </div>
+            <span className="font-title font-bold" style={{ color: "#f59e0b" }}>
+              {data.indisponibilidades.length}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {data.indisponibilidades.map((x) => (
+              <div
+                key={x.id}
+                className="px-3 py-2"
+                style={{
+                  background: "rgba(245,158,11,.06)",
+                  border: "1px solid rgba(245,158,11,.18)",
+                  fontSize: ".68rem",
+                }}
+              >
+                <strong>{x.persona_nombre}</strong>
+                <span style={{ color: "var(--text-dim)" }}>
+                  {" "}
+                  · {x.motivo_ausencia}
+                  <br />
+                  {x.fecha_desde} → {x.fecha_hasta} ·{" "}
+                  {x.estado_documentacion || "Sin documentación"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {canManage && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <Setup title="1 · SECTORES">
+            <select
+              className="input-dark flex-1"
+              value={sector}
+              onChange={(e) => setSector(e.target.value)}
+            >
+              <option value="">Seleccionar del catálogo...</option>
+              {sectoresDisponibles.map((x) => (
+                <option key={x.codigo} value={x.codigo}>
+                  {x.nombre}
+                </option>
+              ))}
+            </select>
+            <Add onClick={addSector} />
+            {data.sectores.length > 0 && (
+              <div className="w-full flex flex-wrap gap-1 mt-2">
+                {data.sectores.map((x) => (
+                  <span
+                    key={x.id}
+                    className="font-metric px-2 py-1"
+                    style={{
+                      fontSize: ".55rem",
+                      border: "1px solid rgba(57,255,20,.16)",
+                      color: "var(--text-dim)",
+                    }}
+                  >
+                    {x.nombre}
+                  </span>
+                ))}
+              </div>
+            )}
+          </Setup>
+          <Setup title="2 · TURNOS">
+            <select
+              className="input-dark w-full mb-2"
+              value={turno.tipo}
+              onChange={(e) => setTurno({ ...turno, tipo: e.target.value })}
+            >
+              <option value="">Seleccionar turno...</option>
+              {tiposTurnoDisponibles.map((x) => (
+                <option key={x} value={x}>
+                  {x}
+                </option>
+              ))}
+            </select>
+            <p
+              className="font-metric w-full"
+              style={{ fontSize: ".55rem", color: "var(--text-dim)" }}
+            >
+              RANGO {turno.tipo === "Cortado" ? "1" : "HORARIO"}
+            </p>
+            <div className="flex gap-2 w-full">
+              <input
+                type="time"
+                className="input-dark flex-1"
+                value={turno.desde}
+                onChange={(e) => setTurno({ ...turno, desde: e.target.value })}
+              />
+              <input
+                type="time"
+                className="input-dark flex-1"
+                value={turno.hasta}
+                onChange={(e) => setTurno({ ...turno, hasta: e.target.value })}
+              />
+            </div>
+            {turno.tipo === "Cortado" && (
+              <>
+                <p
+                  className="font-metric w-full mt-1"
+                  style={{ fontSize: ".55rem", color: "var(--text-dim)" }}
+                >
+                  RANGO 2
+                </p>
+                <div className="flex gap-2 w-full">
+                  <input
+                    type="time"
+                    className="input-dark flex-1"
+                    value={turno.desde2}
+                    onChange={(e) =>
+                      setTurno({ ...turno, desde2: e.target.value })
+                    }
+                  />
+                  <input
+                    type="time"
+                    className="input-dark flex-1"
+                    value={turno.hasta2}
+                    onChange={(e) =>
+                      setTurno({ ...turno, hasta2: e.target.value })
+                    }
+                  />
+                </div>
+              </>
+            )}
+            <div className="w-full flex justify-end">
+              <Add onClick={addTurno} />
+            </div>
+            {data.turnos.length > 0 && (
+              <div className="w-full space-y-1 mt-1">
+                {data.turnos.map((x) => (
+                  <p
+                    key={x.id}
+                    style={{ fontSize: ".62rem", color: "var(--text-dim)" }}
+                  >
+                    <strong style={{ color: "var(--text)" }}>
+                      {x.tipo || x.nombre}
+                    </strong>{" "}
+                    · {String(x.hora_desde).slice(0, 5)}–
+                    {String(x.hora_hasta).slice(0, 5)}
+                    {x.hora_desde_2
+                      ? ` / ${String(x.hora_desde_2).slice(0, 5)}–${String(x.hora_hasta_2).slice(0, 5)}`
+                      : ""}
+                  </p>
+                ))}
+              </div>
+            )}
+          </Setup>
+          <Setup title="3 · PLANTILLA">
+            <input
+              className="input-dark flex-1"
+              value={plantilla}
+              onChange={(e) => setPlantilla(e.target.value)}
+              placeholder="Ej. Operación habitual"
+            />
+            <Add onClick={addPlantilla} />
+          </Setup>
+        </div>
+      )}
+      <div className="glass p-4">
+        <div className="flex flex-wrap gap-3 mb-4">
+          <select
+            className="input-dark min-w-[260px]"
+            value={plantillaId}
+            onChange={(e) => setPlantillaId(e.target.value)}
+          >
+            <option value="">Seleccionar plantilla...</option>
+            {data.plantillas.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.nombre} · {x.estado}
+              </option>
+            ))}
+          </select>
+          {selected && (
+            <span
+              className="font-metric px-2 py-1"
+              style={{
+                fontSize: ".58rem",
+                color:
+                  selected.estado === "activa" ? "var(--phosphor)" : "#f59e0b",
+              }}
+            >
+              {selected.estado.toUpperCase()}
+            </span>
+          )}
+          {canManage && selected?.estado !== "activa" && (
+            <button className="btn-ghost" onClick={activate}>
+              Activar
+            </button>
+          )}
+        </div>
+        {!selected ? (
+          <p style={{ color: "var(--text-dim)", fontSize: ".72rem" }}>
+            Creá o seleccioná una plantilla.
+          </p>
+        ) : (
+          <>
+            {canManage && (
+              <div
+                className="grid grid-cols-1 md:grid-cols-6 gap-2 p-3 mb-4"
+                style={{ border: "1px solid rgba(57,255,20,.12)" }}
+              >
+                <Select
+                  value={need.sector_id}
+                  set={(v) => setNeed({ ...need, sector_id: v })}
+                  label="Sector"
+                  items={data.sectores}
+                />
+                <Select
+                  value={need.turno_id}
+                  set={(v) => setNeed({ ...need, turno_id: v })}
+                  label="Turno"
+                  items={data.turnos}
+                />
+                <div className="md:col-span-2">
+                  <Select
+                    value={need.rol_operativo_id}
+                    set={(v) => setNeed({ ...need, rol_operativo_id: v })}
+                    label="Rol Fly"
+                    items={data.roles}
+                  />
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  className="input-dark"
+                  value={need.cantidad}
+                  onChange={(e) =>
+                    setNeed({ ...need, cantidad: e.target.value })
+                  }
+                />
+                <button
+                  className="btn-primary flex justify-center items-center gap-1"
+                  onClick={addNeed}
+                >
+                  <Save size={12} /> Guardar
+                </button>
+                <div className="md:col-span-6 flex flex-wrap gap-2">
+                  {DIAS.map(([d, l]) => (
+                    <label
+                      key={d}
+                      className="px-2 py-1"
+                      style={{
+                        border: "1px solid rgba(255,255,255,.1)",
+                        color: need.dias.includes(d)
+                          ? "var(--phosphor)"
+                          : "var(--text-dim)",
+                        fontSize: ".68rem",
+                      }}
+                    >
+                      <input
+                        className="mr-1"
+                        type="checkbox"
+                        checked={need.dias.includes(d)}
+                        onChange={() =>
+                          setNeed({
+                            ...need,
+                            dias: need.dias.includes(d)
+                              ? need.dias.filter((x) => x !== d)
+                              : [...need.dias, d],
+                          })
+                        }
+                      />
+                      {l}
+                    </label>
+                  ))}
+                </div>
+                {!data.roles.length && (
+                  <p
+                    className="md:col-span-6"
+                    style={{ color: "#f59e0b", fontSize: ".68rem" }}
+                  >
+                    No hay roles Fly para esta sede. Crealos desde la ficha de
+                    un colaborador.
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="grid grid-cols-7 gap-2 mb-4">
+              {DIAS.map(([d, l]) => (
+                <div
+                  className="text-center p-2"
+                  key={d}
+                  style={{ background: "rgba(255,255,255,.025)" }}
+                >
+                  <p
+                    className="font-metric"
+                    style={{ fontSize: ".57rem", color: "var(--text-dim)" }}
+                  >
+                    {l.toUpperCase()}
+                  </p>
+                  <p
+                    className="font-title font-bold"
+                    style={{ color: "var(--phosphor)" }}
+                  >
+                    {perDay.get(d) || 0}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <table className="w-full" style={{ fontSize: ".7rem" }}>
+              <thead>
+                <tr style={{ color: "var(--text-dim)" }}>
+                  <th className="text-left py-2">Día</th>
+                  <th className="text-left">Sector</th>
+                  <th className="text-left">Turno</th>
+                  <th className="text-left">Rol</th>
+                  <th className="text-right">Cantidad</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows
+                  .sort((a, b) => a.dia_semana - b.dia_semana)
+                  .map((x) => (
+                    <tr
+                      key={x.id}
+                      style={{ borderTop: "1px solid rgba(255,255,255,.05)" }}
+                    >
+                      <td className="py-2">
+                        {DIAS.find(([d]) => d === x.dia_semana)?.[1]}
+                      </td>
+                      <td>
+                        {
+                          data.sectores.find((v) => v.id === x.sector_id)
+                            ?.nombre
+                        }
+                      </td>
+                      <td>
+                        {data.turnos.find((v) => v.id === x.turno_id)?.nombre}
+                      </td>
+                      <td>
+                        {
+                          data.roles.find((v) => v.id === x.rol_operativo_id)
+                            ?.nombre
+                        }
+                      </td>
+                      <td className="text-right font-bold">
+                        {x.cantidad_requerida}
+                      </td>
+                      <td className="text-right">
+                        {canManage && (
+                          <button
+                            className="btn-ghost"
+                            onClick={() => remove(x.id)}
+                          >
+                            Quitar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                {!rows.length && (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="text-center py-8"
+                      style={{ color: "var(--text-dim)" }}
+                    >
+                      Sin necesidades cargadas.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </>
+        )}
+      </div>
+      <CronogramaMensual
+        sedeId={sedeId}
+        sedeNombre={
+          sedeContexto?.nombre ||
+          sedes.find((x) => String(x.id) === String(sedeId))?.nombre
+        }
+        plantillaId={plantillaId}
+        necesidades={data.necesidades}
+        turnos={data.turnos}
+        sectores={data.sectores}
+        roles={data.roles}
+      />
+    </div>
+  );
 }
 
-function Setup({title,children}){return <div className="glass p-4"><p className="font-metric mb-3" style={{color:"var(--phosphor)",fontSize:".65rem"}}>{title}</p><div className="flex gap-2 flex-wrap">{children}</div></div>}
-function Add({onClick}){return <button className="btn-primary" onClick={onClick}><Plus size={13}/></button>}
-function Select({value,set,label,items}){return <select className="input-dark w-full" value={value} onChange={e=>set(e.target.value)}><option value="">{label}...</option>{items.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select>}
+function Setup({ title, children }) {
+  return (
+    <div className="glass p-4">
+      <p
+        className="font-metric mb-3"
+        style={{ color: "var(--phosphor)", fontSize: ".65rem" }}
+      >
+        {title}
+      </p>
+      <div className="flex gap-2 flex-wrap">{children}</div>
+    </div>
+  );
+}
+function Add({ onClick }) {
+  return (
+    <button className="btn-primary" onClick={onClick}>
+      <Plus size={13} />
+    </button>
+  );
+}
+function Select({ value, set, label, items }) {
+  return (
+    <select
+      className="input-dark w-full"
+      value={value}
+      onChange={(e) => set(e.target.value)}
+    >
+      <option value="">{label}...</option>
+      {items.map((x) => (
+        <option key={x.id} value={x.id}>
+          {x.nombre}
+        </option>
+      ))}
+    </select>
+  );
+}
