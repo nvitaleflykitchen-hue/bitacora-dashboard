@@ -402,6 +402,10 @@ export async function getAuditoriasInternas(filtros = {}) {
     .order("created_at", { ascending: false });
   if (filtros.sedeId) query = query.eq("sede_id", filtros.sedeId);
   if (filtros.estado) query = query.eq("estado", filtros.estado);
+  if (filtros.origen) query = query.eq("origen", filtros.origen);
+  if (filtros.organismo) query = query.ilike("organismo_auditor", `%${filtros.organismo}%`);
+  if (filtros.desde) query = query.gte("fecha_auditoria", filtros.desde);
+  if (filtros.hasta) query = query.lte("fecha_auditoria", filtros.hasta);
   const { data, error } = await query;
   if (error) throw error;
   const rows = data || [];

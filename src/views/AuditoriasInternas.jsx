@@ -1227,13 +1227,14 @@ export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
     [plantillas, setPlantillas] = useState([]),
     [perfiles, setPerfiles] = useState([]),
     [loading, setLoading] = useState(true),
+    [filters, setFilters] = useState({ busqueda:"", sedeId:sedeId || "", origen:"", estado:"", organismo:"", desde:"", hasta:"" }),
     [modal, setModal] = useState(false),
     [selected, setSelected] = useState(null);
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [a, s, p, u] = await Promise.all([
-        getAuditoriasInternas({ sedeId }),
+        getAuditoriasInternas({ sedeId: sedeId || filters.sedeId, origen:filters.origen, estado:filters.estado, organismo:filters.organismo, desde:filters.desde, hasta:filters.hasta }),
         getSedes(),
         getAuditoriaPlantillas(),
         getPerfiles(),
@@ -1247,7 +1248,7 @@ export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
     } finally {
       setLoading(false);
     }
-  }, [sedeId]);
+  }, [sedeId, filters.sedeId, filters.origen, filters.estado, filters.organismo, filters.desde, filters.hasta]);
   useEffect(() => {
     load();
   }, [load]);
@@ -1276,6 +1277,10 @@ export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
       SPECIAL_ALL.has(email) ||
       email === "mriviere@flykitchen.com.ar"
     : canManageAudit(perfil, selectedSede?.tipo);
+  const normalizedSearch = filters.busqueda.trim().toLowerCase();
+  const visibleRows = normalizedSearch ? rows.filter((a) => [a.codigo,a.sedes?.nombre,a.organismo_auditor,a.auditor_nombre,a.responsable_interno_nombre].some((value) => String(value || "").toLowerCase().includes(normalizedSearch))) : rows;
+  const setFilter = (key, value) => setFilters((current) => ({...current,[key]:value}));
+  const clearFilters = () => setFilters({busqueda:"",sedeId:sedeId || "",origen:"",estado:"",organismo:"",desde:"",hasta:""});
   return (
     <div className={mobile ? "mobile-scroll" : "h-full min-h-0 overflow-y-auto space-y-4 pr-1 pb-6"} style={mobile ? { height:"100%", overflowY:"auto", padding:"0.75rem 1rem 1rem" } : undefined}>
       <div className={mobile ? "flex flex-col gap-3" : "flex items-center justify-between"}>
@@ -1299,11 +1304,21 @@ export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
           )}
         </div>
       </div>
+      <div className="glass rounded p-3 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2" style={{border:"1px solid rgba(255,255,255,.09)"}}>
+        <input className="input-dark col-span-2" placeholder="Buscar código, sede, organismo o responsable..." value={filters.busqueda} onChange={(e)=>setFilter("busqueda",e.target.value)} />
+        {!sedeId && <select className="input-dark" value={filters.sedeId} onChange={(e)=>setFilter("sedeId",e.target.value)}><option value="">Todas las sedes</option>{sedes.map((s)=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
+        <select className="input-dark" value={filters.origen} onChange={(e)=>setFilter("origen",e.target.value)}><option value="">Internas y externas</option><option value="Interna">Internas</option><option value="Externa">Externas</option></select>
+        <select className="input-dark" value={filters.estado} onChange={(e)=>setFilter("estado",e.target.value)}><option value="">Todos los estados</option>{Object.keys(STATUS_COLOR).map((state)=><option key={state}>{state}</option>)}</select>
+        <input className="input-dark" placeholder="Organismo auditor" value={filters.organismo} onChange={(e)=>setFilter("organismo",e.target.value)} />
+        <input type="date" className="input-dark" aria-label="Auditorías desde" value={filters.desde} onChange={(e)=>setFilter("desde",e.target.value)} />
+        <input type="date" className="input-dark" aria-label="Auditorías hasta" value={filters.hasta} onChange={(e)=>setFilter("hasta",e.target.value)} />
+        <button className="btn-ghost" onClick={clearFilters}>Limpiar</button>
+      </div>
       {loading ? (
         <p className="p-8 text-center" style={{ color: "var(--text-dim)" }}>
           Cargando...
         </p>
-      ) : rows.length === 0 ? (
+      ) : visibleRows.length === 0 ? (
         <div
           className="glass rounded p-8 text-center"
           style={{ color: "var(--text-dim)" }}
@@ -1312,7 +1327,7 @@ export default function AuditoriasInternas({ sedeId = null, mobile = false }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3">
-          {rows.map((a) => <AuditExecutiveCard key={a.id} audit={a} mobile={mobile} onOpen={()=>setSelected(a.id)} />)}
+          {visibleRows.map((a) => <AuditExecutiveCard key={a.id} audit={a} mobile={mobile} onOpen={()=>setSelected(a.id)} />)}
         </div>
       )}
       {modal && (
