@@ -10,17 +10,26 @@ const iso = date => date.toISOString().slice(0,10);
 const weekday = date => date.getUTCDay() === 0 ? 7 : date.getUTCDay();
 const activeOn = (item,day) => (!item.fecha_desde || item.fecha_desde<=day)&&(!item.fecha_hasta||item.fecha_hasta>=day);
 
-export function generarCronogramaMensual({ anio, mes, regimenCodigo, fechaAncla, necesidades=[], personas=[], ausencias=[], turnos=[] }) {
+export function generarCronogramaMensual({ anio, mes, regimenCodigo, fechaAncla, generarDesde, necesidades=[], personas=[], ausencias=[], turnos=[] }) {
   const regimen=REGIMENES_FRANCO[regimenCodigo];
   if(!regimen) throw new Error("Régimen de francos inválido");
   const days=new Date(Date.UTC(anio,mes,0)).getUTCDate();
   const ordenadas=[...personas].sort((a,b)=>String(a.persona_id).localeCompare(String(b.persona_id)));
   const cargas=new Map(ordenadas.map(p=>[p.persona_id,0]));
   const ancla=new Date(`${fechaAncla||`${anio}-01-01`}T00:00:00Z`);
-  const asignaciones=[]; const faltantes=[];
+  const asignaciones=[]; const faltantes=[]; const estados=[];
   for(let numero=1;numero<=days;numero++){
     const date=new Date(Date.UTC(anio,mes-1,numero)); const fecha=iso(date); const dia=weekday(date);
     const offset=Math.floor((date-ancla)/86400000);
+    ordenadas.forEach((persona,index)=>{
+      const patron=regimen.patron[((offset+index)%regimen.patron.length+regimen.patron.length)%regimen.patron.length];
+      let estado=patron==="F"?"franco":patron==="M"?"media_disponible":"disponible";
+      if(generarDesde&&fecha<generarDesde) estado="fuera_periodo";
+      else if(!activeOn(persona,fecha)) estado="no_vigente";
+      else if(ausencias.some(a=>a.persona_id===persona.persona_id&&activeOn(a,fecha))) estado="ausente";
+      estados.push({fecha,persona_id:persona.persona_id,estado});
+    });
+    if(generarDesde&&fecha<generarDesde) continue;
     const ocupadas=new Set();
     const reqs=necesidades.filter(n=>Number(n.dia_semana)===dia&&n.activo!==false);
     for(const req of reqs){
@@ -44,5 +53,5 @@ export function generarCronogramaMensual({ anio, mes, regimenCodigo, fechaAncla,
       }
     }
   }
-  return {asignaciones,faltantes,dias:days};
+  return {asignaciones,faltantes,estados,dias:days};
 }

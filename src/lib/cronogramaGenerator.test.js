@@ -23,4 +23,9 @@ describe("generarCronogramaMensual",()=>{
     expect(lunes.cubre_turnos).toEqual(["m","t"]);
     expect(result.faltantes.some(x=>x.fecha==="2026-08-03")).toBe(false);
   });
+  it("no convierte días previos a la generación en faltantes ni francos",()=>{
+    const result=generarCronogramaMensual({anio:2026,mes:8,regimenCodigo:"6x1",generarDesde:"2026-08-11",necesidades:[{dia_semana:1,cantidad_requerida:1,rol_operativo_id:"r",sector_id:"s",turno_id:"m"}],personas:[{persona_id:"1",rol_operativo_id:"r",fecha_desde:"2026-08-11"}]});
+    expect(result.faltantes.some(x=>x.fecha<"2026-08-11")).toBe(false);
+    expect(result.estados.find(x=>x.fecha==="2026-08-03"&&x.persona_id==="1")?.estado).toBe("fuera_periodo");
+  });
 });
