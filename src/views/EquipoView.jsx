@@ -29,6 +29,7 @@ import {
   CreditCard,
   Trash2,
   Archive,
+  CalendarOff,
 } from "lucide-react";
 import OrganigramaView from "./OrganigramaView";
 import AdjuntosPanel from "../components/AdjuntosPanel";
@@ -113,6 +114,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
   const [persona, setPersona] = useState(null);
   const [evaluaciones, setEvaluaciones] = useState([]);
   const [historial, setHistorial] = useState([]);
+  const [licencias, setLicencias] = useState([]);
   const [solicitudesAnulacion, setSolicitudesAnulacion] = useState([]);
   const [anulacionTarget, setAnulacionTarget] = useState(null);
   const [anulacionMotivo, setAnulacionMotivo] = useState("");
@@ -278,7 +280,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, ev, hi, lo, personasRes] = await Promise.all([
+    const [p, ev, hi, lo, personasRes, licenciasRes] = await Promise.all([
       supabase.from("v_personas").select("*").eq("id", personaId).single(),
       supabase
         .from("v_evaluaciones")
@@ -298,12 +300,18 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         .eq("persona_id", personaId)
         .order("fecha", { ascending: false }),
       supabase.schema("equipo").from("personas").select("id,nombre,apellido,sede_ids").eq("activo", true).is("duplicado_de", null).order("nombre"),
+      supabase.schema("bitacora").from("persona_novedades")
+        .select("id,registro_id,motivo_ausencia,fecha_desde,fecha_hasta,fecha_reintegro_estimada,estado_documentacion,estado,descripcion,fecha_reporte,created_at")
+        .eq("persona_id", personaId)
+        .eq("categoria", "Ausentismo")
+        .order("fecha_desde", { ascending: false }),
     ]);
     setPersona(p.data);
     setEvaluaciones(ev.data || []);
     setHistorial(deduplicarHistorialPersonal(hi.data || []));
     setLogros(lo.data || []);
     setPersonasEquipo(personasRes.data || []);
+    setLicencias(licenciasRes.data || []);
     const historialIds = (hi.data || []).map((item) => item.id);
     if (historialIds.length) {
       const solicitudes = await supabase
@@ -1833,6 +1841,25 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         {tab === "historial" && (
           <div>
             <CapacitacionesRelacionadas personaId={personaId} title="Capacitaciones realizadas" />
+            <div className="glass p-4 mb-4" style={{ border: "1px solid rgba(245,158,11,.24)" }}>
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                <div>
+                  <p className="font-title font-bold flex items-center gap-2" style={{ color: "#f59e0b", fontSize: ".82rem" }}><CalendarOff size={16}/> CM / LICENCIAS</p>
+                  <p style={{ color: "var(--text-dim)", fontSize: ".65rem" }}>Historial de indisponibilidades. Estos períodos se excluyen automáticamente del cronograma mensual.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-metric" style={{ color: "var(--text-dim)", fontSize: ".58rem" }}>{licencias.length} PERÍODOS</span>
+                  {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && <button onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnView:'equipo' })} className="btn-ghost" style={{ fontSize: ".65rem" }}>+ Cargar CM/licencia</button>}
+                </div>
+              </div>
+              {!licencias.length ? <p style={{ color: "var(--text-dim)", fontSize: ".72rem" }}>Sin carpetas médicas ni licencias registradas.</p> : <div className="space-y-2">{licencias.map(item => {
+                const vigente = item.estado !== "Resuelto" && item.fecha_hasta && item.fecha_hasta >= new Date().toISOString().slice(0,10);
+                return <div key={item.id} className="p-3 flex flex-wrap items-center justify-between gap-3" style={{ background:"rgba(245,158,11,.04)", border:"1px solid rgba(245,158,11,.14)" }}>
+                  <div><div className="flex flex-wrap items-center gap-2"><strong style={{ fontSize:".73rem" }}>{item.motivo_ausencia || "Licencia / ausencia"}</strong><span className="font-metric" style={{ fontSize:".54rem", color:vigente?"#f59e0b":"var(--text-dim)" }}>{vigente?"VIGENTE":"FINALIZADA"}</span></div><p style={{ color:"var(--text-dim)", fontSize:".65rem", marginTop:3 }}>{fmtFechaLarga(item.fecha_desde)} → {fmtFechaLarga(item.fecha_hasta)}{item.fecha_reintegro_estimada ? ` · Reintegro estimado ${fmtFechaLarga(item.fecha_reintegro_estimada)}` : ""}</p>{item.descripcion && <p style={{ color:"var(--text-dim)", fontSize:".63rem", marginTop:3 }}>{item.descripcion}</p>}</div>
+                  <div className="text-right"><p className="font-metric" style={{ fontSize:".56rem", color:item.estado_documentacion==="Validado"?"var(--phosphor)":"#f59e0b" }}>{item.estado_documentacion || "DOCUMENTACIÓN SIN INFORMAR"}</p><p style={{ color:"var(--text-dim)", fontSize:".58rem", marginTop:3 }}>{item.fecha_desde && item.fecha_hasta ? `Impacta horario: ${item.fecha_desde} a ${item.fecha_hasta}` : "Sin período estructurado: no impacta el cronograma"}</p></div>
+                </div>;
+              })}</div>}
+            </div>
             <div className="flex justify-between items-center mb-4">
               <p
                 className="font-metric text-xs"
