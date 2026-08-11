@@ -3564,7 +3564,11 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
             onBack={() => setTab("lista")}
           />
         ) : tab === "horarios" ? (
-          <HorariosDotacion sedes={sedes} canManage={canManage} />
+          <HorariosDotacion
+            sedes={sedes}
+            canManage={canManage}
+            sedeContextId={sedeFilter && sedeFilter !== "unassigned" ? Number(sedeFilter) : null}
+          />
         ) : tab === "organigrama" ? (
           <OrganigramaView onNavigate={onNavigate} />
         ) : tab === "vacaciones" ? (

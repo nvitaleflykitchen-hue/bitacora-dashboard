@@ -7,7 +7,7 @@ import { toast } from "../lib/feedback";
 
 const DIAS = [[1,"Lun"],[2,"Mar"],[3,"Mié"],[4,"Jue"],[5,"Vie"],[6,"Sáb"],[7,"Dom"]];
 
-export default function HorariosDotacion({ sedes = [], canManage = false }) {
+export default function HorariosDotacion({ sedes = [], canManage = false, sedeContextId = null }) {
   const { user } = useAuth();
   const [sedeId, setSedeId] = useState("");
   const [data, setData] = useState({ sectores:[], turnos:[], plantillas:[], necesidades:[], roles:[] });
@@ -17,7 +17,16 @@ export default function HorariosDotacion({ sedes = [], canManage = false }) {
   const [plantilla, setPlantilla] = useState("");
   const [need, setNeed] = useState({ sector_id:"", turno_id:"", rol_operativo_id:"", cantidad:1, dias:[1,2,3,4,5] });
 
-  useEffect(() => { if (!sedeId && sedes[0]) setSedeId(String(sedes[0].id)); }, [sedeId, sedes]);
+  const sedeContexto = sedes.find((item) => String(item.id) === String(sedeContextId));
+  useEffect(() => {
+    if (sedeContexto) {
+      setSedeId(String(sedeContexto.id));
+      return;
+    }
+    if (!sedes.some((item) => String(item.id) === String(sedeId))) {
+      setSedeId(sedes[0] ? String(sedes[0].id) : "");
+    }
+  }, [sedeContexto, sedeId, sedes]);
   const load = useCallback(async () => {
     if (!sedeId) return;
     const sid = Number(sedeId);
@@ -47,7 +56,7 @@ export default function HorariosDotacion({ sedes = [], canManage = false }) {
 
   if(!sedes.length)return <div className="glass p-8 text-center" style={{color:"var(--text-dim)"}}>No hay sedes disponibles.</div>;
   return <div className="space-y-4 max-w-[1500px]">
-    <div className="glass p-4 flex flex-wrap items-center gap-4"><div className="flex-1"><p className="font-title font-bold" style={{color:"var(--phosphor)"}}>HORARIOS Y DOTACIÓN</p><p style={{color:"var(--text-dim)",fontSize:".7rem"}}>Definí primero la cobertura requerida. La asignación de personas se incorpora después.</p></div><select className="input-dark min-w-[250px]" value={sedeId} onChange={e=>setSedeId(e.target.value)}>{sedes.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select></div>
+    <div className="glass p-4 flex flex-wrap items-center gap-4"><div className="flex-1"><p className="font-title font-bold" style={{color:"var(--phosphor)"}}>HORARIOS Y DOTACIÓN</p><p style={{color:"var(--text-dim)",fontSize:".7rem"}}>Definí primero la cobertura requerida. La asignación de personas se incorpora después.</p></div>{sedeContexto?<div className="px-3 py-2 min-w-[250px]" style={{border:"1px solid rgba(57,255,20,.18)",background:"rgba(57,255,20,.04)"}}><p className="font-metric" style={{fontSize:".55rem",color:"var(--text-dim)"}}>SEDE ACTUAL</p><p className="font-title font-bold" style={{fontSize:".8rem",color:"var(--text)"}}>{sedeContexto.nombre}</p></div>:<select className="input-dark min-w-[250px]" value={sedeId} onChange={e=>setSedeId(e.target.value)}>{sedes.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select>}</div>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[[Layers3,"Sectores",data.sectores.length],[Clock3,"Turnos",data.turnos.length],[CalendarDays,"Plantillas",data.plantillas.length],[Users,"Posiciones semanales",rows.reduce((a,x)=>a+x.cantidad_requerida,0)]].map(([Icon,label,value])=><div className="glass p-3 flex gap-3 items-center" key={label}><Icon size={18} style={{color:"var(--phosphor)"}}/><div><p className="font-title font-bold text-lg">{value}</p><p className="font-metric" style={{fontSize:".57rem",color:"var(--text-dim)"}}>{label.toUpperCase()}</p></div></div>)}</div>
     {canManage&&<div className="grid grid-cols-1 lg:grid-cols-3 gap-3"><Setup title="1 · SECTORES"><input className="input-dark flex-1" value={sector} onChange={e=>setSector(e.target.value)} placeholder="Ej. Cocina"/><Add onClick={addSector}/></Setup><Setup title="2 · TURNOS"><input className="input-dark w-full mb-2" value={turno.nombre} onChange={e=>setTurno({...turno,nombre:e.target.value})} placeholder="Ej. Mañana"/><div className="flex gap-2"><input type="time" className="input-dark flex-1" value={turno.desde} onChange={e=>setTurno({...turno,desde:e.target.value})}/><input type="time" className="input-dark flex-1" value={turno.hasta} onChange={e=>setTurno({...turno,hasta:e.target.value})}/><Add onClick={addTurno}/></div></Setup><Setup title="3 · PLANTILLA"><input className="input-dark flex-1" value={plantilla} onChange={e=>setPlantilla(e.target.value)} placeholder="Ej. Operación habitual"/><Add onClick={addPlantilla}/></Setup></div>}
     <div className="glass p-4"><div className="flex flex-wrap gap-3 mb-4"><select className="input-dark min-w-[260px]" value={plantillaId} onChange={e=>setPlantillaId(e.target.value)}><option value="">Seleccionar plantilla...</option>{data.plantillas.map(x=><option key={x.id} value={x.id}>{x.nombre} · {x.estado}</option>)}</select>{selected&&<span className="font-metric px-2 py-1" style={{fontSize:".58rem",color:selected.estado==="activa"?"var(--phosphor)":"#f59e0b"}}>{selected.estado.toUpperCase()}</span>}{canManage&&selected?.estado!=="activa"&&<button className="btn-ghost" onClick={activate}>Activar</button>}</div>
