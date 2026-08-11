@@ -60,6 +60,7 @@ import { confirmar, pedirTexto, toast } from "../lib/feedback";
 import { confirmarAccionSensible } from "../lib/sensitiveActions";
 import { mensajeError } from "../lib/errores";
 import PersonalNovedadesReportModal from "../components/PersonalNovedadesReportModal";
+import PersonaEncuadrePanel from "../components/PersonaEncuadrePanel";
 import {
   downloadHistorialPersonalPdf,
   textoHistorialPersonal,
@@ -124,6 +125,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
   const [showHabilitarUsuario, setShowHabilitarUsuario] = useState(false);
   const [saving, setSaving] = useState(false);
   const [evaluadorPersona, setEvaluadorPersona] = useState(null);
+  const [personasEquipo, setPersonasEquipo] = useState([]);
 
   const deletePersona = async () => {
     const nombreCompleto = `${persona.nombre} ${persona.apellido || ""}`.trim();
@@ -275,7 +277,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, ev, hi, lo] = await Promise.all([
+    const [p, ev, hi, lo, personasRes] = await Promise.all([
       supabase.from("v_personas").select("*").eq("id", personaId).single(),
       supabase
         .from("v_evaluaciones")
@@ -294,11 +296,13 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         .select("*")
         .eq("persona_id", personaId)
         .order("fecha", { ascending: false }),
+      supabase.schema("equipo").from("personas").select("id,nombre,apellido,sede_ids").eq("activo", true).is("duplicado_de", null).order("nombre"),
     ]);
     setPersona(p.data);
     setEvaluaciones(ev.data || []);
     setHistorial(deduplicarHistorialPersonal(hi.data || []));
     setLogros(lo.data || []);
+    setPersonasEquipo(personasRes.data || []);
     const historialIds = (hi.data || []).map((item) => item.id);
     if (historialIds.length) {
       const solicitudes = await supabase
@@ -1006,6 +1010,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         {/* ── INFO ── */}
         {tab === "info" && (
           <div className="space-y-4">
+            <PersonaEncuadrePanel persona={persona} personas={personasEquipo} sedes={sedes} canManage={canManage} onChanged={load} />
             <div className="grid grid-cols-2 gap-4">
               <div className="glass p-4 grid grid-cols-2 gap-x-6 gap-y-3 [&>p:first-child]:col-span-2">
                 <p
@@ -3097,7 +3102,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
   const load = async () => {
     setLoading(true);
-    const [pRes, evaluacionesRes, bajasRes, sRes, gRes, candidatosDuplicadosRes] = await Promise.all([
+    const [pRes, evaluacionesRes, bajasRes, sRes, gRes, candidatosDuplicadosRes, encuadresRes, rolesRes, puestosRes] = await Promise.all([
       supabase.from("v_personas").select("*").order("nombre"),
       supabase.from("v_evaluaciones").select("*").order("fecha_evaluacion", { ascending: false }),
       supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,area,sede_ids,fecha_ingreso,fecha_baja,motivo_baja,observaciones_baja,foto_url,baja_registrada_at,motivo_reactivacion").eq("activo", false).is("duplicado_de", null).not("fecha_baja", "is", null).not("motivo_baja", "is", null).order("fecha_baja", { ascending: false }),
@@ -3114,6 +3119,9 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
         .eq("activo", true)
         .order("nombre"),
       supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,email,telefono,sede_ids,activo,duplicado_de").is("duplicado_de", null),
+      supabase.schema("equipo").from("persona_encuadres").select("*").is("fecha_hasta", null).eq("es_principal", true),
+      supabase.schema("equipo").from("roles_operativos").select("id,nombre"),
+      supabase.schema("equipo").from("puestos_cct").select("id,nombre,nivel"),
     ]);
     const todasSedes = sRes.data || [];
     // Roles territoriales (grupo/encargado/sede) solo ven y gestionan su(s) sede(s) asignada(s)
@@ -3133,10 +3141,22 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
               sedesDelGrupo.every((id) => allowedSedeIds.includes(id))
             );
           });
+    const encuadrePorPersona = new Map((encuadresRes.data || []).map((item) => [String(item.persona_id), item]));
+    const rolPorId = new Map((rolesRes.data || []).map((item) => [item.id, item]));
+    const puestoPorId = new Map((puestosRes.data || []).map((item) => [item.id, item]));
+    const personasEnriquecidas = (pRes.data || []).map((persona) => {
+      const encuadre = encuadrePorPersona.get(String(persona.id));
+      return {
+        ...persona,
+        encuadre,
+        rol_operativo: rolPorId.get(encuadre?.rol_operativo_id) || null,
+        puesto_cct: puestoPorId.get(encuadre?.puesto_cct_id) || null,
+      };
+    });
     const personasTerritoriales =
       allowedSedeIds === null
-        ? pRes.data || []
-        : (pRes.data || []).filter((p) =>
+        ? personasEnriquecidas
+        : personasEnriquecidas.filter((p) =>
             p.sede_ids?.some((id) => allowedSedeIds.includes(id)),
           );
     const personasPermitidas = isQualityOnly
@@ -3777,8 +3797,9 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                                     color: "var(--text-dim)",
                                   }}
                                 >
-                                  {p.puesto || "Sin puesto"}
+                                  {p.rol_operativo?.nombre || p.puesto || "Sin rol operativo"}
                                 </p>
+                                {p.puesto_cct && <p className="font-metric" style={{ fontSize: ".6rem", color: "var(--text-dim)", marginTop: 2 }}>CCT · NIVEL {p.puesto_cct.nivel} · {p.puesto_cct.nombre}</p>}
                                 </div>
                               </div>
                               <ChevronRight
@@ -3793,6 +3814,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                                 <span className="font-title font-bold" style={{ color:periodoColor, fontSize:'.72rem' }}>{textoPeriodoPrueba(periodoPrueba.diasRestantes)}</span>
                               </div>
                             )}
+                            {p.encuadre?.funcion_real && <div className="mt-2 px-2 py-1.5 rounded" style={{ background: "rgba(255,255,255,.025)", border: "1px solid rgba(255,255,255,.06)" }}><p style={{ fontSize: ".58rem", color: "var(--text-dim)" }}>FUNCIÓN REAL</p><p style={{ fontSize: ".7rem", color: "var(--text)" }}>{p.encuadre.funcion_real}</p></div>}
                             {(p.telefono || p.email) && (
                               <div className="flex items-center gap-2 mt-2" onClick={(event) => event.stopPropagation()}>
                                 {p.telefono && (
