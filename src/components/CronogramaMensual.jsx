@@ -1,41 +1,488 @@
 import { useMemo, useState } from "react";
-import { CalendarRange, WandSparkles } from "lucide-react";
+import { CalendarRange, Printer, WandSparkles } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/feedback";
 import { mensajeError } from "../lib/errores";
-import { generarCronogramaMensual, REGIMENES_FRANCO } from "../lib/cronogramaGenerator";
+import {
+  generarCronogramaMensual,
+  REGIMENES_FRANCO,
+} from "../lib/cronogramaGenerator";
 
-const now=new Date();
-const initialMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-const key=(id,date)=>`${id}:${date}`;
+const now = new Date();
+const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+const key = (id, date) => `${id}:${date}`;
+const hh = (value) => String(value || "").slice(0, 5);
+const escapeHtml = (value) =>
+  String(value ?? "").replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      })[char],
+  );
 
-export default function CronogramaMensual({sedeId,plantillaId,necesidades=[],turnos=[],sectores=[],roles=[]}){
-  const [month,setMonth]=useState(initialMonth),[regime,setRegime]=useState("6x1"),[anchor,setAnchor]=useState(`${now.getFullYear()}-01-01`);
-  const [people,setPeople]=useState([]),[absences,setAbsences]=useState([]),[result,setResult]=useState(null),[loading,setLoading]=useState(false);
-  const generate=async()=>{
-    if(!sedeId||!plantillaId)return toast.warn("Seleccioná una plantilla antes de generar el cronograma.");
-    setLoading(true); const [year,monthNumber]=month.split("-").map(Number); const from=`${month}-01`,to=new Date(Date.UTC(year,monthNumber,0)).toISOString().slice(0,10);
-    const [enc,nov,vac]=await Promise.all([
-      supabase.schema("equipo").from("persona_encuadres").select("persona_id,rol_operativo_id,fecha_desde,fecha_hasta").eq("sede_id",Number(sedeId)).eq("es_principal",true).not("rol_operativo_id","is",null).lte("fecha_desde",to).or(`fecha_hasta.is.null,fecha_hasta.gte.${from}`),
-      supabase.schema("bitacora").from("persona_novedades").select("persona_id,motivo_ausencia,fecha_desde,fecha_hasta").eq("sede_id",Number(sedeId)).eq("categoria","Ausentismo").neq("estado","Resuelto").lte("fecha_desde",to).gte("fecha_hasta",from),
-      supabase.schema("equipo").from("vacaciones").select("persona_id,fecha_desde,fecha_hasta").in("estado",["aprobado","utilizado"]).lte("fecha_desde",to).gte("fecha_hasta",from),
+export default function CronogramaMensual({
+  sedeId,
+  sedeNombre = "Sede",
+  plantillaId,
+  necesidades = [],
+  turnos = [],
+  sectores = [],
+  roles = [],
+}) {
+  const [month, setMonth] = useState(initialMonth),
+    [regime, setRegime] = useState("6x1"),
+    [anchor, setAnchor] = useState(`${now.getFullYear()}-01-01`);
+  const [people, setPeople] = useState([]),
+    [absences, setAbsences] = useState([]),
+    [result, setResult] = useState(null),
+    [loading, setLoading] = useState(false);
+  const generate = async () => {
+    if (!sedeId || !plantillaId)
+      return toast.warn(
+        "Seleccioná una plantilla antes de generar el cronograma.",
+      );
+    setLoading(true);
+    const [year, monthNumber] = month.split("-").map(Number);
+    const from = `${month}-01`,
+      to = new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10);
+    const [enc, nov, vac] = await Promise.all([
+      supabase
+        .schema("equipo")
+        .from("persona_encuadres")
+        .select("persona_id,rol_operativo_id,fecha_desde,fecha_hasta")
+        .eq("sede_id", Number(sedeId))
+        .eq("es_principal", true)
+        .not("rol_operativo_id", "is", null)
+        .lte("fecha_desde", to)
+        .or(`fecha_hasta.is.null,fecha_hasta.gte.${from}`),
+      supabase
+        .schema("bitacora")
+        .from("persona_novedades")
+        .select("persona_id,motivo_ausencia,fecha_desde,fecha_hasta")
+        .eq("sede_id", Number(sedeId))
+        .eq("categoria", "Ausentismo")
+        .neq("estado", "Resuelto")
+        .lte("fecha_desde", to)
+        .gte("fecha_hasta", from),
+      supabase
+        .schema("equipo")
+        .from("vacaciones")
+        .select("persona_id,fecha_desde,fecha_hasta")
+        .in("estado", ["aprobado", "utilizado"])
+        .lte("fecha_desde", to)
+        .gte("fecha_hasta", from),
     ]);
-    const error=enc.error||nov.error||vac.error;if(error){setLoading(false);return toast.error(mensajeError(error));}
-    const ids=[...new Set((enc.data||[]).map(x=>x.persona_id))]; let names=[];
-    if(ids.length){const q=await supabase.schema("equipo").from("personas").select("id,nombre,apellido").in("id",ids);if(q.error){setLoading(false);return toast.error(mensajeError(q.error));}names=q.data||[];}
-    const nameById=new Map(names.map(x=>[x.id,`${x.nombre||""} ${x.apellido||""}`.trim()]));
-    const available=(enc.data||[]).map(x=>({...x,persona_nombre:nameById.get(x.persona_id)||"Persona sin nombre"}));
-    const unavailable=[...(nov.data||[]).map(x=>({...x,tipo:x.motivo_ausencia||"CM"})),...(vac.data||[]).map(x=>({...x,tipo:"VAC"}))];
-    const today=new Date().toISOString().slice(0,10); const generarDesde=today.startsWith(month)?today:from;
-    setPeople(available);setAbsences(unavailable);setResult(generarCronogramaMensual({anio:year,mes:monthNumber,regimenCodigo:regime,fechaAncla:anchor,generarDesde,necesidades:necesidades.filter(x=>x.plantilla_id===plantillaId),personas:available,ausencias:unavailable,turnos}));setLoading(false);
+    const error = enc.error || nov.error || vac.error;
+    if (error) {
+      setLoading(false);
+      return toast.error(mensajeError(error));
+    }
+    const ids = [...new Set((enc.data || []).map((x) => x.persona_id))];
+    let names = [];
+    if (ids.length) {
+      const q = await supabase
+        .schema("equipo")
+        .from("personas")
+        .select("id,nombre,apellido")
+        .in("id", ids);
+      if (q.error) {
+        setLoading(false);
+        return toast.error(mensajeError(q.error));
+      }
+      names = q.data || [];
+    }
+    const nameById = new Map(
+      names.map((x) => [x.id, `${x.nombre || ""} ${x.apellido || ""}`.trim()]),
+    );
+    const available = (enc.data || []).map((x) => ({
+      ...x,
+      persona_nombre: nameById.get(x.persona_id) || "Persona sin nombre",
+    }));
+    const unavailable = [
+      ...(nov.data || []).map((x) => ({
+        ...x,
+        tipo: x.motivo_ausencia || "CM",
+      })),
+      ...(vac.data || []).map((x) => ({ ...x, tipo: "VAC" })),
+    ];
+    const today = new Date().toISOString().slice(0, 10);
+    const generarDesde = today.startsWith(month) ? today : from;
+    setPeople(available);
+    setAbsences(unavailable);
+    setResult(
+      generarCronogramaMensual({
+        anio: year,
+        mes: monthNumber,
+        regimenCodigo: regime,
+        fechaAncla: anchor,
+        generarDesde,
+        necesidades: necesidades.filter((x) => x.plantilla_id === plantillaId),
+        personas: available,
+        ausencias: unavailable,
+        turnos,
+      }),
+    );
+    setLoading(false);
   };
-  const days=useMemo(()=>{if(!result)return[];const [y,m]=month.split("-").map(Number);return Array.from({length:result.dias},(_,i)=>({day:i+1,date:`${y}-${String(m).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`}));},[result,month]);
-  const assigned=useMemo(()=>new Map((result?.asignaciones||[]).map(x=>[key(x.persona_id,x.fecha),x])),[result]);
-  const states=useMemo(()=>new Map((result?.estados||[]).map(x=>[key(x.persona_id,x.fecha),x.estado])),[result]);
-  const gapCount=useMemo(()=>new Map(days.map(d=>[d.date,(result?.faltantes||[]).filter(x=>x.fecha===d.date).length])),[days,result]);
-  const rolesSinCobertura=useMemo(()=>{const cubiertos=new Set(necesidades.filter(x=>x.plantilla_id===plantillaId&&x.activo!==false).map(x=>x.rol_operativo_id));return [...new Set(people.map(x=>x.rol_operativo_id).filter(id=>!cubiertos.has(id)))];},[people,necesidades,plantillaId]);
-  const label=(person,date)=>{const absence=absences.find(x=>x.persona_id===person.persona_id&&x.fecha_desde<=date&&x.fecha_hasta>=date);if(absence)return absence.tipo==="VAC"?"VAC":"CM";const a=assigned.get(key(person.persona_id,date));if(a){const shift=turnos.find(x=>x.id===a.turno_id);return a.origen==="cobertura_cortado"?"C":({Matutino:"M",Vespertino:"T",Nocturno:"N",Intermedio:"I",Cortado:"C"}[shift?.tipo||shift?.nombre]||"T");}const state=states.get(key(person.persona_id,date));if(state==="franco")return"F";if(state==="media_disponible")return"½";if(state==="fuera_periodo"||state==="no_vigente")return"—";return"·";};
-  return <div className="glass p-4 mt-4"><div className="flex flex-wrap items-start justify-between gap-3 mb-4"><div><p className="font-title font-bold flex items-center gap-2" style={{color:"var(--phosphor)"}}><CalendarRange size={17}/> CRONOGRAMA MENSUAL AUTOMÁTICO</p><p style={{color:"var(--text-dim)",fontSize:".68rem"}}>Cubre roles por turno, distribuye francos y excluye CM y vacaciones aprobadas.</p></div><div className="flex flex-wrap gap-2"><input type="month" className="input-dark" value={month} onChange={e=>{setMonth(e.target.value);setResult(null);}}/><select className="input-dark" value={regime} onChange={e=>{setRegime(e.target.value);setResult(null);}}>{Object.entries(REGIMENES_FRANCO).map(([id,x])=><option key={id} value={id}>{x.nombre}</option>)}</select><input type="date" title="Inicio del ciclo de la sede" className="input-dark" value={anchor} onChange={e=>{setAnchor(e.target.value);setResult(null);}}/><button className="btn-primary flex items-center gap-2" onClick={generate} disabled={loading}><WandSparkles size={14}/>{loading?"Generando...":"Generar propuesta"}</button></div></div>
-    {!result?<div className="p-6 text-center" style={{border:"1px dashed rgba(255,255,255,.12)",color:"var(--text-dim)",fontSize:".72rem"}}>Elegí mes, régimen y fecha de inicio del ciclo. El resultado será una propuesta revisable.</div>:<><div className="flex flex-wrap gap-4 mb-3 font-metric" style={{fontSize:".6rem"}}><span>{people.length} PERSONAS ENCUADRADAS</span><span style={{color:result.faltantes.length?"#f59e0b":"var(--phosphor)"}}>{result.faltantes.length} COBERTURAS SIN ASIGNAR</span><span style={{color:"var(--text-dim)"}}>M MATUTINO · T VESPERTINO · N NOCTURNO · I INTERMEDIO · C CORTADO · F FRANCO · · DISPONIBLE · — FUERA DEL PERÍODO · CM CARPETA MÉDICA · VAC VACACIONES</span></div>{rolesSinCobertura.length>0&&<div className="p-3 mb-3" style={{border:"1px solid rgba(245,158,11,.25)",color:"#f59e0b",fontSize:".66rem"}}>Roles con personas pero sin cobertura definida en la plantilla: {rolesSinCobertura.map(id=>roles.find(r=>r.id===id)?.nombre||"Sin identificar").join(", ")}. Agregalos a la plantilla para que reciban turnos.</div>}<div style={{overflowX:"auto"}}><table style={{borderCollapse:"collapse",minWidth:190+days.length*38,fontSize:".62rem"}}><thead><tr><th className="text-left p-2 sticky left-0" style={{background:"var(--panel)",minWidth:190,zIndex:2}}>COLABORADOR / ROL</th>{days.map(d=><th key={d.date} className="p-1 text-center" style={{color:gapCount.get(d.date)?"#f59e0b":"var(--text-dim)",borderLeft:"1px solid rgba(255,255,255,.05)"}}>{d.day}<br/><small>{new Date(`${d.date}T12:00:00`).toLocaleDateString("es-AR",{weekday:"narrow"})}</small></th>)}</tr></thead><tbody>{people.map(p=><tr key={p.persona_id} style={{borderTop:"1px solid rgba(255,255,255,.06)"}}><td className="p-2 sticky left-0" style={{background:"var(--panel)",zIndex:1}}><strong>{p.persona_nombre}</strong><br/><span style={{color:"var(--text-dim)"}}>{roles.find(r=>r.id===p.rol_operativo_id)?.nombre||"Rol sin identificar"}</span></td>{days.map(d=>{const value=label(p,d.date);return <td key={d.date} className="text-center" style={{borderLeft:"1px solid rgba(255,255,255,.04)",color:["CM","VAC"].includes(value)?"#f59e0b":value==="F"||value==="—"||value==="·"?"var(--text-dim)":"var(--text)"}}>{value}</td>;})}</tr>)}{!people.length&&<tr><td colSpan={days.length+1} className="p-6 text-center" style={{color:"#f59e0b"}}>No hay personas con rol operativo confirmado en esta sede.</td></tr>}<tr style={{borderTop:"1px solid rgba(245,158,11,.25)"}}><td className="p-2 sticky left-0 font-bold" style={{background:"var(--panel)",color:"#f59e0b"}}>FALTANTES</td>{days.map(d=><td key={d.date} className="text-center" style={{color:gapCount.get(d.date)?"#f59e0b":"var(--text-dim)"}}>{gapCount.get(d.date)||"·"}</td>)}</tr></tbody></table></div>{result.faltantes.length>0&&<div className="mt-3 flex flex-wrap gap-2">{result.faltantes.slice(0,20).map((x,i)=><span key={`${x.fecha}-${i}`} className="px-2 py-1" style={{fontSize:".58rem",border:"1px solid rgba(245,158,11,.2)",color:"#f59e0b"}}>{x.fecha} · {sectores.find(s=>s.id===x.sector_id)?.nombre} · {turnos.find(t=>t.id===x.turno_id)?.nombre} · {roles.find(r=>r.id===x.rol_operativo_id)?.nombre}</span>)}</div>}</>}
-  </div>;
+  const days = useMemo(() => {
+    if (!result) return [];
+    const [y, m] = month.split("-").map(Number);
+    return Array.from({ length: result.dias }, (_, i) => ({
+      day: i + 1,
+      date: `${y}-${String(m).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`,
+    }));
+  }, [result, month]);
+  const assigned = useMemo(
+    () =>
+      new Map(
+        (result?.asignaciones || []).map((x) => [
+          key(x.persona_id, x.fecha),
+          x,
+        ]),
+      ),
+    [result],
+  );
+  const states = useMemo(
+    () =>
+      new Map(
+        (result?.estados || []).map((x) => [
+          key(x.persona_id, x.fecha),
+          x.estado,
+        ]),
+      ),
+    [result],
+  );
+  const gapCount = useMemo(
+    () =>
+      new Map(
+        days.map((d) => [
+          d.date,
+          (result?.faltantes || []).filter((x) => x.fecha === d.date).length,
+        ]),
+      ),
+    [days, result],
+  );
+  const rolesSinCobertura = useMemo(() => {
+    const cubiertos = new Set(
+      necesidades
+        .filter((x) => x.plantilla_id === plantillaId && x.activo !== false)
+        .map((x) => x.rol_operativo_id),
+    );
+    return [
+      ...new Set(
+        people
+          .map((x) => x.rol_operativo_id)
+          .filter((id) => !cubiertos.has(id)),
+      ),
+    ];
+  }, [people, necesidades, plantillaId]);
+  const label = (person, date) => {
+    const absence = absences.find(
+      (x) =>
+        x.persona_id === person.persona_id &&
+        x.fecha_desde <= date &&
+        x.fecha_hasta >= date,
+    );
+    if (absence) return absence.tipo === "VAC" ? "VAC" : "CM";
+    const a = assigned.get(key(person.persona_id, date));
+    if (a) {
+      const shift = turnos.find((x) => x.id === a.turno_id);
+      if (!shift) return "HORARIO";
+      const first = `${hh(shift.hora_desde)}–${hh(shift.hora_hasta)}`;
+      return shift.hora_desde_2
+        ? `${first}\n${hh(shift.hora_desde_2)}–${hh(shift.hora_hasta_2)}`
+        : first;
+    }
+    const state = states.get(key(person.persona_id, date));
+    if (state === "franco") return "F";
+    if (state === "media_disponible") return "½";
+    if (state === "fuera_periodo" || state === "no_vigente") return "—";
+    return "·";
+  };
+  const printSchedule = () => {
+    const popup = window.open("", "_blank");
+    if (!popup)
+      return toast.warn("El navegador bloqueó la ventana de impresión.");
+    popup.opener = null;
+    const rows = people
+      .map(
+        (person) =>
+          `<tr><th>${escapeHtml(person.persona_nombre)}<small>${escapeHtml(roles.find((r) => r.id === person.rol_operativo_id)?.nombre || "Sin rol")}</small></th>${days.map((day) => `<td>${escapeHtml(label(person, day.date)).replace("\n", "<br>")}</td>`).join("")}</tr>`,
+      )
+      .join("");
+    const headers = days
+      .map(
+        (day) =>
+          `<th>${day.day}<small>${escapeHtml(new Date(`${day.date}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short" }))}</small></th>`,
+      )
+      .join("");
+    popup.document.write(
+      `<!doctype html><html><head><title>Cronograma ${escapeHtml(sedeNombre)} ${escapeHtml(month)}</title><style>@page{size:A3 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0}h1{font-size:16px;margin:0 0 3px}p{font-size:9px;margin:0 0 8px;color:#444}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #999;padding:3px 1px;text-align:center;font-size:7px;line-height:1.15}thead th{background:#eee}thead th:first-child,tbody th{width:34mm;text-align:left;padding-left:4px}small{display:block;font-size:6px;font-weight:normal;color:#555;margin-top:2px}.legend{margin-top:6px;font-size:7px}</style></head><body><h1>CRONOGRAMA · ${escapeHtml(sedeNombre)} · ${escapeHtml(month)}</h1><p>Régimen ${escapeHtml(REGIMENES_FRANCO[regime]?.nombre)} · Propuesta generada ${escapeHtml(new Date().toLocaleString("es-AR"))}</p><table><thead><tr><th>COLABORADOR / ROL</th>${headers}</tr></thead><tbody>${rows}</tbody></table><div class="legend">F: franco · CM: carpeta médica · VAC: vacaciones · ·: disponible sin asignación · —: fuera del período</div><script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script></body></html>`,
+    );
+    popup.document.close();
+  };
+  return (
+    <div className="glass p-4 mt-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <p
+            className="font-title font-bold flex items-center gap-2"
+            style={{ color: "var(--phosphor)" }}
+          >
+            <CalendarRange size={17} /> CRONOGRAMA MENSUAL AUTOMÁTICO
+          </p>
+          <p style={{ color: "var(--text-dim)", fontSize: ".68rem" }}>
+            Muestra el horario concreto por persona, distribuye francos y
+            excluye CM y vacaciones aprobadas.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="month"
+            className="input-dark"
+            value={month}
+            onChange={(e) => {
+              setMonth(e.target.value);
+              setResult(null);
+            }}
+          />
+          <select
+            className="input-dark"
+            value={regime}
+            onChange={(e) => {
+              setRegime(e.target.value);
+              setResult(null);
+            }}
+          >
+            {Object.entries(REGIMENES_FRANCO).map(([id, x]) => (
+              <option key={id} value={id}>
+                {x.nombre}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            title="Inicio del ciclo de la sede"
+            className="input-dark"
+            value={anchor}
+            onChange={(e) => {
+              setAnchor(e.target.value);
+              setResult(null);
+            }}
+          />
+          <button
+            className="btn-primary flex items-center gap-2"
+            onClick={generate}
+            disabled={loading}
+          >
+            <WandSparkles size={14} />
+            {loading ? "Generando..." : "Generar propuesta"}
+          </button>
+          {result && (
+            <button
+              className="btn-ghost flex items-center gap-2"
+              onClick={printSchedule}
+            >
+              <Printer size={14} /> Imprimir cronograma
+            </button>
+          )}
+        </div>
+      </div>
+      {!result ? (
+        <div
+          className="p-6 text-center"
+          style={{
+            border: "1px dashed rgba(255,255,255,.12)",
+            color: "var(--text-dim)",
+            fontSize: ".72rem",
+          }}
+        >
+          Elegí mes, régimen y fecha de inicio del ciclo. El resultado será una
+          propuesta revisable.
+        </div>
+      ) : (
+        <>
+          <div
+            className="flex flex-wrap gap-4 mb-3 font-metric"
+            style={{ fontSize: ".6rem" }}
+          >
+            <span>{people.length} PERSONAS ENCUADRADAS</span>
+            <span
+              style={{
+                color: result.faltantes.length ? "#f59e0b" : "var(--phosphor)",
+              }}
+            >
+              {result.faltantes.length} COBERTURAS SIN ASIGNAR
+            </span>
+            <span style={{ color: "var(--text-dim)" }}>
+              HORARIO ASIGNADO · F FRANCO · · DISPONIBLE · — FUERA DEL PERÍODO ·
+              CM CARPETA MÉDICA · VAC VACACIONES
+            </span>
+          </div>
+          {rolesSinCobertura.length > 0 && (
+            <div
+              className="p-3 mb-3"
+              style={{
+                border: "1px solid rgba(245,158,11,.25)",
+                color: "#f59e0b",
+                fontSize: ".66rem",
+              }}
+            >
+              Roles con personas pero sin cobertura definida en la plantilla:{" "}
+              {rolesSinCobertura
+                .map(
+                  (id) =>
+                    roles.find((r) => r.id === id)?.nombre || "Sin identificar",
+                )
+                .join(", ")}
+              . Agregalos a la plantilla para que reciban turnos.
+            </div>
+          )}
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                borderCollapse: "collapse",
+                minWidth: 190 + days.length * 76,
+                fontSize: ".62rem",
+              }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    className="text-left p-2 sticky left-0"
+                    style={{
+                      background: "var(--panel)",
+                      minWidth: 190,
+                      zIndex: 2,
+                    }}
+                  >
+                    COLABORADOR / ROL
+                  </th>
+                  {days.map((d) => (
+                    <th
+                      key={d.date}
+                      className="p-1 text-center"
+                      style={{
+                        minWidth: 76,
+                        color: gapCount.get(d.date)
+                          ? "#f59e0b"
+                          : "var(--text-dim)",
+                        borderLeft: "1px solid rgba(255,255,255,.05)",
+                      }}
+                    >
+                      {d.day}
+                      <br />
+                      <small>
+                        {new Date(`${d.date}T12:00:00`).toLocaleDateString(
+                          "es-AR",
+                          { weekday: "narrow" },
+                        )}
+                      </small>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {people.map((p) => (
+                  <tr
+                    key={p.persona_id}
+                    style={{ borderTop: "1px solid rgba(255,255,255,.06)" }}
+                  >
+                    <td
+                      className="p-2 sticky left-0"
+                      style={{ background: "var(--panel)", zIndex: 1 }}
+                    >
+                      <strong>{p.persona_nombre}</strong>
+                      <br />
+                      <span style={{ color: "var(--text-dim)" }}>
+                        {roles.find((r) => r.id === p.rol_operativo_id)
+                          ?.nombre || "Rol sin identificar"}
+                      </span>
+                    </td>
+                    {days.map((d) => {
+                      const value = label(p, d.date);
+                      return (
+                        <td
+                          key={d.date}
+                          className="text-center"
+                          style={{
+                            whiteSpace: "pre-line",
+                            borderLeft: "1px solid rgba(255,255,255,.04)",
+                            color: ["CM", "VAC"].includes(value)
+                              ? "#f59e0b"
+                              : value === "F" || value === "—" || value === "·"
+                                ? "var(--text-dim)"
+                                : "var(--text)",
+                          }}
+                        >
+                          {value}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {!people.length && (
+                  <tr>
+                    <td
+                      colSpan={days.length + 1}
+                      className="p-6 text-center"
+                      style={{ color: "#f59e0b" }}
+                    >
+                      No hay personas con rol operativo confirmado en esta sede.
+                    </td>
+                  </tr>
+                )}
+                <tr style={{ borderTop: "1px solid rgba(245,158,11,.25)" }}>
+                  <td
+                    className="p-2 sticky left-0 font-bold"
+                    style={{ background: "var(--panel)", color: "#f59e0b" }}
+                  >
+                    FALTANTES
+                  </td>
+                  {days.map((d) => (
+                    <td
+                      key={d.date}
+                      className="text-center"
+                      style={{
+                        color: gapCount.get(d.date)
+                          ? "#f59e0b"
+                          : "var(--text-dim)",
+                      }}
+                    >
+                      {gapCount.get(d.date) || "·"}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {result.faltantes.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {result.faltantes.slice(0, 20).map((x, i) => (
+                <span
+                  key={`${x.fecha}-${i}`}
+                  className="px-2 py-1"
+                  style={{
+                    fontSize: ".58rem",
+                    border: "1px solid rgba(245,158,11,.2)",
+                    color: "#f59e0b",
+                  }}
+                >
+                  {x.fecha} ·{" "}
+                  {sectores.find((s) => s.id === x.sector_id)?.nombre} ·{" "}
+                  {turnos.find((t) => t.id === x.turno_id)?.nombre} ·{" "}
+                  {roles.find((r) => r.id === x.rol_operativo_id)?.nombre}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
