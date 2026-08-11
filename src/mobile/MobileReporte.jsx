@@ -492,11 +492,31 @@ function PersonaNovedadCard({ item, index, personas, onChange, onRemove }) {
         ))}
       </div>
 
+      {item.categoria === 'Ausentismo' && (
+        <div style={{ padding:'0.65rem', marginBottom:'0.65rem', borderRadius:6, background:'rgba(167,139,250,.05)', border:'1px solid rgba(167,139,250,.2)' }}>
+          <select className="input-dark" style={{ width:'100%', marginBottom:'0.55rem' }} value={item.motivo_ausencia || ''} onChange={e => onChange({ ...item, motivo_ausencia:e.target.value })}>
+            <option value="">Motivo de ausencia...</option>
+            {['Carpeta médica','Accidente laboral / ART','Licencia especial','Ausencia injustificada','Otro'].map(x => <option key={x} value={x}>{x}</option>)}
+          </select>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:'0.5rem', marginBottom:'0.55rem' }}>
+            <label style={{ color:'var(--text-dim)', fontSize:'.65rem' }}>DESDE<input type="date" className="input-dark" style={{ width:'100%', marginTop:4 }} value={item.fecha_desde || ''} onChange={e => onChange({ ...item, fecha_desde:e.target.value })}/></label>
+            <label style={{ color:'var(--text-dim)', fontSize:'.65rem' }}>HASTA<input type="date" className="input-dark" style={{ width:'100%', marginTop:4 }} value={item.fecha_hasta || ''} onChange={e => onChange({ ...item, fecha_hasta:e.target.value })}/></label>
+          </div>
+          {item.motivo_ausencia === 'Carpeta médica' && <>
+            <select className="input-dark" style={{ width:'100%', marginBottom:'0.55rem' }} value={item.estado_documentacion || 'Pendiente'} onChange={e => onChange({ ...item, estado_documentacion:e.target.value })}>
+              {['Pendiente','Presentado','Validado','Rechazado'].map(x => <option key={x} value={x}>Certificado: {x}</option>)}
+            </select>
+            <label style={{ color:'var(--text-dim)', fontSize:'.65rem' }}>REINTEGRO ESTIMADO<input type="date" className="input-dark" style={{ width:'100%', marginTop:4 }} value={item.fecha_reintegro_estimada || ''} onChange={e => onChange({ ...item, fecha_reintegro_estimada:e.target.value })}/></label>
+            <p style={{ color:'var(--text-dim)', fontSize:'.62rem', marginTop:6 }}>No cargues diagnóstico ni información clínica. Registrá solamente período, documentación e impacto operativo.</p>
+          </>}
+        </div>
+      )}
+
       <textarea
         value={item.descripcion}
         onChange={e => onChange({ ...item, descripcion: e.target.value })}
         rows={2}
-        placeholder="Describí la novedad de personal..."
+        placeholder={item.motivo_ausencia === 'Carpeta médica' ? 'Impacto operativo o cobertura requerida (sin diagnóstico)...' : 'Describí la novedad de personal...'}
         style={{
           width: '100%', padding: '0.65rem 0.75rem', borderRadius: 6, resize: 'none',
           background: 'var(--surface)', border: `1px solid ${color}33`,
@@ -926,7 +946,7 @@ export default function MobileReporte({ onBack, onSuccess, context: rawContext =
     setVehiculoNovedades(prev => prev.filter((_, idx) => idx !== i))
 
   const agregarPersonaNovedad = () =>
-    setPersonaNovedades(prev => [...prev, { persona_id: '', persona_nombre: '', categoria: 'Otro', descripcion: '' }])
+    setPersonaNovedades(prev => [...prev, { persona_id: '', persona_nombre: '', categoria: 'Otro', descripcion: '', motivo_ausencia:'', fecha_desde:'', fecha_hasta:'', estado_documentacion:'', fecha_reintegro_estimada:'' }])
 
   const actualizarPersonaNovedad = (i, val) =>
     setPersonaNovedades(prev => prev.map((p, idx) => idx === i ? val : p))
@@ -1010,6 +1030,9 @@ export default function MobileReporte({ onBack, onSuccess, context: rawContext =
     for (const p of personaNovedades) {
       if (!p.persona_id) { setError('Seleccioná la persona en cada novedad de personal'); return }
       if (!p.descripcion.trim()) { setError('Completá la descripción de cada novedad de personal'); return }
+      if (p.categoria === 'Ausentismo' && !p.motivo_ausencia) { setError('Seleccioná el motivo de cada ausencia'); return }
+      if (p.motivo_ausencia === 'Carpeta médica' && (!p.fecha_desde || !p.fecha_hasta)) { setError('Completá el período desde/hasta de cada carpeta médica'); return }
+      if (p.fecha_desde && p.fecha_hasta && p.fecha_hasta < p.fecha_desde) { setError('La fecha hasta no puede ser anterior a la fecha desde'); return }
     }
     // Validar novedades de vuelo
     for (const v of vuelosDelDia) {
@@ -1208,6 +1231,11 @@ export default function MobileReporte({ onBack, onSuccess, context: rawContext =
             persona_nombre: p.persona_nombre,
             categoria:      p.categoria || 'Otro',
             descripcion:    p.descripcion,
+            motivo_ausencia:p.categoria === 'Ausentismo' ? p.motivo_ausencia || null : null,
+            fecha_desde:    p.categoria === 'Ausentismo' ? p.fecha_desde || null : null,
+            fecha_hasta:    p.categoria === 'Ausentismo' ? p.fecha_hasta || null : null,
+            estado_documentacion:p.motivo_ausencia === 'Carpeta médica' ? p.estado_documentacion || 'Pendiente' : (p.categoria === 'Ausentismo' ? 'No requerido' : null),
+            fecha_reintegro_estimada:p.motivo_ausencia === 'Carpeta médica' ? p.fecha_reintegro_estimada || null : null,
             reportante:     perfil?.nombre || '',
             fecha_reporte:  fechaHoy,
             estado:         'Pendiente',

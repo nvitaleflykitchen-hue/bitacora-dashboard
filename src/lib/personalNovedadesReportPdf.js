@@ -87,7 +87,7 @@ export function resumirNovedadesPersonal(items = []) {
 export async function generarInformeNovedadesPersonalPDF({ sedeId, sedeNombre, desde, hasta }) {
   const [personasResult, novedadesResult, modulosResult] = await Promise.all([
     supabase.from('v_personas').select('id,nombre,apellido,puesto,sede_ids,activo').eq('activo',true),
-    db().from('persona_novedades').select('id,registro_id,persona_id,persona_nombre,categoria,descripcion,estado,reportante,fecha_reporte,created_at').eq('sede_id',sedeId).gte('fecha_reporte',desde).lte('fecha_reporte',hasta),
+    db().from('persona_novedades').select('id,registro_id,persona_id,persona_nombre,categoria,descripcion,estado,reportante,fecha_reporte,created_at,motivo_ausencia,fecha_desde,fecha_hasta,estado_documentacion,fecha_reintegro_estimada').eq('sede_id',sedeId).gte('fecha_reporte',desde).lte('fecha_reporte',hasta),
     db().from('modulo_novedades').select('id,registro_id,modulo_key,modulo_label,severidad,descripcion,estado,reportante,fecha_reporte,created_at').eq('sede_id',sedeId).gte('fecha_reporte',desde).lte('fecha_reporte',hasta).or('modulo_key.eq.g,modulo_label.ilike.%Personal%'),
   ])
   if (personasResult.error) throw personasResult.error
@@ -129,12 +129,15 @@ export async function generarInformeNovedadesPersonalPDF({ sedeId, sedeNombre, d
   resultado.grupos.forEach(grupo => {
     heading(`${nombreCompleto(grupo.persona)}${grupo.persona.puesto ? ` · ${grupo.persona.puesto}` : ''}`)
     grupo.items.forEach((item,index)=>{
+      const periodo=item.fecha_desde ? `${item.motivo_ausencia || 'Ausencia'} · ${fecha(item.fecha_desde)} al ${fecha(item.fecha_hasta || item.fecha_desde)} · Documentación: ${item.estado_documentacion || 'No informada'}` : ''
       const description=doc.splitTextToSize(item.descripcion || 'Sin descripción',width-8)
-      const need=19+description.length*4; ensure(need)
+      const periodoLines=periodo ? doc.splitTextToSize(periodo,width-8) : []
+      const need=19+(description.length+periodoLines.length)*4; ensure(need)
       const shade=index%2?249:244; doc.setFillColor(shade,shade,shade); doc.rect(margin,y-3,width,need-2,'F')
       doc.setFont('helvetica','bold'); doc.setFontSize(8.8); doc.setTextColor(...TEXT); doc.text(`${fecha(item.fecha || item.fecha_reporte)} · ${item.categoria || 'Otro'} · ${item.estado || 'Sin estado'}`,margin+4,y+2)
       doc.setFont('helvetica','normal'); doc.setFontSize(8.2); doc.text(description,margin+4,y+8)
-      const metaY=y+10+description.length*4; doc.setFontSize(7); doc.setTextColor(...MUTED); doc.text(`${item.fuente} · Reportante: ${item.reportante || 'No informado'}${item.registro_id ? ` · Registro #${item.registro_id}` : ''}`,margin+4,metaY)
+      if(periodoLines.length){doc.setFont('helvetica','bold');doc.setFontSize(7.4);doc.setTextColor(...MUTED);doc.text(periodoLines,margin+4,y+9+description.length*4)}
+      const metaY=y+10+(description.length+periodoLines.length)*4; doc.setFontSize(7); doc.setTextColor(...MUTED); doc.text(`${item.fuente} · Reportante: ${item.reportante || 'No informado'}${item.registro_id ? ` · Registro #${item.registro_id}` : ''}`,margin+4,metaY)
       y+=need+2
     })
   })
