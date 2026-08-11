@@ -34,7 +34,7 @@ export default function PersonaEncuadrePanel({ persona, personas = [], sedes = [
     const [encRes, puestosRes, rolesRes] = await Promise.all([
       supabase.schema("equipo").from("persona_encuadres").select("*")
         .eq("persona_id", persona.id).is("fecha_hasta", null).eq("es_principal", true).maybeSingle(),
-      supabase.schema("equipo").from("puestos_cct").select("id,codigo,nombre,nivel,area,activo")
+      supabase.schema("equipo").from("puestos_cct").select("id,codigo,nombre,nivel,area,activo,convenio_cct")
         .eq("activo", true).order("nivel").order("nombre"),
       supabase.schema("equipo").from("roles_operativos").select("id,codigo,nombre,area,sede_id,activo")
         .eq("activo", true).order("nombre"),
@@ -51,6 +51,8 @@ export default function PersonaEncuadrePanel({ persona, personas = [], sedes = [
   const supervisor = personas.find((item) => item.id === encuadre?.supervisor_persona_id);
   const sede = sedes.find((item) => item.id === encuadre?.sede_id);
   const rolesDisponibles = useMemo(() => roles.filter((item) => !item.sede_id || item.sede_id === Number(form.sede_id)), [roles, form.sede_id]);
+  const convenioSede = sedes.find((item) => item.id === Number(form.sede_id))?.convenio_cct;
+  const puestosDisponibles = useMemo(() => convenioSede ? puestos.filter((item) => item.convenio_cct === convenioSede) : [], [puestos, convenioSede]);
 
   const openEditor = () => {
     setForm({
@@ -69,6 +71,8 @@ export default function PersonaEncuadrePanel({ persona, personas = [], sedes = [
 
   const save = async () => {
     if (!form.sede_id) return toast.warn("Seleccioná la sede del encuadre.");
+    if (!convenioSede) return toast.warn("Primero definí el convenio aplicable en la ficha de la sede.");
+    if (form.puesto_cct_id && !puestosDisponibles.some((item) => item.id === form.puesto_cct_id)) return toast.warn(`El puesto seleccionado no pertenece al CCT ${convenioSede}. Elegí una categoría válida.`);
     if (!form.rol_operativo_id && !form.nuevo_rol.trim() && !form.puesto_cct_id && !form.funcion_real.trim()) {
       return toast.warn("Indicá al menos el rol, el puesto CCT o la función real.");
     }
@@ -126,10 +130,10 @@ export default function PersonaEncuadrePanel({ persona, personas = [], sedes = [
           {[["Rol Fly", rol?.nombre], ["Categoría CCT", puesto ? `${puesto.nombre} · Nivel ${puesto.nivel}` : null], ["Función real", encuadre.funcion_real], ["Supervisor", supervisor ? `${supervisor.nombre} ${supervisor.apellido || ""}` : null], ["Sede", sede?.nombre], ["Modalidad", encuadre.modalidad], ["Jornada", encuadre.jornada], ["Vigente desde", encuadre.fecha_desde]].map(([label, value]) => value ? <div key={label}><p style={{ color: "var(--text-dim)", fontSize: ".58rem" }}>{label.toUpperCase()}</p><p style={{ color: "var(--text)", fontSize: ".76rem" }}>{value}</p></div> : null)}
         </div> : <p style={{ color: "var(--text-dim)", fontSize: ".74rem" }}>Todavía no se cargó el rol, la categoría ni la función real. No se infirió información desde el puesto libre existente.</p>
       ) : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <select className="input-dark" value={form.sede_id} onChange={(e) => setForm((f) => ({ ...f, sede_id: e.target.value, rol_operativo_id: "" }))}><option value="">Sede...</option>{sedes.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select>
+        <select className="input-dark" value={form.sede_id} onChange={(e) => setForm((f) => ({ ...f, sede_id: e.target.value, rol_operativo_id: "", puesto_cct_id: "" }))}><option value="">Sede...</option>{sedes.map((item) => <option key={item.id} value={item.id}>{item.nombre}{item.convenio_cct ? ` · CCT ${item.convenio_cct}` : " · convenio sin definir"}</option>)}</select>
         <select className="input-dark" value={form.rol_operativo_id} onChange={(e) => setForm((f) => ({ ...f, rol_operativo_id: e.target.value, nuevo_rol: "" }))}><option value="">Rol operativo Fly...</option>{rolesDisponibles.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select>
         {perfil?.rol === "admin" && <input className="input-dark" value={form.nuevo_rol} onChange={(e) => setForm((f) => ({ ...f, nuevo_rol: e.target.value, rol_operativo_id: "" }))} placeholder="O crear nuevo rol Fly" />}
-        <select className="input-dark" value={form.puesto_cct_id} onChange={(e) => setForm((f) => ({ ...f, puesto_cct_id: e.target.value }))}><option value="">Puesto CCT sin confirmar...</option>{puestos.map((item) => <option key={item.id} value={item.id}>Nivel {item.nivel} · {item.nombre}</option>)}</select>
+        <select className="input-dark" disabled={!convenioSede} value={form.puesto_cct_id} onChange={(e) => setForm((f) => ({ ...f, puesto_cct_id: e.target.value }))}><option value="">{convenioSede ? `Puesto CCT ${convenioSede} sin confirmar...` : "Definí el convenio en la sede..."}</option>{puestosDisponibles.map((item) => <option key={item.id} value={item.id}>Categoría {item.nivel} · {item.nombre}</option>)}</select>
         <input className="input-dark" value={form.funcion_real} onChange={(e) => setForm((f) => ({ ...f, funcion_real: e.target.value }))} placeholder="Función real" />
         <select className="input-dark" value={form.supervisor_persona_id} onChange={(e) => setForm((f) => ({ ...f, supervisor_persona_id: e.target.value }))}><option value="">Supervisor directo...</option>{personas.filter((item) => item.id !== persona.id).map((item) => <option key={item.id} value={item.id}>{item.nombre} {item.apellido || ""}</option>)}</select>
         <input className="input-dark" value={form.modalidad} onChange={(e) => setForm((f) => ({ ...f, modalidad: e.target.value }))} placeholder="Modalidad (ej. efectiva/o)" />

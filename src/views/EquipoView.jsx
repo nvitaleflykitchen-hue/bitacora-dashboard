@@ -3137,7 +3137,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       supabase
         .schema("bitacora")
         .from("sedes")
-        .select("id, nombre, grupo_id")
+        .select("id, nombre, grupo_id, convenio_cct")
         .eq("activa", true)
         .order("nombre"),
       supabase
@@ -3149,7 +3149,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,email,telefono,sede_ids,activo,duplicado_de").is("duplicado_de", null),
       supabase.schema("equipo").from("persona_encuadres").select("*").is("fecha_hasta", null).eq("es_principal", true),
       supabase.schema("equipo").from("roles_operativos").select("id,nombre"),
-      supabase.schema("equipo").from("puestos_cct").select("id,nombre,nivel"),
+      supabase.schema("equipo").from("puestos_cct").select("id,nombre,nivel,convenio_cct"),
     ]);
     const todasSedes = sRes.data || [];
     // Roles territoriales (grupo/encargado/sede) solo ven y gestionan su(s) sede(s) asignada(s)

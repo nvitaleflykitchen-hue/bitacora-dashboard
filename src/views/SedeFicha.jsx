@@ -56,12 +56,13 @@ function KpiCard({ label, val, sub, color, onClick }) {
   )
 }
 
-const EMPTY_FORM = { nombre:'', tipo:'Comedor', direccion:'', telefono:'', responsable:'', contacto_nombre:'', descripcion:'', lat:'', lng:'', activa:true, grupo_id:null, dias_operacion:[1,2,3,4,5,6,0] }
+const EMPTY_FORM = { nombre:'', tipo:'Comedor', convenio_cct:'', direccion:'', telefono:'', responsable:'', contacto_nombre:'', descripcion:'', lat:'', lng:'', activa:true, grupo_id:null, dias_operacion:[1,2,3,4,5,6,0] }
 
 function SedeModal({ sede, personal = [], onClose, onSaved }) {
   const [form, setForm] = useState(sede ? {
     nombre: sede.nombre || '',
     tipo: sede.tipo || 'Comedor',
+    convenio_cct: sede.convenio_cct || '',
     direccion: sede.direccion || '',
     telefono: sede.telefono || personal[0]?.telefono || '',
     responsable: sede.responsable || (personal.find(p=>p.rol==='Admin')||personal[0])?.nombre || '',
@@ -101,6 +102,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
       const payload = {
         nombre: form.nombre.trim(),
         tipo: form.tipo,
+        convenio_cct: form.convenio_cct || null,
         direccion: form.direccion.trim() || null,
         telefono: form.telefono.trim() || null,
         responsable: form.responsable.trim() || null,
@@ -143,6 +145,13 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
             <div style={{ fontSize:'1rem', fontWeight:700, color:'#e2e8f0', marginTop:2 }}>{sede?.nombre || 'Nueva sede'}</div>
           </div>
           <button onClick={onClose} aria-label="Cerrar ficha de sede" style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={18}/></button>
+        </div>
+
+        <div style={{ marginBottom:10 }}>
+          <label style={lbl}>Convenio aplicable</label>
+          <select style={inp} value={form.convenio_cct} onChange={e=>set('convenio_cct',e.target.value)}>
+            <option value="">Sin definir</option><option value="389/04">CCT 389/04 · Establecimientos gastronómicos</option><option value="401/05">CCT 401/05 · Comedores y refrigerios</option>
+          </select>
         </div>
 
         <div style={{ marginBottom:10 }}>
