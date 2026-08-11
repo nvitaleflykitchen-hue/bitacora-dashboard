@@ -269,6 +269,7 @@ export default function HorariosDotacion({
       rol_operativo_id: need.rol_operativo_id,
       dia_semana: d,
       cantidad_requerida: Number(need.cantidad),
+      activo: true,
       created_by: user?.id || null,
       updated_by: user?.id || null,
     }));
@@ -582,6 +583,19 @@ export default function HorariosDotacion({
         </div>
       )}
       <div className="glass p-4">
+        <div className="mb-4">
+          <p
+            className="font-title font-bold"
+            style={{ color: "var(--phosphor)", fontSize: ".78rem" }}
+          >
+            COBERTURA MÍNIMA DE LA PLANTILLA
+          </p>
+          <p style={{ color: "var(--text-dim)", fontSize: ".68rem" }}>
+            Indicá cuántas personas necesitás por sector, turno y rol. Estas
+            reglas guían el cronograma automático; no asignan una persona
+            específica.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-3 mb-4">
           <select
             className="input-dark min-w-[260px]"
@@ -646,6 +660,8 @@ export default function HorariosDotacion({
                 </div>
                 <input
                   type="number"
+                  title="Cantidad mínima de personas requeridas"
+                  aria-label="Cantidad mínima requerida"
                   min="1"
                   max="200"
                   className="input-dark"
@@ -658,7 +674,7 @@ export default function HorariosDotacion({
                   className="btn-primary flex justify-center items-center gap-1"
                   onClick={addNeed}
                 >
-                  <Save size={12} /> Guardar
+                  <Save size={12} /> Guardar cobertura
                 </button>
                 <div className="md:col-span-6 flex flex-wrap gap-2">
                   {DIAS.map(([d, l]) => (
@@ -782,7 +798,8 @@ export default function HorariosDotacion({
                       className="text-center py-8"
                       style={{ color: "var(--text-dim)" }}
                     >
-                      Sin necesidades cargadas.
+                      Todavía no hay coberturas mínimas cargadas para esta
+                      plantilla.
                     </td>
                   </tr>
                 )}
