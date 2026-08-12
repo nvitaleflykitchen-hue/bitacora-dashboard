@@ -50,6 +50,7 @@ import HabilitarUsuarioModal from "../components/HabilitarUsuarioModal";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
 import UniformesEppPanel from "./equipo/UniformesEppPanel";
+import EppPersonaPanel from "./equipo/EppPersonaPanel";
 import {
   isQualityOnlyProfile,
   isQualityTeamPerson,
@@ -1851,6 +1852,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         {/* ── HISTORIAL ── */}
         {tab === "historial" && (
           <div>
+            <EppPersonaPanel personaId={personaId} />
             <CapacitacionesRelacionadas personaId={personaId} title="Capacitaciones realizadas" />
             <div className="glass p-4 mb-4" style={{ border: "1px solid rgba(245,158,11,.24)" }}>
               <div className="flex flex-wrap items-start justify-between gap-3 mb-3">

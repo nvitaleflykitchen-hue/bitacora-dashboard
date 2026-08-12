@@ -56,6 +56,7 @@ const VuelosPlantilla = lazy(() => import('./views/VuelosPlantilla'))
 const EquipoView = lazy(() => import('./views/EquipoView'))
 const SedeEncargadoView = lazy(() => import('./views/SedeEncargadoView'))
 const CredencialVerificacion = lazy(() => import('./views/CredencialVerificacion'))
+const EppEntregaConfirmacion = lazy(() => import('./views/EppEntregaConfirmacion'))
 
 const ALL_VIEWS = {
   inicio:          InicioRol,
@@ -353,12 +354,14 @@ function AppInner() {
 
 export default function App() {
   const credencialToken = new URLSearchParams(window.location.search).get('credencial')
+  const eppEntregaToken = new URLSearchParams(window.location.search).get('eppEntrega')
   if (credencialToken) return (
     <Suspense fallback={<LoadingScreen />}>
       <CredencialVerificacion token={credencialToken} />
       <FeedbackHost />
     </Suspense>
   )
+  if(eppEntregaToken)return <AuthProvider><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/></AuthProvider>
   return (
     <AuthProvider>
       <AppInner />

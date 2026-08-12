@@ -21,7 +21,7 @@ export async function urlFotoProductoEpp(path){
 export async function cargarEpp() {
   const [catalogo, envios, sedes] = await Promise.all([
     schema().from('epp_catalogo').select('*,epp_catalogo_talles(*)').order('nombre'),
-    schema().from('epp_envios').select('*,epp_envio_bultos(*),epp_envio_items(*,epp_catalogo(nombre))').order('created_at',{ascending:false}),
+    schema().from('epp_envios').select('*,epp_envio_bultos(*),epp_envio_items(*,epp_catalogo(nombre,codigo,imagen_path),personas(nombre,apellido))').order('created_at',{ascending:false}),
     supabase.schema('bitacora').from('sedes').select('id,nombre'),
   ])
   if (catalogo.error) throw catalogo.error
@@ -117,7 +117,17 @@ export async function crearEnvioEpp({ sedeId, observaciones, bultos, destinatari
   return envio
 }
 
-export function urlRecepcionBulto(bulto) { return `${window.location.origin}/?view=eppRecepcion&bulto=${bulto.id}` }
+export function urlConfirmacionIndividual(item) { return `${window.location.origin}/?eppEntrega=${item.qr_token}` }
+
+export async function imprimirConstanciasEpp(items){
+  const enriched=await Promise.all(items.map(async item=>({...item,qr:await QRCode.toDataURL(urlConfirmacionIndividual(item),{width:650,margin:1,errorCorrectionLevel:'H'})})))
+  const w=window.open('','_blank');if(!w)throw new Error('El navegador bloqueó la ventana de impresión.')
+  w.document.write(`<!doctype html><html><head><title>Constancias individuales EPP</title><style>@page{size:A4;margin:8mm}*{box-sizing:border-box}body{font-family:Arial;margin:0}.sheet{display:grid;grid-template-columns:repeat(2,1fr);gap:5mm}.card{height:13cm;border:1px dashed #666;padding:7mm;text-align:center;break-inside:avoid}.qr{width:58%;max-height:6cm}.name{font-size:18px;font-weight:800;margin:8px}.product{font-size:15px}.meta{font-size:12px;margin:5px;color:#333}.code{font-weight:800}</style></head><body><div class="sheet">${enriched.map(i=>`<section class="card"><div class="code">${i.envioCodigo}</div><div class="name">${i.personas?.apellido||''}, ${i.personas?.nombre||''}</div><div class="product">${i.epp_catalogo?.codigo||''} · ${i.epp_catalogo?.nombre||''}</div><div class="meta">Talle: ${i.talle||'Sin talle / Ajustable'} · Cantidad: ${i.cantidad}</div><img class="qr" src="${i.qr}"/><div class="meta">Escanear e ingresar con el usuario Fly del colaborador</div><strong>CONFIRMAR RECEPCIÓN INDIVIDUAL</strong></section>`).join('')}</div><script>onload=()=>setTimeout(()=>print(),300)</script></body></html>`);w.document.close()
+}
+
+export async function obtenerEntregaEpp(token){const {data,error}=await schema().rpc('obtener_entrega_epp_por_token',{p_token:token});if(error)throw error;return data?.[0]||null}
+export async function confirmarEntregaEpp(token){const {data,error}=await schema().rpc('confirmar_entrega_epp',{p_token:token});if(error)throw error;return data?.[0]||null}
+export async function cargarEppPersona(personaId){const {data,error}=await schema().from('epp_envio_items').select('id,talle,cantidad,estado,confirmado_at,epp_catalogo(nombre,codigo,imagen_path)').eq('persona_id',personaId).order('created_at',{ascending:false});if(error)throw error;return data||[]}
 
 export async function imprimirEtiquetasEpp(etiquetas,{anchoCm=9,altoCm=12}={}){
   const enriched=await Promise.all(etiquetas.map(async e=>({...e,qr:await QRCode.toDataURL(urlRecepcionBulto(e),{width:700,margin:1,errorCorrectionLevel:'H'})})))
