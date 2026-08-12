@@ -4,13 +4,19 @@ import { supabase } from './supabase'
 const schema = () => supabase.schema('equipo')
 
 export async function cargarEpp() {
-  const [catalogo, envios] = await Promise.all([
+  const [catalogo, envios, sedes] = await Promise.all([
     schema().from('epp_catalogo').select('*,epp_catalogo_talles(*)').order('nombre'),
-    schema().from('epp_envios').select('*,sedes(nombre),epp_envio_bultos(*),epp_envio_items(*,epp_catalogo(nombre))').order('created_at',{ascending:false}),
+    schema().from('epp_envios').select('*,epp_envio_bultos(*),epp_envio_items(*,epp_catalogo(nombre))').order('created_at',{ascending:false}),
+    supabase.schema('bitacora').from('sedes').select('id,nombre'),
   ])
   if (catalogo.error) throw catalogo.error
   if (envios.error) throw envios.error
-  return { catalogo:catalogo.data||[], envios:envios.data||[] }
+  if (sedes.error) throw sedes.error
+  const sedePorId=new Map((sedes.data||[]).map(sede=>[Number(sede.id),sede]))
+  return {
+    catalogo:catalogo.data||[],
+    envios:(envios.data||[]).map(envio=>({...envio,sede:sedePorId.get(Number(envio.sede_id))||null})),
+  }
 }
 
 export async function crearProductoEpp(form, userId) {

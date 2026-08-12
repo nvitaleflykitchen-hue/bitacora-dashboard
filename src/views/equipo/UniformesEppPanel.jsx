@@ -12,7 +12,7 @@ export default function UniformesEppPanel({sedes=[]}){
   useEffect(load,[])
   const saveProduct=async()=>{try{await crearProductoEpp(producto,user.id);setProducto(emptyProduct);load()}catch(e){setError(e.message)}}
   const saveShipment=async()=>{try{await crearEnvioEpp(envio,user.id);setEnvio({sedeId:'',bultos:1,observaciones:''});load()}catch(e){setError(e.message)}}
-  const labels=data.envios.flatMap(e=>(e.epp_envio_bultos||[]).map(b=>({...b,sede:e.sedes?.nombre||'Sede',total:e.epp_envio_bultos.length})))
+  const labels=data.envios.flatMap(e=>(e.epp_envio_bultos||[]).map(b=>({...b,sede:e.sede?.nombre||'Sede',total:e.epp_envio_bultos.length})))
   const print=()=>imprimirEtiquetasEpp(labels.filter(x=>selected.includes(x.id))).catch(e=>setError(e.message))
   return <div className="space-y-4">
     <div className="flex justify-between items-center"><div><h2 className="font-title font-bold" style={{color:'var(--phosphor)'}}>Uniformes y EPP</h2><p style={{color:'var(--text-dim)',fontSize:'.72rem'}}>Catálogo, envíos, bultos y trazabilidad por sede.</p></div><button className="btn-ghost" onClick={load}><RefreshCw size={14}/> Actualizar</button></div>
