@@ -20,8 +20,14 @@ export async function cargarEpp() {
 }
 
 export async function crearProductoEpp(form, userId) {
+  const prefijos={uniforme:'IND',epp:'EPP',calzado:'CAL',credencial:'CRE',otro:'OTR'}
+  const prefijo=prefijos[form.categoria]||'OTR'
+  const existentes=await schema().from('epp_catalogo').select('codigo').ilike('codigo',`${prefijo}-%`)
+  if(existentes.error) throw existentes.error
+  const siguiente=Math.max(0,...(existentes.data||[]).map(x=>Number(String(x.codigo).match(/-(\d+)$/)?.[1]||0)))+1
+  const codigo=`${prefijo}-${String(siguiente).padStart(5,'0')}`
   const { data, error } = await schema().from('epp_catalogo').insert({
-    codigo:form.codigo.trim(), nombre:form.nombre.trim(), categoria:form.categoria,
+    codigo, nombre:form.nombre.trim(), categoria:form.categoria,
     descripcion:form.descripcion.trim()||null, requiere_devolucion:form.requiere_devolucion,
     reposicion_periodica:form.reposicion_periodica, created_by:userId,
   }).select().single()
@@ -39,9 +45,24 @@ async function sha256(value) {
   return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('')
 }
 
-export async function crearEnvioEpp({ sedeId, observaciones, bultos }, userId) {
+export async function cargarColaboradoresSede(sedeId) {
+  if(!sedeId) return []
+  const {data,error}=await schema().from('personas').select('id,nombre,apellido,puesto,sede_ids')
+    .eq('activo',true).contains('sede_ids',[Number(sedeId)]).is('duplicado_de',null).order('apellido').order('nombre')
+  if(error) throw error
+  return data||[]
+}
+
+export async function crearEnvioEpp({ sedeId, observaciones, bultos, destinatarios=[] }, userId) {
   const { data:envio,error }=await schema().from('epp_envios').insert({sede_id:Number(sedeId),observaciones:observaciones||null,created_by:userId,fecha_preparacion:new Date().toISOString().slice(0,10)}).select().single()
   if(error) throw error
+  if(destinatarios.length){
+    const res=await schema().from('epp_envio_items').insert(destinatarios.map(item=>({
+      envio_id:envio.id,persona_id:item.personaId,producto_id:item.productoId,
+      talle:item.talle||null,cantidad:Number(item.cantidad||1),estado:'preparado',
+    })))
+    if(res.error) throw res.error
+  }
   for(let numero=1;numero<=Number(bultos||1);numero+=1){
     const id=crypto.randomUUID(); const codigo=`${envio.codigo}-B${String(numero).padStart(2,'0')}`
     const res=await schema().from('epp_envio_bultos').insert({id,envio_id:envio.id,numero,codigo,qr_token_hash:await sha256(id)}); if(res.error) throw res.error
