@@ -62,6 +62,26 @@ export async function crearProductoEpp(form, userId) {
   return data
 }
 
+export async function actualizarProductoEpp(productoId,form){
+  const {error}=await schema().from('epp_catalogo').update({
+    nombre:form.nombre.trim(),categoria:form.categoria,descripcion:form.descripcion.trim()||null,
+    activo:form.activo,updated_at:new Date().toISOString(),
+  }).eq('id',productoId)
+  if(error) throw error
+  const talles=form.talles.split(',').map(x=>x.trim()).filter(Boolean)
+  const desactivar=await schema().from('epp_catalogo_talles').update({activo:false}).eq('producto_id',productoId)
+  if(desactivar.error) throw desactivar.error
+  if(talles.length){
+    const res=await schema().from('epp_catalogo_talles').upsert(talles.map(talle=>({producto_id:productoId,talle,activo:true})),{onConflict:'producto_id,talle'})
+    if(res.error) throw res.error
+  }
+}
+
+export async function cambiarEstadoProductoEpp(productoId,activo){
+  const {error}=await schema().from('epp_catalogo').update({activo,updated_at:new Date().toISOString()}).eq('id',productoId)
+  if(error) throw error
+}
+
 async function sha256(value) {
   const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))
   return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('')
