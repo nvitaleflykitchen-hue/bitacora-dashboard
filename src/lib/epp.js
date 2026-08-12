@@ -78,16 +78,21 @@ export async function cargarColaboradoresSede(sedeId) {
 export async function crearEnvioEpp({ sedeId, observaciones, bultos, destinatarios=[] }, userId) {
   const { data:envio,error }=await schema().from('epp_envios').insert({sede_id:Number(sedeId),observaciones:observaciones||null,created_by:userId,fecha_preparacion:new Date().toISOString().slice(0,10)}).select().single()
   if(error) throw error
-  if(destinatarios.length){
-    const res=await schema().from('epp_envio_items').insert(destinatarios.map(item=>({
-      envio_id:envio.id,persona_id:item.personaId,producto_id:item.productoId,
-      talle:item.talle||null,cantidad:Number(item.cantidad||1),estado:'preparado',
-    })))
-    if(res.error) throw res.error
-  }
-  for(let numero=1;numero<=Number(bultos||1);numero+=1){
-    const id=crypto.randomUUID(); const codigo=`${envio.codigo}-B${String(numero).padStart(2,'0')}`
-    const res=await schema().from('epp_envio_bultos').insert({id,envio_id:envio.id,numero,codigo,qr_token_hash:await sha256(id)}); if(res.error) throw res.error
+  try{
+    if(destinatarios.length){
+      const res=await schema().from('epp_envio_items').insert(destinatarios.map(item=>({
+        envio_id:envio.id,persona_id:item.personaId,producto_id:item.productoId,
+        talle:item.talle||null,cantidad:Number(item.cantidad||1),estado:'pendiente',
+      })))
+      if(res.error) throw res.error
+    }
+    for(let numero=1;numero<=Number(bultos||1);numero+=1){
+      const id=crypto.randomUUID(); const codigo=`${envio.codigo}-B${String(numero).padStart(2,'0')}`
+      const res=await schema().from('epp_envio_bultos').insert({id,envio_id:envio.id,numero,codigo,qr_token_hash:await sha256(id)}); if(res.error) throw res.error
+    }
+  }catch(errorCreacion){
+    await schema().from('epp_envios').delete().eq('id',envio.id)
+    throw errorCreacion
   }
   return envio
 }
