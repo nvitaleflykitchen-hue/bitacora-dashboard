@@ -2,7 +2,7 @@
 // Organizado por módulo. Cada módulo tiene: id, label, icon, intro y secciones[].
 // Cada sección tiene: title y body (array de párrafos o bloques).
 
-export const HELP_MANUAL_UPDATED_AT = '2026-08-10'
+export const HELP_MANUAL_UPDATED_AT = '2026-08-12'
 
 export const HELP_MODULES = [
   {
@@ -225,6 +225,7 @@ export const HELP_MODULES = [
         title: 'Ficha de una persona',
         body: [
           'Ingresá a Equipo, buscá a la persona y abrí su ficha. Las pestañas reúnen datos y puesto, documentación, evaluaciones, historial, logros, RR. HH. y formularios.',
+          'Las tarjetas de la lista muestran la antigüedad calculada desde la fecha de ingreso y, para usuarios autorizados, la categoría laboral de RR. HH. con su código y descripción. La categoría no se reemplaza por el nivel CCT ni por el área.',
           'Usá el lápiz junto al nombre para corregir datos personales, puesto, área o sedes asignadas. Una persona puede pertenecer a más de una sede.',
           'No elimines una ficha con actividad vinculada. Usá “Enviar a obsoletos” o el flujo de baja para retirarla del equipo activo conservando su trazabilidad.',
         ],
@@ -243,6 +244,45 @@ export const HELP_MODULES = [
           'Documentación permite registrar requisitos, vencimientos y evidencias de la persona. Los avisos muestran documentos vencidos o próximos a renovar.',
           'La pestaña RR. HH. contiene información privada y está reservada a perfiles autorizados. No debe usarse para observaciones operativas generales.',
           'El Historial conserva antecedentes laborales, reconocimientos, apercibimientos, suspensiones y sus documentos. Los registros formales no se eliminan: cuando corresponde se solicita su anulación con trazabilidad.',
+        ],
+      },
+      {
+        title: 'Encuadre operativo y roles Fly',
+        body: [
+          'El encuadre operativo vincula a la persona con una sede, un rol operativo Fly, su puesto CCT, la función real, el supervisor directo y la jornada. Es la base común para dotación, horarios y coberturas.',
+          'El rol Fly describe la función operativa que la sede necesita cubrir, por ejemplo Cocinero, Ayudante de cocina o Camarera. El puesto y la categoría laboral continúan siendo datos distintos y conservan su fuente gremial o de RR. HH.',
+          'Si el rol necesario no existe, un administrador puede crearlo desde el mismo encuadre. Evitá duplicar nombres equivalentes: los catálogos normalizados permiten cruzar información entre personas, plantillas y cronogramas.',
+          'El convenio y el catálogo CCT se seleccionan según el establecimiento. Confirmá siempre el puesto real antes de guardar; “sin confirmar” indica que el encuadre todavía está incompleto.',
+        ],
+      },
+      {
+        title: 'Horarios, turnos y dotación por sede',
+        body: [
+          'Ingresá a Equipo > Horarios. La pantalla trabaja con la sede actual: no vuelvas a elegirla cuando ya ingresaste dentro de su contexto.',
+          'Seleccioná los sectores desde el catálogo, por ejemplo Cocina y elaboración o Servicio y distribución. No escribas variantes libres porque impedirían comparar coberturas entre períodos.',
+          'Configurá los turnos Matutino, Vespertino, Nocturno, Intermedio o Cortado. Cada turno requiere hora de inicio y fin; Cortado exige dos rangos horarios independientes.',
+          'Creá una plantilla para la operación habitual, activala y cargá las necesidades por sector, turno, rol Fly, cantidad y días de la semana. La plantilla define puestos requeridos, no personas específicas.',
+          'Si la sección de necesidades queda vacía, el generador no puede asignar horarios aunque existan personas encuadradas. Cargá y guardá primero todas las coberturas de la sede.',
+        ],
+      },
+      {
+        title: 'Cronograma mensual automático',
+        body: [
+          'Elegí el mes, el régimen de francos y la fecha de anclaje. Generar propuesta distribuye las personas encuadradas según los roles requeridos por la plantilla y muestra el horario concreto en cada día.',
+          'Los regímenes disponibles permiten representar ciclos como 4x1, 6x1 y 5x2, 8x2 o 5,5x1,5. Revisá el régimen de la sede antes de generar porque determina la secuencia de trabajo y francos.',
+          'La grilla identifica horarios asignados, F para franco, CM para ausencias, VAC para vacaciones aprobadas, puntos para disponibilidad sin asignación y guiones fuera del período.',
+          'El resumen de faltantes indica fecha, sector, turno y rol que la propuesta no pudo cubrir. Ajustá el encuadre, la plantilla o la cobertura y volvé a generar; una propuesta existente no se recalcula sola.',
+          'Usá Imprimir cronograma para obtener la grilla mensual completa en formato apaisado. Revisá el resultado antes de comunicarlo al equipo.',
+        ],
+      },
+      {
+        title: 'Ausencias, carpetas médicas y vacaciones',
+        body: [
+          'En Nuevo Reporte > Novedades de personal elegí la persona y Ausentismo. Indicá el motivo y el período desde/hasta. Carpeta médica también permite informar estado de documentación y reintegro estimado sin registrar diagnósticos.',
+          'Los motivos disponibles son Carpeta médica, Accidente laboral / ART, Licencia especial, Ausencia injustificada y Otro. La ausencia debe quedar abierta y tener un período estructurado para impactar en el cronograma.',
+          'Al volver a generar la propuesta mensual, la persona queda excluida durante las fechas informadas. Las vacaciones se cargan en Equipo > Vacaciones y sólo impactan cuando están aprobadas o utilizadas.',
+          'El historial de la persona conserva las licencias y muestra si su período impacta en el horario. Resolver una ausencia deja de considerarla para futuras generaciones; no altera cronogramas ya impresos.',
+          'Después de cargar, modificar o resolver una ausencia o unas vacaciones, generá nuevamente la propuesta y verificá la cobertura antes de imprimir.',
         ],
       },
       {

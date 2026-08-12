@@ -1,7 +1,33 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.8.0";
+export const APP_VERSION = "2.8.1";
 
 export const RELEASES = [
+  {
+    version: "2.8.1",
+    date: "2026-08-12",
+    title: "Equipo, dotación y cronograma mensual por sede",
+    functions: [
+      "Las tarjetas del equipo muestran antigüedad y la categoría laboral registrada en RR. HH., por ejemplo PU3 · Público cat 3.",
+      "Nuevo encuadre operativo por persona con sede, rol Fly, puesto CCT, función real, supervisor y jornada.",
+      "Catálogos de sectores, roles y convenios CCT normalizados para evitar nombres libres y permitir análisis consistentes.",
+      "Configuración de turnos Matutino, Vespertino, Nocturno, Intermedio y Cortado; el turno Cortado admite dos rangos horarios.",
+      "Plantillas de dotación por sede para definir la cobertura requerida por sector, turno, rol y día de la semana.",
+      "Generación automática del cronograma mensual con horarios concretos, francos, faltantes de cobertura e impresión en formato apaisado.",
+      "Las carpetas médicas y demás ausencias con período estructurado se excluyen del cronograma; las vacaciones aprobadas se identifican como VAC.",
+      "El historial individual reúne carpetas médicas y licencias y explica si el período impacta en el horario.",
+    ],
+    problem:
+      "La información laboral, las coberturas y el horario mensual estaban separados, y el armado manual no podía anticipar faltantes ni contemplar licencias de manera trazable.",
+    affectedUsers:
+      "Administradores, RR. HH., responsables de sede y quienes organizan dotaciones y horarios.",
+    usage:
+      "Primero completá el encuadre de cada persona. Luego, en Equipo > Horarios, configurá sectores y turnos, activá una plantilla, cargá la cobertura requerida y generá la propuesta mensual. Revisá faltantes, CM y vacaciones antes de imprimir.",
+    examples: [
+      "Hospital Cruz del Eje: cobertura por Cocinero, Ayudante y Camarera para cada turno, con horarios visibles por día.",
+      "Una carpeta médica cargada desde Nuevo Reporte bloquea la asignación durante su período cuando se vuelve a generar la propuesta.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.8.0",
     date: "2026-08-10",
