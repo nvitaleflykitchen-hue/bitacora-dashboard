@@ -3812,9 +3812,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                         const antiguedad = antiguedadEnAnios(p.fecha_ingreso);
                         const categoria = p.puesto_cct?.nivel != null
                           ? `Categoría ${p.puesto_cct.nivel}`
-                          : /^categor/i.test(p.area || "")
-                            ? p.area
-                            : null;
+                          : p.area?.trim() || null;
                         const periodoPrueba = estadoPeriodoPrueba(p);
                         const mostrarPeriodoPrueba = periodoPrueba && periodoPrueba.diasRestantes >= -30 && periodoPrueba.diasRestantes <= PERIODO_PRUEBA_DIAS;
                         const periodoColor = mostrarPeriodoPrueba ? colorPeriodoPrueba(periodoPrueba.diasRestantes) : null;
