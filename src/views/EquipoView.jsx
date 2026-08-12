@@ -97,6 +97,16 @@ function estadoPeriodoPrueba(persona, hoy = new Date()) {
 }
 function colorPeriodoPrueba(dias) { if (dias<=15) return "#ff4444"; if (dias<=30) return "#f97316"; if (dias<=60) return "#facc15"; return "#39FF14"; }
 function textoPeriodoPrueba(dias) { if (dias<0) return `Vencido hace ${Math.abs(dias)} día${Math.abs(dias)===1?"":"s"}`; if (dias===0) return "Vence hoy"; return `Vence en ${dias} día${dias===1?"":"s"}`; }
+function antiguedadEnAnios(fechaIngreso, hoy = new Date()) {
+  if (!fechaIngreso) return null;
+  const ingreso = new Date(`${fechaIngreso}T00:00:00`);
+  if (Number.isNaN(ingreso.getTime()) || ingreso > hoy) return null;
+  const anios = (hoy.getTime() - ingreso.getTime()) / (365.2425 * 86400000);
+  return new Intl.NumberFormat("es-AR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(anios);
+}
 
 // ──────────────────────────────────────────────
 // PersonaFicha — vista interna de ficha individual
@@ -3799,6 +3809,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                     >
                       {personasSede.map((p) => {
                         const score = Math.min(5, p.puntaje_promedio || 0);
+                        const antiguedad = antiguedadEnAnios(p.fecha_ingreso);
                         const periodoPrueba = estadoPeriodoPrueba(p);
                         const mostrarPeriodoPrueba = periodoPrueba && periodoPrueba.diasRestantes >= -30 && periodoPrueba.diasRestantes <= PERIODO_PRUEBA_DIAS;
                         const periodoColor = mostrarPeriodoPrueba ? colorPeriodoPrueba(periodoPrueba.diasRestantes) : null;
@@ -3838,6 +3849,9 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                                   {p.rol_operativo?.nombre || p.puesto || "Sin rol operativo"}
                                 </p>
                                 {p.puesto_cct && <p className="font-metric" style={{ fontSize: ".6rem", color: "var(--text-dim)", marginTop: 2 }}>CCT · NIVEL {p.puesto_cct.nivel} · {p.puesto_cct.nombre}</p>}
+                                <p className="font-metric" style={{ fontSize: ".6rem", color: antiguedad ? "var(--phosphor)" : "var(--text-dim)", marginTop: 3 }}>
+                                  ANTIGÜEDAD · {antiguedad ? `${antiguedad} AÑOS` : "SIN FECHA DE INGRESO"}
+                                </p>
                                 {!p.encuadre && <span className="font-metric inline-flex mt-1 px-1.5 py-0.5 rounded" style={{ fontSize: ".56rem", color: "#f59e0b", background: "rgba(245,158,11,.08)", border: "1px solid rgba(245,158,11,.24)" }}>ENCUADRE PENDIENTE</span>}
                                 </div>
                               </div>
