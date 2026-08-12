@@ -3140,7 +3140,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
   const load = async () => {
     setLoading(true);
-    const [pRes, evaluacionesRes, bajasRes, sRes, gRes, candidatosDuplicadosRes, encuadresRes, rolesRes, puestosRes] = await Promise.all([
+    const [pRes, evaluacionesRes, bajasRes, sRes, gRes, candidatosDuplicadosRes, encuadresRes, rolesRes, puestosRes, rrhhRes] = await Promise.all([
       supabase.from("v_personas").select("*").order("nombre"),
       supabase.from("v_evaluaciones").select("*").order("fecha_evaluacion", { ascending: false }),
       supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,area,sede_ids,fecha_ingreso,fecha_baja,motivo_baja,observaciones_baja,foto_url,baja_registrada_at,motivo_reactivacion").eq("activo", false).is("duplicado_de", null).not("fecha_baja", "is", null).not("motivo_baja", "is", null).order("fecha_baja", { ascending: false }),
@@ -3160,6 +3160,12 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       supabase.schema("equipo").from("persona_encuadres").select("*").is("fecha_hasta", null).eq("es_principal", true),
       supabase.schema("equipo").from("roles_operativos").select("id,nombre"),
       supabase.schema("equipo").from("puestos_cct").select("id,nombre,nivel,convenio_cct"),
+      isAdmin
+        ? supabase
+            .schema("equipo")
+            .from("persona_rrhh")
+            .select("persona_id,categoria_codigo,categoria_nombre")
+        : Promise.resolve({ data: [], error: null }),
     ]);
     const todasSedes = sRes.data || [];
     // Roles territoriales (grupo/encargado/sede) solo ven y gestionan su(s) sede(s) asignada(s)
@@ -3182,6 +3188,9 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
     const encuadrePorPersona = new Map((encuadresRes.data || []).map((item) => [String(item.persona_id), item]));
     const rolPorId = new Map((rolesRes.data || []).map((item) => [item.id, item]));
     const puestoPorId = new Map((puestosRes.data || []).map((item) => [item.id, item]));
+    const categoriaRrhhPorPersona = new Map(
+      (rrhhRes.data || []).map((item) => [String(item.persona_id), item]),
+    );
     const personasEnriquecidas = (pRes.data || []).map((persona) => {
       const encuadre = encuadrePorPersona.get(String(persona.id));
       return {
@@ -3189,6 +3198,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
         encuadre,
         rol_operativo: rolPorId.get(encuadre?.rol_operativo_id) || null,
         puesto_cct: puestoPorId.get(encuadre?.puesto_cct_id) || null,
+        categoria_rrhh:
+          categoriaRrhhPorPersona.get(String(persona.id)) || null,
       };
     });
     const personasTerritoriales =
@@ -3810,9 +3821,12 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                       {personasSede.map((p) => {
                         const score = Math.min(5, p.puntaje_promedio || 0);
                         const antiguedad = antiguedadEnAnios(p.fecha_ingreso);
-                        const categoria = p.puesto_cct?.nivel != null
-                          ? `Categoría ${p.puesto_cct.nivel}`
-                          : p.area?.trim() || null;
+                        const categoria = [
+                          p.categoria_rrhh?.categoria_codigo,
+                          p.categoria_rrhh?.categoria_nombre?.replace(/\bPublico\b/i, "Público"),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || null;
                         const periodoPrueba = estadoPeriodoPrueba(p);
                         const mostrarPeriodoPrueba = periodoPrueba && periodoPrueba.diasRestantes >= -30 && periodoPrueba.diasRestantes <= PERIODO_PRUEBA_DIAS;
                         const periodoColor = mostrarPeriodoPrueba ? colorPeriodoPrueba(periodoPrueba.diasRestantes) : null;
