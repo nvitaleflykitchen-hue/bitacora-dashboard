@@ -90,9 +90,19 @@ async function sha256(value) {
 export async function cargarColaboradoresSede(sedeId) {
   if(!sedeId) return []
   const {data,error}=await schema().from('personas').select('id,nombre,apellido,puesto,sede_ids')
-    .eq('activo',true).contains('sede_ids',[Number(sedeId)]).is('duplicado_de',null).order('apellido').order('nombre')
+    .eq('activo',true).is('duplicado_de',null).order('apellido').order('nombre')
   if(error) throw error
-  return data||[]
+  const destino=Number(sedeId)
+  return (data||[]).filter(persona=>{
+    const sedes=(persona.sede_ids||[]).map(Number)
+    return sedes.includes(destino)||sedes.length===0||sedes.length>1
+  }).map(persona=>{
+    const sedes=(persona.sede_ids||[]).map(Number)
+    return {...persona,tipo_destinatario:sedes.length===0?'central':sedes.length>1?'multisede':'sede'}
+  }).sort((a,b)=>{
+    const orden={sede:0,multisede:1,central:2}
+    return orden[a.tipo_destinatario]-orden[b.tipo_destinatario]||String(a.apellido||'').localeCompare(String(b.apellido||''),'es')
+  })
 }
 
 export async function crearEnvioEpp({ sedeId, observaciones, bultos, destinatarios=[] }, userId) {
