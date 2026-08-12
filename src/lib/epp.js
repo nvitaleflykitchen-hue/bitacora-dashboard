@@ -89,13 +89,19 @@ async function sha256(value) {
 
 export async function cargarColaboradoresSede(sedeId) {
   if(!sedeId) return []
-  const {data,error}=await schema().from('personas').select('id,nombre,apellido,puesto,sede_ids')
-    .eq('activo',true).is('duplicado_de',null).order('apellido').order('nombre')
+  const [personasRes,sedeRes]=await Promise.all([
+    schema().from('personas').select('id,nombre,apellido,puesto,sede_ids')
+      .eq('activo',true).is('duplicado_de',null).order('apellido').order('nombre'),
+    supabase.schema('bitacora').from('sedes').select('id,nombre').eq('id',Number(sedeId)).single(),
+  ])
+  const {data,error}=personasRes
   if(error) throw error
+  if(sedeRes.error) throw sedeRes.error
   const destino=Number(sedeId)
+  const esEquipoCentral=String(sedeRes.data?.nombre||'').trim().toLowerCase()==='equipo central'
   return (data||[]).filter(persona=>{
     const sedes=(persona.sede_ids||[]).map(Number)
-    return sedes.includes(destino)||sedes.length===0||sedes.length>1
+    return esEquipoCentral?sedes.length===0:sedes.includes(destino)
   }).map(persona=>{
     const sedes=(persona.sede_ids||[]).map(Number)
     return {...persona,tipo_destinatario:sedes.length===0?'central':sedes.length>1?'multisede':'sede'}
