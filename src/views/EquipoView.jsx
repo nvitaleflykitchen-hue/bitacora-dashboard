@@ -3810,6 +3810,11 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                       {personasSede.map((p) => {
                         const score = Math.min(5, p.puntaje_promedio || 0);
                         const antiguedad = antiguedadEnAnios(p.fecha_ingreso);
+                        const categoria = p.puesto_cct?.nivel != null
+                          ? `Categoría ${p.puesto_cct.nivel}`
+                          : /^categor/i.test(p.area || "")
+                            ? p.area
+                            : null;
                         const periodoPrueba = estadoPeriodoPrueba(p);
                         const mostrarPeriodoPrueba = periodoPrueba && periodoPrueba.diasRestantes >= -30 && periodoPrueba.diasRestantes <= PERIODO_PRUEBA_DIAS;
                         const periodoColor = mostrarPeriodoPrueba ? colorPeriodoPrueba(periodoPrueba.diasRestantes) : null;
@@ -3851,6 +3856,9 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                                 {p.puesto_cct && <p className="font-metric" style={{ fontSize: ".6rem", color: "var(--text-dim)", marginTop: 2 }}>CCT · NIVEL {p.puesto_cct.nivel} · {p.puesto_cct.nombre}</p>}
                                 <p className="font-metric" style={{ fontSize: ".6rem", color: antiguedad ? "var(--phosphor)" : "var(--text-dim)", marginTop: 3 }}>
                                   ANTIGÜEDAD · {antiguedad ? `${antiguedad} AÑOS` : "SIN FECHA DE INGRESO"}
+                                </p>
+                                <p className="font-metric" style={{ fontSize: ".6rem", color: categoria ? "var(--text)" : "var(--text-dim)", marginTop: 3 }}>
+                                  CATEGORÍA · {categoria || "SIN CATEGORÍA CARGADA"}
                                 </p>
                                 {!p.encuadre && <span className="font-metric inline-flex mt-1 px-1.5 py-0.5 rounded" style={{ fontSize: ".56rem", color: "#f59e0b", background: "rgba(245,158,11,.08)", border: "1px solid rgba(245,158,11,.24)" }}>ENCUADRE PENDIENTE</span>}
                                 </div>
