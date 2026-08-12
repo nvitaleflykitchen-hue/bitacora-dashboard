@@ -32,6 +32,7 @@ export default function UniformesEppPanel({sedes=[]}){
   const envioValido=envio.sedeId&&envio.destinatarios.length>0&&envio.destinatarios.every(x=>x.productoId)
   const personasVisibles=colaboradores.filter(p=>`${p.nombre||''} ${p.apellido||''} ${p.puesto||''}`.toLowerCase().includes(peopleSearch.toLowerCase()))
   const conteoTipo=tipo=>colaboradores.filter(p=>p.tipo_destinatario===tipo).length
+  sedes=[...sedes].sort((a,b)=>a.nombre==='Equipo Central'?-1:b.nombre==='Equipo Central'?1:String(a.nombre).localeCompare(String(b.nombre),'es'))
   const labels=data.envios.flatMap(e=>(e.epp_envio_items||[]).map(i=>({...i,envioCodigo:e.codigo,sede:e.sede?.nombre||'Sede'})))
   const print=()=>imprimirConstanciasEpp(labels.filter(x=>selected.includes(x.id))).catch(e=>setError(e.message))
   return <div className="space-y-4">
