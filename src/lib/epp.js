@@ -2,6 +2,21 @@ import QRCode from 'qrcode'
 import { supabase } from './supabase'
 
 const schema = () => supabase.schema('equipo')
+const EPP_CATALOGO_BUCKET='epp-catalogo'
+const FOTO_MIME_EXT={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}
+
+export function validarFotoProductoEpp(file){
+  if(!file) return
+  if(!FOTO_MIME_EXT[file.type]) throw new Error('La foto debe ser JPG, PNG o WebP.')
+  if(file.size>5*1024*1024) throw new Error('La foto no puede superar los 5 MB.')
+}
+
+export async function urlFotoProductoEpp(path){
+  if(!path) return null
+  const {data,error}=await supabase.storage.from(EPP_CATALOGO_BUCKET).createSignedUrl(path,3600)
+  if(error) throw error
+  return data?.signedUrl||null
+}
 
 export async function cargarEpp() {
   const [catalogo, envios, sedes] = await Promise.all([
@@ -26,12 +41,19 @@ export async function crearProductoEpp(form, userId) {
   if(existentes.error) throw existentes.error
   const siguiente=Math.max(0,...(existentes.data||[]).map(x=>Number(String(x.codigo).match(/-(\d+)$/)?.[1]||0)))+1
   const codigo=`${prefijo}-${String(siguiente).padStart(5,'0')}`
+  validarFotoProductoEpp(form.foto)
+  let imagenPath=null
+  if(form.foto){
+    imagenPath=`catalogo/${crypto.randomUUID()}.${FOTO_MIME_EXT[form.foto.type]}`
+    const subida=await supabase.storage.from(EPP_CATALOGO_BUCKET).upload(imagenPath,form.foto,{cacheControl:'31536000',contentType:form.foto.type,upsert:false})
+    if(subida.error) throw subida.error
+  }
   const { data, error } = await schema().from('epp_catalogo').insert({
     codigo, nombre:form.nombre.trim(), categoria:form.categoria,
     descripcion:form.descripcion.trim()||null, requiere_devolucion:form.requiere_devolucion,
-    reposicion_periodica:form.reposicion_periodica, created_by:userId,
+    reposicion_periodica:form.reposicion_periodica, imagen_path:imagenPath, created_by:userId,
   }).select().single()
-  if (error) throw error
+  if (error) { if(imagenPath) await supabase.storage.from(EPP_CATALOGO_BUCKET).remove([imagenPath]); throw error }
   const talles=form.talles.split(',').map(x=>x.trim()).filter(Boolean)
   if (talles.length) {
     const res=await schema().from('epp_catalogo_talles').insert(talles.map(talle=>({producto_id:data.id,talle})))
