@@ -361,7 +361,7 @@ export default function App() {
       <FeedbackHost />
     </Suspense>
   )
-  if(eppEntregaToken)return <AuthProvider><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/></AuthProvider>
+  if(eppEntregaToken)return <><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/></>
   return (
     <AuthProvider>
       <AppInner />
