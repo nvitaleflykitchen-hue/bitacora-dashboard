@@ -49,6 +49,7 @@ import ActionOverflowMenu from "../components/ActionOverflowMenu";
 import HabilitarUsuarioModal from "../components/HabilitarUsuarioModal";
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
 import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
+import UniformesEppPanel from "./equipo/UniformesEppPanel";
 import {
   isQualityOnlyProfile,
   isQualityTeamPerson,
@@ -3338,6 +3339,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
   const primaryTabs = [
     ["lista", "LISTA"], ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
     ["horarios", "HORARIOS"], ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
+    ["uniformes-epp", "UNIFORMES Y EPP"],
   ].filter(([id]) => !isQualityOnly || ["lista", "analisis", "recursos"].includes(id))
     .map(([id, label]) => ({ id, label }));
   const secondaryTabs = [
@@ -3603,6 +3605,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {tab === "contactos" ? (
           <ContactosTab modulo="rrhh" />
+        ) : tab === "uniformes-epp" ? (
+          <UniformesEppPanel sedes={sedes} />
         ) : tab === "reclutamiento" ? (
           <ReclutamientoBoard
             sedes={sedes}
