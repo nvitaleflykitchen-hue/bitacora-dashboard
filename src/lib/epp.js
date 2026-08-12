@@ -100,7 +100,7 @@ export async function cargarColaboradoresSede(sedeId) {
     const sedes=(persona.sede_ids||[]).map(Number)
     return {...persona,tipo_destinatario:sedes.length===0?'central':sedes.length>1?'multisede':'sede'}
   }).sort((a,b)=>{
-    const orden={sede:0,multisede:1,central:2}
+    const orden={central:0,multisede:1,sede:2}
     return orden[a.tipo_destinatario]-orden[b.tipo_destinatario]||String(a.apellido||'').localeCompare(String(b.apellido||''),'es')
   })
 }
