@@ -30,6 +30,7 @@ import {
   Trash2,
   Archive,
   CalendarOff,
+  Paperclip,
 } from "lucide-react";
 import OrganigramaView from "./OrganigramaView";
 import AdjuntosPanel from "../components/AdjuntosPanel";
@@ -43,6 +44,7 @@ import CredencialesMasivasA4 from "../components/CredencialesMasivasA4";
 import VacacionesPanel from "../components/VacacionesPanel";
 import PersonaRrhhPanel from "../components/PersonaRrhhPanel";
 import BibliotecaRecursos from "../components/BibliotecaRecursos";
+import { abrirDocumentoAusencia, getDocumentosAusencias } from "../lib/ausenciaDocumentos";
 import EvaluacionesAnalysisPanel from "../components/EvaluacionesAnalysisPanel";
 import OverflowTabs from "../components/OverflowTabs";
 import ActionOverflowMenu from "../components/ActionOverflowMenu";
@@ -125,6 +127,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
   const [evaluaciones, setEvaluaciones] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [licencias, setLicencias] = useState([]);
+  const [documentosAusencia, setDocumentosAusencia] = useState([]);
   const [solicitudesAnulacion, setSolicitudesAnulacion] = useState([]);
   const [anulacionTarget, setAnulacionTarget] = useState(null);
   const [anulacionMotivo, setAnulacionMotivo] = useState("");
@@ -322,6 +325,8 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
     setLogros(lo.data || []);
     setPersonasEquipo(personasRes.data || []);
     setLicencias(licenciasRes.data || []);
+    try { setDocumentosAusencia(await getDocumentosAusencias(personaId)); }
+    catch { setDocumentosAusencia([]); }
     const historialIds = (hi.data || []).map((item) => item.id);
     if (historialIds.length) {
       const solicitudes = await supabase
@@ -1864,9 +1869,10 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
               </div>
               {!licencias.length ? <p style={{ color: "var(--text-dim)", fontSize: ".72rem" }}>Sin carpetas médicas ni licencias registradas.</p> : <div className="space-y-2">{licencias.map(item => {
                 const vigente = item.estado !== "Resuelto" && item.fecha_hasta && item.fecha_hasta >= new Date().toISOString().slice(0,10);
+                const documentos = documentosAusencia.filter(doc => doc.persona_novedad_id === item.id);
                 return <div key={item.id} className="p-3 flex flex-wrap items-center justify-between gap-3" style={{ background:"rgba(245,158,11,.04)", border:"1px solid rgba(245,158,11,.14)" }}>
                   <div><div className="flex flex-wrap items-center gap-2"><strong style={{ fontSize:".73rem" }}>{item.motivo_ausencia || "Licencia / ausencia"}</strong><span className="font-metric" style={{ fontSize:".54rem", color:vigente?"#f59e0b":"var(--text-dim)" }}>{vigente?"VIGENTE":"FINALIZADA"}</span></div><p style={{ color:"var(--text-dim)", fontSize:".65rem", marginTop:3 }}>{fmtFechaLarga(item.fecha_desde)} → {fmtFechaLarga(item.fecha_hasta)}{item.fecha_reintegro_estimada ? ` · Reintegro estimado ${fmtFechaLarga(item.fecha_reintegro_estimada)}` : ""}</p>{item.descripcion && <p style={{ color:"var(--text-dim)", fontSize:".63rem", marginTop:3 }}>{item.descripcion}</p>}</div>
-                  <div className="text-right"><p className="font-metric" style={{ fontSize:".56rem", color:item.estado_documentacion==="Validado"?"var(--phosphor)":"#f59e0b" }}>{item.estado_documentacion || "DOCUMENTACIÓN SIN INFORMAR"}</p><p style={{ color:"var(--text-dim)", fontSize:".58rem", marginTop:3 }}>{item.fecha_desde && item.fecha_hasta ? `Impacta horario: ${item.fecha_desde} a ${item.fecha_hasta}` : "Sin período estructurado: no impacta el cronograma"}</p></div>
+                  <div className="text-right"><p className="font-metric" style={{ fontSize:".56rem", color:item.estado_documentacion==="Validado"?"var(--phosphor)":"#f59e0b" }}>{item.estado_documentacion || "DOCUMENTACIÓN SIN INFORMAR"}</p><p style={{ color:"var(--text-dim)", fontSize:".58rem", marginTop:3 }}>{item.fecha_desde && item.fecha_hasta ? `Impacta horario: ${item.fecha_desde} a ${item.fecha_hasta}` : "Sin período estructurado: no impacta el cronograma"}</p>{documentos.map(doc => <button key={doc.id} type="button" className="btn-ghost" style={{ marginTop:6, fontSize:".58rem" }} onClick={() => abrirDocumentoAusencia(doc).catch(error => window.alert(error.message))}><Paperclip size={11}/> Ver certificado</button>)}</div>
                 </div>;
               })}</div>}
             </div>

@@ -10,6 +10,7 @@ import { useAuth } from '../lib/auth'
 import { db } from '../lib/supabase'
 import { getOperationalOrigin, REPORT_ACTIVITY_LEVELS, REPORT_TURNS } from '../lib/operationalDomains'
 import { uploadAdjunto } from '../lib/adjuntos'
+import { AUSENCIA_DOCUMENTOS_ACCEPT, uploadDocumentoAusencia, validarDocumentoAusencia } from '../lib/ausenciaDocumentos'
 import { ChevronLeft, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, Plus, X, Paperclip, FileText, Clock, Truck, User, Plane } from 'lucide-react'
 import { format } from 'date-fns'
 import useFormDraft from '../hooks/useFormDraft'
@@ -507,6 +508,15 @@ function PersonaNovedadCard({ item, index, personas, onChange, onRemove }) {
               {['Pendiente','Presentado','Validado','Rechazado'].map(x => <option key={x} value={x}>Certificado: {x}</option>)}
             </select>
             <label style={{ color:'var(--text-dim)', fontSize:'.65rem' }}>REINTEGRO ESTIMADO<input type="date" className="input-dark" style={{ width:'100%', marginTop:4 }} value={item.fecha_reintegro_estimada || ''} onChange={e => onChange({ ...item, fecha_reintegro_estimada:e.target.value })}/></label>
+            <label style={{ display:'block', marginTop:8, color:'var(--text-dim)', fontSize:'.65rem' }}>
+              CERTIFICADO / RESPALDO (OPCIONAL)
+              <input type="file" accept={AUSENCIA_DOCUMENTOS_ACCEPT} capture="environment" className="input-dark" style={{ width:'100%', marginTop:4 }} onChange={e => {
+                const file = e.target.files?.[0] || null
+                try { validarDocumentoAusencia(file); onChange({ ...item, certificado_archivo:file }) }
+                catch (error) { e.target.value = ''; window.alert(error.message) }
+              }}/>
+            </label>
+            {item.certificado_archivo && <p style={{ color:'var(--phosphor)', fontSize:'.62rem', marginTop:5 }}>Adjunto listo: {item.certificado_archivo.name}</p>}
             <p style={{ color:'var(--text-dim)', fontSize:'.62rem', marginTop:6 }}>No cargues diagnóstico ni información clínica. Registrá solamente período, documentación e impacto operativo.</p>
           </>}
         </div>
@@ -1222,8 +1232,8 @@ export default function MobileReporte({ onBack, onSuccess, context: rawContext =
       // Insertar novedades de personal
       if (personaNovedades.length > 0 && registroId) {
         const fechaHoy = new Date().toISOString().slice(0, 10)
-        await Promise.all(personaNovedades.map(p =>
-          createPersonaNovedad({
+        await Promise.all(personaNovedades.map(async p => {
+          const novedad = await createPersonaNovedad({
             registro_id:    registroId,
             sede_id:        sedeId,
             sede_nombre:    sedeSel?.nombre || '',
@@ -1240,7 +1250,9 @@ export default function MobileReporte({ onBack, onSuccess, context: rawContext =
             fecha_reporte:  fechaHoy,
             estado:         'Pendiente',
           })
-        ))
+          if (p.certificado_archivo) await uploadDocumentoAusencia(novedad, p.certificado_archivo)
+          return novedad
+        }))
       }
 
       // Insertar novedades de vuelo (plantilla del día con novedad reportada + ad-hoc no listados)
