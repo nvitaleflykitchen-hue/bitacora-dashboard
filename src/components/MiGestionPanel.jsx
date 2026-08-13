@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, BatteryMedium, CheckCircle2, Clock3, RefreshCw, UserRoundCheck } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BatteryMedium, Bot, CheckCircle2, Clock3, RefreshCw, Sparkles, UserRoundCheck } from 'lucide-react'
 import { getCapa, getTareas } from '../lib/queries'
 import { isGestionProjectAction } from '../lib/gestionProjects'
 import { useAuth } from '../lib/auth'
 import { isOwnTask } from '../lib/access'
 import { fmtFecha } from '../lib/dateUtils'
+import {consultarCopilotoLocal,estadoCopilotoLocal} from '../lib/copilotoLocal'
 
 const PRIORIDAD = { Alta: 30, Media: 20, Baja: 10 }
 const ABIERTAS = new Set(['Pendiente', 'En proceso'])
@@ -37,6 +38,7 @@ export default function MiGestionPanel({ onNavigate }) {
   const [tareas, setTareas] = useState([])
   const [loading, setLoading] = useState(true)
   const [energy, setEnergy] = useState(() => Number(localStorage.getItem(`mi-gestion-energy-${user?.id}`)) || 0)
+  const [ia,setIa]=useState({checking:true,available:false,model:'',answer:'',busy:false,error:''})
 
   const visible = ['admin','editor','grupo','encargado'].includes(rol)
 
@@ -65,6 +67,7 @@ export default function MiGestionPanel({ onNavigate }) {
   }
 
   useEffect(() => { if (visible) load() }, [visible, allowedSedeIds])
+  useEffect(()=>{if(!visible)return;estadoCopilotoLocal().then(info=>setIa(v=>({...v,...info,checking:false}))).catch(()=>setIa(v=>({...v,checking:false,available:false})))},[visible])
   useEffect(() => {
     if (!user?.id) return
     setEnergy(Number(localStorage.getItem(`mi-gestion-energy-${user.id}`)) || 0)
@@ -95,19 +98,35 @@ export default function MiGestionPanel({ onNavigate }) {
     setEnergy(value)
     localStorage.setItem(`mi-gestion-energy-${user?.id}`, String(value))
   }
+  const ask=async modo=>{
+    setIa(v=>({...v,busy:true,error:'',answer:''}))
+    const items=data.propias.concat(data.esperando,data.delegadas).map(t=>({module:t._module||'Tarea',title:t.titulo,status:t.estado,site:t.sede_nombre||t.sedes?.nombre,owner:t.perfiles?.nombre||t.responsable,priority:t.prioridad,date:t.fecha_limite||t.created_at}))
+    try{const answer=await consultarCopilotoLocal({items,modo});setIa(v=>({...v,answer,busy:false}))}
+    catch(error){setIa(v=>({...v,busy:false,error:`No pude consultar Ollama: ${error.message}`}))}
+  }
 
   return (
     <section className="px-4 md:px-6 pb-5">
       <div className="glass rounded p-4" style={{ border:'1px solid rgba(57,255,20,0.16)' }}>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'0.68rem', letterSpacing:'0.08em' }}>MI GESTIÓN · NICOLÁS 2.0</p>
+            <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'0.68rem', letterSpacing:'0.08em' }}>COPILOTO FLY · MI GESTIÓN</p>
             <h2 className="font-title font-bold mt-1" style={{ color:'var(--text)', fontSize:'1.05rem' }}>Sala de control de hoy</h2>
             <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', marginTop:3 }}>Claridad sobre urgencia · delegación sobre absorción</p>
           </div>
           <button type="button" className="btn-ghost flex items-center gap-1" onClick={load} disabled={loading}>
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Actualizar
           </button>
+        </div>
+
+        <div className="rounded p-3 mt-3" style={{background:'rgba(80,180,255,.045)',border:'1px solid rgba(80,180,255,.16)'}}>
+          <div className="flex justify-between gap-3 flex-wrap items-center">
+            <div className="flex items-center gap-2"><Bot size={16} color="#50b4ff"/><div><strong style={{fontSize:'.75rem'}}>COPILOTO FLY · IA LOCAL</strong><p style={{fontSize:'.62rem',color:'var(--text-dim)'}}>{ia.checking?'Buscando Ollama…':ia.available?`${ia.model} · disponible en esta PC`:'Ollama no disponible en este dispositivo'}</p></div></div>
+            <div className="flex gap-2 flex-wrap"><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('resumen')}><Sparkles size={11}/> Resumir mi día</button><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('prioridades')}>Priorizar</button><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('respuesta')}>Preparar seguimiento</button></div>
+          </div>
+          {ia.busy&&<p className="mt-3" style={{fontSize:'.68rem',color:'#50b4ff'}}>Copiloto Fly está analizando tu bandeja local…</p>}
+          {ia.error&&<p className="mt-3" style={{fontSize:'.68rem',color:'#ff7777'}}>{ia.error}</p>}
+          {ia.answer&&<div className="mt-3 p-3 rounded" style={{whiteSpace:'pre-wrap',fontSize:'.72rem',lineHeight:1.55,background:'rgba(0,0,0,.2)',color:'var(--text)'}}>{ia.answer}<p className="mt-3" style={{fontSize:'.58rem',color:'var(--text-dim)'}}>BORRADOR IA · Fuente: asuntos visibles en Mi Gestión. Revisar antes de usar.</p></div>}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 mt-4">

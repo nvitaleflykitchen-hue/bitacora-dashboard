@@ -191,8 +191,8 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
     e.preventDefault()
     const errors = []
     if (!form.titulo.trim()) errors.push({ field:'tarea-titulo', label:'Título', message:'es obligatorio' })
-    if (form.seguimiento_activo && !form.responsable_id) errors.push({ field:'tarea-responsable', label:'Responsable', message:'debe ser un usuario de la app para activar Pica Sesos' })
-    if (form.seguimiento_activo && !form.fecha_limite) errors.push({ field:'tarea-fecha', label:'Fecha límite', message:'es obligatoria para activar Pica Sesos' })
+    if (form.seguimiento_activo && !form.responsable_id) errors.push({ field:'tarea-responsable', label:'Responsable', message:'debe ser un usuario de la app para activar Copiloto Fly' })
+    if (form.seguimiento_activo && !form.fecha_limite) errors.push({ field:'tarea-fecha', label:'Fecha límite', message:'es obligatoria para activar Copiloto Fly' })
     setFormErrors(errors)
     if (errors.length) return
     setLoading(true)
@@ -378,7 +378,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
             <label className="flex items-center gap-2" style={{ cursor:'pointer', color:'var(--text)', fontSize:'.72rem' }}>
               <input type="checkbox" checked={form.seguimiento_activo} disabled={!form.responsable_id}
                 onChange={e=>set('seguimiento_activo',e.target.checked)} />
-              <strong>Seguimiento Pica Sesos</strong>
+              <strong>Seguimiento Copiloto Fly</strong>
             </label>
             <p style={{ color:'var(--text-dim)', fontSize:'.62rem' }}>Disponible para usuarios de la app. Recordará, reclamará y escalará sin duplicar avisos.</p>
             {form.seguimiento_activo&&<div>

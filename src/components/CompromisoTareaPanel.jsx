@@ -35,7 +35,7 @@ export default function CompromisoTareaPanel({ tareaId, readOnly=false }) {
       const compromiso=await getCompromisoTarea(tareaId)
       setItem(compromiso)
       setEventos(compromiso ? await getCompromisoEventos(compromiso.id) : [])
-    } catch(error) { console.error('Pica Sesos:',error) }
+    } catch(error) { console.error('Copiloto Fly:',error) }
     finally { setLoading(false) }
   }
   useEffect(()=>{ load() },[tareaId])
@@ -60,12 +60,12 @@ export default function CompromisoTareaPanel({ tareaId, readOnly=false }) {
   }
 
   if(loading) return <p style={{color:'var(--text-dim)',fontSize:'.65rem'}}>Cargando seguimiento…</p>
-  if(!item) return <p style={{color:'var(--text-dim)',fontSize:'.65rem'}}>Sin seguimiento Pica Sesos: requiere usuario responsable y fecha límite.</p>
+  if(!item) return <p style={{color:'var(--text-dim)',fontSize:'.65rem'}}>Sin seguimiento Copiloto Fly: requiere usuario responsable y fecha límite.</p>
   const vencido=new Date(item.fecha_objetivo)<new Date() && !['cumplido','cerrado','cancelado'].includes(item.estado)
   const canRespond=user?.id===item.responsable_id||['admin','editor'].includes(perfil?.rol)
   return <div className="rounded p-3 space-y-2" style={{background:'rgba(57,255,20,.035)',border:'1px solid rgba(57,255,20,.14)'}}>
     <div className="flex justify-between gap-2 flex-wrap">
-      <div className="flex items-center gap-2"><ShieldAlert size={13} color="var(--phosphor)"/><strong style={{fontSize:'.7rem'}}>PICA SESOS</strong></div>
+      <div className="flex items-center gap-2"><ShieldAlert size={13} color="var(--phosphor)"/><strong style={{fontSize:'.7rem'}}>SEGUIMIENTO COPILOTO FLY</strong></div>
       <span className="font-metric" style={{fontSize:'.58rem',color:vencido?'#ff6666':'var(--phosphor)'}}>{LABELS[item.estado]||item.estado}{vencido?' · VENCIDO':''}</span>
     </div>
     <p style={{fontSize:'.68rem',color:'var(--text)'}}>{item.accion_requerida}</p>
