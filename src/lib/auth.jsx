@@ -4,6 +4,7 @@ import { canWrite } from './access'
 
 const AuthContext = createContext(null)
 const AUTH_TIMEOUT_MS = 12_000
+const offlinePerfilKey = userId => `fly:offline-perfil:${userId}`
 
 function withTimeout(promise, label, ms = AUTH_TIMEOUT_MS) {
   return Promise.race([
@@ -70,14 +71,14 @@ export function AuthProvider({ children }) {
       return null
     }
 
-    let { data, error } = await withTimeout(
-      db()
-        .from('perfiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single(),
-      'Carga de perfil',
-    )
+    let data, error
+    try {
+      const result=await withTimeout(db().from('perfiles').select('*').eq('id',authUser.id).single(),'Carga de perfil',navigator.onLine?AUTH_TIMEOUT_MS:1200)
+      data=result.data;error=result.error
+    } catch(loadError) {
+      const cached=localStorage.getItem(offlinePerfilKey(authUser.id))
+      if(cached){data=JSON.parse(cached);error=null}else throw loadError
+    }
 
     if (error || !data) {
       const { data: nuevo, error: insertError } = await withTimeout(
@@ -123,6 +124,7 @@ export function AuthProvider({ children }) {
       console.warn('[auth] no se pudieron cargar permisos de módulos', permisosError)
       data = { ...data, compras_permisos: [], mantenimiento_permisos: [] }
     }
+    localStorage.setItem(offlinePerfilKey(authUser.id),JSON.stringify(data))
 
     // Only update perfil state when data actually changed to avoid cascading re-renders
     if (!perfilEqual(perfilRef.current, data)) {
