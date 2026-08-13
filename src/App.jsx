@@ -13,6 +13,7 @@ import WhatsNewModal from './components/WhatsNewModal'
 import { hasSeenLatestRelease } from './data/releases'
 import { normalizeReportContext } from './lib/reportContext'
 import { readAppRoute, writeAppRoute } from './lib/navigationRoutes'
+import OfflineStatus from './components/OfflineStatus'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
 const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
@@ -361,11 +362,12 @@ export default function App() {
       <FeedbackHost />
     </Suspense>
   )
-  if(eppEntregaToken)return <><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/></>
+  if(eppEntregaToken)return <><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/><OfflineStatus/></>
   return (
     <AuthProvider>
       <AppInner />
       <FeedbackHost />
+      <OfflineStatus />
     </AuthProvider>
   )
 }
