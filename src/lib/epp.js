@@ -134,6 +134,7 @@ export async function crearEnvioEpp({ sedeId, observaciones, bultos, destinatari
 }
 
 export function urlConfirmacionIndividual(item) { return `${window.location.origin}/?eppEntrega=${item.qr_token}` }
+export function urlRecepcionBulto(bulto) { return `${window.location.origin}/?view=eppRecepcion&bulto=${bulto.id}` }
 
 export async function imprimirConstanciasEpp(items){
   const enriched=await Promise.all(items.map(async item=>({...item,qr:await QRCode.toDataURL(urlConfirmacionIndividual(item),{width:650,margin:1,errorCorrectionLevel:'H'})})))
