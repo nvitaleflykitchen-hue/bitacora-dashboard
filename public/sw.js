@@ -1,4 +1,4 @@
-const CACHE_VERSION='fly-gestion-shell-v2'
+const CACHE_VERSION='fly-gestion-shell-v3'
 const CORE=['/','/index.html','/manifest.webmanifest','/favicon.svg']
 
 async function cacheAppShell(){
@@ -27,8 +27,18 @@ self.addEventListener('fetch',event=>{
   const url=new URL(request.url)
   if(url.origin!==self.location.origin)return
   if(request.mode==='navigate'){
-    event.respondWith(caches.match('/index.html').then(cached=>cached||fetch(request)))
-    event.waitUntil(fetch('/index.html',{cache:'no-store'}).then(response=>response.ok?cacheAppShell():null).catch(()=>null))
+    event.respondWith(
+      fetch(request,{cache:'no-store'})
+        .then(async response=>{
+          if(response.ok){
+            const cache=await caches.open(CACHE_VERSION)
+            await cache.put('/index.html',response.clone())
+            await cache.put('/',response.clone())
+          }
+          return response
+        })
+        .catch(()=>caches.match('/index.html'))
+    )
     return
   }
   if(url.pathname.startsWith('/assets/')||['/manifest.webmanifest','/favicon.svg'].includes(url.pathname)){
