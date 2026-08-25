@@ -31,6 +31,46 @@ export function createEvaluacionPersonalPdf(persona = {}, evaluacion = {}) {
   const sedes = persona.sede_nombre || persona.sedes_nombres || "-";
   let y = 14;
 
+  const drawContinuationHeader = () => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    doc.text("EVALUACION DE DESEMPENO - CONTINUACION", 15, 16);
+    doc.setDrawColor(180);
+    doc.line(15, 20, 195, 20);
+    y = 28;
+  };
+
+  const addContinuationPage = () => {
+    doc.addPage();
+    drawContinuationHeader();
+  };
+
+  const drawLongTextBlock = (label, value) => {
+    const lineHeight = 4;
+    let lines = doc.splitTextToSize(clean(value), 180);
+    let continued = false;
+    while (lines.length) {
+      if (y + 9 > 255) addContinuationPage();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(0);
+      doc.text(`${label}${continued ? " (continuacion)" : ""}:`, 15, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      const availableLines = Math.max(1, Math.floor((255 - y) / lineHeight));
+      const pageLines = lines.slice(0, availableLines);
+      doc.text(pageLines, 15, y, { lineHeightFactor: 1.25 });
+      y += pageLines.length * lineHeight + 3;
+      lines = lines.slice(pageLines.length);
+      if (lines.length) {
+        addContinuationPage();
+        continued = true;
+      }
+    }
+  };
+
   doc.addImage(FLY_KITCHEN_LOGO_PNG, "PNG", 15, y, 38, 14.5);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
@@ -81,22 +121,27 @@ export function createEvaluacionPersonalPdf(persona = {}, evaluacion = {}) {
     ["Sugerencias del evaluador", evaluacion.sugerencias_evaluador],
   ];
   observaciones.forEach(([label, value]) => {
-    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.text(`${label}:`, 15, y);
-    y += 5;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const lines = doc.splitTextToSize(clean(value), 180).slice(0, 4);
-    doc.text(lines, 15, y, { lineHeightFactor: 1.25 });
-    y += Math.max(8, lines.length * 4) + 3;
+    drawLongTextBlock(label, value);
   });
+  if (y + 8 > 255) addContinuationPage();
   doc.setFont("helvetica", "normal"); doc.setFontSize(8);
   doc.text(`Supero periodo de prueba: ${evaluacion.supero_prueba ? "Si" : "No"}`, 15, y);
 
-  const firmaY = 270;
+  y += 6;
+  if (y + 25 > 282) addContinuationPage();
+  const firmaY = Math.max(245, Math.min(270, y + 18));
   doc.setDrawColor(80); doc.line(20, firmaY, 90, firmaY); doc.line(120, firmaY, 190, firmaY);
   doc.setFontSize(7); doc.setTextColor(70);
   doc.text("Firma del evaluador", 55, firmaY + 5, { align: "center" });
   doc.text("Firma del personal evaluado", 155, firmaY + 5, { align: "center" });
-  doc.setFontSize(6.5); doc.text(`Generado por Fly Gestion - ${new Date().toLocaleDateString("es-AR")}`, 105, 290, { align: "center" });
+  const totalPages = doc.getNumberOfPages();
+  for (let page = 1; page <= totalPages; page += 1) {
+    doc.setPage(page);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(70);
+    doc.text(`Generado por Fly Gestion - ${new Date().toLocaleDateString("es-AR")} - Pagina ${page} de ${totalPages}`, 105, 290, { align: "center" });
+  }
   return doc;
 }
 
