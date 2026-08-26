@@ -551,20 +551,88 @@ export async function getCapaPlan(auditoria_codigo) {
     .eq("auditoria_codigo", auditoria_codigo)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  if (!data?.id) return data;
+  const { data: miembros, error: miembrosError } = await db()
+    .from("capa_plan_miembros")
+    .select("perfil_id, persona_id")
+    .eq("plan_id", data.id);
+  if (miembrosError) throw miembrosError;
+  return {
+    ...data,
+    colaborador_ids: (miembros || []).map((miembro) =>
+      miembro.persona_id
+        ? `persona:${miembro.persona_id}`
+        : `perfil:${miembro.perfil_id}`,
+    ),
+  };
 }
 
 export async function upsertCapaPlan(payload) {
+  const { colaborador_ids = [], ...planPayload } = payload;
   const { data, error } = await db()
     .from("capa_planes")
     .upsert(
-      { ...payload, updated_at: new Date().toISOString() },
+      { ...planPayload, updated_at: new Date().toISOString() },
       { onConflict: "auditoria_codigo" },
     )
     .select()
     .single();
   if (error) throw error;
-  return data;
+  const { error: deleteMembersError } = await db()
+    .from("capa_plan_miembros")
+    .delete()
+    .eq("plan_id", data.id);
+  if (deleteMembersError) throw deleteMembersError;
+  const miembros = colaborador_ids.map((value) => {
+    const [kind, id] = String(value).includes(":")
+      ? String(value).split(":", 2)
+      : ["perfil", String(value)];
+    return {
+      plan_id: data.id,
+      perfil_id: kind === "perfil" ? id : null,
+      persona_id: kind === "persona" ? id : null,
+    };
+  }).filter((miembro) => miembro.perfil_id || miembro.persona_id);
+  if (miembros.length) {
+    const { error: insertMembersError } = await db()
+      .from("capa_plan_miembros")
+      .insert(miembros);
+    if (insertMembersError) throw insertMembersError;
+  }
+  return { ...data, colaborador_ids };
+}
+
+export async function getColaboradoresProyecto() {
+  const [perfiles, personasResult] = await Promise.all([
+    getPerfiles(),
+    supabase
+      .from("v_personas")
+      .select("id, perfil_id, nombre, apellido, puesto, area, activo")
+      .eq("activo", true)
+      .order("apellido")
+      .order("nombre"),
+  ]);
+  if (personasResult.error) throw personasResult.error;
+  const personas = personasResult.data || [];
+  const perfilesVinculados = new Set(personas.map((persona) => persona.perfil_id).filter(Boolean));
+  return [
+    ...personas.map((persona) => ({
+      id: `persona:${persona.id}`,
+      nombre: `${persona.nombre || ""} ${persona.apellido || ""}`.trim(),
+      detalle: [persona.puesto, persona.area].filter(Boolean).join(" · "),
+      perfil_id: persona.perfil_id || null,
+      origen: "personal",
+    })),
+    ...perfiles
+      .filter((perfil) => perfil.activo !== false && !perfilesVinculados.has(perfil.id))
+      .map((perfil) => ({
+        id: `perfil:${perfil.id}`,
+        nombre: perfil.nombre || perfil.email,
+        detalle: perfil.rol || "Usuario",
+        perfil_id: perfil.id,
+        origen: "usuario",
+      })),
+  ].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 }
 
 export async function deleteCapaProject(plan) {
