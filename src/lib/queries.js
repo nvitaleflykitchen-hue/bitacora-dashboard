@@ -1,4 +1,5 @@
 import { db, supabase } from "./supabase";
+import { formatCapaCode, nextCapaSequence } from "./capaCodes";
 import {
   format,
   startOfDay,
@@ -352,19 +353,23 @@ export async function createCapa(payload) {
     "Estandarización": "ES",
   };
   const prefijo = prefijosPorTipo[payload.tipo] || "PG";
-  const { count } = await db()
+  const { data: codigos, error: codigosError } = await db()
     .from("capa")
-    .select("*", { count: "exact", head: true })
+    .select("codigo")
     .like("codigo", `${prefijo}-${anio}-%`);
-  const nro = String((count || 0) + 1).padStart(3, "0");
-  const codigo = `${prefijo}-${anio}-${nro}`;
-  const { data, error } = await db()
-    .from("capa")
-    .insert({ ...payload, codigo })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  if (codigosError) throw codigosError;
+  const secuenciaInicial = nextCapaSequence(codigos || [], prefijo, anio);
+  for (let intento = 0; intento < 3; intento += 1) {
+    const codigo = formatCapaCode(prefijo, anio, secuenciaInicial + intento);
+    const { data, error } = await db()
+      .from("capa")
+      .insert({ ...payload, codigo })
+      .select()
+      .single();
+    if (!error) return data;
+    if (error.code !== "23505" || intento === 2) throw error;
+  }
+  throw new Error("No se pudo asignar un código único a la acción.");
 }
 
 export async function updateCapa(id, payload) {
