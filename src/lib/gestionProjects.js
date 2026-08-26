@@ -3,6 +3,11 @@ export function isGestionProjectAction(item) {
   return code.startsWith('FK-GEST-') || (!item?.no_conformidad_id && String(item?.sede_nombre || '').toLowerCase() === 'gestión')
 }
 
+export function gestionActionPayload(form = {}) {
+  const { supervisor_id: _supervisorId, colaborador_ids: _colaboradorIds, ...actionPayload } = form
+  return actionPayload
+}
+
 export function gestionHealth(item, now = new Date()) {
   if (['Completada', 'Verificada'].includes(item?.estado) || item?.gestion_estado === 'Cumplida') return { level:'ok', label:'Cumplida', days:0 }
   const base = item?.ultima_gestion_at || item?.aceptado_at || item?.updated_at || item?.created_at

@@ -8,7 +8,7 @@ import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
 import OperationalStateChip from '../components/OperationalStateChip'
 import { generarInformeCapaPDF } from '../lib/capaReportPdf'
-import { gestionHealth, isGestionProjectAction } from '../lib/gestionProjects'
+import { gestionActionPayload, gestionHealth, isGestionProjectAction } from '../lib/gestionProjects'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import useFormDraft from '../hooks/useFormDraft'
@@ -129,7 +129,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, colabo
       const esGestion = mode === 'gestion'
       const codigoProyecto = esGestion ? codigoProyectoGestion(nombreProyecto) : (form.auditoria_codigo || null)
       const created = await createCapa({
-        ...form,
+        ...gestionActionPayload(form),
         sede_id: form.sede_id || null,
         sede_nombre: form.sede_nombre || (esGestion ? 'Gestión' : null),
         no_conformidad_id: esGestion ? null : (form.no_conformidad_id || null),
