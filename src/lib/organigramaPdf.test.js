@@ -63,4 +63,22 @@ describe('organigramaPdfFilename', () => {
     expect(pdfMocks.roundedRect).toHaveBeenCalledTimes(2)
     expect(pdfMocks.save).toHaveBeenCalledWith('organigrama-hospitales.pdf')
   })
+
+  it('representa el alcance transversal de Calidad con conexiones funcionales directas', async () => {
+    await exportOrganigramaPdf({
+      name:'Planta de Producción',
+      nodes:[
+        { id:'quality', position:{ x:300, y:180 }, data:{ label:'Débora', role:'Dirección Técnica', area:'Calidad transversal', color:'#f59e0b' } },
+        { id:'production', position:{ x:0, y:560 }, data:{ label:'Producción', role:'Coordinación' } },
+        { id:'deposit', position:{ x:300, y:560 }, data:{ label:'Depósito', role:'Responsable' } },
+      ],
+      edges:[
+        { source:'quality', target:'production', data:{ relationType:'funcional', scope:'quality', arrow:true } },
+        { source:'quality', target:'deposit', data:{ relationType:'funcional', scope:'quality', arrow:true } },
+      ],
+    })
+
+    expect(pdfMocks.line).toHaveBeenCalled()
+    expect(pdfMocks.roundedRect).toHaveBeenCalledTimes(3)
+  })
 })

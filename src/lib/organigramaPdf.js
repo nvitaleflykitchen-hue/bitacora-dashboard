@@ -42,7 +42,7 @@ export const organigramaPdfFilename = name => {
 export function createOrganigramaPrintLayout(nodes, pageWidth = 297, pageHeight = 210) {
   if (!nodes?.length) return { nodes:[], scaleX:1, scaleY:1 }
   const marginX = 10
-  const top = 30
+  const top = 34
   const bottom = 13
   const minX = Math.min(...nodes.map(node => Number(node.position?.x) || 0))
   const minY = Math.min(...nodes.map(node => Number(node.position?.y) || 0))
@@ -69,22 +69,25 @@ function drawEdge(pdf, edge, source, target, index) {
   if (!source || !target) return
   const relation = edge.data?.relationType || 'jerarquica'
   const functional = ['funcional', 'apoyo', 'comunicacion'].includes(relation)
-  const color = functional ? '#2563eb' : '#166534'
+  const qualityScope = edge.data?.scope === 'quality'
+  const color = qualityScope ? '#d97706' : functional ? '#2563eb' : '#166534'
   const [r, g, b] = rgb(color)
   const startX = source.print.x + source.print.width / 2
   const startY = source.print.y + source.print.height
   const endX = target.print.x + target.print.width / 2
   const endY = target.print.y
   const gap = Math.max(4, endY - startY)
-  const bendY = startY + gap * .42 + (functional ? (index % 4) * .65 : 0)
+  const bendY = qualityScope
+    ? startY + gap * .2 + (index % 4) * .8
+    : startY + gap * .42 + (functional ? (index % 4) * .65 : 0)
 
   pdf.setDrawColor(r, g, b)
-  pdf.setLineWidth(functional ? .35 : .65)
-  pdf.setLineDashPattern(functional ? [2.1, 1.4] : [], 0)
+  pdf.setLineWidth(qualityScope ? .65 : functional ? .35 : .65)
+  pdf.setLineDashPattern(functional ? [2.4, 1.5] : [], 0)
   pdf.line(startX, startY, startX, bendY)
   pdf.line(startX, bendY, endX, bendY)
   pdf.line(endX, bendY, endX, endY)
-  if (!functional && edge.data?.arrow !== false) {
+  if (edge.data?.arrow !== false) {
     pdf.setFillColor(r, g, b)
     pdf.triangle(endX - 1.25, endY - 1.9, endX + 1.25, endY - 1.9, endX, endY, 'F')
   }
@@ -99,8 +102,9 @@ function drawNode(pdf, node) {
   const detailSize = Math.max(5.2, titleSize - 1.3)
   const maxChars = Math.max(12, Math.floor((width - padding * 2) / (titleSize * .18)))
 
-  pdf.setFillColor(255, 255, 255)
-  pdf.setDrawColor(75, 85, 99)
+  const qualityNode = String(node.data?.area || '').toLowerCase().includes('calidad')
+  pdf.setFillColor(...(qualityNode ? [255, 250, 235] : [255, 255, 255]))
+  pdf.setDrawColor(...(qualityNode ? [217, 119, 6] : [75, 85, 99]))
   pdf.setLineWidth(.38)
   pdf.roundedRect(x, y, width, height, 1.7, 1.7, 'FD')
   pdf.setFillColor(r, g, b)
@@ -153,11 +157,15 @@ export async function exportOrganigramaPdf({ name, nodes, edges }) {
   pdf.line(10, 22, 18, 22)
   pdf.setTextColor(55, 65, 81)
   pdf.text('Dependencia jerárquica', 20, 23)
-  pdf.setDrawColor(37, 99, 235)
-  pdf.setLineWidth(.35)
-  pdf.setLineDashPattern([2.1, 1.4], 0)
+  pdf.setDrawColor(217, 119, 6)
+  pdf.setLineWidth(.65)
+  pdf.setLineDashPattern([2.4, 1.5], 0)
   pdf.line(56, 22, 64, 22)
-  pdf.text('Calidad transversal / apoyo', 66, 23)
+  pdf.text('Alcance técnico transversal de Calidad', 66, 23)
+  pdf.setTextColor(146, 64, 14)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(6.5)
+  pdf.text('CALIDAD ALCANZA A TODAS LAS ÁREAS OPERATIVAS SIN ALTERAR SU DEPENDENCIA JERÁRQUICA.', 10, 28)
 
   ;(edges || []).forEach((edge, index) => drawEdge(pdf, edge, nodeMap.get(edge.source), nodeMap.get(edge.target), index))
   pdf.setLineDashPattern([], 0)

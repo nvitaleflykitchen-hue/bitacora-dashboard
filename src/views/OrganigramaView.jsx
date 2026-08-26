@@ -494,11 +494,20 @@ export default function OrganigramaView({ onNavigate }) {
     })),
   ].filter(Boolean)
   const operationalParent = supervisor ? 'supervisor' : operations ? 'operations' : 'executive'
+  const qualityTargets = sedes.length
+    ? sedes.map(sede => `sede:${sede.id}`)
+    : operations ? ['operations'] : []
   const orgEdges = [
     executive && operations && { from:'executive', to:'operations' },
     executive && commercial && { from:'executive', to:'commercial', support:true },
     executive && quality && { from:'executive', to:'quality' },
-    quality && operations && hasOperationalStructure && { from:'quality', to:'operations', functional:true },
+    ...qualityTargets.map((target, index) => ({
+      from:'quality',
+      to:target,
+      functional:true,
+      qualityScope:true,
+      scopeLabel:index === 0 ? 'CALIDAD TRANSVERSAL' : '',
+    })),
     operations && supervisor && { from:'operations', to:'supervisor' },
     ...sedes.map(sede => ({ from:operationalParent, to:`sede:${sede.id}` })),
   ].filter(Boolean)
@@ -523,7 +532,7 @@ export default function OrganigramaView({ onNavigate }) {
       }
     }),
   ].filter(Boolean)
-  const designerEdges = orgEdges.map(edge => {
+  const designerEdges = orgEdges.map((edge, edgeIndex) => {
     const id = `${edge.from}-${edge.to}`
     const relationType = edge.functional ? 'funcional' : edge.support ? 'apoyo' : 'jerarquica'
     const color = edge.functional ? '#38bdf8' : edge.support ? '#f59e0b' : '#39ff14'
@@ -532,11 +541,17 @@ export default function OrganigramaView({ onNavigate }) {
     source:edge.from,
     target:edge.to,
     type:'smoothstep',
+    pathOptions:edge.qualityScope ? { offset:48 + (edgeIndex % 3) * 14, borderRadius:8 } : undefined,
     animated:false,
-    required:hasOperationalStructure && ['executive-operations','executive-quality','quality-operations'].includes(id),
-    data:{ relationType, lineStyle:edge.functional || edge.support ? 'dashed' : 'solid', color, width:1.7, arrow:!edge.functional },
-    markerEnd:edge.functional ? undefined : { type:'arrowclosed', color },
-    style:{ stroke:color, strokeWidth:1.7, strokeDasharray:edge.functional || edge.support ? '6 5' : undefined },
+    required:hasOperationalStructure && (['executive-operations','executive-quality'].includes(id) || edge.qualityScope),
+    label:edge.scopeLabel || undefined,
+    labelStyle:edge.scopeLabel ? { fill:'#f59e0b', fontSize:10, fontWeight:800, letterSpacing:'.06em' } : undefined,
+    labelBgStyle:edge.scopeLabel ? { fill:'#0a0b0f', fillOpacity:.94 } : undefined,
+    labelBgPadding:edge.scopeLabel ? [6, 4] : undefined,
+    labelBgBorderRadius:edge.scopeLabel ? 3 : undefined,
+    data:{ relationType, lineStyle:edge.functional || edge.support ? 'dashed' : 'solid', color:edge.qualityScope ? '#f59e0b' : color, width:edge.qualityScope ? 2.4 : 1.7, arrow:edge.qualityScope || !edge.functional, scope:edge.qualityScope ? 'quality' : undefined },
+    markerEnd:edge.qualityScope || !edge.functional ? { type:'arrowclosed', color:edge.qualityScope ? '#f59e0b' : color } : undefined,
+    style:{ stroke:edge.qualityScope ? '#f59e0b' : color, strokeWidth:edge.qualityScope ? 2.4 : 1.7, strokeDasharray:edge.functional || edge.support ? '7 5' : undefined },
   }})
   const vanesa = data.contactos.find(contact => hasAny(contact.nombre, ['vanesa ledesma']))
   const vanesaNodeId = vanesa?.id ? `contact:${vanesa.id}` : 'central:vanesa'
