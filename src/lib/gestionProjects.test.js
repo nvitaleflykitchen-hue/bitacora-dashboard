@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gestionHealth, isGestionProjectAction } from './gestionProjects'
+import { gestionActionPayload, gestionHealth, isGestionProjectAction } from './gestionProjects'
 
 describe('protocolo de gestión', () => {
   const now = new Date('2026-07-20T12:00:00Z')
@@ -13,5 +13,17 @@ describe('protocolo de gestión', () => {
     expect(gestionHealth({ gestion_estado:'Sin aceptar', updated_at:'2026-07-17T10:00:00Z' }, now).level).toBe('critical')
     expect(gestionHealth({ gestion_estado:'Aceptada', ultima_gestion_at:'2026-07-16T10:00:00Z' }, now).level).toBe('warning')
     expect(gestionHealth({ gestion_estado:'Aceptada', ultima_gestion_at:'2026-07-10T10:00:00Z' }, now).level).toBe('critical')
+  })
+
+  it('separa las asignaciones del plan del registro de acción', () => {
+    expect(gestionActionPayload({
+      tipo:'Desarrollo',
+      descripcion:'Evaluar alternativa',
+      supervisor_id:'perfil-supervisor',
+      colaborador_ids:['persona:empleado-1'],
+    })).toEqual({
+      tipo:'Desarrollo',
+      descripcion:'Evaluar alternativa',
+    })
   })
 })
