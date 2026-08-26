@@ -87,6 +87,34 @@ function draw(pdf, text, x, y, opts = {}) {
   pdf.text(safe, x, y)
 }
 
+function drawFittedLines(pdf, text, x, y, opts = {}) {
+  const maxWidth = opts.maxWidth
+  const maxLines = opts.maxLines
+  const minSize = opts.minSize || 5
+  let fontSize = opts.size || 8
+  const safe = value(text).replace(/\r?\n/g, ' / ')
+  if (!safe) return
+
+  pdf.setFont('helvetica', opts.bold ? 'bold' : 'normal')
+  let lines = []
+  while (fontSize >= minSize) {
+    pdf.setFontSize(fontSize)
+    lines = pdf.splitTextToSize(safe, maxWidth)
+    if (lines.length <= maxLines) break
+    fontSize -= 0.5
+  }
+
+  // Nunca recortamos datos de la ficha. En el caso extremo de que el texto
+  // siga siendo largo, reducimos proporcionalmente hasta que entre completo.
+  if (lines.length > maxLines) {
+    fontSize = Math.max(3.5, fontSize * (maxLines / lines.length))
+    pdf.setFontSize(fontSize)
+    lines = pdf.splitTextToSize(safe, maxWidth)
+  }
+
+  pdf.text(lines, x, y, { lineHeightFactor: opts.lineHeightFactor || 1.05 })
+}
+
 function check(pdf, active, x, y) {
   if (!active) return
   pdf.setFont('helvetica', 'bold')
@@ -138,7 +166,13 @@ export async function generateFichaEntrevistaPdf({ candidate = {}, solicitud = {
   check(pdf, study.includes('terciario'), 345, 344)
   check(pdf, study.includes('universitario'), 437, 344)
 
-  draw(pdf, entrevista.estudios_cursados, 183, 367, { size: 8, maxWidth: 115, singleLine: true })
+  drawFittedLines(pdf, entrevista.estudios_cursados, 183, 363.5, {
+    size: 7,
+    minSize: 4.5,
+    maxWidth: 115,
+    maxLines: 2,
+    lineHeightFactor: 1,
+  })
   check(pdf, isYes(entrevista.estudia_actualmente), 408, 367)
 
   check(pdf, mobility.some(x => x.includes('transporte')), 184, 389)
@@ -156,11 +190,12 @@ export async function generateFichaEntrevistaPdf({ candidate = {}, solicitud = {
   check(pdf, isYes(entrevista.antecedentes_penales), 186, 477)
   draw(pdf, entrevista.recomendado_por || candidate.recomendado_por, 183, 499, { size: 8, maxWidth: 320, singleLine: true })
   draw(pdf, entrevista.entrevistador, 160, 548, { size: 8, maxWidth: 343, singleLine: true })
-  draw(pdf, entrevista.observaciones || candidate.notas, 56, 566, {
+  drawFittedLines(pdf, entrevista.observaciones || candidate.notas, 56, 566, {
     size: 7.5,
+    minSize: 5,
     maxWidth: 448,
-    maxLines: 15,
-    lineHeightFactor: 1.18,
+    maxLines: 18,
+    lineHeightFactor: 1.12,
   })
 
   const filename = `ficha_entrevista_${fullName(candidate, entrevista) || 'candidato'}.pdf`
