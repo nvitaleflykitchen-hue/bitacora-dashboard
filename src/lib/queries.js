@@ -342,7 +342,16 @@ export async function getCapa(filtros = {}) {
 
 export async function createCapa(payload) {
   const anio = new Date().getFullYear();
-  const prefijo = payload.tipo === "Preventiva" ? "PA" : "CA";
+  const prefijosPorTipo = {
+    Correctiva: "CA",
+    Preventiva: "PA",
+    Desarrollo: "DE",
+    "Implementación": "IM",
+    "Mejora continua": "MC",
+    "Innovación": "IN",
+    "Estandarización": "ES",
+  };
+  const prefijo = prefijosPorTipo[payload.tipo] || "PG";
   const { count } = await db()
     .from("capa")
     .select("*", { count: "exact", head: true })

@@ -73,7 +73,7 @@ Estos son los únicos valores que Postgres acepta para cada campo de estado/clas
 | `tareas.prioridad` | `Alta`, `Media`, `Baja` |
 | `tareas.categoria` | `A` Producción / Servicio del turno; `B` Cadena de frío y conservación; `C` Recepción / Abastecimiento; `D` Stock crítico; `E` Equipos / Mantenimiento; `F` Higiene / BPM; `G` Personal / Dotación; `H` Cliente / Usuario / Incidentes; `OTRA` Otras. Fuente de verdad del frontend: `src/components/TareaForm.jsx`. |
 | `no_conformidades.estado` | `Abierta`, `En proceso`, `Cerrada`, `Verificada` |
-| `capa.tipo` | `Correctiva`, `Preventiva` |
+| `capa.tipo` | Calidad/CAPA: `Correctiva`, `Preventiva`. Proyectos de Gestión también admiten `Desarrollo`, `Implementación`, `Mejora continua`, `Innovación` y `Estandarización`. |
 | `capa.estado` | `Pendiente`, `En ejecución`, `Completada`, `Verificada` |
 | `requerimientos.estado` | `Pendiente`, `Observado`, `Aprobado`, `Enviado`, `En compra`, `Recibido`, `Cumplido`, `Rechazado`, `Cancelado` (frontend implementado; requiere aplicar migración local pendiente) |
 | `requerimientos.urgencia` | `alta`, `media`, `baja` |
