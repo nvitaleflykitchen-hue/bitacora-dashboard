@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Download, Loader2, ShieldCheck } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { fmtFechaLarga } from "../lib/dateUtils";
 import { mensajeError } from "../lib/errores";
+import { generateFichaEntrevistaPdf } from "../lib/reclutamientoPdf";
 
 function Dato({ label, value }) {
   const visible = value !== null && value !== undefined && value !== "";
@@ -36,9 +37,89 @@ function Seccion({ title, children }) {
   );
 }
 
+function EntrevistaVinculada({ reclutamiento }) {
+  if (!reclutamiento?.entrevista) return null;
+  const { candidato, entrevista, solicitud } = reclutamiento;
+  const fecha = (value) => (value ? fmtFechaLarga(value) : null);
+  const pdfPayload = { candidate: candidato, entrevista, solicitud };
+
+  return (
+    <div className="space-y-4">
+      <div
+        className="glass p-3 flex items-center justify-between gap-4"
+        style={{ borderColor: "rgba(57,255,20,0.22)" }}
+      >
+        <div>
+          <p className="font-metric" style={{ color: "var(--phosphor)", fontSize: "0.68rem" }}>
+            FICHA DE ENTREVISTA VINCULADA AL LEGAJO
+          </p>
+          <p style={{ color: "var(--text-dim)", fontSize: "0.62rem", marginTop: 3 }}>
+            Conservada desde Selección de personal · {fecha(entrevista.fecha_entrevista) || "Sin fecha"}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn-ghost flex items-center gap-1.5"
+          onClick={() => generateFichaEntrevistaPdf(pdfPayload)}
+        >
+          <Download size={13} /> PDF entrevista
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Seccion title="ENTREVISTA E INGRESO">
+          <Dato label="Fecha de entrevista" value={fecha(entrevista.fecha_entrevista)} />
+          <Dato label="Entrevistador" value={entrevista.entrevistador} />
+          <Dato label="Fecha de ingreso" value={fecha(candidato.fecha_ingreso)} />
+          <Dato label="Búsqueda / puesto" value={solicitud?.puesto} />
+          <Dato label="Disponibilidad horaria" value={entrevista.disponibilidad_horaria} />
+          <Dato label="Evaluación breve" value={candidato.evaluacion_breve} />
+        </Seccion>
+        <Seccion title="FORMACIÓN Y DOCUMENTACIÓN">
+          <Dato label="Nivel de estudio" value={entrevista.nivel_estudio} />
+          <Dato label="Estudios cursados" value={entrevista.estudios_cursados} />
+          <Dato label="Estudia actualmente" value={entrevista.estudia_actualmente} />
+          <Dato label="Carnet de conducir" value={entrevista.carnet_conducir} />
+          <Dato label="Carnet sanitario" value={entrevista.carnet_sanitario ? "Sí" : "No"} />
+          <Dato label="Antecedentes penales" value={entrevista.antecedentes_penales ? "Sí" : "No"} />
+        </Seccion>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Seccion title="DATOS PERSONALES DE ENTREVISTA">
+          <Dato label="Fecha de nacimiento" value={fecha(entrevista.fecha_nacimiento)} />
+          <Dato label="Estado civil" value={entrevista.estado_civil} />
+          <Dato label="Hijos menores" value={entrevista.hijos_menores} />
+          <Dato label="Edades" value={entrevista.edades_hijos} />
+          <Dato label="Nacionalidad" value={entrevista.nacionalidad} />
+          <Dato label="Movilidad" value={entrevista.movilidad} />
+          <Dato label="Enfermedades crónicas" value={entrevista.enfermedades_cronicas} />
+          <Dato label="Recomendado por" value={entrevista.recomendado_por || candidato.recomendado_por} />
+        </Seccion>
+        <Seccion title="DOMICILIO E INDUMENTARIA">
+          <Dato label="Domicilio" value={entrevista.domicilio} />
+          <Dato label="Piso / Dpto." value={[entrevista.piso, entrevista.departamento].filter(Boolean).join(" / ")} />
+          <Dato label="Barrio" value={entrevista.barrio} />
+          <Dato label="Ciudad / CP" value={[entrevista.ciudad, entrevista.codigo_postal].filter(Boolean).join(" · ")} />
+          <Dato label="Pantalón" value={entrevista.talle_pantalon} />
+          <Dato label="Camisa / chomba" value={entrevista.talle_camisa} />
+          <Dato label="Calzado" value={entrevista.talle_calzado} />
+        </Seccion>
+      </div>
+
+      <Seccion title="OBSERVACIONES DE LA ENTREVISTA">
+        <div className="col-span-2">
+          <Dato label="Registro completo" value={entrevista.observaciones || candidato.notas} />
+        </div>
+      </Seccion>
+    </div>
+  );
+}
+
 export default function PersonaRrhhPanel({ personaId }) {
   const [ficha, setFicha] = useState(null);
   const [importacion, setImportacion] = useState(null);
+  const [reclutamiento, setReclutamiento] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -47,12 +128,11 @@ export default function PersonaRrhhPanel({ personaId }) {
     const cargar = async () => {
       setLoading(true);
       setError("");
-      const { data, error: fichaError } = await supabase
-        .schema("equipo")
-        .from("persona_rrhh")
-        .select("*")
-        .eq("persona_id", personaId)
-        .maybeSingle();
+      const [fichaResult, candidatoResult] = await Promise.all([
+        supabase.schema("equipo").from("persona_rrhh").select("*").eq("persona_id", personaId).maybeSingle(),
+        supabase.schema("equipo").from("reclutamiento_candidatos").select("*").eq("persona_id", personaId).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      const { data, error: fichaError } = fichaResult;
       if (!vigente) return;
       if (fichaError) {
         setError(mensajeError(fichaError));
@@ -60,6 +140,29 @@ export default function PersonaRrhhPanel({ personaId }) {
         return;
       }
       setFicha(data || null);
+
+      const candidato = candidatoResult.data || null;
+      if (candidatoResult.error) {
+        setError(mensajeError(candidatoResult.error));
+        setReclutamiento(null);
+      } else if (candidato) {
+        const [entrevistaResult, solicitudResult] = await Promise.all([
+          supabase.schema("equipo").from("reclutamiento_entrevistas").select("*").eq("candidato_id", candidato.id).maybeSingle(),
+          candidato.solicitud_id
+            ? supabase.schema("equipo").from("reclutamiento_solicitudes").select("*").eq("id", candidato.solicitud_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+        ]);
+        if (!vigente) return;
+        const recruitmentError = entrevistaResult.error || solicitudResult.error;
+        if (recruitmentError) setError(mensajeError(recruitmentError));
+        setReclutamiento({
+          candidato,
+          entrevista: entrevistaResult.data || null,
+          solicitud: solicitudResult.data || null,
+        });
+      } else {
+        setReclutamiento(null);
+      }
 
       if (data?.importacion_id) {
         const { data: lote, error: loteError } = await supabase
@@ -96,7 +199,7 @@ export default function PersonaRrhhPanel({ personaId }) {
     );
   }
 
-  if (error && !ficha) {
+  if (error && !ficha && !reclutamiento?.entrevista) {
     return (
       <div
         className="glass p-4"
@@ -121,7 +224,7 @@ export default function PersonaRrhhPanel({ personaId }) {
     );
   }
 
-  if (!ficha) {
+  if (!ficha && !reclutamiento?.entrevista) {
     return (
       <div
         className="glass p-5"
@@ -165,12 +268,15 @@ export default function PersonaRrhhPanel({ personaId }) {
   }
 
   const fecha = (value) => (value ? fmtFechaLarga(value) : null);
-  const horas = ficha.carga_horaria_mensual
+  const horas = ficha?.carga_horaria_mensual
     ? `${Number(ficha.carga_horaria_mensual).toLocaleString("es-AR")} h/mes`
     : null;
 
   return (
     <div className="space-y-4">
+      <EntrevistaVinculada reclutamiento={reclutamiento} />
+      {ficha && (
+        <>
       <div
         className="glass p-3 flex items-center justify-between gap-4"
         style={{ borderColor: "rgba(57,255,20,0.22)" }}
@@ -299,6 +405,8 @@ export default function PersonaRrhhPanel({ personaId }) {
         />
         <Dato label="Observaciones" value={ficha.observaciones} />
       </Seccion>
+        </>
+      )}
       {error && (
         <p style={{ color: "#f59e0b", fontSize: "0.65rem" }}>
           La ficha se cargó, pero parte de la trazabilidad no pudo consultarse:{" "}
