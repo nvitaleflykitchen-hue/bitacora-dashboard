@@ -17,6 +17,15 @@ import { confirmarAccionSensible } from '../lib/sensitiveActions'
 
 const ESTADOS_CAPA = ['Pendiente','En ejecución','Completada','Verificada']
 const TIPOS_CAPA   = ['Correctiva','Preventiva']
+const TIPOS_GESTION = [
+  'Correctiva',
+  'Preventiva',
+  'Desarrollo',
+  'Implementación',
+  'Mejora continua',
+  'Innovación',
+  'Estandarización',
+]
 const responsableNombre = capa => capa?.perfiles?.nombre || capa?.responsable || ''
 
 const COL_CONFIG = {
@@ -67,6 +76,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode =
     isMeaningful:data => Boolean(data?.descripcion || data?.nombreProyecto || data?.evidencia || data?.responsable_id || data?.sede_id),
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const tiposDisponibles = mode === 'gestion' ? TIPOS_GESTION : TIPOS_CAPA
 
   const handleSedeChange = (sedeId) => {
     const sede = sedes.find(s => String(s.id) === String(sedeId))
@@ -152,7 +162,7 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode =
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Tipo *</label>
               <select required className="input-dark" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
-                {TIPOS_CAPA.map(t => <option key={t} value={t}>{t}</option>)}
+                {tiposDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             {mode !== 'gestion' && <div>
@@ -1139,7 +1149,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
           <label className="font-metric text-xs tracking-wider uppercase mb-1 block" style={{ color:'var(--text-dim)' }}>Tipo</label>
           <select className="input-dark" style={{ minWidth:120 }} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
             <option value="">Todos</option>
-            {TIPOS_CAPA.map(t => <option key={t} value={t}>{t}</option>)}
+            {(mode === 'gestion' ? TIPOS_GESTION : TIPOS_CAPA).map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
