@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, isPast, isToday, differenceInDays } from 'date-fns'
-import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan, deleteCapaProject, getPerfiles } from '../lib/queries'
-import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil, Trash2 } from 'lucide-react'
+import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan, deleteCapaProject, getPerfiles, getColaboradoresProyecto } from '../lib/queries'
+import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil, Trash2, Search } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import PageHeader from '../components/PageHeader'
 import { uploadAdjunto } from '../lib/adjuntos'
@@ -48,6 +48,44 @@ function estadoChip(estado) {
   return <OperationalStateChip estado={estado} showStage />
 }
 
+function ColaboradoresSelector({ personas, value, onChange, excludedProfileIds = [] }) {
+  const [busqueda, setBusqueda] = useState('')
+  const selected = new Set(value || [])
+  const term = busqueda.trim().toLocaleLowerCase('es')
+  const disponibles = personas.filter(persona => {
+    if (persona.perfil_id && excludedProfileIds.includes(persona.perfil_id)) return false
+    if (!term) return true
+    return `${persona.nombre} ${persona.detalle}`.toLocaleLowerCase('es').includes(term)
+  })
+  const toggle = id => onChange(selected.has(id)
+    ? (value || []).filter(item => item !== id)
+    : [...(value || []), id])
+
+  return <div>
+    <div style={{ position:'relative', marginBottom:7 }}>
+      <Search size={14} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-dim)' }} />
+      <input
+        className="input-dark"
+        value={busqueda}
+        onChange={event => setBusqueda(event.target.value)}
+        placeholder="Buscar por nombre, puesto o área..."
+        style={{ paddingLeft:32 }}
+      />
+    </div>
+    <div className="input-dark" style={{ minHeight:110, maxHeight:190, overflowY:'auto', padding:6 }}>
+      {disponibles.map(persona => <label key={persona.id} style={{ display:'flex', gap:9, alignItems:'flex-start', padding:'7px 8px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+        <input type="checkbox" checked={selected.has(persona.id)} onChange={() => toggle(persona.id)} style={{ marginTop:2, accentColor:'var(--phosphor)' }} />
+        <span style={{ minWidth:0 }}>
+          <span style={{ display:'block', color:selected.has(persona.id) ? 'var(--phosphor)' : 'var(--text)', fontSize:'0.76rem' }}>{persona.nombre}</span>
+          {persona.detalle && <span style={{ display:'block', color:'var(--text-dim)', fontSize:'0.61rem', marginTop:2 }}>{persona.detalle}</span>}
+        </span>
+      </label>)}
+      {!disponibles.length && <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', padding:10, textAlign:'center' }}>No se encontraron personas.</p>}
+    </div>
+    <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:5 }}>{selected.size} colaborador{selected.size === 1 ? '' : 'es'} seleccionado{selected.size === 1 ? '' : 's'}.</p>
+  </div>
+}
+
 function codigoProyectoGestion(nombre) {
   const slug = String(nombre || 'PROYECTO')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -57,7 +95,7 @@ function codigoProyectoGestion(nombre) {
   return `FK-GEST-${slug}-${fecha}-${sufijo}`
 }
 
-function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode = 'quality' }) {
+function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, colaboradores, mode = 'quality' }) {
   const { user, perfil } = useAuth()
   const [loading, setLoading] = useState(false)
   const [archivos, setArchivos] = useState([])
@@ -207,11 +245,8 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, mode =
             </div>
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Colaboradores</label>
-              <select multiple className="input-dark" style={{ minHeight:90 }} value={form.colaborador_ids}
-                onChange={e=>set('colaborador_ids', Array.from(e.target.selectedOptions, o=>o.value))}>
-                {perfiles.filter(p=>p.id !== form.responsable_id && p.id !== form.supervisor_id).map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
-              </select>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:5 }}>Usá Ctrl para seleccionar más de uno. El responsable ejecuta; el supervisor controla.</p>
+              <ColaboradoresSelector personas={colaboradores} value={form.colaborador_ids} onChange={value=>set('colaborador_ids', value)} excludedProfileIds={[form.responsable_id, form.supervisor_id].filter(Boolean)} />
+              <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:5 }}>El responsable ejecuta; el supervisor controla.</p>
             </div>
           </>}
           <div>
@@ -610,7 +645,7 @@ function CapaKanban({ items, perfiles, canWrite, onEstadoChange, onReload, focus
   )
 }
 
-function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, perfiles, onClose, onSaved }) {
+function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, perfiles, colaboradores, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     empresa_prestataria: plan?.empresa_prestataria || '',
@@ -690,11 +725,7 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, perfiles, onC
           </div>
           <div>
             <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Colaboradores</label>
-            <select multiple className="input-dark" style={{ minHeight:100 }} value={form.colaborador_ids}
-              onChange={e=>set('colaborador_ids', Array.from(e.target.selectedOptions, o=>o.value))}>
-              {perfiles.filter(p=>p.id !== form.responsable_id && p.id !== form.supervisor_id).map(p=><option key={p.id} value={p.id}>{p.nombre} · {p.rol}</option>)}
-            </select>
-            <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:5 }}>Usá Ctrl para seleccionar varias personas.</p>
+            <ColaboradoresSelector personas={colaboradores} value={form.colaborador_ids} onChange={value=>set('colaborador_ids', value)} excludedProfileIds={[form.responsable_id, form.supervisor_id].filter(Boolean)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -728,7 +759,7 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, perfiles, onC
   )
 }
 
-function CapaAuditoria({ items, perfiles, canWrite, onEstadoChange, onReload, focusId, mode = 'quality' }) {
+function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChange, onReload, focusId, mode = 'quality' }) {
   const [detail, setDetail] = useState(null)
   const [expandidos, setExpandidos] = useState({})
   const [planes, setPlanes] = useState({})
@@ -867,7 +898,7 @@ function CapaAuditoria({ items, perfiles, canWrite, onEstadoChange, onReload, fo
                 {mode === 'gestion' && planes[grupo.auditoria_codigo] && (
                   <div style={{ fontSize:'0.62rem', color:'var(--text-dim)', marginTop:4 }}>
                     {planes[grupo.auditoria_codigo].supervisor_id && `Supervisor: ${perfiles.find(p=>p.id===planes[grupo.auditoria_codigo].supervisor_id)?.nombre || 'Asignado'}`}
-                    {planes[grupo.auditoria_codigo].colaborador_ids?.length > 0 && ` · Colaboradores: ${planes[grupo.auditoria_codigo].colaborador_ids.map(id=>perfiles.find(p=>p.id===id)?.nombre).filter(Boolean).join(', ')}`}
+                    {planes[grupo.auditoria_codigo].colaborador_ids?.length > 0 && ` · Colaboradores: ${planes[grupo.auditoria_codigo].colaborador_ids.map(id=>colaboradores.find(persona=>persona.id===id)?.nombre).filter(Boolean).join(', ')}`}
                   </div>
                 )}
               </div>
@@ -994,6 +1025,7 @@ function CapaAuditoria({ items, perfiles, canWrite, onEstadoChange, onReload, fo
           sedeNombre={editingPlan.grupo.sede_nombre}
           plan={editingPlan.plan}
           perfiles={perfiles}
+          colaboradores={colaboradores}
           onClose={() => setEditingPlan(null)}
           onSaved={(saved) => {
             setPlanes(prev => ({ ...prev, [editingPlan.grupo.auditoria_codigo]: saved }))
@@ -1011,6 +1043,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
   const [ncs, setNcs]         = useState([])
   const [sedes, setSedes]     = useState([])
   const [perfiles, setPerfiles] = useState([])
+  const [colaboradores, setColaboradores] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [filtroTipo, setFiltroTipo]             = useState('')
@@ -1025,7 +1058,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [data, ncData, sedesData, perfilesData] = await Promise.all([
+      const [data, ncData, sedesData, perfilesData, colaboradoresData] = await Promise.all([
         getCapa({
           sedeIds: allowedSedeIds || undefined,
           tipo: filtroTipo || undefined,
@@ -1037,6 +1070,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
         getNoConformidades({ estado: 'Abierta', sedeIds: allowedSedeIds || undefined }),
         getSedes(allowedSedeIds),
         getPerfiles(),
+        mode === 'gestion' ? getColaboradoresProyecto() : Promise.resolve([]),
       ])
       const hasSedeScope = Array.isArray(allowedSedeIds) && allowedSedeIds.length > 0
       const scopedData = hasSedeScope
@@ -1048,7 +1082,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
       const sedesFilt = hasSedeScope
         ? sedesData.filter(s => allowedSedeIds.includes(s.id))
         : sedesData
-      setItems(dataFilt); setNcs(ncData); setSedes(sedesFilt); setPerfiles((perfilesData || []).filter(p=>p.activo))
+      setItems(dataFilt); setNcs(ncData); setSedes(sedesFilt); setPerfiles((perfilesData || []).filter(p=>p.activo)); setColaboradores(colaboradoresData || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [filtroTipo, filtroEstado, filtroResp, filtroSede, filtroAuditoria, allowedSedeIds, mode])
@@ -1172,7 +1206,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
           <div className="w-7 h-7 rounded-full border-2 animate-spin" style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
         </div>
       ) : vista === 'auditoria' ? (
-        <CapaAuditoria items={items} perfiles={perfiles} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
+        <CapaAuditoria items={items} perfiles={perfiles} colaboradores={colaboradores} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
       ) : vista === 'kanban' ? (
         <CapaKanban items={items} perfiles={perfiles} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
       ) : (
@@ -1238,7 +1272,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
 
       {showForm && (
         <CAPAForm
-          noConformidades={ncs} sedes={sedes} perfiles={perfiles}
+          noConformidades={ncs} sedes={sedes} perfiles={perfiles} colaboradores={colaboradores}
           mode={mode}
           onClose={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); load() }}
