@@ -275,13 +275,8 @@ function CAPAForm({ onClose, onCreated, noConformidades, sedes, perfiles, colabo
   )
 }
 
-function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfiles = [], colaboradores = [], mode = 'quality' }) {
+function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfiles = [], mode = 'quality' }) {
   const { perfil } = useAuth()
-  const responsableInicial = colaboradores.find(persona => (
-    c.responsable_id
-      ? String(persona.perfil_id) === String(c.responsable_id)
-      : persona.nombre?.trim().toLocaleLowerCase() === c.responsable?.trim().toLocaleLowerCase()
-  ))
   const [estado, setEstado]           = useState(c.estado)
   const [notas, setNotas]             = useState(c.notas || '')
   const [saving, setSaving]           = useState(false)
@@ -298,7 +293,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   })
   const [savingGestion, setSavingGestion] = useState(false)
   const [asignacion, setAsignacion] = useState({
-    responsable_key:responsableInicial?.id || '',
+    responsable_id:c.responsable_id || '',
     fecha_limite:c.fecha_limite || '',
   })
   const [savingAsignacion, setSavingAsignacion] = useState(false)
@@ -391,16 +386,14 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   const saveAsignacion = async () => {
     setSavingAsignacion(true)
     try {
-      const responsable = colaboradores.find(p => String(p.id) === String(asignacion.responsable_key))
+      const responsable = perfiles.find(p => String(p.id) === String(asignacion.responsable_id))
       const payload = {
-        responsable_id:responsable?.perfil_id || null,
+        responsable_id:asignacion.responsable_id || null,
         responsable:responsable?.nombre || null,
         fecha_limite:asignacion.fecha_limite || null,
       }
       await updateCapa(c.id, payload)
-      Object.assign(c, payload, {
-        perfiles:responsable?.perfil_id ? { id:responsable.perfil_id, nombre:responsable.nombre } : null,
-      })
+      Object.assign(c, payload, { perfiles:responsable || null })
       toast.ok('Responsable y fecha límite actualizados.')
       onReload?.()
     } catch (e) { toast.error(mensajeError(e)) }
@@ -439,9 +432,9 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-metric block mb-1" style={{ color:'var(--text-dim)', fontSize:'.58rem' }}>RESPONSABLE</label>
-                  <select className="input-dark w-full" value={asignacion.responsable_key} onChange={e=>setAsignacion(a=>({...a,responsable_key:e.target.value}))}>
+                  <select className="input-dark w-full" value={asignacion.responsable_id} onChange={e=>setAsignacion(a=>({...a,responsable_id:e.target.value}))}>
                     <option value="">— Sin asignar —</option>
-                    {colaboradores.map(p=><option key={p.id} value={p.id}>{p.nombre}{p.detalle ? ` · ${p.detalle}` : ''}</option>)}
+                    {perfiles.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
                   </select>
                 </div>
                 <div>
@@ -600,7 +593,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   )
 }
 
-function CapaKanban({ items, perfiles, colaboradores, canWrite, onEstadoChange, onReload, focusId, mode = 'quality' }) {
+function CapaKanban({ items, perfiles, canWrite, onEstadoChange, onReload, focusId, mode = 'quality' }) {
   const [detail, setDetail] = useState(null)
   useEffect(() => {
     if (focusId) setDetail(items.find(item => String(item.id) === String(focusId)) || null)
@@ -687,7 +680,6 @@ function CapaKanban({ items, perfiles, colaboradores, canWrite, onEstadoChange, 
           onClose={() => setDetail(null)}
           onReload={onReload}
           perfiles={perfiles}
-          colaboradores={colaboradores}
           mode={mode}
         />
       )}
@@ -1064,7 +1056,6 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
           onClose={() => setDetail(null)}
           onReload={onReload}
           perfiles={perfiles}
-          colaboradores={colaboradores}
           mode={mode}
         />
       )}
@@ -1121,7 +1112,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
         getNoConformidades({ estado: 'Abierta', sedeIds: allowedSedeIds || undefined }),
         getSedes(allowedSedeIds),
         getPerfiles(),
-        getColaboradoresProyecto(),
+        mode === 'gestion' ? getColaboradoresProyecto() : Promise.resolve([]),
       ])
       const hasSedeScope = Array.isArray(allowedSedeIds) && allowedSedeIds.length > 0
       const scopedData = hasSedeScope
@@ -1259,7 +1250,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
       ) : vista === 'auditoria' ? (
         <CapaAuditoria items={items} perfiles={perfiles} colaboradores={colaboradores} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
       ) : vista === 'kanban' ? (
-        <CapaKanban items={items} perfiles={perfiles} colaboradores={colaboradores} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
+        <CapaKanban items={items} perfiles={perfiles} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
       ) : (
         <div className="glass rounded overflow-hidden" style={{ borderRadius:'3px' }}>
           <div className="overflow-x-auto">
