@@ -359,6 +359,7 @@ export default function MobileTickets() {
   const { mantenimientoSedeIds:allowedSedeIds, can, perfil } = useAuth()
   const isMaintenanceEditor = perfil?.rol === 'mnt_editor'
   const canManage = can('mantenimiento', 'manage') || can('mantenimiento', 'edit')
+  const canCreate = canManage || can('mantenimiento', 'report')
   const [tickets, setTickets] = useState([])
   const [responsables, setResponsables] = useState([])
   const [sedes, setSedes] = useState([])
@@ -542,7 +543,7 @@ export default function MobileTickets() {
         ))}
       </div>
 
-      {canManage && (
+      {canCreate && (
         <button
           onClick={() => setShowModal(true)}
           aria-label="Crear nuevo ticket"
@@ -562,6 +563,7 @@ export default function MobileTickets() {
       {showModal && (
         <TicketRapidoModal
           origen={{}}
+          allowedSedeIds={allowedSedeIds}
           onClose={() => setShowModal(false)}
           onCreated={() => { setShowModal(false); load() }}
         />
