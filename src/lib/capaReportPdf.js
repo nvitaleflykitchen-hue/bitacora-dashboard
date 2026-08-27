@@ -218,6 +218,40 @@ export async function generarInformeCapaPDF({ grupo, plan }) {
     escribirCampo('Evidencia de cierre esperada', evidenciaEsperada)
     escribirCampo('Notas de avance', notasLibres)
 
+    // Pasos operativos registrados dentro de la acción CAPA.
+    const subtareas = Array.isArray(it.subtareas) ? it.subtareas : []
+    if (subtareas.length > 0) {
+      const completadas = subtareas.filter(subtarea => subtarea?.completada).length
+      checkPageBreak(10)
+      doc.setFontSize(8.5)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Subtareas operativas (${completadas}/${subtareas.length} completadas):`, marginX, y)
+      y += 4.8
+
+      for (const subtarea of subtareas) {
+        const texto = String(subtarea?.texto || '').trim()
+        if (!texto) continue
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        const lines = doc.splitTextToSize(texto, contentW - 9)
+        const lineH = 3.8
+        checkPageBreak(Math.max(lines.length * lineH, 4.5) + 1)
+        doc.setDrawColor(110, 110, 110)
+        doc.rect(marginX + 2, y - 2.8, 3, 3)
+        if (subtarea.completada) {
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(20, 20, 20)
+          doc.text('X', marginX + 2.5, y - 0.2)
+          doc.setFont('helvetica', 'normal')
+        }
+        doc.setTextColor(subtarea.completada ? 85 : 40, subtarea.completada ? 85 : 40, subtarea.completada ? 85 : 40)
+        doc.text(lines, marginX + 7, y)
+        y += Math.max(lines.length * lineH, 4.5)
+      }
+      y += 1
+    }
+
     // Evidencia adjunta (archivos/links cargados en la app)
     doc.setFontSize(8.5)
     doc.setFont('helvetica', 'bold')
