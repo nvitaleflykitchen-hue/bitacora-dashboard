@@ -11,6 +11,7 @@ import { Wrench, Package, Flame, Plus, X, ChevronRight, ChevronLeft, Search } fr
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { TabPlanes, TabProveedores, TabResponsables, TabTablero } from './MobileMntTabs'
+import TicketRapidoModal from '../components/TicketRapidoModal'
 
 const TIPO_COLOR_ACTIVO = { EQUIPO: '#F59E0B', INSTALACION: '#8B5CF6' }
 import {
@@ -51,7 +52,7 @@ function Field({ label, value }) {
 
 // ───────────────────────── ACTIVOS ─────────────────────────
 
-function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated, onCreateNovedad }) {
+function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, onBack, onUpdated, onCreateNovedad, onCreateTicket }) {
   const [historial, setHistorial] = useState([])
   const [loadingHist, setLoadingHist] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -99,6 +100,7 @@ function ActivoFicha({ activo, sedes, canEdit, onBack, onUpdated, onCreateNoveda
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 1rem 1rem', minHeight: 0 }}>
+        {canCreateTicket && activo.sede_id && <button className="btn-primary w-full" style={{ marginBottom:10, minHeight:44 }} onClick={() => onCreateTicket({ activoId:activo.id, activoNombre:activo.nombre, sedeId:activo.sede_id, sedeNombre:sedeName, descripcionInicial:`Falla en ${activo.nombre}: ` })}>+ Crear ticket de este activo</button>}
         {onCreateNovedad && activo.sede_id && <button className="btn-primary w-full" style={{ marginBottom:10, minHeight:44 }} onClick={() => onCreateNovedad({ type:'activo', id:activo.id, label:activo.nombre, sedeId:activo.sede_id, sedeLabel:sedeName, returnModule:'mantenimiento' })}>+ Crear novedad de este activo</button>}
         {!editing ? (
           <>
@@ -237,7 +239,7 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
   )
 }
 
-function TabActivos({ allowedSedeIds, canEdit, focusContext, onCreateNovedad }) {
+function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, onCreateNovedad, onCreateTicket }) {
   const focusType = focusContext?.type
   const focusId = focusContext?.id
   const [items, setItems] = useState([])
@@ -263,7 +265,7 @@ function TabActivos({ allowedSedeIds, canEdit, focusContext, onCreateNovedad }) 
   useEffect(() => { load() }, [load])
 
   if (selected) {
-    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} onBack={() => setSelected(null)} onUpdated={() => { load(); setSelected(null) }} onCreateNovedad={onCreateNovedad} />
+    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} canCreateTicket={canCreateTicket} onBack={() => setSelected(null)} onUpdated={() => { load(); setSelected(null) }} onCreateNovedad={onCreateNovedad} onCreateTicket={onCreateTicket} />
   }
 
   const filtered = items.filter(a => !search || (a.nombre + ' ' + (a.codigo_interno || '') + ' ' + (a.categoria || '')).toLowerCase().includes(search.toLowerCase()))
@@ -516,9 +518,11 @@ function TabMatafuegos({ allowedSedeIds }) {
 // ───────────────────────── ROOT ─────────────────────────
 
 export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
-  const { rol, mantenimientoSedeIds:allowedSedeIds, perfil } = useAuth()
+  const { rol, mantenimientoSedeIds:allowedSedeIds, perfil, can } = useAuth()
   const canEditActivos = ['admin', 'editor', 'encargado', 'mnt_editor'].includes(rol) && !isQualityOnlyProfile(perfil)
+  const canCreateTicket = can('mantenimiento', 'report') || can('mantenimiento', 'manage') || can('mantenimiento', 'edit')
   const [tab, setTab] = useState('activos')
+  const [ticketOrigin, setTicketOrigin] = useState(null)
 
   const allTabs = [
     { id: 'activos', label: 'Activos', icon: Wrench },
@@ -536,7 +540,10 @@ export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ padding: '0.75rem 1rem 0', flexShrink: 0 }}>
-        <h1 style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700, marginBottom: 10 }}>Mantenimiento</h1>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:10 }}>
+          <h1 style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700 }}>Mantenimiento</h1>
+          {canCreateTicket && <button className="btn-primary" onClick={() => setTicketOrigin({})} style={{ minHeight:38, padding:'0.45rem 0.75rem', display:'flex', alignItems:'center', gap:5 }}><Plus size={15} /> Ticket</button>}
+        </div>
         <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: '0.25rem', borderRadius: 20, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -550,7 +557,7 @@ export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
-        {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
+        {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} canCreateTicket={canCreateTicket} focusContext={focusContext} onCreateNovedad={onCreateNovedad} onCreateTicket={setTicketOrigin} />}
         {tab === 'insumos' && <TabInsumos />}
         {tab === 'matafuegos' && <TabMatafuegos allowedSedeIds={allowedSedeIds} />}
         {tab === 'tablero' && <TabTablero allowedSedeIds={allowedSedeIds} canManage={canEditActivos} />}
@@ -558,6 +565,7 @@ export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
         {tab === 'proveedores' && <TabProveedores allowedSedeIds={allowedSedeIds} />}
         {tab === 'responsables' && <TabResponsables />}
       </div>
+      {ticketOrigin && <TicketRapidoModal origen={ticketOrigin} allowedSedeIds={allowedSedeIds} onClose={() => setTicketOrigin(null)} onCreated={() => setTicketOrigin(null)} />}
     </div>
   )
 }

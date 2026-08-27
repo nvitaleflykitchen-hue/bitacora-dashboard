@@ -10,7 +10,7 @@ import { mensajeError } from '../lib/errores'
 
 const PRIORIDADES = ['baja','media','alta','critica']
 
-export default function TicketRapidoModal({ origen, onClose, onCreated }) {
+export default function TicketRapidoModal({ origen, onClose, onCreated, allowedSedeIds }) {
   // origen = { registro, descripcionInicial, sedeNombre, sedeId }
   const [responsables, setResponsables] = useState([])
   const [sedes, setSedes] = useState([])
@@ -29,10 +29,15 @@ export default function TicketRapidoModal({ origen, onClose, onCreated }) {
     getResponsablesMnt()
       .then(r => setResponsables(r))
       .catch(() => setResponsables([]))
-    getSedes()
-      .then(s => setSedes(s))
+    getSedes(allowedSedeIds || undefined)
+      .then(s => {
+        setSedes(s)
+        if (!origen?.sedeId && s.length === 1) {
+          setForm(f => ({ ...f, sede_id: s[0].id, sede: s[0].nombre }))
+        }
+      })
       .catch(() => setSedes([]))
-  }, [])
+  }, [allowedSedeIds, origen?.sedeId])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -76,6 +81,8 @@ export default function TicketRapidoModal({ origen, onClose, onCreated }) {
         estado:        'abierto',
         responsable_id: respId,
         responsable:    respNombre,
+        activo_id:       origen?.activoId || null,
+        activo_nombre:   origen?.activoNombre || null,
         escalamiento_id: origen?.escalamientoId || null,
       })
       onCreated?.(ticket)
@@ -173,6 +180,11 @@ export default function TicketRapidoModal({ origen, onClose, onCreated }) {
           {origen?.registro && (
             <div style={{ background:'rgba(57,255,20,0.04)', border:'1px solid rgba(57,255,20,0.12)', borderRadius:4, padding:'0.5rem 0.75rem', fontSize:'0.68rem', color:'var(--text-dim)' }}>
               Originado en registro de <span style={{ color:'var(--phosphor)' }}>{origen.sedeNombre}</span>
+            </div>
+          )}
+          {origen?.activoNombre && (
+            <div style={{ background:'rgba(57,255,20,0.04)', border:'1px solid rgba(57,255,20,0.12)', borderRadius:4, padding:'0.5rem 0.75rem', fontSize:'0.68rem', color:'var(--text-dim)' }}>
+              Activo: <span style={{ color:'var(--phosphor)' }}>{origen.activoNombre}</span>
             </div>
           )}
           {origen?.escalamientoId && (
