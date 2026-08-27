@@ -98,7 +98,7 @@ function estadoPeriodoPrueba(persona, hoy = new Date()) {
   return { ingreso, vencimiento, diasRestantes:Math.round((vencimiento-inicioHoy)/86400000) };
 }
 function colorPeriodoPrueba(dias) { if (dias<=15) return "#ff4444"; if (dias<=30) return "#f97316"; if (dias<=60) return "#facc15"; return "#39FF14"; }
-function textoPeriodoPrueba(dias) { if (dias<0) return `Vencido hace ${Math.abs(dias)} día${Math.abs(dias)===1?"":"s"}`; if (dias===0) return "Vence hoy"; return `Vence en ${dias} día${dias===1?"":"s"}`; }
+function textoPeriodoPrueba(dias) { if (dias<0) return "Efectivo"; if (dias===0) return "Vence hoy"; return `Vence en ${dias} día${dias===1?"":"s"}`; }
 function antiguedadEnAnios(fechaIngreso, hoy = new Date()) {
   if (!fechaIngreso) return null;
   const ingreso = new Date(`${fechaIngreso}T00:00:00`);
@@ -3337,7 +3337,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
     (p) => Number(p.puntaje_promedio || 0) > 0,
   );
 
-  const periodosPrueba = personas.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=-30 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
+  const periodosPrueba = personas.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=0 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
   const primaryTabs = [
     ["lista", "LISTA"], ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
     ["horarios", "HORARIOS"], ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
@@ -3834,7 +3834,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                           .filter(Boolean)
                           .join(" · ") || null;
                         const periodoPrueba = estadoPeriodoPrueba(p);
-                        const mostrarPeriodoPrueba = periodoPrueba && periodoPrueba.diasRestantes >= -30 && periodoPrueba.diasRestantes <= PERIODO_PRUEBA_DIAS;
+                        const mostrarPeriodoPrueba = periodoPrueba && periodoPrueba.diasRestantes >= 0 && periodoPrueba.diasRestantes <= PERIODO_PRUEBA_DIAS;
+                        const esEfectivo = periodoPrueba && periodoPrueba.diasRestantes < 0;
                         const periodoColor = mostrarPeriodoPrueba ? colorPeriodoPrueba(periodoPrueba.diasRestantes) : null;
                         const evalColor = score
                           ? RESULTADO_COLOR[p.resultado_global] || "var(--text)"
@@ -3891,6 +3892,12 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                               <div className="flex items-center justify-between mt-3 px-2 py-1.5 rounded" style={{ background:`${periodoColor}12`, border:`1px solid ${periodoColor}44` }}>
                                 <span className="font-metric" style={{ color:periodoColor, fontSize:'.62rem' }}>PERÍODO DE PRUEBA</span>
                                 <span className="font-title font-bold" style={{ color:periodoColor, fontSize:'.72rem' }}>{textoPeriodoPrueba(periodoPrueba.diasRestantes)}</span>
+                              </div>
+                            )}
+                            {esEfectivo && (
+                              <div className="flex items-center justify-between mt-3 px-2 py-1.5 rounded" style={{ background:"rgba(57,255,20,.06)", border:"1px solid rgba(57,255,20,.22)" }}>
+                                <span className="font-metric" style={{ color:"var(--phosphor)", fontSize:'.62rem' }}>SITUACIÓN LABORAL</span>
+                                <span className="font-title font-bold" style={{ color:"var(--phosphor)", fontSize:'.72rem' }}>EFECTIVO</span>
                               </div>
                             )}
                             {p.encuadre?.funcion_real && <div className="mt-2 px-2 py-1.5 rounded" style={{ background: "rgba(255,255,255,.025)", border: "1px solid rgba(255,255,255,.06)" }}><p style={{ fontSize: ".58rem", color: "var(--text-dim)" }}>FUNCIÓN REAL</p><p style={{ fontSize: ".7rem", color: "var(--text)" }}>{p.encuadre.funcion_real}</p></div>}
