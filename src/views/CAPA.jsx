@@ -292,6 +292,11 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     bloqueo_motivo:c.bloqueo_motivo || '',
   })
   const [savingGestion, setSavingGestion] = useState(false)
+  const [asignacion, setAsignacion] = useState({
+    responsable_id:c.responsable_id || '',
+    fecha_limite:c.fecha_limite || '',
+  })
+  const [savingAsignacion, setSavingAsignacion] = useState(false)
 
   const handleSaveEstado = async () => {
     setSaving(true)
@@ -378,6 +383,23 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     finally { setSavingGestion(false) }
   }
 
+  const saveAsignacion = async () => {
+    setSavingAsignacion(true)
+    try {
+      const responsable = perfiles.find(p => String(p.id) === String(asignacion.responsable_id))
+      const payload = {
+        responsable_id:asignacion.responsable_id || null,
+        responsable:responsable?.nombre || null,
+        fecha_limite:asignacion.fecha_limite || null,
+      }
+      await updateCapa(c.id, payload)
+      Object.assign(c, payload, { perfiles:responsable || null })
+      toast.ok('Responsable y fecha límite actualizados.')
+      onReload?.()
+    } catch (e) { toast.error(mensajeError(e)) }
+    finally { setSavingAsignacion(false) }
+  }
+
   return (
     <div className="modal-overlay">
       <div className="glass hud-corner fade-in w-full max-w-md rounded" style={{ borderRadius:'3px', maxHeight:'92vh', overflowY:'auto' }}>
@@ -403,6 +425,26 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
           </div>
 
           <p style={{ color:'var(--text)', fontSize:'0.82rem', lineHeight:1.5 }}>{c.descripcion}</p>
+
+          {canWrite && (
+            <div className="rounded px-3 py-3 space-y-2" style={{ background:'rgba(57,255,20,.035)', border:'1px solid rgba(57,255,20,.14)' }}>
+              <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'.64rem' }}>ASIGNACIÓN Y PLAZO</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-metric block mb-1" style={{ color:'var(--text-dim)', fontSize:'.58rem' }}>RESPONSABLE</label>
+                  <select className="input-dark w-full" value={asignacion.responsable_id} onChange={e=>setAsignacion(a=>({...a,responsable_id:e.target.value}))}>
+                    <option value="">— Sin asignar —</option>
+                    {perfiles.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-metric block mb-1" style={{ color:'var(--text-dim)', fontSize:'.58rem' }}>FECHA LÍMITE</label>
+                  <input type="date" className="input-dark w-full" value={asignacion.fecha_limite} onChange={e=>setAsignacion(a=>({...a,fecha_limite:e.target.value}))}/>
+                </div>
+              </div>
+              <button type="button" className="btn-primary w-full" disabled={savingAsignacion} onClick={saveAsignacion}>{savingAsignacion?'Guardando…':'Guardar asignación y plazo'}</button>
+            </div>
+          )}
 
           {mode === 'gestion' && (() => {
             const health=gestionHealth(c)
