@@ -286,6 +286,8 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   const [subtareas, setSubtareas]     = useState(Array.isArray(c.subtareas) ? c.subtareas : [])
   const [nuevaSubtarea, setNuevaSubtarea] = useState('')
   const [savingSubtareas, setSavingSubtareas] = useState(false)
+  const [editingSubtareaId, setEditingSubtareaId] = useState(null)
+  const [editingSubtareaText, setEditingSubtareaText] = useState('')
   const [gestion, setGestion] = useState({
     estado:c.gestion_estado || 'Sin aceptar', delegado_a_id:c.delegado_a_id || '',
     fecha_compromiso:c.fecha_compromiso || c.fecha_limite || '', proximo_paso:c.proximo_paso || '',
@@ -340,15 +342,47 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     try {
       await updateCapa(c.id, { subtareas:next })
       setSubtareas(next); c.subtareas=next; onReload?.()
-    } catch (e) { toast.error(mensajeError(e)) }
+      return true
+    } catch (e) {
+      toast.error(mensajeError(e))
+      return false
+    }
     finally { setSavingSubtareas(false) }
   }
 
   const addSubtarea = async () => {
     const texto=nuevaSubtarea.trim()
     if (!texto) return
-    await saveSubtareas([...subtareas,{ id:crypto.randomUUID(), texto, completada:false }])
-    setNuevaSubtarea('')
+    const saved = await saveSubtareas([...subtareas,{ id:crypto.randomUUID(), texto, completada:false }])
+    if (saved) setNuevaSubtarea('')
+  }
+
+  const startEditSubtarea = subtarea => {
+    setEditingSubtareaId(subtarea.id)
+    setEditingSubtareaText(subtarea.texto || '')
+  }
+
+  const cancelEditSubtarea = () => {
+    setEditingSubtareaId(null)
+    setEditingSubtareaText('')
+  }
+
+  const saveEditedSubtarea = async () => {
+    const texto = editingSubtareaText.trim()
+    if (!texto) return toast.error('La subtarea no puede quedar vacía.')
+    const saved = await saveSubtareas(subtareas.map(item => item.id === editingSubtareaId ? { ...item, texto } : item))
+    if (saved) cancelEditSubtarea()
+  }
+
+  const deleteSubtarea = async subtarea => {
+    const confirmed = await confirmarAccionSensible({
+      action:'eliminar',
+      subject:'la subtarea operativa',
+      consequence:`Se eliminará “${subtarea.texto}” del plan CAPA.`,
+    })
+    if (!confirmed) return
+    const saved = await saveSubtareas(subtareas.filter(item => item.id !== subtarea.id))
+    if (saved && editingSubtareaId === subtarea.id) cancelEditSubtarea()
   }
 
   const saveGestion = async () => {
@@ -495,10 +529,20 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
               {savingSubtareas && <span style={{ color:'var(--text-dim)', fontSize:'.62rem' }}>Guardando…</span>}
             </div>
             <div className="space-y-1">
-              {subtareas.map(s=><label key={s.id} className="flex items-start gap-2" style={{ color:s.completada?'var(--text-dim)':'var(--text)', fontSize:'.72rem' }}>
-                <input type="checkbox" disabled={!canWrite || savingSubtareas} checked={Boolean(s.completada)} onChange={()=>saveSubtareas(subtareas.map(x=>x.id===s.id?{...x,completada:!x.completada}:x))}/>
-                <span style={{ textDecoration:s.completada?'line-through':'none' }}>{s.texto}</span>
-              </label>)}
+              {subtareas.map(s=><div key={s.id} className="flex items-start gap-2" style={{ color:s.completada?'var(--text-dim)':'var(--text)', fontSize:'.72rem' }}>
+                <input type="checkbox" aria-label={`Marcar subtarea ${s.texto}`} disabled={!canWrite || savingSubtareas || editingSubtareaId === s.id} checked={Boolean(s.completada)} onChange={()=>saveSubtareas(subtareas.map(x=>x.id===s.id?{...x,completada:!x.completada}:x))}/>
+                {editingSubtareaId === s.id ? <>
+                  <input autoFocus className="input-dark flex-1" value={editingSubtareaText} disabled={savingSubtareas} onChange={e=>setEditingSubtareaText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();saveEditedSubtarea()} else if(e.key==='Escape') cancelEditSubtarea()}} aria-label="Editar texto de la subtarea" />
+                  <button type="button" className="btn-ghost" disabled={savingSubtareas} onClick={saveEditedSubtarea} style={{ padding:'.2rem .4rem', color:'var(--phosphor)' }}>Guardar</button>
+                  <button type="button" className="btn-ghost" disabled={savingSubtareas} onClick={cancelEditSubtarea} style={{ padding:'.2rem .4rem' }}>Cancelar</button>
+                </> : <>
+                  <span className="flex-1" style={{ textDecoration:s.completada?'line-through':'none', paddingTop:2 }}>{s.texto}</span>
+                  {canWrite ? <div className="flex gap-1">
+                    <button type="button" className="btn-ghost" disabled={savingSubtareas || editingSubtareaId !== null} onClick={()=>startEditSubtarea(s)} aria-label={`Editar subtarea ${s.texto}`} title="Editar subtarea" style={{ padding:'.2rem' }}><Pencil size={12}/></button>
+                    <button type="button" className="btn-ghost" disabled={savingSubtareas || editingSubtareaId !== null} onClick={()=>deleteSubtarea(s)} aria-label={`Eliminar subtarea ${s.texto}`} title="Eliminar subtarea" style={{ padding:'.2rem', color:'var(--alert)' }}><Trash2 size={12}/></button>
+                  </div> : null}
+                </>}
+              </div>)}
               {!subtareas.length && <p style={{ color:'var(--text-dim)', fontSize:'.68rem' }}>Sin pasos operativos cargados.</p>}
             </div>
             {canWrite && <div className="flex gap-2 mt-2">
