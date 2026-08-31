@@ -450,6 +450,13 @@ function TicketCard({ ticket, responsables, onClick }) {
         <p style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.6)', marginBottom:5 }}>{ticket.activo_nombre}</p>
       )}
 
+      <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:5 }}>
+        <MapPin size={9} style={{ color:'#60a5fa', flexShrink:0 }}/>
+        <span style={{ fontSize:'0.6rem', color:ticket.sede?'rgba(255,255,255,0.62)':'rgba(255,255,255,0.3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          {ticket.sede || 'Sede sin informar'}
+        </span>
+      </div>
+
       <div style={{ display:'flex', alignItems:'center', gap:4 }}>
         <User size={9} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
         <span style={{ fontSize:'0.6rem', color: resp?'rgba(255,255,255,0.5)':'rgba(255,80,80,0.55)' }}>
