@@ -299,6 +299,8 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     fecha_limite:c.fecha_limite || '',
   })
   const [savingAsignacion, setSavingAsignacion] = useState(false)
+  const [evidenciaDescripcion, setEvidenciaDescripcion] = useState(c.evidencia || '')
+  const [savingEvidencia, setSavingEvidencia] = useState(false)
 
   const handleSaveEstado = async () => {
     setSaving(true)
@@ -355,6 +357,19 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     if (!texto) return
     const saved = await saveSubtareas([...subtareas,{ id:crypto.randomUUID(), texto, completada:false }])
     if (saved) setNuevaSubtarea('')
+  }
+
+  const handleSaveEvidencia = async () => {
+    const evidencia = evidenciaDescripcion.trim()
+    if (!evidencia) return toast.error('Describí qué demuestran los archivos adjuntos.')
+    setSavingEvidencia(true)
+    try {
+      await updateCapa(c.id, { evidencia })
+      c.evidencia = evidencia
+      onReload?.()
+      toast.ok('Descripción de evidencia guardada.')
+    } catch (e) { toast.error(mensajeError(e)) }
+    finally { setSavingEvidencia(false) }
   }
 
   const startEditSubtarea = subtarea => {
@@ -516,13 +531,6 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
               <span style={{ color:'var(--phosphor)' }}>Vencimiento:</span> {format(new Date(c.fecha_limite), 'dd/MM/yyyy')}
             </p>
           )}
-          {c.evidencia && (
-            <p style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>
-              <span style={{ color:'var(--phosphor)' }}>Evidencia:</span>{' '}
-              <a href={c.evidencia} target="_blank" rel="noreferrer" style={{ color:'#60A5FA' }}>{c.evidencia.slice(0,50)}…</a>
-            </p>
-          )}
-
           <div className="rounded px-3 py-3" style={{ background:'rgba(96,165,250,.04)', border:'1px solid rgba(96,165,250,.14)' }}>
             <div className="flex items-center justify-between gap-2 mb-2">
               <p className="font-metric" style={{ color:'#60A5FA', fontSize:'.64rem' }}>SUBTAREAS OPERATIVAS · {subtareas.filter(s=>s.completada).length}/{subtareas.length}</p>
@@ -627,6 +635,30 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
               </div>
             </div>
           )}
+
+          <div className="pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
+              Descripción de la evidencia
+            </label>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginBottom:6 }}>
+              Explicá qué muestran los adjuntos y cómo acreditan que la acción fue realizada.
+            </p>
+            {canWrite ? <>
+              <textarea
+                value={evidenciaDescripcion}
+                onChange={e => setEvidenciaDescripcion(e.target.value)}
+                placeholder="Ej.: Las fotografías muestran la separación física y la cartelería instalada en ambos sectores."
+                rows={3}
+                className="input-dark"
+                style={{ resize:'vertical', fontSize:'0.75rem', lineHeight:1.45, width:'100%' }}
+              />
+              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:6 }}>
+                <button type="button" onClick={handleSaveEvidencia} disabled={savingEvidencia || evidenciaDescripcion.trim() === (c.evidencia || '').trim()} className="btn-ghost" style={{ padding:'0.25rem 0.75rem', fontSize:'0.65rem' }}>
+                  {savingEvidencia ? 'Guardando…' : 'Guardar descripción'}
+                </button>
+              </div>
+            </> : <p style={{ color:'var(--text)', fontSize:'0.75rem', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{c.evidencia || 'Sin descripción de evidencia.'}</p>}
+          </div>
 
           <div className="pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <AdjuntosPanel entityType="capa" entityId={c.id} readOnly={!canWrite} />
