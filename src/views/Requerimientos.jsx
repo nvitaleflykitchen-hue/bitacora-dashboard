@@ -652,7 +652,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
 }
 
 // ─── Tarjeta en kanban ─────────────────────────────────────
-function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
+function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false, draggable = false, onDragStart, onDragEnd }) {
   const urg = URG_COLOR[req.urgencia] || '#aaa'
   const diasEtapa = diasHabilesEntre(inicioEtapa(req))
   const diasCompra = req.enviado_at ? diasHabilesEntre(req.enviado_at, req.cumplido_at ? new Date(req.cumplido_at) : new Date()) : null
@@ -660,7 +660,10 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
   const vencido = diasCompra !== null && !ESTADOS_CERRADOS.has(req.estado) && diasCompra > sla
   const observado = req.estado === 'Observado'
   return (
-    <div className="rounded p-3 fade-in" style={{ background:observado?'rgba(251,146,60,0.055)':'var(--surface)', border:`1px solid ${observado?'rgba(251,146,60,0.5)':'rgba(255,255,255,0.05)'}`, borderLeft:observado?'3px solid #FB923C':undefined, cursor:'pointer' }}
+    <div className="rounded p-3 fade-in" draggable={draggable}
+      onDragStart={event=>onDragStart?.(event, req)} onDragEnd={onDragEnd}
+      title={draggable ? 'Arrastrá la tarjeta a otra columna para cambiar su estado' : undefined}
+      style={{ background:observado?'rgba(251,146,60,0.055)':'var(--surface)', border:`1px solid ${observado?'rgba(251,146,60,0.5)':'rgba(255,255,255,0.05)'}`, borderLeft:observado?'3px solid #FB923C':undefined, cursor:draggable?'grab':'pointer' }}
       onClick={()=>{ if (!readOnly) onEdit(req) }}>
       {observado && (
         <div style={{ color:'#FB923C', fontSize:'0.6rem', fontWeight:800, letterSpacing:'0.06em', marginBottom:6 }}>
@@ -742,6 +745,8 @@ export default function Requerimientos({ focusId }) {
   const [showProcess, setShowProcess] = useState(false)
   const [showEquipoCompras, setShowEquipoCompras] = useState(false)
   const [observationReq, setObservationReq] = useState(null)
+  const [draggedReqId, setDraggedReqId] = useState(null)
+  const [dragOverEstado, setDragOverEstado] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -795,6 +800,26 @@ export default function Requerimientos({ focusId }) {
       toast.error('No se pudo actualizar el estado: ' + mensajeError(e))
       await load()
     }
+  }
+
+  const handleDragStart = (event, req) => {
+    setDraggedReqId(req.id)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(req.id))
+  }
+
+  const handleDropEstado = async (event, estado) => {
+    event.preventDefault()
+    const idText = event.dataTransfer.getData('text/plain') || String(draggedReqId || '')
+    const req = reqs.find(item => String(item.id) === idText)
+    setDragOverEstado(null)
+    setDraggedReqId(null)
+    if (!req || req.estado === estado) return
+    if (!(TRANSICIONES[req.estado] || []).includes(estado)) {
+      toast.warn(`No se puede pasar de ${req.estado} a ${estado} directamente.`)
+      return
+    }
+    await handleUpdateEstado(req.id, estado)
   }
 
   const confirmObservation = async (comentario, mentionedUserIds) => {
@@ -1082,7 +1107,16 @@ export default function Requerimientos({ focusId }) {
             const { color, bg } = colHeader[estado]
             const items = itemsKanban(estado)
             return (
-              <div key={estado} style={{ display:'flex', flexDirection:'column', gap:8, minWidth:160 }}>
+              <div key={estado}
+                onDragOver={event=>{
+                  if (!canManage || !draggedReqId) return
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                  setDragOverEstado(estado)
+                }}
+                onDragLeave={event=>{ if (!event.currentTarget.contains(event.relatedTarget)) setDragOverEstado(current=>current===estado?null:current) }}
+                onDrop={event=>handleDropEstado(event, estado)}
+                style={{ display:'flex', flexDirection:'column', gap:8, minWidth:160, padding:dragOverEstado===estado?4:0, margin:dragOverEstado===estado?-4:0, borderRadius:6, outline:dragOverEstado===estado?`2px dashed ${color}`:'2px dashed transparent', background:dragOverEstado===estado?bg:'transparent', transition:'all .12s ease' }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', borderRadius:5, background:bg, border:`1px solid ${bg.replace('0.0','0.2')}` }}>
                   <span style={{ color, fontSize:'0.62rem', fontFamily:'monospace', fontWeight:700, letterSpacing:'0.08em' }}>{operationalStateLabel(estado, { includeStage:true }).toUpperCase()}</span>
                   <span style={{ color, fontSize:'0.62rem', fontWeight:700 }}>{items.length}</span>
@@ -1092,6 +1126,9 @@ export default function Requerimientos({ focusId }) {
                     onEdit={r=>{ setEditReq(r); setShowForm(true) }}
                     onUpdateEstado={handleUpdateEstado}
                     onEnviar={handleEnviar}
+                    draggable={canManage}
+                    onDragStart={handleDragStart}
+                    onDragEnd={()=>{ setDraggedReqId(null); setDragOverEstado(null) }}
                     readOnly={!canManage && !(canRequest && ['Pendiente','Observado'].includes(r.estado))}/>
                 ))}
                 {items.length===0 && (
