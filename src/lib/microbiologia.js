@@ -1,4 +1,4 @@
-import { db } from './supabase'
+import { db, supabase } from './supabase'
 
 export const MICROBIOLOGIA_STORAGE_KEY = 'fly-gestion:microbiologia:v1'
 
@@ -80,6 +80,10 @@ export function saveLocalMicroRecords(records) {
 }
 
 function fromDatabase(row) {
+  const evidenciaPath = row.record_data?.evidencia_path || ''
+  const evidenciaUrl = evidenciaPath
+    ? supabase.storage.from('bitacora-adjuntos').getPublicUrl(evidenciaPath).data.publicUrl
+    : ''
   return {
     id:row.id,
     sedeId:row.sede_id == null ? '' : String(row.sede_id),
@@ -94,6 +98,7 @@ function fromDatabase(row) {
     estado:row.estado || 'observado',
     notas:row.notas || '',
     evidencia:row.evidencia || '',
+    evidenciaUrl,
     archivoNombre:row.record_data?.archivoNombre || '',
     createdAt:row.created_at,
   }

@@ -80,13 +80,15 @@ export default function Microbiologia({ onOpenTab }) {
 
   const visibleRecords = useMemo(() => {
     const allowed = allowedSedeIds ? new Set(allowedSedeIds.map(String)) : null
+    const sedeNames = new Map(sedes.map(sede => [String(sede.id), sede.nombre]))
     const text = query.trim().toLowerCase()
     return records
+      .map(record => ({ ...record, sedeNombre:record.sedeNombre || sedeNames.get(String(record.sedeId)) || 'Sin sede' }))
       .filter(record => !record.sedeId || !allowed || allowed.has(String(record.sedeId)))
       .filter(record => statusFilter === 'todos' || record.estado === statusFilter)
       .filter(record => !text || [record.protocolo, record.muestra, record.parametro, record.laboratorio, record.sedeNombre].some(value => String(value || '').toLowerCase().includes(text)))
       .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))
-  }, [records, allowedSedeIds, query, statusFilter])
+  }, [records, sedes, allowedSedeIds, query, statusFilter])
 
   const stats = useMemo(() => buildMicroStats(visibleRecords), [visibleRecords])
 
@@ -228,7 +230,7 @@ export default function Microbiologia({ onOpenTab }) {
               <td className="p-3"><strong className="block" style={{ color:'var(--text)', fontSize:'0.75rem' }}>{record.protocolo}</strong><span style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>{record.fecha}</span></td>
               <td className="p-3" style={{ color:'var(--text)', fontSize:'0.72rem' }}>{record.sedeNombre}</td><td className="p-3" style={{ color:'var(--text)', fontSize:'0.72rem' }}>{record.muestra}</td><td className="p-3" style={{ color:'var(--text)', fontSize:'0.72rem' }}>{record.parametro}</td>
               <td className="p-3 font-metric" style={{ color:status.color, fontSize:'0.72rem' }}>{record.valor} {record.unidad}</td><td className="p-3"><span className={`chip ${status.className}`}>{status.label}</span></td>
-              <td className="p-3" style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>{record.archivoNombre || '—'}</td><td className="p-3">{canWrite ? <button type="button" aria-label={`Eliminar protocolo ${record.protocolo}`} onClick={() => remove(record.id)} className="btn-ghost" style={{ padding:5, color:'var(--alert)' }}><Trash2 size={13} /></button> : null}</td>
+              <td className="p-3" style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>{record.evidenciaUrl ? <a href={record.evidenciaUrl} target="_blank" rel="noreferrer" style={{ color:'#60a5fa', textDecoration:'underline' }}>{record.evidencia || record.archivoNombre || 'Abrir PDF'}</a> : record.evidencia || record.archivoNombre || '—'}</td><td className="p-3">{canWrite ? <button type="button" aria-label={`Eliminar protocolo ${record.protocolo}`} onClick={() => remove(record.id)} className="btn-ghost" style={{ padding:5, color:'var(--alert)' }}><Trash2 size={13} /></button> : null}</td>
             </tr> })}</tbody>
           </table>
           {!visibleRecords.length ? <div className="text-center py-12"><FlaskConical size={30} style={{ color:'var(--text-dim)', margin:'0 auto 10px' }} /><p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>Todavía no hay resultados microbiológicos para mostrar.</p></div> : null}
