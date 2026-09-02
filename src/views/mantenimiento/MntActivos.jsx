@@ -7,6 +7,7 @@ import AdjuntosPanel from '../../components/AdjuntosPanel'
 import PageHeader from '../../components/PageHeader'
 import { isQualityOnlyProfile } from '../../lib/access'
 import { Mail, MessageCircle, Phone } from 'lucide-react'
+import { normalizeQrLabel } from '../../lib/qrLabel'
 
 const TIPO_COLOR  = { VEHICULO:'#3B82F6', EQUIPO:'#F59E0B', INSTALACION:'#8B5CF6' }
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
@@ -435,7 +436,9 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
 }
 
 function QRModal({ activo, onClose }) {
-  const [compactSizeCm, setCompactSizeCm] = useState(5)
+  const [labelWidthMm, setLabelWidthMm] = useState(50)
+  const [labelHeightMm, setLabelHeightMm] = useState(30)
+  const [labelOrientation, setLabelOrientation] = useState('horizontal')
   const url = `${window.location.origin}/?scan=activo&id=${activo.id}`
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}&bgcolor=0A0A0E&color=39FF14&margin=10`
   const escapeHtml = value => String(value || '')
@@ -443,26 +446,28 @@ function QRModal({ activo, onClose }) {
     .replaceAll('"', '&quot;').replaceAll("'", '&#039;')
 
   const printLabel = () => {
+    const { widthMm, heightMm } = normalizeQrLabel({ widthMm:labelWidthMm, heightMm:labelHeightMm, orientation:labelOrientation })
     const w = window.open('', '_blank', 'width=400,height=500')
     if (!w) return
     const printQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=12`
     w.document.write(`<!DOCTYPE html><html><head><title>QR ${escapeHtml(activo.nombre)}</title>
     <style>
-      @page { size:80mm 100mm; margin:4mm; }
+      @page { size:${widthMm}mm ${heightMm}mm; margin:0; }
       * { box-sizing:border-box; }
-      body { margin:0; background:#fff; color:#000; font-family:Arial,sans-serif; display:flex; align-items:flex-start; justify-content:center; }
-      .label { width:72mm; min-height:88mm; border:2px solid #000; border-radius:4mm; padding:4mm; display:flex; flex-direction:column; align-items:center; text-align:center; }
-      .brand { width:100%; font-size:9px; font-weight:800; letter-spacing:1.6px; padding-bottom:2mm; border-bottom:1px solid #000; }
-      img { width:52mm; height:52mm; display:block; margin:3mm 0 2mm; image-rendering:pixelated; }
-      h2 { font-size:14px; line-height:1.2; margin:1mm 0; max-width:100%; }
-      .asset { font-family:monospace; font-size:10px; font-weight:700; margin:1mm 0 2mm; }
-      .instruction { width:100%; border-top:1px solid #000; padding-top:2mm; font-size:9px; line-height:1.35; font-weight:600; }
-      @media print { body { width:72mm; } }
+      html, body { width:${widthMm}mm; height:${heightMm}mm; margin:0; background:#fff; color:#000; }
+      body { font-family:Arial,sans-serif; display:flex; align-items:center; justify-content:center; }
+      .label { width:100%; height:100%; border:0.4mm solid #000; padding:2mm; display:grid; grid-template-columns:minmax(16mm,38%) 1fr; grid-template-rows:auto 1fr auto; gap:1mm 2mm; align-items:center; overflow:hidden; }
+      .brand { grid-column:1/-1; font-size:7px; font-weight:800; letter-spacing:1px; padding-bottom:1mm; border-bottom:0.2mm solid #000; }
+      img { grid-column:1; grid-row:2/4; width:100%; max-height:100%; aspect-ratio:1; object-fit:contain; display:block; image-rendering:pixelated; }
+      .details { min-width:0; align-self:center; }
+      h2 { font-size:10px; line-height:1.15; margin:0 0 1mm; overflow-wrap:anywhere; }
+      .asset { font-family:monospace; font-size:8px; font-weight:700; margin:0; overflow-wrap:anywhere; }
+      .instruction { margin:0; border-top:0.2mm solid #000; padding-top:1mm; font-size:6px; line-height:1.2; font-weight:700; }
     </style></head><body><section class="label">
     <div class="brand">FLY KITCHEN · ACTIVO</div>
     <img id="qr-print" src="${printQrSrc}" alt="QR del activo" />
-    <h2>${escapeHtml(activo.nombre)}</h2>
-    <p class="asset">${escapeHtml(`${activo.codigo_interno ? '#'+activo.codigo_interno+' · ' : ''}${activo.categoria||activo.tipo||''}`)}</p>
+    <div class="details"><h2>${escapeHtml(activo.nombre)}</h2>
+    <p class="asset">${escapeHtml(`${activo.codigo_interno ? '#'+activo.codigo_interno+' · ' : ''}${activo.categoria||activo.tipo||''}`)}</p></div>
     <p class="instruction">ESCANEAR PARA VER LA FICHA Y MANUALES<br/>O NOTIFICAR UNA AVERÍA</p>
     </section></body></html>`)
     w.document.close()
@@ -474,21 +479,20 @@ function QRModal({ activo, onClose }) {
   }
 
   const printCompactLabel = () => {
-    const sizeCm = Math.min(12, Math.max(3, Number(compactSizeCm) || 5))
-    const sizeMm = sizeCm * 10
+    const { widthMm, heightMm } = normalizeQrLabel({ widthMm:labelWidthMm, heightMm:labelHeightMm, orientation:labelOrientation })
     const code = activo.codigo_interno || activo.id
     const w = window.open('', '_blank', 'width=400,height=500')
     if (!w) return
     const printQrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=4`
     w.document.write(`<!DOCTYPE html><html><head><title>QR ${escapeHtml(code)}</title>
     <style>
-      @page { size:${sizeMm}mm ${sizeMm}mm; margin:0; }
+      @page { size:${widthMm}mm ${heightMm}mm; margin:0; }
       * { box-sizing:border-box; }
-      html, body { width:${sizeMm}mm; height:${sizeMm}mm; margin:0; padding:0; background:#fff; color:#000; }
+      html, body { width:${widthMm}mm; height:${heightMm}mm; margin:0; padding:0; background:#fff; color:#000; }
       body { font-family:Arial,sans-serif; display:flex; align-items:center; justify-content:center; }
-      .compact-label { width:${sizeMm}mm; height:${sizeMm}mm; padding:2mm; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
-      img { width:calc(100% - 8mm); height:auto; max-height:calc(100% - 9mm); aspect-ratio:1; display:block; image-rendering:pixelated; }
-      .code { width:100%; margin:1mm 0 0; font-family:monospace; font-size:${Math.max(8, Math.min(16, sizeCm * 2.2))}px; line-height:1.1; font-weight:800; text-align:center; overflow-wrap:anywhere; }
+      .compact-label { width:${widthMm}mm; height:${heightMm}mm; padding:2mm; display:flex; ${widthMm >= heightMm ? 'flex-direction:row' : 'flex-direction:column'}; align-items:center; justify-content:center; gap:1.5mm; overflow:hidden; }
+      img { width:auto; height:auto; max-width:${widthMm >= heightMm ? '65%' : '90%'}; max-height:${widthMm >= heightMm ? '90%' : '72%'}; aspect-ratio:1; object-fit:contain; display:block; image-rendering:pixelated; }
+      .code { margin:0; font-family:monospace; font-size:${Math.max(8, Math.min(16, Math.min(widthMm,heightMm) * .32))}px; line-height:1.1; font-weight:800; text-align:center; overflow-wrap:anywhere; }
     </style></head><body><section class="compact-label"><img id="qr-compact" src="${printQrSrc}" alt="QR del activo"/><p class="code">${escapeHtml(code)}</p></section></body></html>`)
     w.document.close()
     const qrImage = w.document.getElementById('qr-compact')
@@ -511,9 +515,13 @@ function QRModal({ activo, onClose }) {
           <img src={qrSrc} alt="QR" width={200} height={200} style={{ display:'block', imageRendering:'pixelated' }} />
         </div>
         <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', fontFamily:'monospace', wordBreak:'break-all', marginBottom:'1rem', padding:'0 0.5rem' }}>{url}</p>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.75rem', marginBottom:'0.65rem', padding:'0.65rem', border:'1px solid rgba(255,255,255,0.08)', borderRadius:3 }}>
-          <label htmlFor="compact-qr-size" style={{ color:'var(--text-dim)', fontSize:'0.72rem', textAlign:'left' }}>Etiqueta QR + código<br/><strong style={{ color:'var(--text)' }}>Tamaño cuadrado</strong></label>
-          <div style={{ display:'flex', alignItems:'center', gap:5 }}><input id="compact-qr-size" type="number" min="3" max="12" step="0.5" value={compactSizeCm} onChange={e=>setCompactSizeCm(e.target.value)} style={{ width:62, background:'var(--bg-deep)', color:'var(--text)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:3, padding:'0.42rem', textAlign:'right' }}/><span style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>cm</span></div>
+        <div style={{ marginBottom:'0.65rem', padding:'0.65rem', border:'1px solid rgba(255,255,255,0.08)', borderRadius:3, textAlign:'left' }}>
+          <p style={{ color:'var(--text)', fontSize:'0.72rem', fontWeight:700, margin:'0 0 8px' }}>Tamaño de etiqueta</p>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
+            <label style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>Ancho (mm)<input aria-label="Ancho de etiqueta en milímetros" type="number" min="20" max="200" step="1" value={labelWidthMm} onChange={e=>setLabelWidthMm(e.target.value)} className="input-dark" style={{ marginTop:4 }}/></label>
+            <label style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>Alto (mm)<input aria-label="Alto de etiqueta en milímetros" type="number" min="20" max="200" step="1" value={labelHeightMm} onChange={e=>setLabelHeightMm(e.target.value)} className="input-dark" style={{ marginTop:4 }}/></label>
+          </div>
+          <label style={{ color:'var(--text-dim)', fontSize:'0.65rem' }}>Orientación<select aria-label="Orientación de etiqueta" value={labelOrientation} onChange={e=>setLabelOrientation(e.target.value)} className="input-dark" style={{ marginTop:4 }}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem' }}>
           <button onClick={printLabel}
