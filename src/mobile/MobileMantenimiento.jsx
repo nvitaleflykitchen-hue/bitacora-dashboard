@@ -7,11 +7,13 @@ import {
 } from '../lib/queries'
 import { fmtFecha } from '../lib/dateUtils'
 import { isQualityOnlyProfile } from '../lib/access'
-import { Wrench, Package, Flame, Plus, X, ChevronRight, ChevronLeft, Search } from 'lucide-react'
+import { Wrench, Package, Flame, Plus, X, ChevronRight, ChevronLeft, Search, ScanLine } from 'lucide-react'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { TabPlanes, TabProveedores, TabResponsables, TabTablero } from './MobileMntTabs'
 import TicketRapidoModal from '../components/TicketRapidoModal'
+import AssetQrScannerModal from '../components/AssetQrScannerModal'
+import { findScannedAsset } from '../lib/assetQrScan'
 
 const TIPO_COLOR_ACTIVO = { EQUIPO: '#F59E0B', INSTALACION: '#8B5CF6' }
 import {
@@ -248,6 +250,8 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
   const [showNew, setShowNew] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannerError, setScannerError] = useState('')
 
   const load = useCallback(() => {
     setLoading(true)
@@ -270,11 +274,28 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
 
   const filtered = items.filter(a => !search || (a.nombre + ' ' + (a.codigo_interno || '') + ' ' + (a.categoria || '')).toLowerCase().includes(search.toLowerCase()))
 
+  const openScannedAsset = scanValue => {
+    const target = findScannedAsset(items, scanValue)
+    setScannerOpen(false)
+    if (!target) {
+      setScannerError('No se encontró el activo o no tenés permiso para verlo.')
+      return
+    }
+    setScannerError('')
+    setSelected(target)
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
-      <div style={{ padding: '0.75rem 1rem 0', flexShrink: 0, position: 'relative' }}>
-        <Search size={13} style={{ position: 'absolute', left: 26, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
-        <input className="input-dark w-full" placeholder="Buscar activo..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 30 }} />
+      <div style={{ padding: '0.75rem 1rem 0', flexShrink: 0 }}>
+        <div style={{ display:'flex', gap:8 }}>
+          <div style={{ flex:1, position:'relative' }}>
+            <Search size={13} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-dim)' }}/>
+            <input className="input-dark w-full" placeholder="Buscar activo..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft:30 }}/>
+          </div>
+          <button type="button" onClick={()=>{ setScannerError(''); setScannerOpen(true) }} aria-label="Escanear QR de activo" title="Escanear QR" className="btn-primary" style={{ width:44, display:'grid', placeItems:'center', padding:0 }}><ScanLine size={19}/></button>
+        </div>
+        {scannerError && <p role="alert" style={{ color:'#F59E0B', fontSize:'.68rem', margin:'7px 0 0' }}>{scannerError}</p>}
       </div>
       <div className="mobile-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 1rem 5rem', minHeight: 0 }}>
         {loading ? <p style={{ color: 'var(--text-dim)', textAlign: 'center', marginTop: '2rem' }}>Cargando...</p>
@@ -301,6 +322,9 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
         }}><Plus size={22} /></button>
       )}
       {showNew && <QuickActivoModal sedes={sedes} onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load() }} />}
+      {scannerOpen && (
+        <AssetQrScannerModal onClose={()=>setScannerOpen(false)} onScan={openScannedAsset}/>
+      )}
     </div>
   )
 }
