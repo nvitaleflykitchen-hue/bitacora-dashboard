@@ -50,6 +50,7 @@ const MntFlotaGestion = lazy(() => import('./views/mantenimiento/MntFlotaGestion
 const SedeResponsables = lazy(() => import('./views/SedeResponsables'))
 const Requerimientos = lazy(() => import('./views/Requerimientos'))
 const QRActivoView = lazy(() => import('./views/mantenimiento/QRActivoView'))
+const PublicAssetQrView = lazy(() => import('./views/mantenimiento/PublicAssetQrView'))
 const AuditoriaView = lazy(() => import('./views/mantenimiento/AuditoriaView'))
 const AccesosAppReport = lazy(() => import('./views/AccesosAppReport'))
 const SedeFicha = lazy(() => import('./views/SedeFicha'))
@@ -354,8 +355,10 @@ function AppInner() {
 }
 
 export default function App() {
-  const credencialToken = new URLSearchParams(window.location.search).get('credencial')
-  const eppEntregaToken = new URLSearchParams(window.location.search).get('eppEntrega')
+  const publicParams = new URLSearchParams(window.location.search)
+  const credencialToken = publicParams.get('credencial')
+  const eppEntregaToken = publicParams.get('eppEntrega')
+  const publicAssetId = publicParams.get('scan') === 'activo' ? publicParams.get('id') : null
   if (credencialToken) return (
     <Suspense fallback={<LoadingScreen />}>
       <CredencialVerificacion token={credencialToken} />
@@ -363,6 +366,12 @@ export default function App() {
     </Suspense>
   )
   if(eppEntregaToken)return <><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/><OfflineStatus/></>
+  if (publicAssetId) return (
+    <Suspense fallback={<LoadingScreen />}>
+      <PublicAssetQrView assetId={publicAssetId} />
+      <OfflineStatus />
+    </Suspense>
+  )
   return (
     <AuthProvider>
       <AppInner />
