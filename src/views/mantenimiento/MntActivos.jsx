@@ -69,6 +69,8 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
   const [err, setErr]         = useState(null)
   const [historial, setHistorial] = useState([])
   const [responsables, setResponsables] = useState([])
+  const [personas, setPersonas] = useState([])
+  const [custodias, setCustodias] = useState([])
   const [proveedores, setProveedores] = useState([])
   const [loadingHist, setLoadingHist] = useState(false)
   const [historialError, setHistorialError] = useState(null)
@@ -82,13 +84,21 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
       activo?.id ? getTicketsActivo({ id: activo.id, nombre: activo.nombre }) : Promise.resolve([]),
       getProveedores(),
       supabase.from('mnt_responsables').select('id,nombre,rol,telefono,email').order('nombre'),
+      supabase.schema('equipo').from('personas').select('id,nombre,apellido,puesto,activo,fecha_baja,sede_ids').order('nombre'),
+      activo?.id
+        ? supabase.schema('mantenimiento').from('activo_custodias').select('*').eq('activo_id', activo.id).order('created_at', { ascending:false }).limit(50)
+        : Promise.resolve({ data:[], error:null }),
     ])
-      .then(([tickets, proveedoresData, responsablesResult]) => {
+      .then(([tickets, proveedoresData, responsablesResult, personasResult, custodiasResult]) => {
         if (responsablesResult.error) throw responsablesResult.error
+        if (personasResult.error) throw personasResult.error
+        if (custodiasResult.error) throw custodiasResult.error
         if (cancelled) return
         setHistorial(tickets.slice(0, 50))
         setProveedores(proveedoresData)
         setResponsables(responsablesResult.data || [])
+        setPersonas(personasResult.data || [])
+        setCustodias(custodiasResult.data || [])
       })
       .catch(error => { if (!cancelled) setHistorialError(error.message) })
       .finally(() => { if (!cancelled) setLoadingHist(false) })
@@ -131,6 +141,11 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
   }
 
   const sedeName = activo?.sede_nombre || sedes.find(s=>s.id===activo?.sede_id)?.nombre
+  const personaNombre = persona => [persona?.nombre, persona?.apellido].filter(Boolean).join(' ')
+  const custodioActual = personas.find(p => p.id === (form.custodio_persona_id || activo?.custodio_persona_id))
+  const custodioNombre = personaNombre(custodioActual) || activo?.custodio_nombre || activo?.responsable || ''
+  const personaPorId = id => personas.find(p => p.id === id)
+  const personasDisponibles = personas.filter(p => (p.activo !== false && !p.fecha_baja) || p.id === form.custodio_persona_id)
   const nombreResponsable = ticket => responsables.find(r => r.id === ticket?.responsable_id)?.nombre || ticket?.responsable || ''
   const nombreProveedor = ticket => proveedores.find(p => p.id === ticket?.proveedor_id)?.nombre || ''
   const proveedorServicio = proveedores.find(p => p.id === activo?.proveedor_servicio_id)
@@ -192,7 +207,9 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
               <Field label="Marca / Modelo" value={[activo.marca, activo.modelo].filter(Boolean).join(' ')} />
               <Field label="Categoría" value={activo.categoria} />
               <Field label="Sede / Unidad" value={sedeName} />
-              <Field label="Responsable" value={activo.responsable} />
+              <Field label="Asignado a" value={custodioNombre || 'Sin asignar / uso compartido'} />
+              <Field label="En custodia desde" value={activo.custodia_desde ? fmtFecha(activo.custodia_desde) : null} />
+              <Field label="Ubicación actual" value={activo.ubicacion_detalle} />
               <Field label="Nro. Serie" value={activo.numero_serie} />
             </div>
             <div style={{ borderTop:'1px solid rgba(57,255,20,0.08)', paddingTop:'0.75rem', marginTop:'0.25rem' }}>
@@ -250,6 +267,30 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
         {/* HISTORIAL */}
         {!isNew && !editing && tab === 'historial' && (
           <div style={{ minHeight:200 }}>
+            <div style={{ marginBottom:18 }}>
+              <p style={{ ...LABEL_S, color:'var(--phosphor)', marginBottom:8 }}>Historial de custodia</p>
+              {custodias.length === 0 ? (
+                <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', margin:0 }}>Sin entregas ni transferencias registradas</p>
+              ) : custodias.map(movimiento => {
+                const anterior = personaNombre(personaPorId(movimiento.persona_anterior_id)) || movimiento.persona_anterior_nombre
+                const nueva = personaNombre(personaPorId(movimiento.persona_nueva_id)) || movimiento.persona_nueva_nombre
+                const detalle = movimiento.tipo_movimiento === 'devolucion'
+                  ? `Devuelto por ${anterior || 'persona no disponible'}`
+                  : movimiento.tipo_movimiento === 'transferencia'
+                    ? `${anterior || 'Sin asignar'} → ${nueva || 'Sin asignar'}`
+                    : `Entregado a ${nueva || 'persona no disponible'}`
+                return (
+                  <div key={movimiento.id} style={{ borderLeft:'2px solid rgba(57,255,20,.35)', padding:'2px 0 10px 12px', marginLeft:3 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:8 }}>
+                      <p style={{ color:'var(--text)', fontSize:'.72rem', fontWeight:700, margin:0 }}>{detalle}</p>
+                      <span style={{ color:'var(--text-dim)', fontSize:'.58rem', whiteSpace:'nowrap' }}>{fmtFecha(movimiento.created_at)}</span>
+                    </div>
+                    {movimiento.observacion && <p style={{ color:'var(--text-dim)', fontSize:'.62rem', margin:'3px 0 0' }}>{movimiento.observacion}</p>}
+                  </div>
+                )
+              })}
+            </div>
+            <p style={{ ...LABEL_S, marginBottom:8 }}>Historial de mantenimiento</p>
             <div style={{ borderBottom:'1px solid rgba(57,255,20,0.08)', paddingBottom:12, marginBottom:14 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
                 <span style={{ fontSize:'0.6rem', color:'var(--text-dim)', fontFamily:'monospace' }}>{activo.created_at ? fmtFecha(activo.created_at) : 'Fecha no registrada'}</span>
@@ -382,8 +423,35 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW_S}><label style={LABEL_S}>Responsable</label><input value={form.responsable||''} onChange={e=>set('responsable',e.target.value)} style={INPUT_S} /></div>
+              <div style={ROW_S}>
+                <label style={LABEL_S}>Asignado a / Custodio</label>
+                <select value={form.custodio_persona_id || ''} onChange={e => {
+                  const personaId = e.target.value || null
+                  const persona = personas.find(p => p.id === personaId)
+                  setForm(f => ({
+                    ...f,
+                    custodio_persona_id: personaId,
+                    custodia_desde: personaId ? (f.custodia_desde || new Date().toISOString().slice(0,10)) : null,
+                    responsable: persona ? personaNombre(persona) : null,
+                  }))
+                }} style={INPUT_S}>
+                  <option value="">Sin asignar / uso compartido</option>
+                  {personasDisponibles.map(p => <option key={p.id} value={p.id}>{personaNombre(p)}{p.puesto ? ` · ${p.puesto}` : ''}</option>)}
+                </select>
+                <p style={{ color:'var(--text-dim)', fontSize:'.58rem', margin:'5px 0 0' }}>La sede indica la base física; esta persona conserva la custodia.</p>
+              </div>
               <div style={ROW_S}><label style={LABEL_S}>Nro. Serie</label><input value={form.numero_serie||''} onChange={e=>set('numero_serie',e.target.value)} style={INPUT_S} /></div>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
+              <div style={ROW_S}>
+                <label style={LABEL_S}>En custodia desde</label>
+                <input type="date" value={form.custodia_desde || ''} disabled={!form.custodio_persona_id} onChange={e=>set('custodia_desde',e.target.value||null)} style={INPUT_S} />
+              </div>
+              <div style={ROW_S}>
+                <label style={LABEL_S}>Ubicación actual</label>
+                <input value={form.ubicacion_detalle || ''} onChange={e=>set('ubicacion_detalle',e.target.value)} placeholder="Ej: Administración · Oficina 2" style={INPUT_S} />
+              </div>
             </div>
 
             <div style={ROW_S}>
@@ -653,7 +721,7 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
                 background:`${TIPO_COLOR[a.tipo]||'#555'}22`, color:TIPO_COLOR[a.tipo]||'#555' }}>
                 {a.tipo?.charAt(0)+a.tipo?.slice(1).toLowerCase()}
               </span>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{a.responsable||'—'}</p>
+              <p style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{a.custodio_nombre || a.responsable || 'Sin asignar'}</p>
               <p style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{a.marca||'—'} {a.modelo||''}</p>
               <span style={{ fontSize:'0.65rem', fontWeight:700, padding:'0.2rem 0.5rem', borderRadius:4,
                 background:`${ESTADO_COLOR[a.estado]||'#555'}22`, color:ESTADO_COLOR[a.estado]||'#555' }}>
