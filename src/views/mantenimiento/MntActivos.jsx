@@ -6,8 +6,10 @@ import { getActivos, upsertActivo, getSedes, getTicketsActivo, getProveedores } 
 import AdjuntosPanel from '../../components/AdjuntosPanel'
 import PageHeader from '../../components/PageHeader'
 import { isQualityOnlyProfile } from '../../lib/access'
-import { Mail, MessageCircle, Phone } from 'lucide-react'
+import { Mail, MessageCircle, Phone, ScanLine } from 'lucide-react'
 import { normalizeQrLabel } from '../../lib/qrLabel'
+import AssetQrScannerModal from '../../components/AssetQrScannerModal'
+import { findScannedAsset } from '../../lib/assetQrScan'
 
 const TIPO_COLOR  = { VEHICULO:'#3B82F6', EQUIPO:'#F59E0B', INSTALACION:'#8B5CF6' }
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
@@ -618,6 +620,8 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(null)
   const [qrModal, setQrModal] = useState(null)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannerError, setScannerError] = useState('')
   const [sedeId, setSedeId]   = useState('')
   const [filtroTipo, setFiltroTipo]     = useState('todos')
   const [filtroEstado, setFiltroEstado] = useState('todos')
@@ -648,6 +652,18 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
     .filter(a => filtroEstado === 'todos' || a.estado === filtroEstado)
     .filter(a => !busqueda || a.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || (a.codigo_interno||'').toLowerCase().includes(busqueda.toLowerCase()))
 
+  const openScannedAsset = scanValue => {
+    const target = findScannedAsset(activos, scanValue)
+    if (!target) {
+      setScannerError('No se encontró el activo o no tenés permiso para verlo.')
+      setScannerOpen(false)
+      return
+    }
+    setScannerError('')
+    setScannerOpen(false)
+    setModal(target)
+  }
+
   const CHIP = active => ({
     padding:'0.3rem 0.75rem', borderRadius:3, fontSize:'0.65rem', fontWeight:600,
     border:'none', cursor:'pointer',
@@ -668,12 +684,17 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
             <option value=''>Todas las sedes</option>
             {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
           </select>
+          <button onClick={()=>{ setScannerError(''); setScannerOpen(true) }} className="btn-ghost" style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+            <ScanLine size={16}/> Escanear QR
+          </button>
           {canWrite && <button onClick={()=>setModal({})}
             style={{ background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.55rem 1.1rem', fontWeight:700, cursor:'pointer' }}>
             + Nuevo Activo
           </button>}
         </div>
       </PageHeader>
+
+      {scannerError && <p role="alert" style={{ color:'#F59E0B', fontSize:'.75rem', margin:'0 0 .75rem' }}>{scannerError}</p>}
 
       <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'1rem', alignItems:'center' }}>
         <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
@@ -738,6 +759,9 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
       </div>
 
       {qrModal && <QRModal activo={qrModal} onClose={()=>setQrModal(null)} />}
+      {scannerOpen && (
+        <AssetQrScannerModal onClose={()=>setScannerOpen(false)} onScan={openScannedAsset}/>
+      )}
       {modal !== null && (
         <ActivoModal
           activo={modal?.id ? modal : null}
