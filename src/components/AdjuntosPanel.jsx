@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Camera, Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus } from 'lucide-react'
+import { Camera, Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus, Pencil, RefreshCw } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { getAdjuntos, uploadAdjunto, addAdjuntoLink, deleteAdjunto } from '../lib/adjuntos'
+import { getAdjuntos, uploadAdjunto, addAdjuntoLink, deleteAdjunto, replaceAdjuntoFile, updateAdjuntoMetadata } from '../lib/adjuntos'
 import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 
@@ -49,6 +49,22 @@ function LinkForm({ onAdd, onCancel }) {
   )
 }
 
+function EditForm({ adjunto, onSave, onCancel }) {
+  const [nombre, setNombre] = useState(adjunto.nombre || '')
+  const [descripcion, setDescripcion] = useState(adjunto.descripcion || '')
+  const [url, setUrl] = useState(adjunto.tipo === 'link' ? adjunto.url || '' : '')
+  return <div className="glass rounded p-3 space-y-2 fade-in" style={{ borderRadius:3, border:'1px solid rgba(57,255,20,0.2)', marginBottom:8 }}>
+    <p className="font-metric text-xs tracking-wider uppercase" style={{ color:'var(--phosphor)' }}>Editar adjunto</p>
+    <input className="input-dark w-full" value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre" autoFocus />
+    {adjunto.tipo === 'link' && <input className="input-dark w-full" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://..." />}
+    <input className="input-dark w-full" value={descripcion} onChange={e=>setDescripcion(e.target.value)} placeholder="Descripción (opcional)" />
+    <div className="flex gap-2 justify-end">
+      <button type="button" onClick={onCancel} className="btn-ghost" style={{ padding:'0.25rem 0.6rem', fontSize:'0.72rem' }}>Cancelar</button>
+      <button type="button" onClick={()=>onSave({ nombre, descripcion, ...(adjunto.tipo === 'link' ? { url } : {}) })} disabled={!nombre.trim() || (adjunto.tipo === 'link' && !url.trim())} className="btn-primary" style={{ padding:'0.25rem 0.6rem', fontSize:'0.72rem' }}>Guardar</button>
+    </div>
+  </div>
+}
+
 export default function AdjuntosPanel({ entityType, entityId, compact = false, readOnly = false, label = 'Adjuntos', camera = false }) {
   const { perfil } = useAuth()
   const [adjuntos, setAdjuntos] = useState([])
@@ -56,8 +72,11 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
   const [uploading, setUploading] = useState(false)
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [lightbox, setLightbox] = useState(null)
+  const [editingAdjunto, setEditingAdjunto] = useState(null)
+  const [replacingAdjunto, setReplacingAdjunto] = useState(null)
   const fileRef = useRef()
   const cameraRef = useRef()
+  const replaceRef = useRef()
 
   const load = useCallback(async () => {
     if (!entityId) return
@@ -100,6 +119,35 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
       await deleteAdjunto(adj)
       await load()
     } catch (e) { toast.error('Error: ' + mensajeError(e)) }
+  }
+
+  const handleEdit = async (changes) => {
+    try {
+      await updateAdjuntoMetadata(editingAdjunto.id, changes)
+      setEditingAdjunto(null)
+      await load()
+      toast.ok('Adjunto actualizado.')
+    } catch (e) { toast.error('Error actualizando adjunto: ' + mensajeError(e)) }
+  }
+
+  const chooseReplacement = adjunto => {
+    setReplacingAdjunto(adjunto)
+    replaceRef.current?.click()
+  }
+
+  const handleReplacement = async file => {
+    if (!file || !replacingAdjunto) return
+    setUploading(true)
+    try {
+      await replaceAdjuntoFile(replacingAdjunto, file, perfil?.nombre || 'usuario')
+      await load()
+      toast.ok('Documento reemplazado.')
+    } catch (e) { toast.error('Error reemplazando documento: ' + mensajeError(e)) }
+    finally {
+      setUploading(false)
+      setReplacingAdjunto(null)
+      if (replaceRef.current) replaceRef.current.value = ''
+    }
   }
 
   const handleDrop = (e) => {
@@ -151,6 +199,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
           {camera && <input ref={cameraRef} type="file" accept="image/*" capture="environment"
             style={{ display:'none' }} onChange={e => handleFiles(e.target.files)} />}
         </div>}
+        {!readOnly && <input ref={replaceRef} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" style={{ display:'none' }} onChange={e=>handleReplacement(e.target.files?.[0])} />}
       </div>
 
       {/* Link form */}
@@ -159,6 +208,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
           <LinkForm onAdd={handleAddLink} onCancel={() => setShowLinkForm(false)} />
         </div>
       )}
+      {!readOnly && editingAdjunto && <EditForm adjunto={editingAdjunto} onSave={handleEdit} onCancel={()=>setEditingAdjunto(null)} />}
 
       {/* Drop zone (visible solo si no hay adjuntos) */}
       {!readOnly && adjuntos.length === 0 && !loading && !showLinkForm && (
@@ -195,14 +245,16 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
                   cursor:'zoom-in', border:'1px solid rgba(255,255,255,0.08)',
                 }}
               />
-              {!readOnly && <button
-                onClick={() => handleDelete(img)}
+              {!readOnly && <div
                 style={{
                   position:'absolute', top:2, right:2,
-                  background:'rgba(0,0,0,0.7)', border:'none', borderRadius:'50%',
-                  width:18, height:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                  color:'#fff', padding:0,
-                }}><X size={10} /></button>}
+                  background:'rgba(0,0,0,0.78)', borderRadius:3,
+                  display:'flex', alignItems:'center', color:'#fff', padding:1,
+                }}>
+                <button type="button" title="Editar" onClick={() => setEditingAdjunto(img)} style={{ background:'none', border:'none', color:'#fff', padding:2, cursor:'pointer', display:'flex' }}><Pencil size={9}/></button>
+                <button type="button" title="Reemplazar" onClick={() => chooseReplacement(img)} style={{ background:'none', border:'none', color:'#fff', padding:2, cursor:'pointer', display:'flex' }}><RefreshCw size={9}/></button>
+                <button type="button" title="Eliminar" onClick={() => handleDelete(img)} style={{ background:'none', border:'none', color:'#fff', padding:2, cursor:'pointer', display:'flex' }}><X size={9}/></button>
+              </div>}
             </div>
           ))}
           {/* Drop zone pequeña inline */}
@@ -245,6 +297,8 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
                   style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center' }}>
                   <ExternalLink size={11} />
                 </a>
+                {!readOnly && <button type="button" onClick={() => setEditingAdjunto(a)} className="btn-ghost" title="Editar nombre y descripción" style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center' }}><Pencil size={11}/></button>}
+                {!readOnly && <button type="button" onClick={() => chooseReplacement(a)} className="btn-ghost" title="Reemplazar archivo" disabled={uploading} style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center' }}><RefreshCw size={11}/></button>}
                 {!readOnly && <button onClick={() => handleDelete(a)} className="btn-ghost"
                   style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center', color:'var(--alert)' }}>
                   <Trash2 size={11} />
@@ -275,6 +329,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
                   <p style={{ color:'var(--text-dim)', fontSize:'0.6rem', marginTop:1 }}>{l.descripcion}</p>
                 )}
               </div>
+              {!readOnly && <button type="button" onClick={() => setEditingAdjunto(l)} className="btn-ghost" title="Editar link" style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center' }}><Pencil size={11}/></button>}
               {!readOnly && <button onClick={() => handleDelete(l)} className="btn-ghost"
                 style={{ padding:'0.15rem 0.35rem', display:'flex', alignItems:'center', color:'var(--alert)' }}>
                 <Trash2 size={11} />

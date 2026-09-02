@@ -75,14 +75,64 @@ export async function addAdjuntoLink(entityType, entityId, { url, nombre, descri
   return data
 }
 
-export async function deleteAdjunto(adjunto) {
-  if (adjunto.storage_path) {
-    await supabase.storage.from(ADJUNTOS_BUCKET).remove([adjunto.storage_path])
+export async function updateAdjuntoMetadata(adjuntoId, { nombre, descripcion, url }) {
+  const changes = {
+    nombre: String(nombre || '').trim(),
+    descripcion: String(descripcion || '').trim() || null,
   }
+  if (url !== undefined) changes.url = String(url || '').trim()
+  const { data, error } = await supabase
+    .schema('bitacora')
+    .from('adjuntos')
+    .update(changes)
+    .eq('id', adjuntoId)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function replaceAdjuntoFile(adjunto, file, uploadedBy = 'usuario') {
+  if (!adjunto?.id || adjunto.tipo !== 'archivo') throw new Error('El adjunto no es reemplazable')
+  const ext = file.name.includes('.') ? file.name.split('.').pop() : 'bin'
+  const path = `${adjunto.entity_type}/${adjunto.entity_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const { error: uploadErr } = await supabase.storage
+    .from(ADJUNTOS_BUCKET)
+    .upload(path, file, { cacheControl:'3600', upsert:false })
+  if (uploadErr) throw uploadErr
+
+  const { data: { publicUrl } } = supabase.storage.from(ADJUNTOS_BUCKET).getPublicUrl(path)
+  const { data, error: updateErr } = await supabase
+    .schema('bitacora')
+    .from('adjuntos')
+    .update({
+      nombre:file.name,
+      url:publicUrl,
+      storage_path:path,
+      mime_type:file.type,
+      tamaño_bytes:file.size,
+      uploaded_by:uploadedBy,
+    })
+    .eq('id', adjunto.id)
+    .select()
+    .single()
+  if (updateErr) {
+    await supabase.storage.from(ADJUNTOS_BUCKET).remove([path])
+    throw updateErr
+  }
+  if (adjunto.storage_path) await supabase.storage.from(ADJUNTOS_BUCKET).remove([adjunto.storage_path])
+  return data
+}
+
+export async function deleteAdjunto(adjunto) {
   const { error } = await supabase
     .schema('bitacora')
     .from('adjuntos')
     .delete()
     .eq('id', adjunto.id)
   if (error) throw error
+  if (adjunto.storage_path) {
+    const { error: storageError } = await supabase.storage.from(ADJUNTOS_BUCKET).remove([adjunto.storage_path])
+    if (storageError) console.warn('[adjuntos] Registro eliminado; no se pudo limpiar Storage:', storageError.message)
+  }
 }
