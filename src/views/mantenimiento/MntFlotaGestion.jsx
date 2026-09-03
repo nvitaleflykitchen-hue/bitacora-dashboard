@@ -159,6 +159,16 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
           </div>
         ) : (
           <>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
+              <div style={ROW_S}>
+                <label style={LABEL_S}>Sede / Unidad</label>
+                <select value={form.sede_id||''} onChange={e=>set('sede_id', e.target.value ? Number(e.target.value) : null)} style={INPUT_S}>
+                  <option value="">Sin asignar</option>
+                  {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+                </select>
+              </div>
+              <div style={ROW_S}><label style={LABEL_S}>Categoría</label><input value={form.categoria||''} onChange={e=>set('categoria',e.target.value)} style={INPUT_S} placeholder="CAMION, UTILITARIO..." /></div>
+            </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW_S}><label style={LABEL_S}>Nombre / Patente *</label><input value={form.nombre} onChange={e=>set('nombre',e.target.value.toUpperCase())} style={INPUT_S} placeholder="Ej: AA239RK" required /></div>
               <div style={ROW_S}><label style={LABEL_S}>Dominio</label><input value={form.dominio||''} onChange={e=>set('dominio',e.target.value.toUpperCase())} style={INPUT_S} placeholder="Ej: AA239RK" /></div>
@@ -168,26 +178,16 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
               <div style={ROW_S}><label style={LABEL_S}>Marca</label><input value={form.marca||''} onChange={e=>set('marca',e.target.value)} style={INPUT_S} placeholder="Ej: Ford" /></div>
               <div style={ROW_S}><label style={LABEL_S}>Modelo</label><input value={form.modelo||''} onChange={e=>set('modelo',e.target.value)} style={INPUT_S} placeholder="Ej: Transit" /></div>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW_S}>
-                <label style={LABEL_S}>Sede / Unidad</label>
-                <select value={form.sede_id||''} onChange={e=>set('sede_id', e.target.value ? Number(e.target.value) : null)} style={INPUT_S}>
-                  <option value="">Sin asignar</option>
-                  {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
-                </select>
-              </div>
-              <div style={ROW_S}>
+            <div style={{ display:'grid', gridTemplateColumns:isNew ? '1fr' : '1fr 1fr', gap:'0 1rem' }}>
+              <div style={ROW_S}><label style={LABEL_S}>Responsable</label><input value={form.responsable||''} onChange={e=>set('responsable',e.target.value)} style={INPUT_S} placeholder="Ej: Juan Pérez" /></div>
+              {!isNew && <div style={ROW_S}>
                 <label style={LABEL_S}>Estado</label>
                 <select value={form.estado} onChange={e=>set('estado',e.target.value)} style={INPUT_S}>
                   <option value="operativo">Operativo</option>
                   <option value="en_reparacion">En Reparación</option>
                   <option value="baja">Baja</option>
                 </select>
-              </div>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW_S}><label style={LABEL_S}>Responsable</label><input value={form.responsable||''} onChange={e=>set('responsable',e.target.value)} style={INPUT_S} placeholder="Ej: Juan Pérez" /></div>
-              <div style={ROW_S}><label style={LABEL_S}>Categoría</label><input value={form.categoria||''} onChange={e=>set('categoria',e.target.value)} style={INPUT_S} placeholder="CAMION, UTILITARIO..." /></div>
+              </div>}
             </div>
 
             <p style={{ color:'var(--phosphor)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'0.75rem', marginTop:'0.5rem', fontFamily:"'Roboto Mono',monospace" }}>Documentación</p>

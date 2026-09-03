@@ -38,20 +38,6 @@ function MatafuegoModal({ item, sedes, onClose, onSaved }) {
         </div>
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-          <div style={ROW_S}><label style={LABEL_S}>Código *</label><input value={form.codigo} onChange={e=>set('codigo',e.target.value)} style={INPUT_S} placeholder="Ej: MAT-014" required /></div>
-          <div style={ROW_S}><label style={LABEL_S}>Tipo</label><input value={form.tipo||''} onChange={e=>set('tipo',e.target.value)} style={INPUT_S} placeholder="ABC, CO2..." /></div>
-          <div style={ROW_S}><label style={LABEL_S}>Capacidad (kg)</label><input type="number" step="0.5" value={form.capacidad_kg||''} onChange={e=>set('capacidad_kg',+e.target.value)} style={INPUT_S} placeholder="Ej: 5" /></div>
-          <div style={ROW_S}>
-            <label style={LABEL_S}>Estado</label>
-            <select value={form.estado} onChange={e=>set('estado',e.target.value)} style={INPUT_S}>
-              <option value="operativo">Operativo</option>
-              <option value="vencido">Vencido</option>
-              <option value="baja">Baja</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
           <div style={ROW_S}>
             <label style={LABEL_S}>Sede / Unidad</label>
             <select value={form.sede_id||''} onChange={e=>set('sede_id', e.target.value ? Number(e.target.value) : null)} style={INPUT_S}>
@@ -60,6 +46,20 @@ function MatafuegoModal({ item, sedes, onClose, onSaved }) {
             </select>
           </div>
           <div style={ROW_S}><label style={LABEL_S}>Ubicación (descripción)</label><input value={form.ubicacion||''} onChange={e=>set('ubicacion',e.target.value)} style={INPUT_S} placeholder="Ej: Cocina, junto a la puerta" /></div>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
+          <div style={ROW_S}><label style={LABEL_S}>Código *</label><input value={form.codigo} onChange={e=>set('codigo',e.target.value)} style={INPUT_S} placeholder="Ej: MAT-014" required /></div>
+          <div style={ROW_S}><label style={LABEL_S}>Tipo</label><input value={form.tipo||''} onChange={e=>set('tipo',e.target.value)} style={INPUT_S} placeholder="ABC, CO2..." /></div>
+          <div style={ROW_S}><label style={LABEL_S}>Capacidad (kg)</label><input type="number" step="0.5" value={form.capacidad_kg||''} onChange={e=>set('capacidad_kg',+e.target.value)} style={INPUT_S} placeholder="Ej: 5" /></div>
+          {!isNew && <div style={ROW_S}>
+            <label style={LABEL_S}>Estado</label>
+            <select value={form.estado} onChange={e=>set('estado',e.target.value)} style={INPUT_S}>
+              <option value="operativo">Operativo</option>
+              <option value="vencido">Vencido</option>
+              <option value="baja">Baja</option>
+            </select>
+          </div>}
         </div>
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>

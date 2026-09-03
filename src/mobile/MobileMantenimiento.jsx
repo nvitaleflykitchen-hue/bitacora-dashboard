@@ -218,14 +218,6 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
 
   return (
     <SheetModal title="Nuevo activo" onClose={onClose}>
-      <Field label="Nombre *" value={{ val: form.nombre, set: v => set('nombre', v), ph: 'Ej: Horno convector 1' }} />
-      <div style={{ marginBottom: 10 }}>
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Tipo</label>
-        <select className="input-dark w-full" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
-          <option value="EQUIPO">Equipo</option>
-          <option value="INSTALACION">Instalación</option>
-        </select>
-      </div>
       <div style={{ marginBottom: 10 }}>
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede / Unidad</label>
         <select className="input-dark w-full" value={form.sede_id} onChange={e => set('sede_id', e.target.value)}>
@@ -234,6 +226,14 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
         </select>
       </div>
       <Field label="Categoría" value={{ val: form.categoria || '', set: v => set('categoria', v), ph: 'Ej: HORNO' }} />
+      <Field label="Nombre *" value={{ val: form.nombre, set: v => set('nombre', v), ph: 'Ej: Horno convector 1' }} />
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Tipo</label>
+        <select className="input-dark w-full" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+          <option value="EQUIPO">Equipo</option>
+          <option value="INSTALACION">Instalación</option>
+        </select>
+      </div>
       <button onClick={submit} disabled={saving} className="btn-primary w-full" style={{ padding: '0.75rem', marginTop: 6 }}>
         {saving ? 'Guardando...' : 'Crear activo'}
       </button>
