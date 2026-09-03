@@ -598,57 +598,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
               setForm(f => ({ ...f, descripcion:'', diagnostico:'', activo_id:null, activo_nombre:'', proveedor_id:null, responsable_id:null, fecha_limite:null, costo:null, presupuesto:null }))
             }} /></div>}
             <FormErrorSummary errors={formErrors} />
-            {/* Tipo + Prioridad */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW}>
-                <label style={LABEL}>Tipo de trabajo</label>
-                <select value={tipoValido ? form.tipo : tiposDisp[0]} onChange={e=>set('tipo',e.target.value)} style={INPUT}>
-                  {tiposDisp.map(t=><option key={t} value={t}>{TIPO_LABEL[t]||t}</option>)}
-                </select>
-              </div>
-              <div style={ROW}>
-                <label style={LABEL}>Prioridad</label>
-                <select value={form.prioridad} onChange={e=>set('prioridad',e.target.value)} style={INPUT}>
-                  {PRIORIDADES.map(p=><option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Descripción */}
-            <div style={ROW}>
-              <label style={LABEL}>Descripción *</label>
-              <textarea id="ticket-descripcion" name="ticket-descripcion" required value={form.descripcion}
-                aria-invalid={formErrors.some(error => error.field === 'ticket-descripcion')}
-                onChange={e=>{ set('descripcion',e.target.value); setFormErrors([]) }} rows={3} style={{...INPUT, resize:'vertical'}} placeholder="Ej: Pierde aceite en compresor principal" />
-            </div>
-
-            {/* Activo + Proveedor */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW}>
-                <label style={LABEL}>{esVehiculo ? 'Vehículo' : 'Activo / Equipo'}</label>
-                <select
-                  value={form.activo_id||''}
-                  disabled={!form.sede_id}
-                  onChange={e=>set('activo_id',e.target.value||null)}
-                  style={{ ...INPUT, opacity:form.sede_id ? 1 : 0.55 }}
-                >
-                  <option value="">{form.sede_id ? 'Sin activo' : 'Seleccioná una sede primero'}</option>
-                  {activosSede.map(a=><option key={a.id} value={a.id}>{a.nombre}{a.codigo_interno?` (${a.codigo_interno})`:''}</option>)}
-                </select>
-                {form.sede_id && activosSede.length === 0 && (
-                  <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:4 }}>No hay activos cargados para esta sede.</p>
-                )}
-              </div>
-              <div style={ROW}>
-                <label style={LABEL}>{esVehiculo ? 'Taller / Mecánico' : 'Proveedor / Taller'}</label>
-                <select value={form.proveedor_id||''} onChange={e=>set('proveedor_id',e.target.value||null)} style={INPUT}>
-                  <option value="">Sin proveedor</option>
-                  {proveedores.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Sede + Responsable */}
+            {/* Sede + Activo: primero se define el contexto del ticket */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW}>
                 <label style={LABEL}>Sede</label>
@@ -675,6 +625,49 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                 </select>
               </div>
               <div style={ROW}>
+                <label style={LABEL}>{esVehiculo ? 'Vehículo' : 'Activo / Equipo'}</label>
+                <select
+                  value={form.activo_id||''}
+                  disabled={!form.sede_id}
+                  onChange={e=>set('activo_id',e.target.value||null)}
+                  style={{ ...INPUT, opacity:form.sede_id ? 1 : 0.55 }}
+                >
+                  <option value="">{form.sede_id ? 'Sin activo' : 'Seleccioná una sede primero'}</option>
+                  {activosSede.map(a=><option key={a.id} value={a.id}>{a.nombre}{a.codigo_interno?` (${a.codigo_interno})`:''}</option>)}
+                </select>
+                {form.sede_id && activosSede.length === 0 && (
+                  <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:4 }}>No hay activos cargados para esta sede.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Descripción */}
+            <div style={ROW}>
+              <label style={LABEL}>Descripción *</label>
+              <textarea id="ticket-descripcion" name="ticket-descripcion" required value={form.descripcion}
+                aria-invalid={formErrors.some(error => error.field === 'ticket-descripcion')}
+                onChange={e=>{ set('descripcion',e.target.value); setFormErrors([]) }} rows={3} style={{...INPUT, resize:'vertical'}} placeholder="Ej: Pierde aceite en compresor principal" />
+            </div>
+
+            {/* Tipo + Prioridad */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
+              <div style={ROW}>
+                <label style={LABEL}>Tipo de trabajo</label>
+                <select value={tipoValido ? form.tipo : tiposDisp[0]} onChange={e=>set('tipo',e.target.value)} style={INPUT}>
+                  {tiposDisp.map(t=><option key={t} value={t}>{TIPO_LABEL[t]||t}</option>)}
+                </select>
+              </div>
+              <div style={ROW}>
+                <label style={LABEL}>Prioridad</label>
+                <select value={form.prioridad} onChange={e=>set('prioridad',e.target.value)} style={INPUT}>
+                  {PRIORIDADES.map(p=><option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Responsable + Proveedor */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
+              <div style={ROW}>
                 <label style={LABEL}>Responsable Asignado</label>
                 <select value={form.responsable_id||''} onChange={e=>set('responsable_id',e.target.value||null)} style={INPUT}>
                   <option value="">Sin asignar</option>
@@ -695,12 +688,19 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                   </div>
                 )}
               </div>
+              <div style={ROW}>
+                <label style={LABEL}>{esVehiculo ? 'Taller / Mecánico' : 'Proveedor / Taller'}</label>
+                <select value={form.proveedor_id||''} onChange={e=>set('proveedor_id',e.target.value||null)} style={INPUT}>
+                  <option value="">Sin proveedor</option>
+                  {proveedores.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* FECHAS */}
             <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'10px 14px', marginBottom:'0.85rem' }}>
               <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>FECHAS</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 1rem' }}>
+              <div style={{ display:'grid', gridTemplateColumns:isNew ? '1fr 1fr' : '1fr 1fr 1fr', gap:'0 1rem' }}>
                 <div>
                   <label style={LABEL}>Apertura</label>
                   <input type="date" value={isNew ? form.fecha_apertura : toDateInput(ticket.created_at)}
@@ -712,11 +712,13 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
                   <input type="date" value={toDateInput(form.fecha_limite)}
                     onChange={e=>set('fecha_limite', e.target.value||null)} style={INPUT} />
                 </div>
-                <div>
-                  <label style={LABEL}>Fecha cierre</label>
-                  <input type="date" value={toDateInput(form.fecha_cierre)}
-                    onChange={e=>set('fecha_cierre', e.target.value||null)} style={INPUT} />
-                </div>
+                {!isNew && (
+                  <div>
+                    <label style={LABEL}>Fecha cierre</label>
+                    <input type="date" value={toDateInput(form.fecha_cierre)}
+                      onChange={e=>set('fecha_cierre', e.target.value||null)} style={INPUT} />
+                  </div>
+                )}
               </div>
             </div>
 

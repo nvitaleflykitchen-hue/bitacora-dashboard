@@ -122,6 +122,19 @@ export default function TicketRapidoModal({ origen, onClose, onCreated, allowedS
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding:'1.25rem 1.5rem', display:'flex', flexDirection:'column', gap:14 }}>
+          {/* Sede */}
+          <div>
+            <label style={S.label}>Sede</label>
+            <select
+              className="input-dark"
+              value={form.sede_id || ''}
+              onChange={e => handleSede(e.target.value)}
+            >
+              <option value="">— Sin sede —</option>
+              {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </div>
+
           {/* Descripción */}
           <div>
             <label style={S.label}>Descripción *</label>
@@ -150,19 +163,6 @@ export default function TicketRapidoModal({ origen, onClose, onCreated, allowedS
                 {PRIORIDADES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
               </select>
             </div>
-          </div>
-
-          {/* Sede */}
-          <div>
-            <label style={S.label}>Sede</label>
-            <select
-              className="input-dark"
-              value={form.sede_id || ''}
-              onChange={e => handleSede(e.target.value)}
-            >
-              <option value="">— Sin sede —</option>
-              {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
           </div>
 
           {/* Responsable */}
