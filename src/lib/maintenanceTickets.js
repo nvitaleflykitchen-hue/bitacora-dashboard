@@ -27,3 +27,7 @@ export function filterMaintenanceTickets(tickets = [], assets = []) {
 export function filterMaintenanceAssets(assets = []) {
   return assets.filter(asset => !isVehicleAsset(asset))
 }
+
+export function maintenanceAssetQueryFilters(allowedSedeIds) {
+  return allowedSedeIds === null ? {} : { sedeIds: allowedSedeIds || undefined }
+}

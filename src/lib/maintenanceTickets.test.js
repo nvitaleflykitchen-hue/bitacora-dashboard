@@ -3,6 +3,7 @@ import {
   filterMaintenanceAssets,
   filterMaintenanceTickets,
   isVehicleTicket,
+  maintenanceAssetQueryFilters,
 } from './maintenanceTickets'
 
 const assets = [
@@ -32,5 +33,10 @@ describe('separación de tickets de Mantenimiento y Flota', () => {
 
     expect(filterMaintenanceTickets(tickets, assets).map(item => item.id)).toEqual(['equipo', 'general'])
     expect(filterMaintenanceAssets(assets).map(item => item.id)).toEqual([1])
+  })
+
+  it('carga el catálogo de activos de todas las sedes habilitadas para crear tickets', () => {
+    expect(maintenanceAssetQueryFilters([10, 20])).toEqual({ sedeIds: [10, 20] })
+    expect(maintenanceAssetQueryFilters(null)).toEqual({})
   })
 })
