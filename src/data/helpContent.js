@@ -2,7 +2,7 @@
 // Organizado por módulo. Cada módulo tiene: id, label, icon, intro y secciones[].
 // Cada sección tiene: title y body (array de párrafos o bloques).
 
-export const HELP_MANUAL_UPDATED_AT = '2026-08-12'
+export const HELP_MANUAL_UPDATED_AT = '2026-09-03'
 
 export const HELP_MODULES = [
   {
@@ -48,6 +48,15 @@ export const HELP_MODULES = [
         body: [
           'El botón ? abre esta Central de ayuda desde cualquier pantalla. Elegí un módulo en el índice o usá Imprimir para obtener el manual completo y guardarlo como PDF.',
           'Actualizaciones explica qué cambió en cada versión y cómo usarlo. El Tablón se reserva para comunicaciones operativas, avisos de sedes y cumpleaños.',
+        ],
+      },
+      {
+        title: 'Escanear un QR dentro de la aplicación',
+        body: [
+          'Desde Inicio elegí Escanear QR y apuntá la cámara al código. El lector reconoce los QR de activos y credenciales emitidos por Fly Gestión.',
+          'Si el código corresponde a un activo, la aplicación abre su ficha interna para consultar datos, historial y acciones permitidas. Si corresponde a una credencial, abre su validación.',
+          'Este lector es para usuarios identificados. Una persona externa que escanea la etiqueta con la cámara normal del teléfono llega a una vista pública segura y no accede a tickets, manuales ni acciones administrativas.',
+          'Si la cámara no está disponible, pegá el enlace o contenido del QR en el campo alternativo del lector.',
         ],
       },
     ],
@@ -190,6 +199,15 @@ export const HELP_MODULES = [
         body: [
           'Los escalamientos que superan el plazo configurado sin respuesta se marcan en rojo como "vencidos" y generan una alerta en el sistema.',
           'Revisá la Bandeja regularmente para evitar acumulación.',
+        ],
+      },
+      {
+        title: 'Crear y asignar una tarea',
+        body: [
+          'En Nueva Tarea comenzá por la sede y la categoría; luego completá título, descripción, responsable, intervinientes, prioridad y fecha límite.',
+          'Responsable es la persona que debe conducir o cerrar el trabajo. Intervinientes adicionales permite registrar a otras personas que participan, sin reemplazar al responsable principal.',
+          'El Seguimiento Copiloto Fly sólo puede activarse cuando el responsable es un usuario de la app y existe una fecha límite. Indicá también la evidencia esperada para que el cierre pueda verificarse.',
+          'El formulario conserva un borrador local. Después de recuperar un borrador, revisá nuevamente la sede, el responsable y los archivos antes de guardar.',
         ],
       },
     ],
@@ -354,7 +372,9 @@ export const HELP_MODULES = [
         title: 'Tickets de mantenimiento',
         body: [
           'Un ticket es una solicitud de trabajo o reparación. Puede crearse manualmente o a partir de una novedad escalada.',
-          'Cada ticket tiene: sede, descripción, prioridad (baja / media / alta / urgente), estado (abierto / en proceso / resuelto) y responsable.',
+          'Para crear uno, elegí primero la sede y después el activo o equipo. Continuá con descripción, tipo, prioridad, responsable, proveedor y fechas.',
+          'El selector de activos siempre responde a la sede elegida dentro del formulario, independientemente del filtro aplicado a la lista de tickets.',
+          'La fecha de cierre y los estados de resolución se completan al editar el ticket; no se solicitan durante el alta de un trabajo abierto.',
           'Desde la vista de Tickets podés filtrar por estado, sede y prioridad.',
         ],
       },
@@ -379,8 +399,12 @@ export const HELP_MODULES = [
         title: 'Activos y equipos',
         body: [
           'El inventario de activos incluye todos los equipos e instalaciones de cada sede: cámaras, freezers, equipos de frío, instalaciones eléctricas, etc.',
-          'Podés ver el historial de mantenimiento de cada activo y programarle planes preventivos.',
-          'Para registrar un activo: Mantenimiento → Activos → Nuevo.',
+          'Para registrar un activo: Mantenimiento → Activos → Nuevo Activo. Elegí primero sede y categoría; luego cargá nombre, tipo, marca, modelo, número de serie y demás datos técnicos.',
+          'La sede representa la base física. En Asignado a / Custodio podés elegir una persona para notebooks, teléfonos, herramientas u otros bienes de uso individual. La custodia y la sede son datos independientes.',
+          'La ficha reúne el historial de mantenimiento y la pestaña Documentos / Manuales. Los usuarios autorizados pueden agregar un archivo o enlace, abrirlo, reemplazarlo o eliminarlo.',
+          'Las personas que llegan desde el QR público no pueden ver ni modificar documentos internos. Sólo los usuarios autenticados y autorizados disponen de esas acciones.',
+          'En el botón QR definí el ancho y alto de la etiqueta en milímetros y elegí orientación Horizontal o Vertical. La impresión usa esas medidas; revisá la escala de la impresora antes de confirmar.',
+          'Podés programar planes preventivos y consultar sus ejecuciones desde el historial del activo.',
           'Desde la ficha de un activo elegí Crear novedad para informar una falla sin volver a seleccionar equipo ni sede. También podés asociar un activo desde Equipos / Mantenimiento al crear un reporte general.',
         ],
       },
@@ -608,6 +632,7 @@ export const HELP_MODULES = [
         title: 'Navegación principal',
         body: [
           'La barra inferior reúne cinco destinos de uso frecuente. Las demás funciones están en Más, ordenadas como Trabajo diario, Gestión e Información y cuenta.',
+          'Inicio incluye Escanear QR para abrir dentro de la app activos o credenciales sin pasar por la vista pública destinada a personas externas.',
           'La primera apertura de un módulo puede mostrar Cargando sección durante un instante. Es normal: mobile descarga cada sección cuando realmente se necesita.',
           'La aplicación recuerda la última pestaña, el módulo abierto dentro de Más y los filtros principales para que puedas retomar el trabajo.',
         ],

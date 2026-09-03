@@ -1,7 +1,33 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.8.1";
+export const APP_VERSION = "2.9.0";
 
 export const RELEASES = [
+  {
+    version: "2.9.0",
+    date: "2026-09-03",
+    title: "Activos, QR y formularios más simples",
+    functions: [
+      "Nuevo lector QR general en Inicio, disponible en computadora y celular, que reconoce activos y credenciales de Fly Gestión.",
+      "El escaneo interno de un activo abre su ficha operativa; el QR impreso abre para visitantes una vista pública segura con identificación y canales de contacto de Fly Kitchen.",
+      "Los activos pueden quedar bajo custodia de una persona, manteniendo la sede como ubicación o base física independiente.",
+      "La ficha del activo permite agregar, abrir, reemplazar y eliminar manuales o documentos permanentes según los permisos del usuario.",
+      "Las etiquetas QR admiten ancho y alto en milímetros y orientación horizontal o vertical antes de imprimir.",
+      "Nuevo Ticket muestra los activos correspondientes a la sede elegida aunque la lista de tickets esté filtrada por otra sede.",
+      "Los formularios operativos principales comienzan por el contexto —sede, activo o unidad— y dejan los datos de cierre para la edición.",
+    ],
+    problem:
+      "El acceso por QR mezclaba el uso interno con el externo, algunos activos personales no tenían custodio y varios formularios pedían datos en un orden poco natural.",
+    affectedUsers:
+      "Administradores, Mantenimiento, Flota, responsables de sede y cualquier usuario que consulte activos o credenciales mediante QR.",
+    usage:
+      "Para trabajar dentro de la app, abrí Inicio y elegí Escanear QR. Para imprimir una etiqueta, abrí el activo, entrá a su QR y definí ancho, alto y orientación. Al crear tickets o activos, comenzá seleccionando la sede.",
+    examples: [
+      "Escanear desde Inicio el QR de una heladera y abrir directamente su ficha interna.",
+      "Asignar una notebook a una persona sin perder la sede donde tiene su base.",
+      "Imprimir una etiqueta vertical de 30 × 50 mm y conservar una vista pública sin documentos internos.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.8.1",
     date: "2026-08-12",
