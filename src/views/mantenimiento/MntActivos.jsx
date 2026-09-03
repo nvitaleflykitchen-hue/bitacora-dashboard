@@ -370,18 +370,16 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
           <>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW_S}>
-                <label style={LABEL_S}>Tipo *</label>
-                <select value={form.tipo} onChange={e=>set('tipo',e.target.value)} style={INPUT_S}>
-                  <option value="EQUIPO">Equipo</option>
-                  <option value="INSTALACION">Instalación</option>
+                <label style={LABEL_S}>Sede / Unidad</label>
+                <select value={form.sede_id||''} onChange={e=>set('sede_id', e.target.value ? Number(e.target.value) : null)} style={INPUT_S}>
+                  <option value="">Sin asignar</option>
+                  {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
                 </select>
               </div>
-              <div style={ROW_S}>
-                <label style={LABEL_S}>Estado</label>
-                <select value={form.estado} onChange={e=>set('estado',e.target.value)} style={INPUT_S}>
-                  <option value="operativo">Operativo</option>
-                  <option value="en_reparacion">En Reparación</option>
-                  <option value="baja">Baja</option>
+              <div style={ROW_S}><label style={LABEL_S}>Categoría</label>
+                <select value={form.categoria||''} onChange={e=>set('categoria',e.target.value)} style={INPUT_S}>
+                  <option value="">Seleccionar Categoría...</option>
+                  {CATEGORIAS_OFICIALES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
@@ -389,6 +387,24 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
             <div style={ROW_S}>
               <label style={LABEL_S}>Nombre *</label>
               <input value={form.nombre} onChange={e=>set('nombre',e.target.value)} style={INPUT_S} />
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:isNew ? '1fr' : '1fr 1fr', gap:'0 1rem' }}>
+              <div style={ROW_S}>
+                <label style={LABEL_S}>Tipo *</label>
+                <select value={form.tipo} onChange={e=>set('tipo',e.target.value)} style={INPUT_S}>
+                  <option value="EQUIPO">Equipo</option>
+                  <option value="INSTALACION">Instalación</option>
+                </select>
+              </div>
+              {!isNew && <div style={ROW_S}>
+                <label style={LABEL_S}>Estado</label>
+                <select value={form.estado} onChange={e=>set('estado',e.target.value)} style={INPUT_S}>
+                  <option value="operativo">Operativo</option>
+                  <option value="en_reparacion">En Reparación</option>
+                  <option value="baja">Baja</option>
+                </select>
+              </div>}
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 1rem' }}>
@@ -406,22 +422,6 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
               </div>
               <div style={ROW_S}><label style={LABEL_S}>Marca</label><input value={form.marca||''} onChange={e=>set('marca',e.target.value)} style={INPUT_S} /></div>
               <div style={ROW_S}><label style={LABEL_S}>Modelo</label><input value={form.modelo||''} onChange={e=>set('modelo',e.target.value)} style={INPUT_S} /></div>
-            </div>
-
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
-              <div style={ROW_S}><label style={LABEL_S}>Categoría</label>
-                <select value={form.categoria||''} onChange={e=>set('categoria',e.target.value)} style={INPUT_S}>
-                  <option value="">Seleccionar Categoría...</option>
-                  {CATEGORIAS_OFICIALES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div style={ROW_S}>
-                <label style={LABEL_S}>Sede / Unidad</label>
-                <select value={form.sede_id||''} onChange={e=>set('sede_id', e.target.value ? Number(e.target.value) : null)} style={INPUT_S}>
-                  <option value="">Sin asignar</option>
-                  {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
-                </select>
-              </div>
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>

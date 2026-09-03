@@ -251,24 +251,6 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
             }))
           }} />
           <FormErrorSummary errors={formErrors} />
-          <div>
-            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
-              Título *
-            </label>
-            <input id="tarea-titulo" name="tarea-titulo" required className="input-dark" value={form.titulo}
-              aria-invalid={formErrors.some(error => error.field === 'tarea-titulo')}
-              onChange={e => { set('titulo', e.target.value); setFormErrors(errors => errors.filter(error => error.field !== 'tarea-titulo')) }} placeholder="Ej: Revisar cámara de frío 2" />
-          </div>
-
-          <div>
-            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
-              Descripción
-            </label>
-            <textarea className="input-dark" rows={2} value={form.descripcion}
-              onChange={e => set('descripcion', e.target.value)} placeholder="Ej: Verificar temperatura y limpieza de la cámara 2"
-              style={{ resize:'vertical' }} />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>Sede</label>
@@ -286,6 +268,24 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
+              Título *
+            </label>
+            <input id="tarea-titulo" name="tarea-titulo" required className="input-dark" value={form.titulo}
+              aria-invalid={formErrors.some(error => error.field === 'tarea-titulo')}
+              onChange={e => { set('titulo', e.target.value); setFormErrors(errors => errors.filter(error => error.field !== 'tarea-titulo')) }} placeholder="Ej: Revisar cámara de frío 2" />
+          </div>
+
+          <div>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
+              Descripción
+            </label>
+            <textarea className="input-dark" rows={2} value={form.descripcion}
+              onChange={e => set('descripcion', e.target.value)} placeholder="Ej: Verificar temperatura y limpieza de la cámara 2"
+              style={{ resize:'vertical' }} />
           </div>
 
           {/* Responsable con share */}
