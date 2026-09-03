@@ -20,6 +20,24 @@ export function parseAssetQrValue(rawValue) {
   return null
 }
 
+export function parseInternalQrValue(rawValue) {
+  const raw = String(rawValue || '').trim()
+  if (!raw) return null
+
+  const asset = parseAssetQrValue(raw)
+  if (asset) return { type:'asset', ...asset }
+
+  try {
+    const url = new URL(raw, window.location.origin)
+    const token = url.searchParams.get('credencial')?.trim()
+    if (UUID_RE.test(token || '')) return { type:'credential', token }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 export function findScannedAsset(assets, scanValue) {
   const parsed = typeof scanValue === 'string' ? parseAssetQrValue(scanValue) : scanValue
   if (!parsed) return null
