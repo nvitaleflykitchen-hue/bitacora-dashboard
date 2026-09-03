@@ -5,6 +5,7 @@ import AdjuntosPanel from '../../components/AdjuntosPanel'
 import { useAuth } from '../../lib/auth'
 import { toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
+import AssetScanHistory from '../../components/AssetScanHistory'
 
 import {
   ACTIVO_ESTADO_COLOR as ESTADO_COLOR, TICKET_ESTADO_COLOR as TICKET_COLOR, PRIORIDADES,
@@ -22,7 +23,7 @@ function fmtHora(iso) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-export default function QRActivoView({ activoId, onNavigate }) {
+export default function QRActivoView({ activoId, onNavigate, scanEventId = null }) {
   const { can } = useAuth()
   const canManage = can('mantenimiento', 'manage')
   const canReport = canManage || can('mantenimiento', 'report')
@@ -205,6 +206,10 @@ export default function QRActivoView({ activoId, onNavigate }) {
           </a>
         )}
         <AdjuntosPanel entityType="activo" entityId={activo.id} compact readOnly={!canManage} />
+      </div>
+
+      <div style={{ margin:'0 1rem 1rem' }}>
+        <AssetScanHistory assetId={activo.id} scanEventId={scanEventId} contexto="enlace_qr"/>
       </div>
 
       {/* Formulario registrar visita */}

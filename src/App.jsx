@@ -14,6 +14,7 @@ import { hasSeenLatestRelease } from './data/releases'
 import { normalizeReportContext } from './lib/reportContext'
 import { readAppRoute, writeAppRoute } from './lib/navigationRoutes'
 import OfflineStatus from './components/OfflineStatus'
+import { newScanEventId } from './lib/assetScans'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
 const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
@@ -178,6 +179,7 @@ function AppInner() {
   // 'operario': rol mobile-only, sin acceso a escritorio sin importar el ancho de pantalla.
   const forceMobile = rol === 'operario'
   const [qrActivoId, setQrActivoId] = useState(() => new URLSearchParams(window.location.search).get('id'))
+  const [qrScanEventId] = useState(() => new URLSearchParams(window.location.search).get('scan') === 'activo' ? newScanEventId() : null)
   const [showSearch, setShowSearch] = useState(false)
   const [showReporte, setShowReporte] = useState(false)
   const [reportContext, setReportContext] = useState(null)
@@ -231,7 +233,7 @@ function AppInner() {
   if (accessBlocked) return <AccessBlocked onSignOut={signOut} />
   if (perfil?.must_change_password) return <CambiarContrasena />
   if (activeView === 'qrActivo' && isMobile) {
-    return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} onNavigate={setActiveView} /></Suspense>
+    return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} scanEventId={qrScanEventId} onNavigate={setActiveView} /></Suspense>
   }
   // Escape a escritorio: admin/editor pueden forzar la versión completa desde
   // el celular (Mi Perfil → "Usar versión de escritorio"). operario nunca.
@@ -278,7 +280,7 @@ function AppInner() {
         )}
         <Suspense fallback={<ViewLoading />}>
           {activeView === 'qrActivo'
-            ? <QRActivoView activoId={qrActivoId} onNavigate={navigate} />
+            ? <QRActivoView activoId={qrActivoId} scanEventId={qrScanEventId} onNavigate={navigate} />
             : <ActiveView
                 onNavigate={navigate}
                 onOpenSearch={!isQualityOnly && !isComprasOnly ? () => setShowSearch(true) : null}

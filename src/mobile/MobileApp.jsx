@@ -17,6 +17,7 @@ import AssetQrScannerModal from '../components/AssetQrScannerModal'
 import { parseInternalQrValue } from '../lib/assetQrScan'
 import { getPersonaIdByCredentialToken } from '../lib/credenciales'
 import { toast } from '../lib/feedback'
+import { newScanEventId } from '../lib/assetScans'
 
 const MobileReporte = lazy(() => import('./MobileReporte'))
 const MobileTareas = lazy(() => import('./MobileTareas'))
@@ -73,7 +74,7 @@ export default function MobileApp() {
     if (target.type === 'asset') {
       if (!canAccessView(rol, 'mntActivos', perfil)) return toast.warn('No tenés permiso para abrir activos internos.')
       if (!target.id) return toast.warn('Escaneá el QR completo del activo para abrir su ficha.')
-      setReturnContext({ type:'activo', id:target.id })
+      setReturnContext({ type:'activo', id:target.id, scanEventId:newScanEventId() })
       setMasModule('mantenimiento')
       setTab('mas')
       return
