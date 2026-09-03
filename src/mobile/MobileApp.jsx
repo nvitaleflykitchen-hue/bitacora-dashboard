@@ -6,13 +6,17 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import PushNotificationControl from '../components/PushNotificationControl'
 import NotificationCenter from '../components/NotificationCenter'
-import { isComprasOnlyProfile, isQualityOnlyProfile, isSafetyOnlyProfile } from '../lib/access'
+import { canAccessView, isComprasOnlyProfile, isQualityOnlyProfile, isSafetyOnlyProfile } from '../lib/access'
 import { User, ShoppingCart } from 'lucide-react'
 import { initBackNavigation, useBackHandler } from '../lib/backStack'
 import WhatsNewModal from '../components/WhatsNewModal'
 import { APP_NAME, APP_VERSION, hasSeenLatestRelease } from '../data/releases'
 import usePersistedState from '../hooks/usePersistedState'
 import { mobileDestinationForView } from '../lib/navigationRoutes'
+import AssetQrScannerModal from '../components/AssetQrScannerModal'
+import { parseInternalQrValue } from '../lib/assetQrScan'
+import { getPersonaIdByCredentialToken } from '../lib/credenciales'
+import { toast } from '../lib/feedback'
 
 const MobileReporte = lazy(() => import('./MobileReporte'))
 const MobileTareas = lazy(() => import('./MobileTareas'))
@@ -62,6 +66,31 @@ export default function MobileApp() {
   const [showWhatsNew, setShowWhatsNew] = useState(() => user?.id ? !hasSeenLatestRelease(user.id) : false)
   const [reportContext, setReportContext] = useState(null)
   const [returnContext, setReturnContext] = useState(null)
+  const [scannerOpen, setScannerOpen] = useState(false)
+
+  const openScannedQr = async target => {
+    setScannerOpen(false)
+    if (target.type === 'asset') {
+      if (!canAccessView(rol, 'mntActivos', perfil)) return toast.warn('No tenés permiso para abrir activos internos.')
+      if (!target.id) return toast.warn('Escaneá el QR completo del activo para abrir su ficha.')
+      setReturnContext({ type:'activo', id:target.id })
+      setMasModule('mantenimiento')
+      setTab('mas')
+      return
+    }
+    if (!canAccessView(rol, 'equipo', perfil) || rol !== 'admin') {
+      return toast.warn('La ficha interna de credenciales está disponible para administradores.')
+    }
+    try {
+      const personaId = await getPersonaIdByCredentialToken(target.token)
+      if (!personaId) return toast.warn('No se encontró la credencial.')
+      setReturnContext({ type:'persona', id:personaId })
+      setMasModule('personal')
+      setTab('mas')
+    } catch {
+      toast.error('No se pudo abrir la credencial interna.')
+    }
+  }
 
   const openContextualReport = context => {
     setReportContext(context)
@@ -126,7 +155,7 @@ export default function MobileApp() {
         />
       )
     }
-    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} />
+    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} onOpenScanner={()=>setScannerOpen(true)} />
     if (tab === 'tareas')        return <MobileTareas />
     if (tab === 'sedes')         return <MobileSedes focusContext={returnContext} onCreateNovedad={canReport ? openContextualReport : null} />
     if (tab === 'escalamientos') return <MobileEscalamientos />
@@ -192,6 +221,19 @@ export default function MobileApp() {
           </div>
         </PullToRefresh>
       </div>
+      {scannerOpen && (
+        <AssetQrScannerModal
+          onClose={()=>setScannerOpen(false)}
+          onScan={openScannedQr}
+          parseValue={parseInternalQrValue}
+          title="Escanear QR de Fly Gestión"
+          subtitle="Activos y credenciales"
+          prompt="Apuntá al QR del activo o de la credencial."
+          invalidMessage="El QR no corresponde a un activo ni a una credencial de Fly Gestión."
+          placeholder="Pegá el enlace del QR…"
+          help="La app reconoce el QR y abre su ficha interna según tus permisos."
+        />
+      )}
 
       {showSearch && !isComprasOnly && (
         <GlobalSearch mobile onNavigate={handleSearchNavigate} onClose={() => setShowSearch(false)} />

@@ -3,7 +3,7 @@ import { getMisRegistrosHoy, getMisTareas, getDirectorio, getLimpiezaPendienteHo
 import { useAuth } from '../lib/auth'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Search } from 'lucide-react'
+import { Search, ScanLine } from 'lucide-react'
 
 const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
 const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
@@ -106,7 +106,7 @@ function LimpiezaHoyBanner({ sedeId }) {
   )
 }
 
-export default function MobileHome({ onNuevoReporte, onOpenSearch }) {
+export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner }) {
   const { perfil, allowedSedeIds } = useAuth()
   const [registros, setRegistros] = useState([])
   const [tareas, setTareas] = useState([])
@@ -152,6 +152,10 @@ export default function MobileHome({ onNuevoReporte, onOpenSearch }) {
           Buscar en toda la aplicación...
         </button>
       )}
+
+      {onOpenScanner && <button type="button" onClick={onOpenScanner} className="btn-primary" style={{ width:'100%', minHeight:48, marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontSize:'.9rem' }}>
+        <ScanLine size={19}/> Escanear QR
+      </button>}
 
       {/* Boton principal */}
       {onNuevoReporte && <button onClick={onNuevoReporte}

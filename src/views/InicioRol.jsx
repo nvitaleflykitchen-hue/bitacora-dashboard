@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react'
-import { ClipboardCheck, Building2, ShoppingCart, Wrench, Search, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react'
+import { ClipboardCheck, Building2, ShoppingCart, Wrench, Search, ChevronDown, ChevronUp, BarChart3, ScanLine } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { ROLE_LABELS } from '../lib/access'
+import { canAccessView, ROLE_LABELS } from '../lib/access'
 import DashboardGlobal from './DashboardGlobal'
 import SedeEncargadoView from './SedeEncargadoView'
 import { getDirectorio } from '../lib/queries'
 import { phoneHref, whatsappHref } from '../lib/phoneUtils'
 import MiGestionPanel from '../components/MiGestionPanel'
 import usePersistedState from '../hooks/usePersistedState'
+import AssetQrScannerModal from '../components/AssetQrScannerModal'
+import { parseInternalQrValue } from '../lib/assetQrScan'
+import { getPersonaIdByCredentialToken } from '../lib/credenciales'
+import { toast } from '../lib/feedback'
 
 const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
 const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
@@ -190,8 +194,29 @@ function DashboardSection({ Dashboard, onNavigate }) {
 
 export default function InicioRol({ onNavigate, onOpenSearch }) {
   const { rol, perfil } = useAuth()
+  const [scannerOpen, setScannerOpen] = useState(false)
   const isTerritorial = ['encargado','sede'].includes(rol)
   const Dashboard = isTerritorial ? SedeEncargadoView : DashboardGlobal
+
+  const openScannedQr = async target => {
+    setScannerOpen(false)
+    if (target.type === 'asset') {
+      if (!canAccessView(rol, 'mntActivos', perfil)) return toast.warn('No tenés permiso para abrir activos internos.')
+      if (!target.id) return toast.warn('Escaneá el QR completo del activo para abrir su ficha.')
+      onNavigate('mntActivos', { type:'activo', id:target.id })
+      return
+    }
+    if (!canAccessView(rol, 'equipo', perfil) || rol !== 'admin') {
+      return toast.warn('La ficha interna de credenciales está disponible para administradores.')
+    }
+    try {
+      const personaId = await getPersonaIdByCredentialToken(target.token)
+      if (!personaId) return toast.warn('No se encontró la credencial.')
+      onNavigate('equipo', { type:'persona', id:personaId })
+    } catch {
+      toast.error('No se pudo abrir la credencial interna.')
+    }
+  }
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
@@ -213,6 +238,9 @@ export default function InicioRol({ onNavigate, onOpenSearch }) {
             <kbd className="hidden md:inline-block" style={{ fontSize:'0.62rem', opacity:0.65 }}>Ctrl K</kbd>
           </button>
         )}
+        <button type="button" onClick={()=>setScannerOpen(true)} className="btn-primary w-full mt-2 flex items-center justify-center gap-2" style={{ minHeight:46 }}>
+          <ScanLine size={18}/> Escanear QR
+        </button>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-4 mb-5">
           {ACTIONS.map(({ id, label, help, icon:Icon }) => (
             <button key={id} type="button" onClick={() => onNavigate(id)} className="glass rounded p-3 text-left">
@@ -226,6 +254,19 @@ export default function InicioRol({ onNavigate, onOpenSearch }) {
       <MiGestionPanel onNavigate={onNavigate} />
       <ContactosSection />
       <DashboardSection Dashboard={Dashboard} onNavigate={onNavigate} />
+      {scannerOpen && (
+        <AssetQrScannerModal
+          onClose={()=>setScannerOpen(false)}
+          onScan={openScannedQr}
+          parseValue={parseInternalQrValue}
+          title="Escanear QR de Fly Gestión"
+          subtitle="Activos y credenciales"
+          prompt="Apuntá al QR del activo o de la credencial."
+          invalidMessage="El QR no corresponde a un activo ni a una credencial de Fly Gestión."
+          placeholder="Pegá el enlace del QR…"
+          help="La app reconoce el tipo de QR y abre su ficha interna según tus permisos. El escaneo externo mantiene la vista pública."
+        />
+      )}
     </div>
   )
 }

@@ -7,7 +7,17 @@ const OVERLAY = {
   display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem',
 }
 
-export default function AssetQrScannerModal({ onClose, onScan }) {
+export default function AssetQrScannerModal({
+  onClose,
+  onScan,
+  parseValue = parseAssetQrValue,
+  title = 'Escanear activo',
+  subtitle = 'Lector interno de Fly Gestión',
+  prompt = 'Apuntá al QR de la etiqueta.',
+  invalidMessage = 'El código no corresponde a un activo de Fly Gestión.',
+  placeholder = 'Pegá el enlace o código FK-EQ…',
+  help = 'Dentro de la app se abre la ficha privada. El mismo QR, escaneado con la cámara normal del teléfono, mantiene la vista pública.',
+}) {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const frameRef = useRef(null)
@@ -24,16 +34,16 @@ export default function AssetQrScannerModal({ onClose, onScan }) {
   }, [])
 
   const deliver = useCallback(raw => {
-    const parsed = parseAssetQrValue(raw)
+    const parsed = parseValue(raw)
     if (!parsed) {
-      setStatus('El código no corresponde a un activo de Fly Gestión.')
+      setStatus(invalidMessage)
       busyRef.current = false
       return false
     }
     stopCamera()
     onScan(parsed)
     return true
-  }, [onScan, stopCamera])
+  }, [invalidMessage, onScan, parseValue, stopCamera])
 
   useEffect(() => {
     let disposed = false
@@ -60,7 +70,7 @@ export default function AssetQrScannerModal({ onClose, onScan }) {
         video.srcObject = stream
         await video.play()
         setCameraActive(true)
-        setStatus('Apuntá al QR de la etiqueta.')
+        setStatus(prompt)
         const detector = new window.BarcodeDetector({ formats:['qr_code'] })
 
         const detect = async () => {
@@ -89,7 +99,7 @@ export default function AssetQrScannerModal({ onClose, onScan }) {
       disposed = true
       stopCamera()
     }
-  }, [deliver, stopCamera])
+  }, [deliver, prompt, stopCamera])
 
   const submitManual = event => {
     event.preventDefault()
@@ -102,8 +112,8 @@ export default function AssetQrScannerModal({ onClose, onScan }) {
       <div onClick={event=>event.stopPropagation()} style={{ width:'min(430px, 100%)', maxHeight:'92vh', overflowY:'auto', background:'var(--surface)', border:'1px solid rgba(57,255,20,.2)', borderRadius:10, padding:'1rem' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:12 }}>
           <div>
-            <h2 id="asset-scanner-title" style={{ color:'var(--text)', fontSize:'1rem', fontWeight:700, margin:0 }}>Escanear activo</h2>
-            <p style={{ color:'var(--text-dim)', fontSize:'.68rem', margin:'3px 0 0' }}>Lector interno de Fly Gestión</p>
+            <h2 id="asset-scanner-title" style={{ color:'var(--text)', fontSize:'1rem', fontWeight:700, margin:0 }}>{title}</h2>
+            <p style={{ color:'var(--text-dim)', fontSize:'.68rem', margin:'3px 0 0' }}>{subtitle}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar lector" style={{ background:'none', border:0, color:'var(--text-dim)', cursor:'pointer', padding:6 }}><X size={20}/></button>
         </div>
@@ -118,11 +128,11 @@ export default function AssetQrScannerModal({ onClose, onScan }) {
         <form onSubmit={submitManual}>
           <label htmlFor="asset-qr-manual" style={{ display:'flex', alignItems:'center', gap:6, color:'var(--text-dim)', fontSize:'.65rem', textTransform:'uppercase', marginBottom:6 }}><Keyboard size={14}/> Alternativa manual</label>
           <div style={{ display:'flex', gap:8 }}>
-            <input id="asset-qr-manual" className="input-dark" value={manualValue} onChange={event=>setManualValue(event.target.value)} placeholder="Pegá el enlace o código FK-EQ…" autoComplete="off" style={{ flex:1, minWidth:0 }}/>
+            <input id="asset-qr-manual" className="input-dark" value={manualValue} onChange={event=>setManualValue(event.target.value)} placeholder={placeholder} autoComplete="off" style={{ flex:1, minWidth:0 }}/>
             <button type="submit" className="btn-primary" disabled={!manualValue.trim()} style={{ display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}><ScanLine size={15}/> Abrir</button>
           </div>
         </form>
-        <p style={{ color:'var(--text-dim)', fontSize:'.62rem', lineHeight:1.45, margin:'12px 0 0' }}>Dentro de la app se abre la ficha privada. El mismo QR, escaneado con la cámara normal del teléfono, mantiene la vista pública.</p>
+        <p style={{ color:'var(--text-dim)', fontSize:'.62rem', lineHeight:1.45, margin:'12px 0 0' }}>{help}</p>
       </div>
     </div>
   )

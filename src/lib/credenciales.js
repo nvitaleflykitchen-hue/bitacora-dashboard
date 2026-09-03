@@ -23,6 +23,13 @@ export async function getCredencialPersona(personaId) {
   return data
 }
 
+export async function getPersonaIdByCredentialToken(token) {
+  const { data, error } = await supabase.schema('equipo').from('credenciales_personal')
+    .select('persona_id,estado,fecha_vencimiento').eq('token', token).maybeSingle()
+  if (error) throw error
+  return data?.persona_id || null
+}
+
 export async function emitirCredencial({ persona, sedeNombre, userId, anterior = null, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
   if (anterior?.estado === 'activa') {
     const { error } = await supabase.schema('equipo').from('credenciales_personal').update({
