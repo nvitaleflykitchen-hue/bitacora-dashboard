@@ -726,6 +726,23 @@ Agrupa todos los requerimientos `Recibido` de una sede, registra preparación y 
 | observacion | text | YES | — |
 | 🔗 created_by | uuid | YES | → `auth.users.id` |
 
+**escaneos_activo** (trazabilidad privada de QR internos)
+| Columna | Tipo | Nulo | Default |
+|---|---|---|---|
+| 🔑 id | uuid | NO | `gen_random_uuid()` |
+| 🔗 activo_id | uuid | NO | → `activos.id` |
+| 🔗 usuario_id | uuid | NO | → `auth.users.id` |
+| evento_cliente | uuid | NO | idempotencia del escaneo |
+| fecha | timestamptz | NO | `now()` |
+| latitud / longitud | double precision | YES | — |
+| precision_metros | double precision | YES | — |
+| estado_ubicacion | text | NO | permiso/resultado del GPS |
+| contexto | text | NO | `qr_interno` o `enlace_qr` |
+
+La tabla no concede acceso directo a `anon` ni `authenticated`. Las RPC
+`registrar_escaneo_activo` y `listar_escaneos_activo` validan sesión, perfil
+activo y alcance del usuario sobre la sede o grupo del activo.
+
 ### 3.3 Esquema `equipo`
 
 **personas**

@@ -14,6 +14,8 @@ import { TabPlanes, TabProveedores, TabResponsables, TabTablero } from './Mobile
 import TicketRapidoModal from '../components/TicketRapidoModal'
 import AssetQrScannerModal from '../components/AssetQrScannerModal'
 import { findScannedAsset } from '../lib/assetQrScan'
+import { newScanEventId } from '../lib/assetScans'
+import AssetScanHistory from '../components/AssetScanHistory'
 
 const TIPO_COLOR_ACTIVO = { EQUIPO: '#F59E0B', INSTALACION: '#8B5CF6' }
 import {
@@ -54,7 +56,7 @@ function Field({ label, value }) {
 
 // ───────────────────────── ACTIVOS ─────────────────────────
 
-function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, onBack, onUpdated, onCreateNovedad, onCreateTicket }) {
+function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onBack, onUpdated, onCreateNovedad, onCreateTicket }) {
   const [historial, setHistorial] = useState([])
   const [loadingHist, setLoadingHist] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -125,6 +127,8 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, onBack, onUpdate
                 <button onClick={() => setEditing(true)} className="btn-primary" style={{ marginTop: 10, fontSize: '0.72rem', padding: '0.5rem 0.8rem' }}>Editar</button>
               )}
             </Card>
+
+            <AssetScanHistory assetId={activo.id} scanEventId={scanEventId}/>
 
             <p style={{ fontSize: '0.65rem', color: 'var(--phosphor)', textTransform: 'uppercase', fontWeight: 700, margin: '0.75rem 0 0.5rem' }}>Historial de tickets</p>
             {loadingHist ? <p style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>Cargando...</p>
@@ -249,6 +253,7 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
+  const [selectedScanEventId, setSelectedScanEventId] = useState(null)
   const [showNew, setShowNew] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scannerError, setScannerError] = useState('')
@@ -261,15 +266,18 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
     ]).then(([activos, sedesData]) => {
       const filtered = activos.filter(a => a.tipo !== 'VEHICULO')
       setItems(filtered)
-      if (focusType === 'activo') setSelected(filtered.find(a => String(a.id) === String(focusId)) || null)
+      if (focusType === 'activo') {
+        setSelected(filtered.find(a => String(a.id) === String(focusId)) || null)
+        setSelectedScanEventId(focusContext?.scanEventId || null)
+      }
       setSedes(sedesData)
     }).catch(console.error).finally(() => setLoading(false))
-  }, [allowedSedeIds, focusType, focusId])
+  }, [allowedSedeIds, focusType, focusId, focusContext?.scanEventId])
 
   useEffect(() => { load() }, [load])
 
   if (selected) {
-    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} canCreateTicket={canCreateTicket} onBack={() => setSelected(null)} onUpdated={() => { load(); setSelected(null) }} onCreateNovedad={onCreateNovedad} onCreateTicket={onCreateTicket} />
+    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} canCreateTicket={canCreateTicket} scanEventId={selectedScanEventId} onBack={() => { setSelected(null); setSelectedScanEventId(null) }} onUpdated={() => { load(); setSelected(null) }} onCreateNovedad={onCreateNovedad} onCreateTicket={onCreateTicket} />
   }
 
   const filtered = items.filter(a => !search || (a.nombre + ' ' + (a.codigo_interno || '') + ' ' + (a.categoria || '')).toLowerCase().includes(search.toLowerCase()))
@@ -283,6 +291,7 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
     }
     setScannerError('')
     setSelected(target)
+    setSelectedScanEventId(newScanEventId())
   }
 
   return (
@@ -301,7 +310,7 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
         {loading ? <p style={{ color: 'var(--text-dim)', textAlign: 'center', marginTop: '2rem' }}>Cargando...</p>
           : filtered.length === 0 ? <p style={{ color: 'var(--text-dim)', textAlign: 'center', marginTop: '2rem', fontSize: '0.85rem' }}>Sin activos.</p>
           : filtered.map(a => (
-            <Card key={a.id} onClick={() => setSelected(a)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Card key={a.id} onClick={() => { setSelectedScanEventId(null); setSelected(a) }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flex: 1 }}>
                 <p style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.85rem' }}>{a.nombre}</p>
                 <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem', marginTop: 2 }}>{a.codigo_interno || '—'} · {a.categoria || '—'} · {a.sede_nombre || '—'}</p>

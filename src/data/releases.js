@@ -1,7 +1,25 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.0";
+export const APP_VERSION = "2.9.1";
 
 export const RELEASES = [
+  {
+    version: "2.9.1",
+    date: "2026-09-03",
+    title: "Trazabilidad geográfica de activos",
+    functions: [
+      "Los escaneos internos de activos quedan registrados con usuario, fecha y hora.",
+      "La app solicita permiso para adjuntar la ubicación del dispositivo y su precisión; si se rechaza, conserva igualmente el escaneo sin coordenadas.",
+      "La ficha móvil y la vista QR del activo muestran los últimos escaneos y permiten abrir en el mapa los que tienen ubicación.",
+    ],
+    problem: "Los activos podían consultarse mediante QR, pero no quedaba evidencia de quién los había escaneado ni desde dónde.",
+    affectedUsers: "Usuarios autenticados con acceso a Mantenimiento y activos dentro de su alcance por sede o grupo.",
+    usage: "Desde Inicio elegí Escanear QR. Al abrir el activo, aceptá o rechazá el permiso de ubicación; ambas decisiones permiten continuar y dejan trazabilidad.",
+    examples: [
+      "Confirmar que una notebook fue escaneada en su sede con una precisión aproximada de 18 metros.",
+      "Consultar quién abrió la ficha de un equipo aunque el usuario no haya compartido su ubicación.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.9.0",
     date: "2026-09-03",

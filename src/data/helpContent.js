@@ -55,6 +55,7 @@ export const HELP_MODULES = [
         body: [
           'Desde Inicio elegí Escanear QR y apuntá la cámara al código. El lector reconoce los QR de activos y credenciales emitidos por Fly Gestión.',
           'Si el código corresponde a un activo, la aplicación abre su ficha interna para consultar datos, historial y acciones permitidas. Si corresponde a una credencial, abre su validación.',
+          'Al escanear un activo dentro de la app queda registrado quién lo abrió y cuándo. El teléfono solicita permiso para agregar ubicación y precisión; si no lo concedés, el escaneo se registra igualmente sin coordenadas.',
           'Este lector es para usuarios identificados. Una persona externa que escanea la etiqueta con la cámara normal del teléfono llega a una vista pública segura y no accede a tickets, manuales ni acciones administrativas.',
           'Si la cámara no está disponible, pegá el enlace o contenido del QR en el campo alternativo del lector.',
         ],
