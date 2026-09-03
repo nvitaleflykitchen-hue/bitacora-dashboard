@@ -19,7 +19,7 @@ import {
 import SkeletonTable from '../../components/SkeletonTable'
 import EmptyState from '../../components/EmptyState'
 import usePersistedState from '../../hooks/usePersistedState'
-import { filterMaintenanceAssets, filterMaintenanceTickets } from '../../lib/maintenanceTickets'
+import { filterMaintenanceAssets, filterMaintenanceTickets, maintenanceAssetQueryFilters } from '../../lib/maintenanceTickets'
 import { generarReporteEficienciaMnt } from '../../lib/mntEficienciaPdf'
 import { operationalStateLabel } from '../../lib/operationalStates'
 import useFormDraft from '../../hooks/useFormDraft'
@@ -833,7 +833,8 @@ export default function MntTickets({ focusId }) {
     const tfiltros = sedeId ? { sede_id: Number(sedeId) } : {}
     Promise.all([
       getTickets({ ...tfiltros, sedeIds: allowedSedeIds || undefined }),
-      getActivos(sedeId ? { sede_id: Number(sedeId) } : { sedeIds: allowedSedeIds || undefined }),
+      // El filtro de la grilla no debe limitar el catálogo del formulario: allí la sede puede cambiarse.
+      getActivos(maintenanceAssetQueryFilters(allowedSedeIds)),
       getProveedores(),
       supabase.from('mnt_responsables').select('id,nombre,rol,telefono,email').eq('activo',true).order('nombre')
     ])
