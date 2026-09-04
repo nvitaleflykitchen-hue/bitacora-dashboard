@@ -3,17 +3,13 @@ import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
 import { supabase } from './supabase'
 import { getPersonaFotoUrl } from './personaFotos'
+import { credentialPresentation, resolveCredentialArea, hexToRgb } from './credentialAreas'
 
 export const fechaVencimientoCredencial = (fecha = new Date()) => format(addYears(fecha, 2), 'yyyy-MM-dd')
 export const urlValidacionCredencial = token => `${window.location.origin}/?credencial=${token}`
 
 export function categoriaCredencial(persona) {
-  const value = `${persona?.area || ''} ${persona?.puesto || ''}`.toLowerCase()
-  if (value.includes('mantenimiento')) return 'MNT'
-  if (value.includes('calidad')) return 'CAL'
-  if (value.includes('administr')) return 'ADM'
-  if (value.includes('seguridad')) return 'HYS'
-  return 'OPS'
+  return resolveCredentialArea(persona).code
 }
 
 export async function getCredencialPersona(personaId) {
@@ -48,7 +44,7 @@ export async function emitirCredencial({ persona, sedeNombre, userId, anterior =
   const { data, error } = await supabase.schema('equipo').from('credenciales_personal').insert({
     persona_id:persona.id, estado:'activa', fecha_emision:format(new Date(), 'yyyy-MM-dd'),
     fecha_vencimiento:fechaVencimientoCredencial(), sede_nombre:sedeNombre || 'Administración Central',
-    puesto_impreso:persona.puesto || null, area_impresa:persona.area || null, emitida_por:userId,
+    puesto_impreso:persona.puesto || null, area_impresa:resolveCredentialArea(persona).key, emitida_por:userId,
     compartir_telefono:compartirTelefono, compartir_email:compartirEmail, grupo_sanguineo:grupoSanguineo || null,
     foto_pos_x:fotoX, foto_pos_y:fotoY, foto_zoom:fotoZoom,
   }).select().single()
@@ -112,7 +108,8 @@ export async function descargarCredencialPdf(persona, credencial) {
   const fotoRecortada = foto ? await coverImageData(foto, 231 * 2, 218 * 2, credencial.foto_pos_x, credencial.foto_pos_y, credencial.foto_zoom) : null
   const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:[CARD_W, CARD_H] })
   const orange = [235,102,0], name = [persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
-  const sede = credencial.sede_nombre || 'Administración Central', category = categoriaCredencial(persona)
+  const sede = credencial.sede_nombre || 'Administración Central', presentation = credentialPresentation(persona, credencial)
+  const areaColor = hexToRgb(presentation.area.color)
   const base = () => { pdf.setFillColor(250,250,250);pdf.rect(0,0,CARD_W,CARD_H,'F');pdf.setDrawColor(215);pdf.roundedRect(.5,.5,CARD_W-1,CARD_H-1,2.5,2.5) }
 
   // ── FRENTE ──────────────────────────────────────────────────────────────────
@@ -123,12 +120,12 @@ export async function descargarCredencialPdf(persona, credencial) {
   // Foto (231 px) + franja naranja de categoría (39 px), ambas de 218 px de alto.
   const fotoW = mx(231), stripX = fotoW, stripW = CARD_W - fotoW
   const fotoY = my(46), fotoH = my(218)
-  pdf.setFillColor(...orange);pdf.rect(stripX, fotoY, stripW, fotoH, 'F')
+  pdf.setFillColor(...areaColor);pdf.rect(stripX, fotoY, stripW, fotoH, 'F')
   if (fotoRecortada) pdf.addImage(fotoRecortada,'JPEG',0,fotoY,fotoW,fotoH,undefined,'FAST')
   else { pdf.setFillColor(223,227,232);pdf.rect(0,fotoY,fotoW,fotoH,'F') }
 
   // Letras de categoría: centradas en la franja, 28 px con interlineado 1,05.
-  const letters = category.split(''), letterLine = my(28 * 1.05)
+  const letters = presentation.area.code.split(''), letterLine = my(28 * 1.05)
   const lettersTop = fotoY + (fotoH - letters.length * letterLine) / 2
   pdf.setTextColor(255);pdf.setFont('helvetica','bold');pdf.setFontSize(ptFromPx(28))
   letters.forEach((letter,i) => pdf.text(letter, stripX + stripW/2, lettersTop + letterLine*i + letterLine/2, { align:'center', baseline:'middle' }))
@@ -153,7 +150,7 @@ export async function descargarCredencialPdf(persona, credencial) {
   cursor += my(11.5 * 1.2) + gap
 
   pdf.setTextColor(215,91,0);pdf.setFontSize(ptFromPx(9.5))
-  const puesto = String(credencial.puesto_impreso || persona.puesto || 'SIN PUESTO').toUpperCase()
+  const puesto = presentation.jobTitle
   const puestoLine = my(9.5 * 1.1)
   pdf.splitTextToSize(puesto, infoW).forEach((line,i) => pdf.text(line, infoX, cursor + puestoLine*i, { baseline:'top' }))
 

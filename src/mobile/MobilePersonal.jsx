@@ -20,6 +20,7 @@ import { analizarObjetividadEvaluacion } from '../lib/evaluacionObjetividad'
 import EmptyState from '../components/EmptyState'
 import CapacitacionesRelacionadas from '../components/CapacitacionesRelacionadas'
 import { confirmarAccionSensible } from '../lib/sensitiveActions'
+import { CREDENTIAL_AREA_OPTIONS } from '../lib/credentialAreas'
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -290,7 +291,7 @@ function QuickHistorialModal({ personaId, onClose, onSaved }) {
 }
 
 function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }) {
-  const [form, setForm] = useState({ nombre: '', apellido: '', legajo: '', dni: '', puesto: '', area: '', telefono: '', email: '', fecha_ingreso: '', sede_ids: sedes.length===1?[sedes[0].id]:[] })
+  const [form, setForm] = useState({ nombre: '', apellido: '', legajo: '', dni: '', puesto: '', area: '', functional_area:'operations', telefono: '', email: '', fecha_ingreso: '', sede_ids: sedes.length===1?[sedes[0].id]:[] })
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -320,6 +321,7 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
       dni: form.dni.trim() || null,
       puesto: form.puesto.trim() || null,
       area: form.area.trim() || null,
+      functional_area: form.functional_area,
       telefono: form.telefono.trim() || null,
       email: form.email.trim() || null,
       fecha_ingreso: form.fecha_ingreso || null,
@@ -343,6 +345,10 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
             <input className="input-dark w-full" value={form[k]} onChange={e => set(k, e.target.value)} placeholder={ph} />
           </div>
         ))}
+        <label style={{ fontSize:'0.75rem', color:'var(--text-dim)', textTransform:'uppercase', marginBottom:4, display:'block' }}>Área funcional</label>
+        <select className="input-dark w-full" value={form.functional_area} onChange={e=>set('functional_area',e.target.value)} style={{marginBottom:10}}>
+          {CREDENTIAL_AREA_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
         <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Fecha de ingreso</label>
         <input type="date" className="input-dark w-full" value={form.fecha_ingreso} onChange={e => set('fecha_ingreso', e.target.value)} style={{ marginBottom: 16 }} />
         <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede {requireSede?'*':''}</label>

@@ -75,6 +75,7 @@ import {
   textoEvaluacionPersonal,
 } from "../lib/evaluacionPersonalPdf";
 import { deduplicarHistorialPersonal } from "../lib/historialPersonal";
+import { CREDENTIAL_AREA_OPTIONS } from "../lib/credentialAreas";
 import {
   analizarObjetividadEvaluacion,
   promedioEvaluacion,
@@ -2375,6 +2376,7 @@ function PersonaModal({
     dni: persona?.dni || "",
     puesto: persona?.puesto || "",
     area: persona?.area || "",
+    functional_area: persona?.functional_area || "operations",
     telefono: persona?.telefono || "",
     email: persona?.email || "",
     fecha_ingreso: persona?.fecha_ingreso || "",
@@ -2491,6 +2493,7 @@ function PersonaModal({
       dni: form.dni.trim() || null,
       puesto: form.puesto.trim() || null,
       area: form.area.trim() || null,
+      functional_area: form.functional_area,
       telefono: form.telefono.trim() || null,
       email: form.email.trim() || null,
       fecha_ingreso: form.fecha_ingreso || null,
@@ -2576,6 +2579,15 @@ function PersonaModal({
               />
             </div>
           ))}
+        </div>
+        <div className="mb-3">
+          <label className="font-metric block mb-1" style={{ fontSize:"0.6rem", color:"var(--text-dim)" }}>
+            ÁREA FUNCIONAL
+          </label>
+          <select className="input-dark w-full" value={form.functional_area} onChange={(e) => set("functional_area", e.target.value)} style={{ fontSize:"0.75rem", height:34 }}>
+            {CREDENTIAL_AREA_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+          <p style={{ color:"var(--text-dim)", fontSize:"0.62rem", marginTop:5 }}>Define la sigla y el color de la credencial. El puesto se mantiene independiente.</p>
         </div>
         <div className="mb-3">
           <label
