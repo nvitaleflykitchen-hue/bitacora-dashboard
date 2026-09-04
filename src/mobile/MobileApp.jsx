@@ -27,6 +27,7 @@ const MobileChecklist = lazy(() => import('./MobileChecklist'))
 const MobileTickets = lazy(() => import('./MobileTickets'))
 const MobileRequerimientos = lazy(() => import('./MobileRequerimientos'))
 const MobileMas = lazy(() => import('./MobileMas'))
+const MobileMarcacion = lazy(() => import('./MobileMarcacion'))
 
 const MobileLoading = () => <div style={{ minHeight:180, display:'grid', placeItems:'center', color:'var(--text-dim)', fontSize:'.8rem' }}>Cargando sección…</div>
 
@@ -146,7 +147,8 @@ export default function MobileApp() {
         />
       )
     }
-    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} onOpenScanner={()=>setScannerOpen(true)} />
+    if (screen === 'marcacion') return <MobileMarcacion onBack={() => setScreen('main')} />
+    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} onOpenScanner={()=>setScannerOpen(true)} onOpenAttendance={()=>setScreen('marcacion')} />
     if (tab === 'tareas')        return <MobileTareas />
     if (tab === 'sedes')         return <MobileSedes focusContext={returnContext} onCreateNovedad={canReport ? openContextualReport : null} />
     if (tab === 'escalamientos') return <MobileEscalamientos />

@@ -3,7 +3,8 @@ import { getMisRegistrosHoy, getMisTareas, getDirectorio, getLimpiezaPendienteHo
 import { useAuth } from '../lib/auth'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Search, ScanLine } from 'lucide-react'
+import { Clock3, Search, ScanLine } from 'lucide-react'
+import { getMyAttendance } from '../lib/attendance'
 
 const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
 const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
@@ -106,11 +107,12 @@ function LimpiezaHoyBanner({ sedeId }) {
   )
 }
 
-export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner }) {
+export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner, onOpenAttendance }) {
   const { perfil, allowedSedeIds } = useAuth()
   const [registros, setRegistros] = useState([])
   const [tareas, setTareas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [attendanceEnabled, setAttendanceEnabled] = useState(false)
 
   useEffect(() => {
     if (!perfil) return
@@ -120,6 +122,14 @@ export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner
     ]).then(([r, t]) => { setRegistros(r); setTareas(t) })
       .finally(() => setLoading(false))
   }, [perfil])
+
+  useEffect(() => {
+    let alive = true
+    getMyAttendance(1)
+      .then(result => { if (alive) setAttendanceEnabled(Boolean(result?.enabled)) })
+      .catch(() => { if (alive) setAttendanceEnabled(false) })
+    return () => { alive = false }
+  }, [perfil?.id])
 
   const fecha = format(new Date(), "EEEE d 'de' MMMM", { locale: es })
   const nombre = perfil?.nombre?.split(' ')[0] || 'Usuario'
@@ -137,6 +147,10 @@ export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner
       </div>
 
       {(allowedSedeIds === null || allowedSedeIds?.includes(3)) && <LimpiezaHoyBanner sedeId={3} />}
+
+      {attendanceEnabled && onOpenAttendance && <button type="button" onClick={onOpenAttendance} style={{ width:'100%', minHeight:58, marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'center', gap:9, borderRadius:8, border:'1px solid rgba(57,255,20,.35)', background:'rgba(57,255,20,.10)', color:'var(--phosphor)', fontWeight:800, fontSize:'.95rem', cursor:'pointer' }}>
+        <Clock3 size={20}/> Mi marcación
+      </button>}
 
       {onOpenSearch && (
         <button
