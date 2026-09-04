@@ -1,7 +1,22 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.2";
+export const APP_VERSION = "2.9.3";
 
 export const RELEASES = [
+  {
+    version: "2.9.3",
+    date: "2026-09-04",
+    title: "Observaciones del supervisor desde la credencial",
+    functions: [
+      "El supervisor directo puede registrar una observación en el historial de la persona desde su tarjeta QR interna.",
+      "La observación conserva fecha y autor, admite hasta 1500 caracteres y queda separada del circuito disciplinario.",
+      "La misma acción está disponible para administradores; otros usuarios pueden consultar la tarjeta según su alcance pero no escribir en el historial.",
+    ],
+    problem: "El supervisor podía identificar y contactar a la persona escaneada, pero debía salir de la tarjeta para dejar constancia de un hecho.",
+    affectedUsers: "Supervisores directos y administradores que utilizan el lector QR interno.",
+    usage: "Escaneá la credencial desde Inicio y elegí Registrar observación en el historial. Describí el hecho objetivamente y confirmá el guardado.",
+    examples: ["Registrar que una persona fue encontrada fuera de su puesto y dejar asentada la conversación mantenida."],
+    screenshots: [],
+  },
   {
     version: "2.9.2",
     date: "2026-09-04",
