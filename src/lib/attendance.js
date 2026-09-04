@@ -27,7 +27,8 @@ export async function getMyAttendance(limit = 20) {
   return data || { enabled:false }
 }
 
-export async function markMyAttendance(eventType, { geolocation } = {}) {
+export async function markMyAttendance(eventType, siteId, { geolocation } = {}) {
+  if (!siteId) throw new Error('Seleccioná el lugar de trabajo.')
   const location = await requestScanLocation({ geolocation })
   if (location.estado !== 'obtenida') {
     const labels = {
@@ -41,6 +42,7 @@ export async function markMyAttendance(eventType, { geolocation } = {}) {
   const now = new Date()
   const { data, error } = await supabase.schema('bitacora').rpc('registrar_mi_marcacion', {
     p_event_type:eventType,
+    p_sede_id:Number(siteId),
     p_latitud:location.latitud,
     p_longitud:location.longitud,
     p_gps_accuracy_m:location.precision,

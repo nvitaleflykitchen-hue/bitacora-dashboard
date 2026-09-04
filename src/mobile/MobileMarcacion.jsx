@@ -13,10 +13,21 @@ export default function MobileMarcacion({ onBack }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [marking, setMarking] = useState(false)
+  const [siteId, setSiteId] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
-    try { setData(await getMyAttendance()) }
+    try {
+      const next = await getMyAttendance()
+      setData(next)
+      setSiteId(current => {
+        if (next?.sites?.some(site => String(site.id) === String(current))) return current
+        if (next?.sites?.length === 1) return String(next.sites[0].id)
+        return next?.lastEvent?.eventType === 'CLOCK_IN' && next?.lastEvent?.siteId
+          ? String(next.lastEvent.siteId)
+          : ''
+      })
+    }
     catch (error) { toast.error(`No se pudo cargar Marcación: ${mensajeError(error)}`) }
     finally { setLoading(false) }
   }, [])
@@ -27,7 +38,7 @@ export default function MobileMarcacion({ onBack }) {
     const type = data?.nextEventType || 'CLOCK_IN'
     setMarking(true)
     try {
-      const result = await markMyAttendance(type)
+      const result = await markMyAttendance(type, siteId)
       const status = attendanceStatus(result.validationStatus)
       toast.ok(`${attendanceEventLabel(type)} registrado · ${status.label}`)
       await load()
@@ -65,12 +76,12 @@ export default function MobileMarcacion({ onBack }) {
           <p style={{ color:'var(--text-dim)', fontSize:'.65rem', letterSpacing:'.08em' }}>COLABORADOR</p>
           <p style={{ color:'var(--text)', fontSize:'1.05rem', fontWeight:750, marginTop:3 }}>{data.persona?.name}</p>
           <div style={{ marginTop:16, display:'grid', gap:10 }}>
-            <div style={{ display:'flex', gap:9, alignItems:'center' }}><LocateFixed size={17} color="var(--phosphor)"/><div><p style={{ color:'var(--text)', fontSize:'.85rem' }}>{data.site?.name}</p><p style={{ color:data.site?.geofenceConfigured ? '#39FF14' : '#F59E0B', fontSize:'.68rem' }}>{data.site?.geofenceConfigured ? 'Geocerca configurada' : 'Geocerca pendiente de configurar'}</p></div></div>
+            <div style={{ display:'flex', gap:9, alignItems:'flex-start' }}><LocateFixed size={17} color="var(--phosphor)" style={{ marginTop:14 }}/><div style={{ flex:1 }}><label htmlFor="attendance-site" style={{ color:'var(--text-dim)', fontSize:'.62rem', letterSpacing:'.07em' }}>LUGAR DE TRABAJO DE ESTA MARCACIÓN</label><select id="attendance-site" className="input-dark" value={siteId} onChange={event=>setSiteId(event.target.value)} style={{ width:'100%', marginTop:5 }}><option value="">Seleccionar sede…</option>{(data.sites || []).map(site=><option key={site.id} value={site.id}>{site.name}{site.geofenceConfigured ? '' : ' · geocerca pendiente'}</option>)}</select>{data.multiSite && <p style={{ color:'var(--text-dim)', fontSize:'.66rem', marginTop:5 }}>Perfil multisede: podés elegir una sede diferente en el ingreso y en el egreso.</p>}{data.lastEvent?.eventType === 'CLOCK_IN' && <p style={{ color:'#60A5FA', fontSize:'.68rem', marginTop:5 }}>Jornada iniciada en {data.lastEvent.siteName || 'otra sede'}.</p>}</div></div>
             <div style={{ display:'flex', gap:9, alignItems:'center' }}><Clock3 size={17} color="var(--phosphor)"/><div><p style={{ color:'var(--text)', fontSize:'.85rem' }}>Hora oficial del servidor</p><p style={{ color:'var(--text-dim)', fontSize:'.68rem' }}>El teléfono no define la hora registrada</p></div></div>
           </div>
         </section>
 
-        <button type="button" disabled={marking} onClick={mark} style={{ width:'100%', minHeight:68, border:0, borderRadius:10, cursor:marking ? 'wait' : 'pointer', background:isOut ? '#F97316' : 'var(--phosphor)', color:'#0A0A0E', fontWeight:850, fontSize:'1.05rem', display:'flex', alignItems:'center', justifyContent:'center', gap:10, opacity:marking ? .65 : 1 }}>
+        <button type="button" disabled={marking || !siteId} onClick={mark} style={{ width:'100%', minHeight:68, border:0, borderRadius:10, cursor:marking || !siteId ? 'not-allowed' : 'pointer', background:isOut ? '#F97316' : 'var(--phosphor)', color:'#0A0A0E', fontWeight:850, fontSize:'1.05rem', display:'flex', alignItems:'center', justifyContent:'center', gap:10, opacity:marking || !siteId ? .55 : 1 }}>
           {isOut ? <LogOut size={22}/> : <LogIn size={22}/>} {marking ? 'Obteniendo ubicación…' : `MARCAR ${attendanceEventLabel(nextType).toUpperCase()}`}
         </button>
         <p style={{ color:'var(--text-dim)', fontSize:'.68rem', textAlign:'center', lineHeight:1.45, margin:'10px 12px 1.4rem' }}>Al marcar se solicitará tu ubicación. Durante el piloto, una geocerca o turno todavía no configurados quedarán pendientes de validación.</p>
