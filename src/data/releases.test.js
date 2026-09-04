@@ -8,7 +8,7 @@ describe('historial de actualizaciones', () => {
   })
 
   it('mantiene sincronizada la versión visible con la novedad más reciente', () => {
-    expect(APP_VERSION).toBe('2.9.2')
+    expect(APP_VERSION).toBe('2.9.3')
     expect(LATEST_RELEASE.version).toBe(APP_VERSION)
     expect(new Set(RELEASES.map(release => release.version)).size).toBe(RELEASES.length)
   })

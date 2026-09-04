@@ -29,6 +29,15 @@ export async function getInternalCredential(token) {
   return data || null
 }
 
+export async function registerCredentialHistoryObservation(token, description) {
+  const { data, error } = await supabase.rpc('registrar_observacion_credencial', {
+    p_token: token,
+    p_descripcion: description,
+  })
+  if (error) throw error
+  return data
+}
+
 export async function emitirCredencial({ persona, sedeNombre, userId, anterior = null, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
   if (anterior?.estado === 'activa') {
     const { error } = await supabase.schema('equipo').from('credenciales_personal').update({

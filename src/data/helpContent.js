@@ -58,6 +58,7 @@ export const HELP_MODULES = [
           'En credenciales, una persona ve sus propios datos; un supervisor puede consultar a sus subordinados directos; un usuario territorial recibe sólo datos básicos de personas de sus sedes; RR. HH. y administración acceden a las secciones expresamente autorizadas.',
           'El escaneo nunca muestra remuneraciones, DNI/CUIL, domicilio, información médica ni antecedentes disciplinarios. Abrir la ficha completa requiere un permiso independiente y cada consulta queda auditada.',
           'Cuando existe un supervisor directo vigente, la tarjeta muestra su nombre y ofrece llamada o WhatsApp si tiene un teléfono registrado.',
+          'El supervisor directo y los administradores también pueden usar Registrar observación en el historial. La nota queda fechada y firmada por el usuario, y no reemplaza el circuito formal de apercibimientos o sanciones.',
           'Al escanear un activo dentro de la app queda registrado quién lo abrió y cuándo. El teléfono solicita permiso para agregar ubicación y precisión; si no lo concedés, el escaneo se registra igualmente sin coordenadas.',
           'Este lector es para usuarios identificados. Una persona externa que escanea la etiqueta con la cámara normal del teléfono llega a una vista pública segura y no accede a tickets, manuales ni acciones administrativas.',
           'Si la cámara no está disponible, pegá el enlace o contenido del QR en el campo alternativo del lector.',
