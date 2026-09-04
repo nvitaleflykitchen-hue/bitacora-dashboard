@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fmtFecha } from '../../lib/dateUtils'
 import { updateTicket, getAuditoriaTicket, getActivos, getProveedores, getSedes, getTickets } from '../../lib/queries'
-import { AlertTriangle, User, Filter, RefreshCw, X, Clock, Tag, MapPin, Wrench, ChevronDown, MessageSquare, History } from 'lucide-react'
+import { AlertTriangle, User, Filter, RefreshCw, X, Clock, Tag, MapPin, Wrench, ChevronDown, MessageSquare, History, CalendarDays, Paperclip, CheckCircle2, Circle, MoreVertical, ExternalLink } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 import PageHeader from '../../components/PageHeader'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
@@ -411,14 +411,20 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 }
 
 // ─── CARD ────────────────────────────────────────────────────────────────────
-function TicketCard({ ticket, responsables, onClick }) {
+function TicketCard({ ticket, responsables, activos, columnColor, onClick }) {
   const [dragging, setDragging] = useState(false)
   const resp = responsables.find(r => r.id === ticket.responsable_id)
+  const activo = activos.find(a => String(a.id) === String(ticket.activo_id))
   const sla  = slaStatus(ticket)
   const pc   = PRIORIDAD_COLOR[ticket.prioridad] || '#aaa'
   const subtareas = Array.isArray(ticket.subtareas) ? ticket.subtareas : []
   const completadas = subtareas.filter(item => item?.completada).length
   const avance = subtareas.length ? Math.round(completadas * 100 / subtareas.length) : 0
+  const resuelto = ticket.estado === 'resuelto'
+  const bloqueado = ticket.estado === 'aprobado'
+  const slaHoras = SLA_HS[ticket.prioridad] || 48
+  const ticketNumero = ticket.numero ? `#MT-${String(ticket.numero).padStart(4, '0')}` : `#${String(ticket.id).slice(0, 8).toUpperCase()}`
+  const abrir = (event, tab = 'datos') => { event.stopPropagation(); onClick(ticket, tab) }
 
   return (
     <div
@@ -427,59 +433,76 @@ function TicketCard({ ticket, responsables, onClick }) {
       onDragEnd={() => setDragging(false)}
       onClick={() => onClick(ticket)}
       style={{
-        background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)',
-        borderLeft:`3px solid ${pc}`, borderRadius:2, padding:'12px 13px',
-        cursor:'pointer', marginBottom:7, opacity:dragging?0.5:1, transition:'all 0.15s',
+        background:resuelto?'linear-gradient(145deg, rgba(57,255,20,.08), rgba(18,19,24,.98) 55%)':'linear-gradient(145deg, rgba(255,255,255,.035), rgba(18,19,24,.98))',
+        border:`1px solid ${resuelto?'rgba(57,255,20,.35)':bloqueado?'rgba(255,80,80,.35)':'rgba(255,255,255,.1)'}`,
+        borderLeft:`3px solid ${columnColor || pc}`, borderRadius:5, padding:'14px 15px',
+        cursor:'pointer', marginBottom:10, opacity:dragging?0.5:1, transition:'all 0.15s',
+        boxShadow:resuelto?'inset 0 0 24px rgba(57,255,20,.025)':'0 8px 24px rgba(0,0,0,.12)',
       }}
-      onMouseEnter={e => { e.currentTarget.style.background='rgba(57,255,20,0.06)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.14)' }}
-      onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor='rgba(57,255,20,0.06)' }}
+      onMouseEnter={e => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.borderColor=columnColor || pc }}
+      onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor=resuelto?'rgba(57,255,20,.35)':bloqueado?'rgba(255,80,80,.35)':'rgba(255,255,255,.1)' }}
     >
-      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
+        <span style={{fontSize:'.56rem',fontFamily:'monospace',color:'rgba(255,255,255,.42)',border:'1px solid rgba(255,255,255,.1)',borderRadius:3,padding:'2px 5px'}}>{ticketNumero}</span>
         <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:4, fontWeight:700, background:`${pc}22`, color:pc, border:`1px solid ${pc}44` }}>
           {ticket.prioridad}
         </span>
-        {sla === 'vencido' && <span style={{ width:7,height:7,borderRadius:'50%',background:'#ff5050',display:'inline-block',boxShadow:'0 0 5px #ff5050' }} title="SLA vencido"/>}
-        {sla === 'alerta'  && <span style={{ width:7,height:7,borderRadius:'50%',background:'#ffb400',display:'inline-block',boxShadow:'0 0 5px #ffb400' }} title="SLA por vencer"/>}
-        <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', marginLeft:'auto' }}>
-          {ticket.created_at ? fmtFecha(ticket.created_at) : ''}
-        </span>
+        {!resuelto && <span style={{fontSize:'.56rem',fontWeight:700,color:sla==='vencido'?'#ff5050':sla==='alerta'?'#ffb400':'#50b4ff',marginLeft:'auto'}}>SLA {sla==='vencido'?'VENCIDO':`${slaHoras}h`}</span>}
       </div>
 
-      <p style={{ fontSize:'0.68rem', color:'var(--text)', lineHeight:1.35, marginBottom:5 }}>
-        {ticket.descripcion?.substring(0,90)}{ticket.descripcion?.length>90?'…':''}
+      <p style={{ fontSize:'.78rem', fontWeight:700, color:'var(--text)', lineHeight:1.3, marginBottom:7, display:'-webkit-box', WebkitBoxOrient:'vertical', WebkitLineClamp:2, overflow:'hidden' }}>
+        {ticket.descripcion || 'Ticket de mantenimiento sin descripción'}
       </p>
 
       {ticket.activo_nombre && (
-        <p style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.6)', marginBottom:5 }}>{ticket.activo_nombre}</p>
+        <div style={{marginBottom:8}}>
+          <p style={{fontSize:'.64rem',color:'rgba(57,255,20,.78)',fontWeight:650,display:'flex',gap:5,alignItems:'center'}}><Wrench size={10}/>{ticket.activo_nombre}</p>
+          {activo?.codigo && <p style={{fontSize:'.54rem',color:'rgba(255,255,255,.3)',margin:'2px 0 0 15px'}}>{activo.codigo}</p>}
+        </div>
       )}
 
-      <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
+      {ticket.sede && <p style={{display:'flex',alignItems:'center',gap:5,fontSize:'.59rem',color:'rgba(255,255,255,.55)',marginBottom:8}}><MapPin size={10}/>{ticket.sede}</p>}
+
+      <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
         {ticket.subarea && <span style={{fontSize:'.57rem',color:'#50b4ff',border:'1px solid rgba(80,180,255,.25)',padding:'2px 6px',borderRadius:3}}>{ticket.subarea}</span>}
         {ticket.categoria && <span style={{fontSize:'.57rem',color:'var(--text-dim)',border:'1px solid rgba(255,255,255,.1)',padding:'2px 6px',borderRadius:3}}>{ticket.categoria}</span>}
-        {ticket.fecha_limite && <span style={{fontSize:'.57rem',color:'#ffb400',marginLeft:'auto'}}>Límite {fmtFecha(ticket.fecha_limite)}</span>}
+      </div>
+
+      {bloqueado && (ticket.impacto_operativo || ticket.causa_raiz) && <div style={{background:'rgba(255,80,80,.075)',border:'1px solid rgba(255,80,80,.22)',borderRadius:4,padding:'8px 9px',marginBottom:10}}>
+        <p style={{fontSize:'.54rem',color:'#ff5050',fontWeight:800,marginBottom:3}}>MOTIVO DEL BLOQUEO</p>
+        <p style={{fontSize:'.59rem',color:'rgba(255,255,255,.58)',lineHeight:1.35}}>{ticket.impacto_operativo || ticket.causa_raiz}</p>
+      </div>}
+
+      <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
+        <div style={{width:22,height:22,borderRadius:'50%',display:'grid',placeItems:'center',background:resp?'rgba(57,255,20,.12)':'rgba(255,255,255,.06)',color:resp?'var(--phosphor)':'var(--text-dim)',fontSize:'.58rem',fontWeight:800}}>{resp?.nombre?.trim()?.charAt(0)?.toUpperCase() || '?'}</div>
+        <span style={{fontSize:'.6rem',color:resp?'rgba(255,255,255,.66)':'rgba(255,80,80,.65)'}}>{resp?.nombre || 'Sin asignar'}</span>
+        {ticket.fecha_limite && <span style={{display:'flex',alignItems:'center',gap:4,fontSize:'.56rem',color:sla==='vencido'?'#ff5050':'rgba(255,255,255,.46)',marginLeft:'auto'}}><CalendarDays size={10}/>Vence {fmtFecha(ticket.fecha_limite)}</span>}
       </div>
 
       {subtareas.length > 0 && <div style={{marginBottom:9}}>
-        <div style={{display:'flex',justifyContent:'space-between',fontSize:'.57rem',color:'var(--text-dim)',marginBottom:4}}><span>SUBTAREAS</span><span>{completadas}/{subtareas.length}</span></div>
-        <div style={{height:3,background:'rgba(255,255,255,.08)',borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',width:`${avance}%`,background:avance===100?'#39ff14':'#50b4ff'}}/></div>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:'.56rem',color:'var(--text-dim)',marginBottom:5}}><span>SUBTAREAS</span><span>{completadas} de {subtareas.length}</span></div>
+        <div style={{height:4,background:'rgba(255,255,255,.08)',borderRadius:4,overflow:'hidden',marginBottom:7}}><div style={{height:'100%',width:`${avance}%`,background:avance===100?'#39ff14':columnColor || '#50b4ff'}}/></div>
+        {subtareas.slice(0,3).map(item=><div key={item.id} style={{display:'flex',alignItems:'center',gap:6,color:item.completada?'rgba(255,255,255,.38)':'rgba(255,255,255,.7)',fontSize:'.59rem',marginBottom:5,textDecoration:item.completada?'line-through':'none'}}>{item.completada?<CheckCircle2 size={11} color="#39ff14"/>:<Circle size={11}/>}<span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.texto}</span></div>)}
       </div>}
 
-      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-        <User size={9} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
-        <span style={{ fontSize:'0.6rem', color: resp?'rgba(255,255,255,0.5)':'rgba(255,80,80,0.55)' }}>
-          {resp ? resp.nombre : 'Sin asignar'}
-        </span>
-        {ticket.tipo && (
-          <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', marginLeft:'auto' }}>{ticket.tipo}</span>
-        )}
+      {resuelto && <div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(57,255,20,.09)',border:'1px solid rgba(57,255,20,.2)',borderRadius:4,padding:'7px 8px',fontSize:'.58rem',color:'rgba(57,255,20,.8)',marginBottom:9}}><CheckCircle2 size={13}/>Resuelto {ticket.fecha_cierre ? `el ${fmtFecha(ticket.fecha_cierre)}` : ''}</div>}
+
+      <div style={{display:'flex',alignItems:'center',gap:13,color:'rgba(255,255,255,.36)',fontSize:'.57rem',marginTop:7}}>
+        <span style={{display:'flex',alignItems:'center',gap:4}}><MessageSquare size={11}/>Comentarios</span>
+        {(ticket.evidencia_url || ticket.trabajo_realizado) && <span style={{display:'flex',alignItems:'center',gap:4}}><Paperclip size={11}/>Evidencia</span>}
+        {ticket.tipo && <span style={{marginLeft:'auto',textTransform:'capitalize'}}>{ticket.tipo}</span>}
       </div>
-      <div style={{borderTop:'1px solid rgba(57,255,20,.07)',marginTop:9,paddingTop:7,color:'var(--phosphor)',fontSize:'.58rem'}}>Ver ficha completa · comentarios · evidencias</div>
+      <div style={{borderTop:'1px solid rgba(255,255,255,.08)',marginTop:10,paddingTop:9,display:'flex',alignItems:'center',gap:8}}>
+        <button type="button" onClick={abrir} style={{background:'none',border:0,color:'var(--text)',fontSize:'.6rem',cursor:'pointer',padding:0,display:'flex',alignItems:'center',gap:4}}>Abrir ficha <ExternalLink size={10}/></button>
+        <button type="button" onClick={event=>abrir(event,'comentarios')} style={{background:'none',border:0,borderLeft:'1px solid rgba(255,255,255,.1)',color:'rgba(255,255,255,.6)',fontSize:'.6rem',cursor:'pointer',padding:'0 0 0 10px'}}>Comentar</button>
+        <button type="button" aria-label="Más información" onClick={abrir} style={{marginLeft:'auto',background:'none',border:0,color:'rgba(255,255,255,.4)',padding:0,cursor:'pointer'}}><MoreVertical size={13}/></button>
+      </div>
     </div>
   )
 }
 
 // ─── COLUMNA ─────────────────────────────────────────────────────────────────
-function Column({ col, tickets, responsables, onDrop, onCardClick }) {
+function Column({ col, tickets, responsables, activos, onDrop, onCardClick }) {
   const [over, setOver] = useState(false)
   return (
     <div
@@ -488,9 +511,9 @@ function Column({ col, tickets, responsables, onDrop, onCardClick }) {
       onDrop={e=>{ e.preventDefault(); setOver(false); const id=e.dataTransfer.getData('ticketId'); if(id) onDrop(id,col.id) }}
       style={{
         flex:1, minWidth:0, display:'flex', flexDirection:'column',
-        background: over ? `${col.color}0a` : 'transparent',
+        background: over ? `${col.color}0a` : 'rgba(255,255,255,.012)',
         border: `1px solid ${over ? col.color+'55' : 'transparent'}`,
-        borderRadius:3, padding:'0 6px', transition:'all 0.15s'
+        borderRadius:5, padding:'10px 9px 0', transition:'all 0.15s'
       }}>
 
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, padding:'0 2px' }}>
@@ -500,7 +523,7 @@ function Column({ col, tickets, responsables, onDrop, onCardClick }) {
       </div>
 
       <div style={{ flex:1, overflowY:'auto', minHeight:100 }}>
-        {tickets.map(t=><TicketCard key={t.id} ticket={t} responsables={responsables} onClick={onCardClick}/>)}
+        {tickets.map(t=><TicketCard key={t.id} ticket={t} responsables={responsables} activos={activos} columnColor={col.color} onClick={onCardClick}/>)}
         {!tickets.length && (
           <div style={{ textAlign:'center', padding:'24px 8px', color:'rgba(57,255,20,0.08)', fontSize:'0.62rem' }}>
             Arrastrá tickets aquí
@@ -525,6 +548,8 @@ export default function MntKanban() {
   const [filterSede, setFilterSede]     = usePersistedState('mntKanban.sede', '')
   const [filterSLA, setFilterSLA]       = usePersistedState('mntKanban.sla', false)
   const [selectedTicket, setSelectedTicket] = useState(null)
+  const [selectedTicketTab, setSelectedTicketTab] = useState('datos')
+  const openTicket = (ticket, tab = 'datos') => { setSelectedTicketTab(tab); setSelectedTicket(ticket) }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -583,6 +608,7 @@ export default function MntKanban() {
           proveedores={proveedores}
           responsables={responsables}
           sedes={sedesCatalogo}
+          initialTab={selectedTicketTab}
           onClose={()=>setSelectedTicket(null)}
           onSaved={()=>{ setSelectedTicket(null); load() }}
         />
@@ -638,13 +664,14 @@ export default function MntKanban() {
       {loading ? (
         <p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>Cargando tickets...</p>
       ) : (
-        <div style={{ flex:1, display:'flex', gap:12, overflowX:'auto', minHeight:0 }}>
+        <div style={{ flex:1, display:'flex', gap:14, overflowX:'auto', minHeight:0 }}>
           {COLS.map(col=>(
             <Column key={col.id} col={col}
               tickets={filtered.filter(t=>t.estado===col.id)}
               responsables={responsables}
+              activos={activos}
               onDrop={moveTicket}
-              onCardClick={setSelectedTicket}
+              onCardClick={openTicket}
             />
           ))}
         </div>
