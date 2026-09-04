@@ -1,7 +1,28 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.1";
+export const APP_VERSION = "2.9.2";
 
 export const RELEASES = [
+  {
+    version: "2.9.2",
+    date: "2026-09-04",
+    title: "Credenciales internas con acceso por alcance",
+    functions: [
+      "El lector QR de Inicio abre una tarjeta interna específica en lugar del legajo completo de la persona.",
+      "La información se habilita según la relación real: datos propios, subordinados directos, personal de la misma sede o permiso global de RR. HH./administración.",
+      "Las evaluaciones y los datos laborales aparecen únicamente cuando el alcance los autoriza; DNI, CUIL, domicilio, salud, disciplina y remuneraciones quedan fuera del escaneo.",
+      "La tarjeta identifica al supervisor directo y, si tiene teléfono registrado, permite llamarlo o escribirle por WhatsApp.",
+      "Cada consulta interna de una credencial deja una auditoría con usuario, persona, fecha, alcance y secciones mostradas.",
+    ],
+    problem: "El escaneo autenticado de una credencial podía abrir la ficha personal completa y mostrar más información que la necesaria para la función del usuario.",
+    affectedUsers: "Todo usuario autenticado que escanee credenciales desde Inicio, supervisores, responsables de sede, RR. HH. y administradores.",
+    usage: "Desde Inicio elegí Escanear QR. La tarjeta resultante explica tu alcance y muestra sólo las secciones habilitadas. Abrir ficha completa aparece exclusivamente para usuarios con autorización expresa.",
+    examples: [
+      "Un responsable de sede confirma identidad, cargo y sede de un colaborador sin acceder a su legajo completo.",
+      "Un supervisor consulta el resumen de desempeño de una persona que lo tiene registrado como supervisor directo.",
+      "Un administrador ve datos laborales, resumen de evaluaciones y estado documental, pero no remuneraciones.",
+    ],
+    screenshots: [],
+  },
   {
     version: "2.9.1",
     date: "2026-09-03",

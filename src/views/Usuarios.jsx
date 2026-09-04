@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes, getPermisosCompras, setPermisoCompras, getPermisosMantenimiento, setPermisoMantenimiento } from '../lib/queries'
+import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes, getPermisosCompras, setPermisoCompras, getPermisosMantenimiento, setPermisoMantenimiento, getPermisosPersonal, setPermisoPersonal } from '../lib/queries'
 import { supabase } from '../lib/supabase'
-import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart, Wrench } from 'lucide-react'
+import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart, Wrench, ContactRound } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import { confirmar, toast } from '../lib/feedback'
@@ -25,6 +25,38 @@ const ACCIONES_COMPRAS = [
   { accion: 'supervise', label: 'Supervisar',   desc: 'Asignar y reasignar compradores, ver toda la bandeja' },
   { accion: 'invoice',   label: 'Facturación',  desc: 'Etapa documental y de facturación' },
 ]
+
+const ACCIONES_PERSONAL = [
+  { accion:'view_all_basic', label:'Datos básicos globales', desc:'Identidad, cargo, área, estado y sedes de cualquier colaborador.' },
+  { accion:'view_all_employment', label:'Información laboral global', desc:'Legajo, ingreso y función actual.' },
+  { accion:'view_all_performance', label:'Evaluaciones globales', desc:'Cantidad, promedio y última evaluación de desempeño.' },
+  { accion:'view_document_status', label:'Estado documental', desc:'Cantidad de adjuntos, sin abrir su contenido desde el escaneo.' },
+  { accion:'open_full_record', label:'Abrir ficha completa', desc:'Habilita el botón hacia la ficha normal de Personal.' },
+]
+
+function PermisosPersonalModal({ perfil, permisos, adminId, onClose, onSaved }) {
+  const inicial = Object.fromEntries(ACCIONES_PERSONAL.map(a=>[a.accion, permisos.some(p=>p.accion===a.accion && p.activo)]))
+  const [checks, setChecks] = useState(inicial)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const guardar = async () => {
+    setSaving(true); setError(null)
+    try {
+      for (const a of ACCIONES_PERSONAL) if (inicial[a.accion] !== checks[a.accion]) {
+        await setPermisoPersonal({ perfilId:perfil.id, accion:a.accion, activo:checks[a.accion], createdBy:adminId })
+      }
+      onSaved(); onClose()
+    } catch (e) { setError(e.message) } finally { setSaving(false) }
+  }
+  return <div className="modal-overlay" style={{zIndex:50}}><div className="glass rounded p-6 w-full max-w-md fade-in" style={{background:'var(--surface)',border:'1px solid rgba(57,255,20,.15)'}}>
+    <div className="flex items-center justify-between mb-4"><h2 className="font-title font-bold" style={{color:'var(--text)',fontSize:'.95rem'}}>Acceso QR de Personal</h2><button onClick={onClose} className="btn-ghost"><XIcon size={14}/></button></div>
+    <p className="font-metric mb-4" style={{color:'var(--text-dim)',fontSize:'.7rem'}}>{perfil.nombre || perfil.email}</p>
+    <div className="space-y-3 mb-4">{ACCIONES_PERSONAL.map(a=><label key={a.accion} className="flex items-start gap-2.5 cursor-pointer p-2 rounded" style={{background:checks[a.accion]?'rgba(57,255,20,.05)':'transparent',border:'1px solid rgba(57,255,20,.08)'}}><input type="checkbox" checked={checks[a.accion]} onChange={e=>setChecks(c=>({...c,[a.accion]:e.target.checked}))} style={{accentColor:'var(--phosphor)',marginTop:2}}/><span><span className="font-metric block" style={{color:'var(--text)',fontSize:'.75rem'}}>{a.label}</span><span className="font-metric block" style={{color:'var(--text-dim)',fontSize:'.62rem'}}>{a.desc}</span></span></label>)}</div>
+    <p style={{color:'#F59E0B',fontSize:'.65rem',lineHeight:1.45,marginBottom:12}}>Estos permisos amplían el alcance global. Los accesos propios, por supervisión y por sede funcionan automáticamente. Remuneraciones y datos sensibles nunca se incluyen.</p>
+    {error && <p style={{color:'#ff6b6b',fontSize:'.7rem',marginBottom:8}}>{error}</p>}
+    <div className="flex justify-end gap-2"><button className="btn-ghost" onClick={onClose}>Cancelar</button><button className="btn-primary" disabled={saving} onClick={guardar}>{saving?'Guardando…':'Guardar permisos'}</button></div>
+  </div></div>
+}
 
 function PermisosComprasModal({ perfil, permisos, adminId, onClose, onSaved }) {
   // permisos: filas de perfil_permisos del usuario (modulo compras)
@@ -347,20 +379,24 @@ export default function Usuarios() {
   const [showModal, setShowModal] = useState(false)
   const [permisosCompras, setPermisosCompras] = useState([])
   const [permisosMantenimiento, setPermisosMantenimiento] = useState([])
+  const [permisosPersonal, setPermisosPersonal] = useState([])
   const [permisosPerfil, setPermisosPerfil] = useState(null) // perfil cuyo modal de permisos está abierto
   const [mantenimientoPerfil, setMantenimientoPerfil] = useState(null)
+  const [personalPerfil, setPersonalPerfil] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [perfilesData, gruposData, sedesData, permisosData, permisosMntData] = await Promise.all([
+      const [perfilesData, gruposData, sedesData, permisosData, permisosMntData, permisosPersonalData] = await Promise.all([
         getPerfilesConDirectorio(), getGrupos(), getSedes(),
         getPermisosCompras().catch(e => { console.error('perfil_permisos:', e); return [] }),
         getPermisosMantenimiento().catch(e => { console.error('perfil_permisos mantenimiento:', e); return [] }),
+        getPermisosPersonal().catch(e => { console.error('perfil_permisos personal:', e); return [] }),
       ])
       setPerfiles(perfilesData); setGrupos(gruposData); setSedes(sedesData)
       setPermisosCompras(permisosData)
       setPermisosMantenimiento(permisosMntData)
+      setPermisosPersonal(permisosPersonalData)
     }
     catch (e) { console.error(e) }
     finally { setLoading(false) }
@@ -502,6 +538,7 @@ export default function Usuarios() {
           onSaved={load}
         />
       )}
+      {personalPerfil && <PermisosPersonalModal perfil={personalPerfil} permisos={permisosPersonal.filter(pp=>pp.perfil_id===personalPerfil.id)} adminId={perfilActual?.id} onClose={()=>setPersonalPerfil(null)} onSaved={load}/>} 
 
       <PageHeader title="Usuarios" subtitle="Gestión de perfiles y roles">
         <div className="flex gap-2">
@@ -542,6 +579,7 @@ export default function Usuarios() {
                   <th>Grupo / Sedes</th>
                   <th>Compras</th>
                   <th>Mantenimiento</th>
+                  <th>QR Personal</th>
                   <th>Estado</th>
                   <th></th>
                 </tr>
@@ -668,6 +706,12 @@ export default function Usuarios() {
                                 </button>
                               )}
                             </div>}
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1" style={{flexWrap:'wrap'}}>
+                          {p.rol === 'admin' ? <span className="chip chip-gray" style={{fontSize:'.6rem'}}>Total (rol)</span> : permisosPersonal.filter(pp=>pp.perfil_id===p.id && pp.activo).map(pp=><span key={pp.accion} className="chip chip-blue" style={{fontSize:'.58rem'}}>{ACCIONES_PERSONAL.find(a=>a.accion===pp.accion)?.label || pp.accion}</span>)}
+                          {perfilActual?.rol?.toLowerCase()==='admin' && <button title="Editar acceso QR de Personal" onClick={()=>setPersonalPerfil(p)} className="btn-ghost" style={{padding:'.15rem .35rem'}}><ContactRound size={11}/></button>}
+                        </div>
                       </td>
                       <td>
                         {isEditing ? (
