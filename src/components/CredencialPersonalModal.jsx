@@ -4,7 +4,8 @@ import { BadgeCheck, Download, RefreshCw, ShieldX, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '../lib/auth'
 import { getPersonaFotoUrl } from '../lib/personaFotos'
-import { actualizarPrivacidadCredencial, cambiarEstadoCredencial, categoriaCredencial, descargarCredencialPdf, emitirCredencial, fechaVencimientoCredencial, getCredencialPersona, urlValidacionCredencial } from '../lib/credenciales'
+import { actualizarPrivacidadCredencial, cambiarEstadoCredencial, descargarCredencialPdf, emitirCredencial, fechaVencimientoCredencial, getCredencialPersona, urlValidacionCredencial } from '../lib/credenciales'
+import { credentialPresentation } from '../lib/credentialAreas'
 import { mensajeError } from '../lib/errores'
 import { confirmar, toast } from '../lib/feedback'
 
@@ -17,7 +18,7 @@ export default function CredencialPersonalModal({ persona, sedes, onClose }) {
   const [fotoX,setFotoX]=useState(50),[fotoY,setFotoY]=useState(50),[fotoZoom,setFotoZoom]=useState(1)
   const [compartirTelefono,setCompartirTelefono]=useState(false),[compartirEmail,setCompartirEmail]=useState(false)
   const sedeNombre=useMemo(()=>{const values=(persona.sede_ids||[]).map(id=>sedes.find(s=>String(s.id)===String(id))?.nombre).filter(Boolean);return values.length?values.join(' / '):'Administración Central'},[persona.sede_ids,sedes])
-  const nombre=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase(),category=categoriaCredencial(persona)
+  const nombre=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase(),presentation=credentialPresentation(persona,credencial)
   const vencimiento=credencial?.fecha_vencimiento||fechaVencimientoCredencial()
   const load=async()=>{setLoading(true);try{const value=await getCredencialPersona(persona.id);setCredencial(value);setCompartirTelefono(Boolean(value?.compartir_telefono));setCompartirEmail(Boolean(value?.compartir_email));setGrupo(value?.grupo_sanguineo||'');setFotoX(Number(value?.foto_pos_x??50));setFotoY(Number(value?.foto_pos_y??50));setFotoZoom(Number(value?.foto_zoom??1))}catch(e){toast.error(mensajeError(e))}finally{setLoading(false)}}
   useEffect(()=>{load()},[persona.id])
@@ -34,8 +35,8 @@ export default function CredencialPersonalModal({ persona, sedes, onClose }) {
       <div style={{display:'flex',gap:18,alignItems:'flex-start',justifyContent:'center',flexWrap:'wrap'}}>
         <div style={card}>
           <div style={{height:46,padding:'3px 12px',display:'flex',justifyContent:'center'}}><img src="/fly-kitchen-credencial.png" style={{maxWidth:'100%',height:40,objectFit:'contain'}}/></div>
-          <div style={{height:218,display:'grid',gridTemplateColumns:'1fr 39px'}}><div style={{overflow:'hidden',background:'#dfe3e8',position:'relative'}}>{foto&&<img src={foto} style={fotoStyle}/>}</div><div style={{background:'#eb6600',color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,lineHeight:1.05}}>{category.split('').map(x=><span key={x}>{x}</span>)}</div></div>
-          <div style={{padding:'7px 12px 4px',height:121,display:'flex',flexDirection:'column',gap:2,boxSizing:'border-box'}}><strong style={{fontSize:18,lineHeight:1.05}}>{nombre}</strong>{persona.dni&&<strong style={{fontSize:10.5}}>DNI {persona.dni}</strong>}<strong style={{fontSize:11.5}}>FLY KITCHEN S.A.</strong><b style={{fontSize:9.5,color:'#d75b00',lineHeight:1.1}}>{(persona.puesto||'SIN PUESTO').toUpperCase()}</b><div style={{display:'flex',alignItems:'end',justifyContent:'space-between',marginTop:'auto'}}><span style={{fontSize:8}}>{sedeNombre.toUpperCase()}</span>{grupo&&<b style={{fontSize:11,color:'#d75b00'}}>{grupo}</b>}</div></div>
+          <div style={{height:218,display:'grid',gridTemplateColumns:'1fr 39px'}}><div style={{overflow:'hidden',background:'#dfe3e8',position:'relative'}}>{foto&&<img src={foto} style={fotoStyle}/>}</div><div style={{background:presentation.area.color,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,lineHeight:1.05}}>{presentation.area.code.split('').map((x,index)=><span key={`${x}-${index}`}>{x}</span>)}</div></div>
+          <div style={{padding:'7px 12px 4px',height:121,display:'flex',flexDirection:'column',gap:2,boxSizing:'border-box'}}><strong style={{fontSize:18,lineHeight:1.05}}>{nombre}</strong>{persona.dni&&<strong style={{fontSize:10.5}}>DNI {persona.dni}</strong>}<strong style={{fontSize:11.5}}>FLY KITCHEN S.A.</strong><b style={{fontSize:9.5,color:'#d75b00',lineHeight:1.1}}>{presentation.jobTitle}</b><div style={{display:'flex',alignItems:'end',justifyContent:'space-between',marginTop:'auto'}}><span style={{fontSize:8}}>{sedeNombre.toUpperCase()}</span>{grupo&&<b style={{fontSize:11,color:'#d75b00'}}>{grupo}</b>}</div></div>
           <div style={expiry}>VENCE&nbsp; {format(new Date(`${vencimiento}T12:00:00`),'dd·MM·yyyy')}</div>
         </div>
         <div style={card}><div style={{height:66,padding:'8px 16px',display:'flex',justifyContent:'center'}}><img src="/fly-kitchen-credencial.png" style={{maxWidth:'100%',height:50,objectFit:'contain'}}/></div>{qr?<img src={qr} style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174}}/>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:'9px 5px',fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:'15px 12px',fontSize:9,lineHeight:1.55}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>

@@ -1,7 +1,23 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.3";
+export const APP_VERSION = "2.9.4";
 
 export const RELEASES = [
+  {
+    version: "2.9.4",
+    date: "2026-09-04",
+    title: "Credenciales identificadas por área funcional",
+    functions: [
+      "La sigla y el color lateral de la credencial se obtienen del área funcional, independientemente del cargo.",
+      "Alta y edición de personal incorporan el selector Operaciones, Logística, Calidad, Mantenimiento, Administración o Recursos Humanos.",
+      "La vista previa y el PDF CR80 comparten una única configuración de códigos y colores.",
+      "Los registros históricos sin área funcional conservan compatibilidad mediante una clasificación automática; los cargos operativos y nutricionistas responsables permanecen en OPS.",
+    ],
+    problem: "La credencial podía confundir la profesión o el cargo de una persona con el área funcional que debía identificarla visualmente.",
+    affectedUsers: "Administradores y RR. HH. que administran personal o emiten credenciales.",
+    usage: "Al crear o editar una persona, seleccioná su Área funcional sin cambiar el campo Puesto. Al emitir la credencial, revisá que la sigla y el color lateral coincidan.",
+    examples: ["Una nutricionista responsable de servicio conserva su cargo visible y utiliza OPS con lateral naranja."],
+    screenshots: [],
+  },
   {
     version: "2.9.3",
     date: "2026-09-04",
