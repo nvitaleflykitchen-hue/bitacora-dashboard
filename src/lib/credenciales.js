@@ -23,11 +23,10 @@ export async function getCredencialPersona(personaId) {
   return data
 }
 
-export async function getPersonaIdByCredentialToken(token) {
-  const { data, error } = await supabase.schema('equipo').from('credenciales_personal')
-    .select('persona_id,estado,fecha_vencimiento').eq('token', token).maybeSingle()
+export async function getInternalCredential(token) {
+  const { data, error } = await supabase.rpc('obtener_credencial_interna', { p_token: token })
   if (error) throw error
-  return data?.persona_id || null
+  return data || null
 }
 
 export async function emitirCredencial({ persona, sedeNombre, userId, anterior = null, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {

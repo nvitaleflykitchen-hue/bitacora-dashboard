@@ -15,9 +15,9 @@ import usePersistedState from '../hooks/usePersistedState'
 import { mobileDestinationForView } from '../lib/navigationRoutes'
 import AssetQrScannerModal from '../components/AssetQrScannerModal'
 import { parseInternalQrValue } from '../lib/assetQrScan'
-import { getPersonaIdByCredentialToken } from '../lib/credenciales'
 import { toast } from '../lib/feedback'
 import { newScanEventId } from '../lib/assetScans'
+import InternalCredentialView from '../components/InternalCredentialView'
 
 const MobileReporte = lazy(() => import('./MobileReporte'))
 const MobileTareas = lazy(() => import('./MobileTareas'))
@@ -68,6 +68,7 @@ export default function MobileApp() {
   const [reportContext, setReportContext] = useState(null)
   const [returnContext, setReturnContext] = useState(null)
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [credentialToken, setCredentialToken] = useState(null)
 
   const openScannedQr = async target => {
     setScannerOpen(false)
@@ -79,18 +80,7 @@ export default function MobileApp() {
       setTab('mas')
       return
     }
-    if (!canAccessView(rol, 'equipo', perfil) || rol !== 'admin') {
-      return toast.warn('La ficha interna de credenciales está disponible para administradores.')
-    }
-    try {
-      const personaId = await getPersonaIdByCredentialToken(target.token)
-      if (!personaId) return toast.warn('No se encontró la credencial.')
-      setReturnContext({ type:'persona', id:personaId })
-      setMasModule('personal')
-      setTab('mas')
-    } catch {
-      toast.error('No se pudo abrir la credencial interna.')
-    }
+    setCredentialToken(target.token)
   }
 
   const openContextualReport = context => {
@@ -235,6 +225,16 @@ export default function MobileApp() {
           help="La app reconoce el QR y abre su ficha interna según tus permisos."
         />
       )}
+      {credentialToken && <InternalCredentialView
+        token={credentialToken}
+        onClose={()=>setCredentialToken(null)}
+        onOpenFullRecord={personaId=>{
+          setCredentialToken(null)
+          setReturnContext({ type:'persona', id:personaId })
+          setMasModule('personal')
+          setTab('mas')
+        }}
+      />}
 
       {showSearch && !isComprasOnly && (
         <GlobalSearch mobile onNavigate={handleSearchNavigate} onClose={() => setShowSearch(false)} />

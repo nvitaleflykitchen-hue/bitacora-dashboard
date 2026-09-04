@@ -54,7 +54,10 @@ export const HELP_MODULES = [
         title: 'Escanear un QR dentro de la aplicación',
         body: [
           'Desde Inicio elegí Escanear QR y apuntá la cámara al código. El lector reconoce los QR de activos y credenciales emitidos por Fly Gestión.',
-          'Si el código corresponde a un activo, la aplicación abre su ficha interna para consultar datos, historial y acciones permitidas. Si corresponde a una credencial, abre su validación.',
+          'Si el código corresponde a un activo, la aplicación abre su ficha interna para consultar datos, historial y acciones permitidas. Si corresponde a una credencial, abre una tarjeta interna filtrada según tus permisos y relación con la persona.',
+          'En credenciales, una persona ve sus propios datos; un supervisor puede consultar a sus subordinados directos; un usuario territorial recibe sólo datos básicos de personas de sus sedes; RR. HH. y administración acceden a las secciones expresamente autorizadas.',
+          'El escaneo nunca muestra remuneraciones, DNI/CUIL, domicilio, información médica ni antecedentes disciplinarios. Abrir la ficha completa requiere un permiso independiente y cada consulta queda auditada.',
+          'Cuando existe un supervisor directo vigente, la tarjeta muestra su nombre y ofrece llamada o WhatsApp si tiene un teléfono registrado.',
           'Al escanear un activo dentro de la app queda registrado quién lo abrió y cuándo. El teléfono solicita permiso para agregar ubicación y precisión; si no lo concedés, el escaneo se registra igualmente sin coordenadas.',
           'Este lector es para usuarios identificados. Una persona externa que escanea la etiqueta con la cámara normal del teléfono llega a una vista pública segura y no accede a tickets, manuales ni acciones administrativas.',
           'Si la cámara no está disponible, pegá el enlace o contenido del QR en el campo alternativo del lector.',
@@ -349,6 +352,8 @@ export const HELP_MODULES = [
         body: [
           'Desde la ficha individual se puede emitir o consultar la credencial de una persona autorizada.',
           'La pestaña Credenciales emitidas permite filtrar, seleccionar varias credenciales y descargar hojas A4 con frentes, dorsos y guías de corte para impresión doble faz.',
+          'Al escanear una credencial desde Inicio se abre una tarjeta interna, no el legajo completo. Las secciones visibles dependen de si consultás tus propios datos, supervisás directamente a la persona, compartís sede o tenés permisos globales de Personal.',
+          'Los permisos globales se separan en datos básicos, información laboral, evaluaciones, estado documental y apertura de ficha completa. Remuneraciones y datos sensibles no forman parte de esta consulta.',
         ],
       },
       {

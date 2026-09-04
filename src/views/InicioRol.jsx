@@ -10,8 +10,8 @@ import MiGestionPanel from '../components/MiGestionPanel'
 import usePersistedState from '../hooks/usePersistedState'
 import AssetQrScannerModal from '../components/AssetQrScannerModal'
 import { parseInternalQrValue } from '../lib/assetQrScan'
-import { getPersonaIdByCredentialToken } from '../lib/credenciales'
 import { toast } from '../lib/feedback'
+import InternalCredentialView from '../components/InternalCredentialView'
 
 const MODULO_ORDER = ['direccion', 'rrhh', 'mantenimiento', 'flota', 'compras', 'calidad', 'emergencias']
 const MODULO_LABEL = { direccion:'Dirección / Operaciones', rrhh:'RRHH', mantenimiento:'Mantenimiento', flota:'Flota', compras:'Compras', calidad:'Calidad', emergencias:'Emergencias' }
@@ -195,6 +195,7 @@ function DashboardSection({ Dashboard, onNavigate }) {
 export default function InicioRol({ onNavigate, onOpenSearch }) {
   const { rol, perfil } = useAuth()
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [credentialToken, setCredentialToken] = useState(null)
   const isTerritorial = ['encargado','sede'].includes(rol)
   const Dashboard = isTerritorial ? SedeEncargadoView : DashboardGlobal
 
@@ -206,16 +207,7 @@ export default function InicioRol({ onNavigate, onOpenSearch }) {
       onNavigate('mntActivos', { type:'activo', id:target.id })
       return
     }
-    if (!canAccessView(rol, 'equipo', perfil) || rol !== 'admin') {
-      return toast.warn('La ficha interna de credenciales está disponible para administradores.')
-    }
-    try {
-      const personaId = await getPersonaIdByCredentialToken(target.token)
-      if (!personaId) return toast.warn('No se encontró la credencial.')
-      onNavigate('equipo', { type:'persona', id:personaId })
-    } catch {
-      toast.error('No se pudo abrir la credencial interna.')
-    }
+    setCredentialToken(target.token)
   }
 
   return (
@@ -267,6 +259,14 @@ export default function InicioRol({ onNavigate, onOpenSearch }) {
           help="La app reconoce el tipo de QR y abre su ficha interna según tus permisos. El escaneo externo mantiene la vista pública."
         />
       )}
+      {credentialToken && <InternalCredentialView
+        token={credentialToken}
+        onClose={()=>setCredentialToken(null)}
+        onOpenFullRecord={personaId=>{
+          setCredentialToken(null)
+          onNavigate('equipo', { type:'persona', id:personaId })
+        }}
+      />}
     </div>
   )
 }
