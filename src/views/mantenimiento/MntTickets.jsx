@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Download, MessageCircle, Mail, Wrench, FileText } from 'lucide-react'
+import { Download, MessageCircle, Mail, Wrench, FileText, Plus, Trash2, CheckSquare } from 'lucide-react'
 import { getTickets, createTicket, updateTicket, getActivos, getProveedores, getSedes, TICKET_TIPOS_VALIDOS, sugerirResponsable } from '../../lib/queries'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
@@ -446,8 +446,10 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
     fecha_apertura: new Date().toISOString().split('T')[0],
     es_externo: false, presupuesto_estado: 'sin_presupuesto',
     oc_estado: 'sin_oc', oc_numero: '', costo_estimado: null, costo_real: null, notas_costos: '',
+    subarea:'', impacto_operativo:'', causa_raiz:'', trabajo_realizado:'', subtareas:[],
     ...ticket
   }))
+  const [nuevaSubtarea, setNuevaSubtarea] = useState('')
   const [tab, setTab]       = useState('datos')
   const [saving, setSaving] = useState(false)
   const [archivos, setArchivos] = useState([])
@@ -461,6 +463,15 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
     isMeaningful:data => Boolean(data?.descripcion?.trim() || data?.diagnostico?.trim() || data?.activo_id),
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const subtareas = Array.isArray(form.subtareas) ? form.subtareas : []
+  const agregarSubtarea = () => {
+    const texto = nuevaSubtarea.trim()
+    if (!texto) return
+    set('subtareas', [...subtareas, { id:crypto.randomUUID?.() || `${Date.now()}`, texto, completada:false }])
+    setNuevaSubtarea('')
+  }
+  const cambiarSubtarea = (id, changes) => set('subtareas', subtareas.map(item => item.id === id ? { ...item, ...changes } : item))
+  const quitarSubtarea = id => set('subtareas', subtareas.filter(item => item.id !== id))
 
   // Si el usuario solo tiene una sede asignada (ej: encargado), el ticket nuevo
   // queda con esa sede preseleccionada en vez de "Sin sede".
@@ -532,7 +543,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
         draft.clearDraft()
       } else {
         const cambios = []
-        for (const campo of ['estado','prioridad','responsable_id','diagnostico','costo','presupuesto_estado','oc_estado','costo_real','costo_estimado']) {
+        for (const campo of ['estado','prioridad','responsable_id','diagnostico','costo','presupuesto_estado','oc_estado','costo_real','costo_estimado','subarea','impacto_operativo','causa_raiz','trabajo_realizado','subtareas']) {
           const anterior = String(ticket[campo] ?? '')
           const nuevo    = String(form[campo] ?? '')
           if (anterior !== nuevo) cambios.push({ ticket_id: form.id, campo, valor_anterior: anterior || null, valor_nuevo: nuevo, usuario_nombre: perfil?.nombre || perfil?.email || 'Usuario' })
@@ -554,7 +565,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:16 }}>
-      <div style={{ background:'var(--surface)', borderRadius:3, padding:'1.5rem', width:'100%', maxWidth:600, maxHeight:'92vh', overflowY:'auto' }}>
+      <div style={{ background:'var(--surface)', borderRadius:3, padding:'1.5rem', width:'100%', maxWidth:820, maxHeight:'92vh', overflowY:'auto' }}>
 
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1rem' }}>
@@ -584,6 +595,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
         {!isNew && (
           <div style={{ display:'flex', gap:4, marginBottom:'1.25rem', borderBottom:'1px solid rgba(57,255,20,0.05)', paddingBottom:'0.5rem' }}>
             <button style={TAB(tab==='datos')}    onClick={()=>setTab('datos')}>Datos</button>
+            <button style={TAB(tab==='plan')} onClick={()=>setTab('plan')}>Plan de trabajo</button>
             <button style={TAB(tab==='historial')} onClick={()=>setTab('historial')}>Historial</button>
             {!readOnly && <button style={TAB(tab==='costos')} onClick={()=>setTab('costos')}>Costos / OC</button>}
             <button style={TAB(tab==='adjuntos')} onClick={()=>setTab('adjuntos')}>Adjuntos</button>
@@ -778,6 +790,44 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
           </fieldset>
         )}
 
+        {tab === 'plan' && (
+          <fieldset disabled={readOnly} style={{ border:0, margin:0, padding:0, minWidth:0 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
+              <div style={ROW}>
+                <label style={LABEL}>Subárea técnica</label>
+                <input value={form.subarea||''} onChange={e=>set('subarea',e.target.value)} style={INPUT} placeholder="Ej: Electricidad, frío, edilicio" />
+              </div>
+              <div style={ROW}>
+                <label style={LABEL}>Impacto operativo</label>
+                <input value={form.impacto_operativo||''} onChange={e=>set('impacto_operativo',e.target.value)} style={INPUT} placeholder="Ej: Servicio limitado, equipo detenido" />
+              </div>
+            </div>
+            <div style={ROW}>
+              <label style={LABEL}>Causa raíz / diagnóstico confirmado</label>
+              <textarea value={form.causa_raiz||''} onChange={e=>set('causa_raiz',e.target.value)} rows={3} style={{...INPUT,resize:'vertical'}} placeholder="Qué originó el problema y cómo se confirmó" />
+            </div>
+            <div style={ROW}>
+              <label style={LABEL}>Trabajo realizado</label>
+              <textarea value={form.trabajo_realizado||''} onChange={e=>set('trabajo_realizado',e.target.value)} rows={3} style={{...INPUT,resize:'vertical'}} placeholder="Intervención, repuestos, mediciones y resultado" />
+            </div>
+            <div style={{ ...ROW, border:'1px solid rgba(57,255,20,0.1)', padding:'0.85rem', borderRadius:3 }}>
+              <label style={{...LABEL,marginBottom:10}}><CheckSquare size={13} style={{display:'inline',marginRight:6}}/>Subtareas ({subtareas.filter(item=>item.completada).length}/{subtareas.length})</label>
+              {subtareas.map(item => (
+                <div key={item.id} style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:8, alignItems:'center', marginBottom:7 }}>
+                  <input type="checkbox" checked={Boolean(item.completada)} onChange={e=>cambiarSubtarea(item.id,{completada:e.target.checked})} />
+                  <input value={item.texto||''} onChange={e=>cambiarSubtarea(item.id,{texto:e.target.value})} style={{...INPUT,textDecoration:item.completada?'line-through':'none',opacity:item.completada ? .6 : 1}} />
+                  <button type="button" onClick={()=>quitarSubtarea(item.id)} className="btn-ghost" title="Eliminar subtarea"><Trash2 size={12}/></button>
+                </div>
+              ))}
+              {!subtareas.length && <p style={{color:'var(--text-dim)',fontSize:'.68rem',marginBottom:9}}>Todavía no hay pasos cargados.</p>}
+              <div style={{ display:'flex', gap:8 }}>
+                <input value={nuevaSubtarea} onChange={e=>setNuevaSubtarea(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();agregarSubtarea()}}} style={INPUT} placeholder="Agregar un paso de trabajo" />
+                <button type="button" onClick={agregarSubtarea} className="btn-ghost" style={{whiteSpace:'nowrap'}}><Plus size={12} style={{display:'inline'}}/> Agregar</button>
+              </div>
+            </div>
+          </fieldset>
+        )}
+
         {tab === 'historial' && <HistorialTab ticketId={ticket?.id} />}
         {tab === 'costos' && <CostosTab ticket={ticket} form={form} set={set} />}
         {tab === 'adjuntos' && ticket?.id && (
@@ -795,7 +845,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
 
         {err && <p style={{ color:'var(--alert)', fontSize:'0.8rem', marginBottom:'1rem' }}>{err}</p>}
 
-        {(tab === 'datos' || tab === 'costos') && (
+        {(tab === 'datos' || tab === 'plan' || tab === 'costos') && (
           <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', marginTop:'0.5rem' }}>
             <button onClick={onClose} style={{ padding:'0.65rem 1.2rem', borderRadius:2, background:'rgba(57,255,20,0.05)', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>
               {readOnly ? 'Cerrar' : 'Cancelar'}

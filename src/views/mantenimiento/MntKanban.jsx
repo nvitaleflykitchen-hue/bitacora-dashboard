@@ -416,6 +416,9 @@ function TicketCard({ ticket, responsables, onClick }) {
   const resp = responsables.find(r => r.id === ticket.responsable_id)
   const sla  = slaStatus(ticket)
   const pc   = PRIORIDAD_COLOR[ticket.prioridad] || '#aaa'
+  const subtareas = Array.isArray(ticket.subtareas) ? ticket.subtareas : []
+  const completadas = subtareas.filter(item => item?.completada).length
+  const avance = subtareas.length ? Math.round(completadas * 100 / subtareas.length) : 0
 
   return (
     <div
@@ -425,7 +428,7 @@ function TicketCard({ ticket, responsables, onClick }) {
       onClick={() => onClick(ticket)}
       style={{
         background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)',
-        borderLeft:`3px solid ${pc}`, borderRadius:2, padding:'9px 11px',
+        borderLeft:`3px solid ${pc}`, borderRadius:2, padding:'12px 13px',
         cursor:'pointer', marginBottom:7, opacity:dragging?0.5:1, transition:'all 0.15s',
       }}
       onMouseEnter={e => { e.currentTarget.style.background='rgba(57,255,20,0.06)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.14)' }}
@@ -450,6 +453,17 @@ function TicketCard({ ticket, responsables, onClick }) {
         <p style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.6)', marginBottom:5 }}>{ticket.activo_nombre}</p>
       )}
 
+      <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
+        {ticket.subarea && <span style={{fontSize:'.57rem',color:'#50b4ff',border:'1px solid rgba(80,180,255,.25)',padding:'2px 6px',borderRadius:3}}>{ticket.subarea}</span>}
+        {ticket.categoria && <span style={{fontSize:'.57rem',color:'var(--text-dim)',border:'1px solid rgba(255,255,255,.1)',padding:'2px 6px',borderRadius:3}}>{ticket.categoria}</span>}
+        {ticket.fecha_limite && <span style={{fontSize:'.57rem',color:'#ffb400',marginLeft:'auto'}}>Límite {fmtFecha(ticket.fecha_limite)}</span>}
+      </div>
+
+      {subtareas.length > 0 && <div style={{marginBottom:9}}>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:'.57rem',color:'var(--text-dim)',marginBottom:4}}><span>SUBTAREAS</span><span>{completadas}/{subtareas.length}</span></div>
+        <div style={{height:3,background:'rgba(255,255,255,.08)',borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',width:`${avance}%`,background:avance===100?'#39ff14':'#50b4ff'}}/></div>
+      </div>}
+
       <div style={{ display:'flex', alignItems:'center', gap:4 }}>
         <User size={9} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
         <span style={{ fontSize:'0.6rem', color: resp?'rgba(255,255,255,0.5)':'rgba(255,80,80,0.55)' }}>
@@ -459,6 +473,7 @@ function TicketCard({ ticket, responsables, onClick }) {
           <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', marginLeft:'auto' }}>{ticket.tipo}</span>
         )}
       </div>
+      <div style={{borderTop:'1px solid rgba(57,255,20,.07)',marginTop:9,paddingTop:7,color:'var(--phosphor)',fontSize:'.58rem'}}>Ver ficha completa · comentarios · evidencias</div>
     </div>
   )
 }

@@ -1,7 +1,23 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.4";
+export const APP_VERSION = "2.9.5";
 
 export const RELEASES = [
+  {
+    version: "2.9.5",
+    date: "2026-09-04",
+    title: "Fichas de mantenimiento ampliadas",
+    functions: [
+      "Las tarjetas del tablero muestran más contexto, subárea, fecha límite y progreso de subtareas.",
+      "La ficha completa incorpora un Plan de trabajo con impacto operativo, causa raíz, trabajo realizado y pasos verificables.",
+      "Cada subtarea puede agregarse, editarse, completarse o eliminarse, y el avance se calcula automáticamente.",
+      "Comentarios, evidencias, costos e historial continúan disponibles en pestañas de la misma ficha.",
+    ],
+    problem: "Las tarjetas de mantenimiento eran demasiado compactas y no permitían organizar ni documentar suficientemente una intervención.",
+    affectedUsers: "Responsables, técnicos y administradores de mantenimiento.",
+    usage: "Abrí un ticket desde el Tablero y entrá en Plan de trabajo para completar la subárea, el impacto, el análisis técnico y las subtareas.",
+    examples: ["Dividir una reparación en diagnóstico eléctrico, pedido de repuesto, instalación, prueba y liberación del equipo."],
+    screenshots: [],
+  },
   {
     version: "2.9.4",
     date: "2026-09-04",

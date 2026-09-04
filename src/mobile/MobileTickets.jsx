@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getTickets, updateTicket, getResponsablesMnt, getSedes, getActivos } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import usePersistedState from '../hooks/usePersistedState'
-import { ChevronRight, ChevronLeft, Wrench, Calendar, MessageCircle, Mail, Plus, RefreshCw, AlertTriangle, FileText } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Wrench, Calendar, MessageCircle, Mail, Plus, RefreshCw, AlertTriangle, FileText, Trash2 } from 'lucide-react'
 import { fmtFecha } from '../lib/dateUtils'
 import TicketRapidoModal from '../components/TicketRapidoModal'
 import ComentariosHilo from '../components/ComentariosHilo'
@@ -72,6 +72,7 @@ function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, 
   const [ticket, setTicket] = useState(initialTicket)
   const [diagnostico, setDiagnostico] = useState(initialTicket.diagnostico || '')
   const [saving, setSaving] = useState(false)
+  const [nuevaSubtarea, setNuevaSubtarea] = useState('')
 
   const handleUpdate = async (payload) => {
     try {
@@ -114,6 +115,14 @@ function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, 
   const eColor = ESTADO_COLOR[ticket.estado] || '#777'
   const tipoColor = ticket.tipo === 'preventivo' ? '#50b4ff' : '#F59E0B'
   const responsableActual = (responsables || []).find(r => r.id === ticket.responsable_id) || null
+  const subtareas = Array.isArray(ticket.subtareas) ? ticket.subtareas : []
+  const guardarSubtareas = async next => handleUpdate({ subtareas: next })
+  const agregarSubtarea = async () => {
+    const texto = nuevaSubtarea.trim()
+    if (!texto) return
+    await guardarSubtareas([...subtareas, { id: crypto.randomUUID?.() || `${Date.now()}`, texto, completada: false }])
+    setNuevaSubtarea('')
+  }
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -157,9 +166,35 @@ function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, 
         <Section label="Detalles">
           <Row label="Sede" value={ticket.sede || '—'} />
           {ticket.activo_nombre && <Row label="Activo" value={ticket.activo_nombre} />}
+          {ticket.subarea && <Row label="Subárea técnica" value={ticket.subarea} />}
           {ticket.fecha_limite && <Row label="Fecha límite" value={fmtFecha(ticket.fecha_limite)} />}
           {ticket.created_at && <Row label="Creado" value={fmtFecha(ticket.created_at)} />}
         </Section>
+
+        {(canManage || ticket.impacto_operativo || ticket.causa_raiz || ticket.trabajo_realizado || subtareas.length > 0) && (
+          <Section label="Plan de trabajo">
+            {ticket.impacto_operativo && <Row label="Impacto" value={ticket.impacto_operativo} />}
+            {ticket.causa_raiz && <Row label="Causa raíz" value={ticket.causa_raiz} />}
+            {ticket.trabajo_realizado && <Row label="Trabajo realizado" value={ticket.trabajo_realizado} />}
+            <div style={{ marginTop: 8 }}>
+              {subtareas.map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.45rem 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <input type="checkbox" checked={!!item.completada} disabled={!canManage || updating === ticket.id}
+                    onChange={() => guardarSubtareas(subtareas.map(s => s.id === item.id ? { ...s, completada: !s.completada } : s))} />
+                  <span style={{ flex: 1, color: 'var(--text)', fontSize: '0.76rem', textDecoration: item.completada ? 'line-through' : 'none', opacity: item.completada ? 0.55 : 1 }}>{item.texto}</span>
+                  {canManage && <button type="button" aria-label="Eliminar subtarea" onClick={() => guardarSubtareas(subtareas.filter(s => s.id !== item.id))}
+                    style={{ background: 'none', border: 0, color: '#ff5b5b', padding: 3 }}><Trash2 size={13} /></button>}
+                </div>
+              ))}
+              {!subtareas.length && <p style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>Sin subtareas cargadas.</p>}
+              {canManage && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <input className="input-dark" value={nuevaSubtarea} onChange={e => setNuevaSubtarea(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); agregarSubtarea() } }} placeholder="Agregar paso..." style={{ flex: 1, minWidth: 0, fontSize: '0.75rem' }} />
+                <button type="button" className="btn-primary" onClick={agregarSubtarea} disabled={!nuevaSubtarea.trim() || updating === ticket.id} style={{ padding: '0.45rem 0.65rem' }}><Plus size={14} /></button>
+              </div>}
+            </div>
+          </Section>
+        )}
 
         {/* Estado */}
         {canManage && !isMaintenanceEditor && (
@@ -311,6 +346,8 @@ function TicketCard({ t, onClick }) {
   const pColor = PRIORIDAD_COLOR[String(t.prioridad).toLowerCase()] || '#555'
   const eColor = ESTADO_COLOR[t.estado] || '#777'
   const tipoColor = t.tipo === 'preventivo' ? '#50b4ff' : '#F59E0B'
+  const subtareas = Array.isArray(t.subtareas) ? t.subtareas : []
+  const completadas = subtareas.filter(item => item?.completada).length
 
   return (
     <button
@@ -348,6 +385,10 @@ function TicketCard({ t, onClick }) {
             </span>
           )}
         </div>
+        {subtareas.length > 0 && <div style={{ marginTop: 7 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-dim)', fontSize: '0.6rem', marginBottom: 3 }}><span>SUBTAREAS</span><span>{completadas}/{subtareas.length}</span></div>
+          <div style={{ height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><div style={{ width: `${Math.round(completadas * 100 / subtareas.length)}%`, height: '100%', background: 'var(--phosphor)' }} /></div>
+        </div>}
       </div>
       <ChevronRight size={15} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
     </button>
