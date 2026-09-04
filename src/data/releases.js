@@ -1,7 +1,23 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.5";
+export const APP_VERSION = "2.9.6";
 
 export const RELEASES = [
+  {
+    version: "2.9.6",
+    date: "2026-09-04",
+    title: "Nuevo tablero visual de mantenimiento",
+    functions: [
+      "Las tarjetas muestran activo, código, sede, subárea, responsable, vencimiento y SLA con una jerarquía visual más clara.",
+      "El avance de las subtareas se ve directamente en el tablero, incluyendo hasta tres pasos y su barra de progreso.",
+      "Los tickets bloqueados y resueltos tienen tratamientos visuales propios para reconocerlos rápidamente.",
+      "Cada tarjeta ofrece accesos visibles para abrir la ficha, revisar comentarios y consultar evidencias.",
+    ],
+    problem: "El tablero anterior seguía siendo demasiado compacto y no permitía comprender el trabajo sin abrir cada ticket.",
+    affectedUsers: "Responsables, técnicos y administradores de mantenimiento.",
+    usage: "Ingresá a Mantenimiento → Tablero. Las tarjetas se adaptan automáticamente según la información real cargada en cada ticket.",
+    examples: ["Controlar desde el tablero si una reparación tiene responsable, vence pronto o aún posee subtareas pendientes."],
+    screenshots: [],
+  },
   {
     version: "2.9.5",
     date: "2026-09-04",

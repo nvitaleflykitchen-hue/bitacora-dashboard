@@ -438,7 +438,7 @@ function toDateInput(val) {
   return new Date(val).toISOString().split('T')[0]
 }
 
-export function TicketModal({ ticket, activos, proveedores, responsables, sedes, onClose, onSaved, readOnly = false }) {
+export function TicketModal({ ticket, activos, proveedores, responsables, sedes, onClose, onSaved, readOnly = false, initialTab = 'datos' }) {
   const { perfil } = useAuth()
   const isNew = !ticket?.id
   const [form, setForm] = useState(() => ({
@@ -450,7 +450,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
     ...ticket
   }))
   const [nuevaSubtarea, setNuevaSubtarea] = useState('')
-  const [tab, setTab]       = useState('datos')
+  const [tab, setTab]       = useState(initialTab)
   const [saving, setSaving] = useState(false)
   const [archivos, setArchivos] = useState([])
   const [err, setErr]       = useState(null)
