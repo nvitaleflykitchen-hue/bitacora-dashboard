@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, BatteryMedium, Bot, CheckCircle2, Clock3, RefreshCw, Sparkles, UserRoundCheck } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BatteryMedium, CheckCircle2, Clock3, RefreshCw, UserRoundCheck } from 'lucide-react'
 import { isGestionProjectAction } from '../lib/gestionProjects'
 import { useAuth } from '../lib/auth'
 import { isOwnTask } from '../lib/access'
 import { fmtFecha } from '../lib/dateUtils'
-import {consultarCopilotoLocal,estadoCopilotoLocal} from '../lib/copilotoLocal'
+import ExecutiveReport from './ExecutiveReport'
 import {buildExecutiveBriefing} from '../lib/executiveBriefing'
 import {loadExecutiveBriefingData} from '../lib/executiveBriefingData'
 
@@ -40,12 +40,13 @@ export default function MiGestionPanel({ onNavigate }) {
   const [controlData,setControlData]=useState(null)
   const [loading, setLoading] = useState(true)
   const [energy, setEnergy] = useState(() => Number(localStorage.getItem(`mi-gestion-energy-${user?.id}`)) || 0)
-  const [ia,setIa]=useState({checking:true,available:false,model:'',answer:'',busy:false,error:''})
+  const [loadError,setLoadError]=useState(false)
 
   const visible = ['admin','editor','grupo','encargado'].includes(rol)
 
   const load = async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       const executiveData=await loadExecutiveBriefingData(allowedSedeIds || undefined)
       const {tasks:tareasData,capas:capasData}=executiveData
@@ -61,6 +62,7 @@ export default function MiGestionPanel({ onNavigate }) {
       setTareas([...(tareasData || []), ...capasComoTareas])
       setControlData(executiveData)
     } catch (error) {
+      setLoadError(true)
       console.error('Mi Gestión:', error)
     } finally {
       setLoading(false)
@@ -68,7 +70,6 @@ export default function MiGestionPanel({ onNavigate }) {
   }
 
   useEffect(() => { if (visible) load() }, [visible, allowedSedeIds])
-  useEffect(()=>{if(!visible)return;estadoCopilotoLocal().then(info=>setIa(v=>({...v,...info,checking:false}))).catch(()=>setIa(v=>({...v,checking:false,available:false})))},[visible])
   useEffect(() => {
     if (!user?.id) return
     setEnergy(Number(localStorage.getItem(`mi-gestion-energy-${user.id}`)) || 0)
@@ -100,15 +101,6 @@ export default function MiGestionPanel({ onNavigate }) {
     setEnergy(value)
     localStorage.setItem(`mi-gestion-energy-${user?.id}`, String(value))
   }
-  const ask=async modo=>{
-    setIa(v=>({...v,busy:true,error:'',answer:''}))
-    const items=executive.signals.map(signal=>({module:signal.kind,title:signal.title,status:signal.detail,priority:signal.severity,date:new Date().toISOString().slice(0,10)}))
-    try{const answer=await consultarCopilotoLocal({items,modo,onChunk:answer=>setIa(v=>({...v,answer}))});setIa(v=>({...v,answer,busy:false}))}
-    catch(error){
-      const timeout=error?.name==='TimeoutError'||/timed out/i.test(error?.message||'')
-      setIa(v=>({...v,busy:false,error:timeout?'El copiloto local demoró demasiado. Reintentá: ahora enviará una bandeja más breve.':`No pude consultar Ollama: ${error.message}`}))
-    }
-  }
 
   return (
     <section className="px-4 md:px-6 pb-5">
@@ -124,15 +116,7 @@ export default function MiGestionPanel({ onNavigate }) {
           </button>
         </div>
 
-        <div className="rounded p-3 mt-3" style={{background:'rgba(80,180,255,.045)',border:'1px solid rgba(80,180,255,.16)'}}>
-          <div className="flex justify-between gap-3 flex-wrap items-center">
-            <div className="flex items-center gap-2"><Bot size={16} color="#50b4ff"/><div><strong style={{fontSize:'.75rem'}}>COPILOTO FLY · IA LOCAL</strong><p style={{fontSize:'.62rem',color:'var(--text-dim)'}}>{ia.checking?'Buscando Ollama…':ia.available?`${ia.model} · disponible en esta PC`:'Ollama no disponible en este dispositivo'}</p></div></div>
-            <div className="flex gap-2 flex-wrap"><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('resumen')}><Sparkles size={11}/> Resumir mi día</button><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('prioridades')}>Priorizar</button><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('respuesta')}>Preparar seguimiento</button></div>
-          </div>
-          {ia.busy&&<p className="mt-3" style={{fontSize:'.68rem',color:'#50b4ff'}}>{ia.answer?'Copiloto Fly está completando la respuesta…':'Copiloto Fly está preparando una selección breve…'}</p>}
-          {ia.error&&<p className="mt-3" style={{fontSize:'.68rem',color:'#ff7777'}}>{ia.error}</p>}
-          {ia.answer&&<div className="mt-3 p-3 rounded" aria-live="polite" style={{whiteSpace:'pre-wrap',fontSize:'.72rem',lineHeight:1.55,background:'rgba(0,0,0,.2)',color:'var(--text)'}}>{ia.answer}{ia.busy&&<span style={{color:'#50b4ff'}}> ▍</span>}<p className="mt-3" style={{fontSize:'.58rem',color:'var(--text-dim)'}}>BORRADOR IA · Fuente: controles calculados con los datos visibles según tus permisos. Revisar antes de usar.</p></div>}
-        </div>
+        <ExecutiveReport briefing={executive} name={perfil?.nombre} loading={loading} error={loadError} onNavigate={onNavigate} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 mt-3">
           {[
@@ -142,7 +126,7 @@ export default function MiGestionPanel({ onNavigate }) {
             ['CUMPLIMIENTO',`${executive.compliance.length} personas con faltantes`,`${executive.sitesWithoutAssets.length} sedes sin activos cargados`,'var(--phosphor)'],
           ].map(([label,value,help,color])=><div key={label} className="rounded p-3" style={{background:'rgba(255,255,255,.025)',border:'1px solid rgba(255,255,255,.08)'}}><p className="font-metric" style={{fontSize:'.58rem',color}}>{label}</p><strong style={{display:'block',fontSize:'.78rem',marginTop:5}}>{value}</strong><p style={{fontSize:'.61rem',color:'var(--text-dim)',marginTop:3}}>{help}</p></div>)}
         </div>
-        {executive.signals.length>0&&<div className="rounded p-3 mt-3" style={{background:'rgba(0,0,0,.18)',border:'1px solid rgba(255,255,255,.07)'}}><p className="font-metric mb-2" style={{fontSize:'.62rem',color:'var(--phosphor)'}}>QUÉ TENÉS QUE MOVER HOY</p><div className="grid md:grid-cols-2 gap-2">{executive.signals.slice(0,6).map((signal,index)=><div key={`${signal.kind}-${index}`} style={{padding:'8px 10px',borderLeft:`2px solid ${signal.severity==='alta'?'#ff5555':'#f59e0b'}`,background:'rgba(255,255,255,.025)'}}><strong style={{fontSize:'.69rem'}}>{signal.kind} · {signal.title}</strong><p style={{fontSize:'.6rem',color:'var(--text-dim)',marginTop:3,lineHeight:1.4}}>{signal.detail}</p></div>)}</div></div>}
+        {executive.signals.length>0&&<div className="rounded p-3 mt-3" style={{background:'rgba(0,0,0,.18)',border:'1px solid rgba(255,255,255,.07)'}}><p className="font-metric mb-2" style={{fontSize:'.62rem',color:'var(--phosphor)'}}>QUÉ TENÉS QUE MOVER HOY</p><div className="grid md:grid-cols-2 gap-2">{executive.signals.map((signal,index)=><div key={`${signal.kind}-${index}`} style={{padding:'8px 10px',borderLeft:`2px solid ${signal.severity==='alta'?'#ff5555':'#f59e0b'}`,background:'rgba(255,255,255,.025)'}}><strong style={{fontSize:'.69rem'}}>{signal.kind} · {signal.title}</strong><p style={{fontSize:'.6rem',color:'var(--text-dim)',marginTop:3,lineHeight:1.4}}>{signal.detail}</p></div>)}</div></div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 mt-4">
           <div className="p-3 rounded" style={{ background:'rgba(255,70,70,0.06)', border:'1px solid rgba(255,70,70,0.15)' }}>
