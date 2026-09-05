@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, BatteryMedium, Bot, CheckCircle2, Clock3, RefreshCw, Sparkles, UserRoundCheck } from 'lucide-react'
-import { getCapa, getTareas } from '../lib/queries'
 import { isGestionProjectAction } from '../lib/gestionProjects'
 import { useAuth } from '../lib/auth'
 import { isOwnTask } from '../lib/access'
 import { fmtFecha } from '../lib/dateUtils'
 import {consultarCopilotoLocal,estadoCopilotoLocal} from '../lib/copilotoLocal'
+import {buildExecutiveBriefing} from '../lib/executiveBriefing'
+import {loadExecutiveBriefingData} from '../lib/executiveBriefingData'
 
 const PRIORIDAD = { Alta: 30, Media: 20, Baja: 10 }
 const ABIERTAS = new Set(['Pendiente', 'En proceso'])
@@ -36,6 +37,7 @@ function TareaBreve({ tarea, accent = 'var(--phosphor)', onOpen }) {
 export default function MiGestionPanel({ onNavigate }) {
   const { user, perfil, allowedSedeIds, rol } = useAuth()
   const [tareas, setTareas] = useState([])
+  const [controlData,setControlData]=useState(null)
   const [loading, setLoading] = useState(true)
   const [energy, setEnergy] = useState(() => Number(localStorage.getItem(`mi-gestion-energy-${user?.id}`)) || 0)
   const [ia,setIa]=useState({checking:true,available:false,model:'',answer:'',busy:false,error:''})
@@ -45,10 +47,8 @@ export default function MiGestionPanel({ onNavigate }) {
   const load = async () => {
     setLoading(true)
     try {
-      const [tareasData, capasData] = await Promise.all([
-        getTareas({ sedeIds: allowedSedeIds || undefined, incluirResueltas:true }),
-        getCapa({ sedeIds: allowedSedeIds || undefined }),
-      ])
+      const executiveData=await loadExecutiveBriefingData(allowedSedeIds || undefined)
+      const {tasks:tareasData,capas:capasData}=executiveData
       const capasComoTareas = (capasData || []).map(c => ({
         ...c,
         titulo:c.descripcion,
@@ -59,6 +59,7 @@ export default function MiGestionPanel({ onNavigate }) {
         _target:isGestionProjectAction(c) ? 'proyectosGestion' : 'capa',
       }))
       setTareas([...(tareasData || []), ...capasComoTareas])
+      setControlData(executiveData)
     } catch (error) {
       console.error('Mi Gestión:', error)
     } finally {
@@ -91,6 +92,7 @@ export default function MiGestionPanel({ onNavigate }) {
       propias, delegadas, esperando, cerradasSemana, vencidas,
     }
   }, [tareas, perfil, user?.id])
+  const executive=useMemo(()=>buildExecutiveBriefing({...(controlData||{}),profileIds:[perfil?.id,user?.id]}),[controlData,perfil?.id,user?.id])
 
   if (!visible) return null
   const open = item => onNavigate(item?._target || 'tareas')
@@ -100,7 +102,7 @@ export default function MiGestionPanel({ onNavigate }) {
   }
   const ask=async modo=>{
     setIa(v=>({...v,busy:true,error:'',answer:''}))
-    const items=data.propias.concat(data.esperando,data.delegadas).map(t=>({module:t._module||'Tarea',title:t.titulo,status:t.estado,site:t.sede_nombre||t.sedes?.nombre,owner:t.perfiles?.nombre||t.responsable,priority:t.prioridad,date:t.fecha_limite||t.created_at}))
+    const items=executive.signals.map(signal=>({module:signal.kind,title:signal.title,status:signal.detail,priority:signal.severity,date:new Date().toISOString().slice(0,10)}))
     try{const answer=await consultarCopilotoLocal({items,modo,onChunk:answer=>setIa(v=>({...v,answer}))});setIa(v=>({...v,answer,busy:false}))}
     catch(error){
       const timeout=error?.name==='TimeoutError'||/timed out/i.test(error?.message||'')
@@ -129,8 +131,18 @@ export default function MiGestionPanel({ onNavigate }) {
           </div>
           {ia.busy&&<p className="mt-3" style={{fontSize:'.68rem',color:'#50b4ff'}}>{ia.answer?'Copiloto Fly está completando la respuesta…':'Copiloto Fly está preparando una selección breve…'}</p>}
           {ia.error&&<p className="mt-3" style={{fontSize:'.68rem',color:'#ff7777'}}>{ia.error}</p>}
-          {ia.answer&&<div className="mt-3 p-3 rounded" aria-live="polite" style={{whiteSpace:'pre-wrap',fontSize:'.72rem',lineHeight:1.55,background:'rgba(0,0,0,.2)',color:'var(--text)'}}>{ia.answer}{ia.busy&&<span style={{color:'#50b4ff'}}> ▍</span>}<p className="mt-3" style={{fontSize:'.58rem',color:'var(--text-dim)'}}>BORRADOR IA · Fuente: asuntos visibles en Mi Gestión. Revisar antes de usar.</p></div>}
+          {ia.answer&&<div className="mt-3 p-3 rounded" aria-live="polite" style={{whiteSpace:'pre-wrap',fontSize:'.72rem',lineHeight:1.55,background:'rgba(0,0,0,.2)',color:'var(--text)'}}>{ia.answer}{ia.busy&&<span style={{color:'#50b4ff'}}> ▍</span>}<p className="mt-3" style={{fontSize:'.58rem',color:'var(--text-dim)'}}>BORRADOR IA · Fuente: controles calculados con los datos visibles según tus permisos. Revisar antes de usar.</p></div>}
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 mt-3">
+          {[
+            ['TUS COMPROMISOS',`${executive.myTasks.open} abiertos · ${executive.myTasks.overdue} vencidos`,`${executive.myTasks.inProgress} en proceso`,'#50b4ff'],
+            ['ASIGNADOS POR VOS',`${executive.assignedByMe.open} abiertos · ${executive.assignedByMe.overdue} vencidos`,`${executive.peopleToPush.length} responsables para empujar`,'#f59e0b'],
+            ['PARA APROBAR',`${executive.approvals.length} decisiones pendientes`,'Compras y presupuestos de mantenimiento','#ff7777'],
+            ['CUMPLIMIENTO',`${executive.compliance.length} personas con faltantes`,`${executive.sitesWithoutAssets.length} sedes sin activos cargados`,'var(--phosphor)'],
+          ].map(([label,value,help,color])=><div key={label} className="rounded p-3" style={{background:'rgba(255,255,255,.025)',border:'1px solid rgba(255,255,255,.08)'}}><p className="font-metric" style={{fontSize:'.58rem',color}}>{label}</p><strong style={{display:'block',fontSize:'.78rem',marginTop:5}}>{value}</strong><p style={{fontSize:'.61rem',color:'var(--text-dim)',marginTop:3}}>{help}</p></div>)}
+        </div>
+        {executive.signals.length>0&&<div className="rounded p-3 mt-3" style={{background:'rgba(0,0,0,.18)',border:'1px solid rgba(255,255,255,.07)'}}><p className="font-metric mb-2" style={{fontSize:'.62rem',color:'var(--phosphor)'}}>QUÉ TENÉS QUE MOVER HOY</p><div className="grid md:grid-cols-2 gap-2">{executive.signals.slice(0,6).map((signal,index)=><div key={`${signal.kind}-${index}`} style={{padding:'8px 10px',borderLeft:`2px solid ${signal.severity==='alta'?'#ff5555':'#f59e0b'}`,background:'rgba(255,255,255,.025)'}}><strong style={{fontSize:'.69rem'}}>{signal.kind} · {signal.title}</strong><p style={{fontSize:'.6rem',color:'var(--text-dim)',marginTop:3,lineHeight:1.4}}>{signal.detail}</p></div>)}</div></div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 mt-4">
           <div className="p-3 rounded" style={{ background:'rgba(255,70,70,0.06)', border:'1px solid rgba(255,70,70,0.15)' }}>
