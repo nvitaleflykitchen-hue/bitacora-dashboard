@@ -1,7 +1,23 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.6";
+export const APP_VERSION = "2.9.7";
 
 export const RELEASES = [
+  {
+    version: "2.9.7",
+    date: "2026-09-04",
+    title: "Tarjetas expandibles en mantenimiento",
+    functions: [
+      "El tablero abre una tarjeta de trabajo dentro de su propia columna, reproduciendo la propuesta visual aprobada.",
+      "La tarjeta expandida muestra la descripción completa, el impacto, el trabajo realizado y hasta tres subtareas.",
+      "Si todavía no existe un plan, ofrece un acceso directo para crearlo y cargar subtareas.",
+      "Al ingresar al tablero se destaca automáticamente el primer ticket en progreso y se puede cambiar la selección con un clic.",
+    ],
+    problem: "La primera versión del rediseño seguía mostrando todas las tarjetas colapsadas y no reflejaba la composición visual acordada.",
+    affectedUsers: "Responsables, técnicos y administradores de mantenimiento.",
+    usage: "Hacé clic sobre una tarjeta para expandirla dentro del tablero; usá Abrir ficha, Comentar o Crear plan y subtareas según corresponda.",
+    examples: ["Expandir una reparación en progreso para revisar su descripción y cargar inmediatamente el plan técnico."],
+    screenshots: [],
+  },
   {
     version: "2.9.6",
     date: "2026-09-04",

@@ -411,7 +411,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 }
 
 // ─── CARD ────────────────────────────────────────────────────────────────────
-function TicketCard({ ticket, responsables, activos, columnColor, onClick }) {
+function TicketCard({ ticket, responsables, activos, columnColor, expanded, onSelect, onOpen }) {
   const [dragging, setDragging] = useState(false)
   const resp = responsables.find(r => r.id === ticket.responsable_id)
   const activo = activos.find(a => String(a.id) === String(ticket.activo_id))
@@ -424,20 +424,20 @@ function TicketCard({ ticket, responsables, activos, columnColor, onClick }) {
   const bloqueado = ticket.estado === 'aprobado'
   const slaHoras = SLA_HS[ticket.prioridad] || 48
   const ticketNumero = ticket.numero ? `#MT-${String(ticket.numero).padStart(4, '0')}` : `#${String(ticket.id).slice(0, 8).toUpperCase()}`
-  const abrir = (event, tab = 'datos') => { event.stopPropagation(); onClick(ticket, tab) }
+  const abrir = (event, tab = 'datos') => { event.stopPropagation(); onOpen(ticket, tab) }
 
   return (
     <div
       draggable
       onDragStart={e => { e.dataTransfer.setData('ticketId', ticket.id); setDragging(true) }}
       onDragEnd={() => setDragging(false)}
-      onClick={() => onClick(ticket)}
+      onClick={() => onSelect(ticket.id)}
       style={{
         background:resuelto?'linear-gradient(145deg, rgba(57,255,20,.08), rgba(18,19,24,.98) 55%)':'linear-gradient(145deg, rgba(255,255,255,.035), rgba(18,19,24,.98))',
         border:`1px solid ${resuelto?'rgba(57,255,20,.35)':bloqueado?'rgba(255,80,80,.35)':'rgba(255,255,255,.1)'}`,
         borderLeft:`3px solid ${columnColor || pc}`, borderRadius:5, padding:'14px 15px',
         cursor:'pointer', marginBottom:10, opacity:dragging?0.5:1, transition:'all 0.15s',
-        boxShadow:resuelto?'inset 0 0 24px rgba(57,255,20,.025)':'0 8px 24px rgba(0,0,0,.12)',
+        boxShadow:expanded?`0 0 0 1px ${columnColor}66, 0 12px 30px rgba(0,0,0,.35)`:resuelto?'inset 0 0 24px rgba(57,255,20,.025)':'0 8px 24px rgba(0,0,0,.12)',
       }}
       onMouseEnter={e => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.borderColor=columnColor || pc }}
       onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor=resuelto?'rgba(57,255,20,.35)':bloqueado?'rgba(255,80,80,.35)':'rgba(255,255,255,.1)' }}
@@ -450,7 +450,7 @@ function TicketCard({ ticket, responsables, activos, columnColor, onClick }) {
         {!resuelto && <span style={{fontSize:'.56rem',fontWeight:700,color:sla==='vencido'?'#ff5050':sla==='alerta'?'#ffb400':'#50b4ff',marginLeft:'auto'}}>SLA {sla==='vencido'?'VENCIDO':`${slaHoras}h`}</span>}
       </div>
 
-      <p style={{ fontSize:'.78rem', fontWeight:700, color:'var(--text)', lineHeight:1.3, marginBottom:7, display:'-webkit-box', WebkitBoxOrient:'vertical', WebkitLineClamp:2, overflow:'hidden' }}>
+      <p style={{ fontSize:expanded?'.88rem':'.78rem', fontWeight:700, color:'var(--text)', lineHeight:1.3, marginBottom:7, display:'-webkit-box', WebkitBoxOrient:'vertical', WebkitLineClamp:expanded?3:2, overflow:'hidden' }}>
         {ticket.descripcion || 'Ticket de mantenimiento sin descripción'}
       </p>
 
@@ -479,10 +479,19 @@ function TicketCard({ ticket, responsables, activos, columnColor, onClick }) {
         {ticket.fecha_limite && <span style={{display:'flex',alignItems:'center',gap:4,fontSize:'.56rem',color:sla==='vencido'?'#ff5050':'rgba(255,255,255,.46)',marginLeft:'auto'}}><CalendarDays size={10}/>Vence {fmtFecha(ticket.fecha_limite)}</span>}
       </div>
 
+      {expanded && ticket.descripcion && <p style={{fontSize:'.62rem',lineHeight:1.5,color:'rgba(255,255,255,.62)',padding:'9px 0',margin:'0 0 9px',borderTop:'1px solid rgba(255,255,255,.07)',borderBottom:'1px solid rgba(255,255,255,.07)'}}>{ticket.descripcion}</p>}
+
       {subtareas.length > 0 && <div style={{marginBottom:9}}>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:'.56rem',color:'var(--text-dim)',marginBottom:5}}><span>SUBTAREAS</span><span>{completadas} de {subtareas.length}</span></div>
         <div style={{height:4,background:'rgba(255,255,255,.08)',borderRadius:4,overflow:'hidden',marginBottom:7}}><div style={{height:'100%',width:`${avance}%`,background:avance===100?'#39ff14':columnColor || '#50b4ff'}}/></div>
         {subtareas.slice(0,3).map(item=><div key={item.id} style={{display:'flex',alignItems:'center',gap:6,color:item.completada?'rgba(255,255,255,.38)':'rgba(255,255,255,.7)',fontSize:'.59rem',marginBottom:5,textDecoration:item.completada?'line-through':'none'}}>{item.completada?<CheckCircle2 size={11} color="#39ff14"/>:<Circle size={11}/>}<span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.texto}</span></div>)}
+      </div>}
+
+      {expanded && subtareas.length === 0 && <button type="button" onClick={event=>abrir(event,'plan')} style={{width:'100%',background:'rgba(255,180,0,.06)',border:'1px dashed rgba(255,180,0,.32)',borderRadius:4,color:'#ffb400',padding:'9px',fontSize:'.59rem',cursor:'pointer',marginBottom:9}}>+ Crear plan y subtareas</button>}
+
+      {expanded && (ticket.impacto_operativo || ticket.trabajo_realizado) && <div style={{display:'grid',gap:7,marginBottom:10}}>
+        {ticket.impacto_operativo && <div><span style={{fontSize:'.52rem',color:'var(--text-dim)'}}>IMPACTO OPERATIVO</span><p style={{fontSize:'.59rem',color:'rgba(255,255,255,.65)',marginTop:2}}>{ticket.impacto_operativo}</p></div>}
+        {ticket.trabajo_realizado && <div><span style={{fontSize:'.52rem',color:'var(--text-dim)'}}>TRABAJO REALIZADO</span><p style={{fontSize:'.59rem',color:'rgba(255,255,255,.65)',marginTop:2}}>{ticket.trabajo_realizado}</p></div>}
       </div>}
 
       {resuelto && <div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(57,255,20,.09)',border:'1px solid rgba(57,255,20,.2)',borderRadius:4,padding:'7px 8px',fontSize:'.58rem',color:'rgba(57,255,20,.8)',marginBottom:9}}><CheckCircle2 size={13}/>Resuelto {ticket.fecha_cierre ? `el ${fmtFecha(ticket.fecha_cierre)}` : ''}</div>}
@@ -502,7 +511,7 @@ function TicketCard({ ticket, responsables, activos, columnColor, onClick }) {
 }
 
 // ─── COLUMNA ─────────────────────────────────────────────────────────────────
-function Column({ col, tickets, responsables, activos, onDrop, onCardClick }) {
+function Column({ col, tickets, responsables, activos, expandedTicketId, onSelectCard, onDrop, onCardClick }) {
   const [over, setOver] = useState(false)
   return (
     <div
@@ -523,7 +532,7 @@ function Column({ col, tickets, responsables, activos, onDrop, onCardClick }) {
       </div>
 
       <div style={{ flex:1, overflowY:'auto', minHeight:100 }}>
-        {tickets.map(t=><TicketCard key={t.id} ticket={t} responsables={responsables} activos={activos} columnColor={col.color} onClick={onCardClick}/>)}
+        {tickets.map(t=><TicketCard key={t.id} ticket={t} responsables={responsables} activos={activos} columnColor={col.color} expanded={expandedTicketId===t.id} onSelect={onSelectCard} onOpen={onCardClick}/>)}
         {!tickets.length && (
           <div style={{ textAlign:'center', padding:'24px 8px', color:'rgba(57,255,20,0.08)', fontSize:'0.62rem' }}>
             Arrastrá tickets aquí
@@ -549,7 +558,9 @@ export default function MntKanban() {
   const [filterSLA, setFilterSLA]       = usePersistedState('mntKanban.sla', false)
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [selectedTicketTab, setSelectedTicketTab] = useState('datos')
+  const [expandedTicketId, setExpandedTicketId] = useState(null)
   const openTicket = (ticket, tab = 'datos') => { setSelectedTicketTab(tab); setSelectedTicket(ticket) }
+  const selectCard = id => setExpandedTicketId(current => current === id ? null : id)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -560,7 +571,9 @@ export default function MntKanban() {
       getProveedores(),
       getSedes(allowedSedeIds),
     ])
-    setTickets(filterMaintenanceTickets(t, a))
+    const nextTickets = filterMaintenanceTickets(t, a)
+    setTickets(nextTickets)
+    setExpandedTicketId(current => current || nextTickets.find(ticket => ticket.estado === 'en_progreso')?.id || null)
     setResponsables(r.data||[])
     setActivos(filterMaintenanceAssets(a))
     setProveedores(p)
@@ -670,6 +683,8 @@ export default function MntKanban() {
               tickets={filtered.filter(t=>t.estado===col.id)}
               responsables={responsables}
               activos={activos}
+              expandedTicketId={expandedTicketId}
+              onSelectCard={selectCard}
               onDrop={moveTicket}
               onCardClick={openTicket}
             />
