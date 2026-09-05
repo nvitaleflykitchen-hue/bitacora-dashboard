@@ -1,5 +1,11 @@
 # KNOWN_ISSUES — bitacora-dashboard
 
+## Copiloto local: respuesta fuera de contexto (corregido en 2.9.10)
+
+- Severidad: ALTO, informe operativo incorrecto.
+- Verificación: captura del usuario con una respuesta sobre trasplantes; lectura del código confirmó contexto recortado a 30 caracteres y generación limitada a 96 tokens. No se atribuye una causa única al modelo.
+- Corrección: Mi Gestión presenta un informe calculado, con detalles desplegables y borradores por responsable, sin generación libre de Ollama. El avance real sigue requiriendo revisar comentarios, subtareas y evidencias de las fichas.
+
 > Verificado contra el proyecto Supabase `mixyhfdlzjarvszinytk` en vivo: `pg_policies`, `pg_class.relrowsecurity`, `pg_trigger`, `pg_proc`, y **pruebas empíricas reales** (simulación de rol `anon`/`authenticated` con `SET LOCAL role` + `request.jwt.claim.sub`, dentro de transacciones cerradas con `ROLLBACK`, sin dejar datos persistentes — confirmado con `SELECT` posterior a cada prueba). Cruzado contra `src/lib/auth.jsx`, `src/components/Sidebar.jsx`, `src/mobile/MobileReporte.jsx`. Fecha de verificación: 2026-06-17.
 >
 > Cada hallazgo indica cómo fue verificado: **empírico** (se ejecutó la operación real y se observó el resultado), **estático** (lectura de policy/constraint/grant sin ejecutar la operación), o **no verificable** (se documenta la incertidumbre explícitamente).

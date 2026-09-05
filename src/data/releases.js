@@ -1,7 +1,8 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.9";
+export const APP_VERSION = "2.9.10";
 
 export const RELEASES = [
+  {version:"2.9.10", date:"2026-09-05", title:"Informe diario y seguimiento por responsable", functions:["Mi informe de hoy reúne decisiones, prioridades y controles con datos calculados.", "Los mensajes se preparan por responsable y pueden copiarse.", "Disponible sin Ollama, con listados completos desplegables."], problem:"Las respuestas locales podían salir del contexto y los tres botones resultaban confusos.", affectedUsers:"Usuarios de Mi Gestión.", usage:"Elegí Mi informe de hoy o Preparar mensajes de seguimiento.", examples:["Revisar pendientes y copiar un pedido de avance."], screenshots:[]},
   {
     version: "2.9.9",
     date: "2026-09-05",
