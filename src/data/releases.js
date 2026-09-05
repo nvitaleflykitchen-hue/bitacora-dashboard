@@ -1,7 +1,23 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.8";
+export const APP_VERSION = "2.9.9";
 
 export const RELEASES = [
+  {
+    version: "2.9.9",
+    date: "2026-09-05",
+    title: "Briefing ejecutivo integral",
+    functions: [
+      "El inicio calcula qué debe decidir, empujar y controlar Nicolás antes de consultar a la IA.",
+      "Muestra avance de compromisos propios y asignados, responsables demorados, aprobaciones y próximos siete días.",
+      "Controla carnet de manipulador para hospitales y carnet más credencial PSA para aeropuertos.",
+      "Detecta sedes sin activos cargados y mantenimiento crítico o sin responsable.",
+    ],
+    problem: "El copiloto sólo reformulaba unas pocas tareas y no ofrecía una visión de gestión suficiente para comenzar el día.",
+    affectedUsers: "Administradores y responsables con acceso a Mi Gestión.",
+    usage: "Revisá Qué tenés que mover hoy y luego usá Resumir mi día, Priorizar o Preparar seguimiento.",
+    examples: ["Identificar a quién pedir avance, qué aprobar y qué documentación operativa falta."],
+    screenshots: [],
+  },
   {
     version: "2.9.8",
     date: "2026-09-04",
