@@ -1,7 +1,8 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.10";
+export const APP_VERSION = "2.9.11";
 
 export const RELEASES = [
+  {version:"2.9.11",date:"2026-09-05",title:"Tiempo y avance en tarjetas de tareas",functions:["Cuenta regresiva en días, horas y minutos en escritorio y celular.", "Barras de subtareas completadas y plazo consumido desde la creación.", "Aviso orientativo de ritmo y vencidos en rojo; tareas cerradas sin contador activo."],problem:"No se podía comparar rápidamente el avance con el plazo disponible.",affectedUsers:"Usuarios de tareas.",usage:"Las fechas sin hora vencen a las 23:59 de Argentina. Tachá subtareas para actualizar el avance.",examples:["4 de 7 subtareas: 57% de avance."],screenshots:[]},
   {version:"2.9.10", date:"2026-09-05", title:"Informe diario y seguimiento por responsable", functions:["Mi informe de hoy reúne decisiones, prioridades y controles con datos calculados.", "Los mensajes se preparan por responsable y pueden copiarse.", "Disponible sin Ollama, con listados completos desplegables."], problem:"Las respuestas locales podían salir del contexto y los tres botones resultaban confusos.", affectedUsers:"Usuarios de Mi Gestión.", usage:"Elegí Mi informe de hoy o Preparar mensajes de seguimiento.", examples:["Revisar pendientes y copiar un pedido de avance."], screenshots:[]},
   {
     version: "2.9.9",
