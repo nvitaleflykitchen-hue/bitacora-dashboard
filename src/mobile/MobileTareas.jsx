@@ -191,6 +191,7 @@ function MobileTareaCard({ t, canManage, onAvanzar, onUpdate, updating }) {
         </button>
       </div>
 
+      <TaskProgress task={t} />
       {expanded && (
         <div className="mt-3 pt-3" style={{ borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
           <div style={{ background:'rgba(255,255,255,0.025)', borderRadius:6, padding:'0.6rem 0.7rem', marginBottom:'0.7rem' }}>
@@ -299,3 +300,4 @@ export default function MobileTareas() {
     </div>
   )
 }
+import TaskProgress from '../components/TaskProgress'

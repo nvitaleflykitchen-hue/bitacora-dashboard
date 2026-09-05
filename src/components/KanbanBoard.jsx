@@ -9,6 +9,7 @@ import CompromisoTareaPanel from './CompromisoTareaPanel'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { operationalStateLabel } from '../lib/operationalStates'
+import TaskProgress from './TaskProgress'
 
 const ESTADOS = ['Pendiente','En proceso','Resuelto','Cancelado']
 
@@ -350,6 +351,7 @@ function TareaCard({ tarea, onUpdate, onRefresh, readOnly, focused }) {
       </select>
 
       {/* Subtareas — siempre visible */}
+      <TaskProgress task={tarea} />
       <Subtareas
         tareaId={tarea.id}
         subtareas={tarea.subtareas}
