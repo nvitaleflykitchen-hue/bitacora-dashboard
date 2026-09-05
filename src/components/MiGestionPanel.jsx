@@ -101,8 +101,11 @@ export default function MiGestionPanel({ onNavigate }) {
   const ask=async modo=>{
     setIa(v=>({...v,busy:true,error:'',answer:''}))
     const items=data.propias.concat(data.esperando,data.delegadas).map(t=>({module:t._module||'Tarea',title:t.titulo,status:t.estado,site:t.sede_nombre||t.sedes?.nombre,owner:t.perfiles?.nombre||t.responsable,priority:t.prioridad,date:t.fecha_limite||t.created_at}))
-    try{const answer=await consultarCopilotoLocal({items,modo});setIa(v=>({...v,answer,busy:false}))}
-    catch(error){setIa(v=>({...v,busy:false,error:`No pude consultar Ollama: ${error.message}`}))}
+    try{const answer=await consultarCopilotoLocal({items,modo,onChunk:answer=>setIa(v=>({...v,answer}))});setIa(v=>({...v,answer,busy:false}))}
+    catch(error){
+      const timeout=error?.name==='TimeoutError'||/timed out/i.test(error?.message||'')
+      setIa(v=>({...v,busy:false,error:timeout?'El copiloto local demoró demasiado. Reintentá: ahora enviará una bandeja más breve.':`No pude consultar Ollama: ${error.message}`}))
+    }
   }
 
   return (
@@ -124,9 +127,9 @@ export default function MiGestionPanel({ onNavigate }) {
             <div className="flex items-center gap-2"><Bot size={16} color="#50b4ff"/><div><strong style={{fontSize:'.75rem'}}>COPILOTO FLY · IA LOCAL</strong><p style={{fontSize:'.62rem',color:'var(--text-dim)'}}>{ia.checking?'Buscando Ollama…':ia.available?`${ia.model} · disponible en esta PC`:'Ollama no disponible en este dispositivo'}</p></div></div>
             <div className="flex gap-2 flex-wrap"><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('resumen')}><Sparkles size={11}/> Resumir mi día</button><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('prioridades')}>Priorizar</button><button type="button" className="btn-ghost" disabled={!ia.available||ia.busy} onClick={()=>ask('respuesta')}>Preparar seguimiento</button></div>
           </div>
-          {ia.busy&&<p className="mt-3" style={{fontSize:'.68rem',color:'#50b4ff'}}>Copiloto Fly está analizando tu bandeja local…</p>}
+          {ia.busy&&<p className="mt-3" style={{fontSize:'.68rem',color:'#50b4ff'}}>{ia.answer?'Copiloto Fly está completando la respuesta…':'Copiloto Fly está preparando una selección breve…'}</p>}
           {ia.error&&<p className="mt-3" style={{fontSize:'.68rem',color:'#ff7777'}}>{ia.error}</p>}
-          {ia.answer&&<div className="mt-3 p-3 rounded" style={{whiteSpace:'pre-wrap',fontSize:'.72rem',lineHeight:1.55,background:'rgba(0,0,0,.2)',color:'var(--text)'}}>{ia.answer}<p className="mt-3" style={{fontSize:'.58rem',color:'var(--text-dim)'}}>BORRADOR IA · Fuente: asuntos visibles en Mi Gestión. Revisar antes de usar.</p></div>}
+          {ia.answer&&<div className="mt-3 p-3 rounded" aria-live="polite" style={{whiteSpace:'pre-wrap',fontSize:'.72rem',lineHeight:1.55,background:'rgba(0,0,0,.2)',color:'var(--text)'}}>{ia.answer}{ia.busy&&<span style={{color:'#50b4ff'}}> ▍</span>}<p className="mt-3" style={{fontSize:'.58rem',color:'var(--text-dim)'}}>BORRADOR IA · Fuente: asuntos visibles en Mi Gestión. Revisar antes de usar.</p></div>}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 mt-4">

@@ -1,7 +1,22 @@
 export const APP_NAME = "Fly Gestión";
-export const APP_VERSION = "2.9.7";
+export const APP_VERSION = "2.9.8";
 
 export const RELEASES = [
+  {
+    version: "2.9.8",
+    date: "2026-09-04",
+    title: "Copiloto local más rápido y estable",
+    functions: [
+      "El copiloto resume una selección ejecutiva de hasta seis asuntos en lugar de enviar una bandeja excesiva.",
+      "La respuesta aparece progresivamente mientras Ollama la genera, sin dejar la pantalla aparentemente bloqueada.",
+      "La app verifica que llama3.2:latest esté realmente instalado antes de habilitar las consultas.",
+    ],
+    problem: "Las consultas podían superar los 90 segundos y terminar con signal timed out aunque Ollama funcionara correctamente.",
+    affectedUsers: "Usuarios con Copiloto Fly local habilitado en su computadora.",
+    usage: "Usá Resumir mi día, Priorizar o Preparar seguimiento; el análisis toma los asuntos más relevantes de la bandeja visible.",
+    examples: ["Obtener un resumen ejecutivo breve sin que la pantalla quede indefinidamente en estado Analizando."],
+    screenshots: [],
+  },
   {
     version: "2.9.7",
     date: "2026-09-04",
