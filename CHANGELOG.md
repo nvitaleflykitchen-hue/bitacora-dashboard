@@ -1,3 +1,8 @@
+## 2.9.12 - 2026-09-07
+- Informe de sede con previsualización, período y detalle de cumplimiento; errores de consulta visibles.
+- Bienes concesionados: clasificación triestado, entidad, referencia, filtro y detalle en informes; alta/edición móvil y flota.
+- Migración aditiva de activos sin clasificar automáticamente registros existentes ni alterar permisos.
+
 # Historial de cambios — Fly Gestión
 
 ## 2.7.0 — 2026-07-29

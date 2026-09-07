@@ -7,7 +7,7 @@ import { fmtFecha } from '../lib/dateUtils'
 import { Pencil, Plus, X, Save, MapPin, Phone, User, Building2, Download, Edit, Pause, Play } from 'lucide-react'
 import RegistroModal from '../components/RegistroModal'
 import TelefonosUtilesSede from '../components/TelefonosUtilesSede'
-import { generarInformeSedePDF } from '../lib/sedeReportPdf'
+import SedeReportModal from '../components/SedeReportModal'
 import DocumentacionChecklist from '../components/DocumentacionChecklist'
 import { SEDE_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
 import { toast, confirmar } from '../lib/feedback'
@@ -269,7 +269,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
   const [modal, setModal]         = useState(null)
   const [selRegistro, setSelRegistro] = useState(null)
   const [histSemanal,  setHistSemanal]   = useState([])
-  const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const [fichaTab, setFichaTab] = useState('resumen')
 
   const loadSedes = useCallback(() => {
@@ -386,34 +386,11 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
           <div style={{ display:'flex', gap:8 }}>
             {sede?.id && (
               <button
-                onClick={async () => {
-                  setGeneratingPdf(true)
-                  try {
-                    await generarInformeSedePDF({ sedeId: sede.id, sedeNombre: sede.nombre })
-                  } catch (e) {
-                    console.error(e)
-                    toast.error('Error al generar el informe: ' + mensajeError(e))
-                  } finally {
-                    setGeneratingPdf(false)
-                  }
-                }}
-                disabled={generatingPdf}
-                style={{
-                  background: generatingPdf ? 'rgba(57,255,20,0.1)' : 'rgba(57,255,20,0.15)',
-                  border: '1px solid rgba(57,255,20,0.4)',
-                  color: '#39FF14',
-                  fontFamily: 'monospace',
-                  fontSize: '0.72rem',
-                  padding: '6px 14px',
-                  borderRadius: 2,
-                  cursor: generatingPdf ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}
+                onClick={() => setShowReport(true)}
+                className="btn-primary"
+                style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.72rem' }}
               >
-                <Download size={14} />
-                {generatingPdf ? 'GENERANDO...' : 'DESCARGAR INFORME'}
+                <Download size={14} /> VER INFORME
               </button>
             )}
             <button onClick={()=>setModal('new')} style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.3)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.72rem', padding:'6px 14px', borderRadius:2, cursor:'pointer', fontWeight:700 }}>
@@ -765,6 +742,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
         />
       )}
 
+      {canManage && showReport && sede && <SedeReportModal key={sede.id} sede={sede} onClose={() => setShowReport(false)} />}
       {selRegistro && (
         <RegistroModal registro={selRegistro} onClose={() => setSelRegistro(null)} />
       )}
