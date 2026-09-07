@@ -54,7 +54,7 @@ export function crearInformeSedePDF(report) {
   }
   texto('INFORME DE SEDE', 17, true); texto(report.sede.nombre || 'Sede', 13, true)
   texto(`Responsable: ${report.sede.responsable || 'Sin asignar'}`, 9)
-  texto(`Reportes y evaluaciones: ${report.desde} al ${report.hasta}`, 9)
+  texto(`Reportes: ${report.desde} al ${report.hasta}. Evaluaciones: última disponible hasta ${report.hasta}.`, 9)
   texto(`Situación operativa y documental al ${report.hoy}. Generado: ${report.generado}`, 8)
   if (report.warnings.length) texto('INFORME PARCIAL: hay fuentes que no se pudieron consultar. No equivalen a cero.', 9, true, [155, 52, 36])
   titulo('Resumen de carga y situación operativa')

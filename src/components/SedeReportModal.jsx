@@ -52,7 +52,7 @@ export default function SedeReportModal({ sede, onClose }) {
       </div>
       {snapshot.report.warnings.length > 0 && <p className="sede-report-alert" role="status">Informe parcial: algunas fuentes no se pudieron consultar. Se identifican en el detalle.</p>}
       {view === 'pdf' ? <div className="sede-report-pdf"><iframe title={`Vista PDF de ${sede.nombre}`} src={snapshot.url}/><p>Si tu navegador no muestra el PDF, usá “Resumen y detalle” o descargalo.</p></div> : <div className="sede-report-content">
-        <p>Reportes y evaluaciones: <strong>{snapshot.report.desde} al {snapshot.report.hasta}</strong>. Operación y documentación: situación actual.</p>
+        <p>Reportes: <strong>{snapshot.report.desde} al {snapshot.report.hasta}</strong>. Evaluaciones: última disponible hasta {snapshot.report.hasta}. Operación y documentación: situación actual.</p>
         <div className="sede-report-grid">{snapshot.report.summary.map(s => <a key={s.id} href={`#sede-report-${s.id}`} className={s.error ? 'sede-report-failed' : ''}><span>{s.area}</span><strong>{s.valor}</strong></a>)}</div>
         {snapshot.report.sections.map(section => <section key={section.id} id={`sede-report-${section.id}`}><h3>{section.title}</h3><p>{section.note}</p>
           {section.rows.length ? <div className="sede-report-table"><table><thead><tr>{section.columns.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{section.rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>)}</tbody></table></div> : <p>{section.error ? 'No se pudo consultar esta sección.' : 'Sin registros para detallar.'}</p>}
