@@ -9,6 +9,7 @@ const blank = (value, key) => value == null || String(value).trim() === '' || (k
 
 export function missingProposals(current, candidates) {
   const chosen = new Set(), proposals = []
+  const effective = { ...current }
   for (const candidate of candidates || []) {
     const product = candidate.product || candidate
     const source = product.source
@@ -17,16 +18,16 @@ export function missingProposals(current, candidates) {
     // A quantity and its unit are a single measurement: never mix sources or
     // attach a proposed unit to an incompatible quantity entered by the user.
     const measurement = ['net_quantity','net_unit']
-    const packagingFits = ['packaging_level','units_per_package'].every(k => blank(current[k],k) || blank(product[k],k) || String(current[k]) === String(product[k]))
-    const measurementFits = measurement.every(k => !blank(product[k],k) && (blank(current[k],k) || String(current[k]) === String(product[k])))
+    const packagingFits = ['packaging_level','units_per_package'].every(k => blank(effective[k],k) || blank(product[k],k) || String(effective[k]) === String(product[k]))
+    const measurementFits = measurement.every(k => !blank(product[k],k) && (blank(effective[k],k) || String(effective[k]) === String(product[k])))
     for (const key of Object.keys(PRODUCT_FIELD_LABELS)) {
       if (['net_quantity','net_unit','units_per_package','packaging_level'].includes(key) && !packagingFits) continue
       if (measurement.includes(key) && !measurementFits) continue
-      if (!chosen.has(key) && blank(current[key],key) && !blank(product[key],key)) {
+      if (!chosen.has(key) && blank(effective[key],key) && !blank(product[key],key)) {
         fields[key] = product[key]; chosen.add(key)
       }
     }
-    if (Object.keys(fields).length) proposals.push({ fields, source, candidate:product })
+    if (Object.keys(fields).length) { proposals.push({ fields, source, candidate:product }); Object.assign(effective,fields) }
   }
   return proposals
 }

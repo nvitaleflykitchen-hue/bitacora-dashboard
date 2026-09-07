@@ -28,6 +28,12 @@ describe('propuestas de artículos', () => {
       .toMatchObject({ net_quantity:1, net_unit:'kg', category:'Azúcares', country_of_origin:'Argentina, Provincia de Tucuman', manufacturer:'' })
     expect(parsePresentation('1kg','17791620187218').net_quantity).toBe('')
   })
+  it('no mezcla una unidad propuesta por una fuente con la caja de otra', () => {
+    const candidates = [{ net_quantity:1,net_unit:'kg',packaging_level:'unit',source },{net_quantity:8,net_unit:'g',units_per_package:192,packaging_level:'case',source}]
+    const applied = applyProductProposals({},missingProposals({},candidates))
+    expect(applied.packaging_level).toBe('unit')
+    expect(applied.units_per_package).toBeUndefined()
+  })
   it('extrae catálogo solo cuando el código pertenece a la ficha', () => {
     const html = `<script type="application/ld+json">{"@type":"Product","name":"Mayonesa Danica sch 192 u 8 g","brand":{"name":"Danica"}}</script><div><div><p>MultipleEan</p></div><div><p>--175249:17791620187218-175249:7791620187211--</p></div></div>`
     expect(parsePrecialo(html,'17791620187218',source.source_url)).toMatchObject({ brand:'Danica', units_per_package:192,net_quantity:8,net_unit:'g' })
