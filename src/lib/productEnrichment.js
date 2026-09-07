@@ -18,7 +18,9 @@ export function missingProposals(current, candidates) {
     // A quantity and its unit are a single measurement: never mix sources or
     // attach a proposed unit to an incompatible quantity entered by the user.
     const measurement = ['net_quantity','net_unit']
-    const packagingFits = ['packaging_level','units_per_package'].every(k => blank(effective[k],k) || blank(product[k],k) || String(effective[k]) === String(product[k]))
+    const packagingFits = [...measurement,'packaging_level','units_per_package'].every(k => blank(effective[k],k) || blank(product[k],k) || String(effective[k]) === String(product[k]))
+      && !(Number(effective.units_per_package) > 1 && product.packaging_level === 'unit')
+      && !(effective.packaging_level === 'unit' && Number(product.units_per_package) > 1)
     const measurementFits = measurement.every(k => !blank(product[k],k) && (blank(effective[k],k) || String(effective[k]) === String(product[k])))
     for (const key of Object.keys(PRODUCT_FIELD_LABELS)) {
       if (['net_quantity','net_unit','units_per_package','packaging_level'].includes(key) && !packagingFits) continue

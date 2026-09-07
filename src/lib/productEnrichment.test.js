@@ -20,6 +20,8 @@ describe('propuestas de artículos', () => {
   it('no mezcla cantidades ni niveles de empaque incompatibles', () => {
     expect(missingProposals({ net_quantity:8 }, [{ net_quantity:1000, net_unit:'g', source }])).toEqual([])
     expect(missingProposals({ packaging_level:'case' }, [{ packaging_level:'unit', net_quantity:1, net_unit:'kg', source }])).toEqual([])
+    expect(missingProposals({ net_quantity:1,net_unit:'kg' }, [{ net_quantity:8,net_unit:'g',units_per_package:192,packaging_level:'case',source }])).toEqual([])
+    expect(missingProposals({ units_per_package:192 }, [{ packaging_level:'unit',net_quantity:1,net_unit:'kg',source }])).toEqual([])
     const current = { net_quantity:8, net_unit:'' }
     expect(applyProductProposals(current,missingProposals(current,[{ net_quantity:8,net_unit:'g',source }])).net_unit).toBe('g')
   })
