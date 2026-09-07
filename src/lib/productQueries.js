@@ -1,6 +1,7 @@
 import { db, supabase } from './supabase'
 import { ProductResolver } from './ProductResolver'
 import { normalizeBarcode, safeImageUrl } from './productBarcode'
+import * as XLSX from 'xlsx'
 
 export async function findProduct(barcode, { signal } = {}) {
   let query = db().from('product_barcodes').select('*').eq('gtin_key', normalizeBarcode(barcode).padStart(14, '0')).maybeSingle()
@@ -33,10 +34,61 @@ export const productResolver = new ProductResolver({ findLocal:findProduct, prov
   },
 }] })
 
+export async function enrichProduct(barcode, { signal, sourceUrl = '' } = {}) {
+  const { data:{ session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Sesión vencida')
+  const response = await fetch('/api/product-resolver', {
+    method:'POST', signal, headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${session.access_token}` },
+    body:JSON.stringify({ barcode:normalizeBarcode(barcode), enrich:true, sourceUrl:sourceUrl.trim() }),
+  })
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}))
+    throw new Error(result.error || 'No se pudieron consultar las fuentes adicionales.')
+  }
+  return response.json()
+}
+
 export async function searchProducts(termino, pagina = 0) {
   const { data, error } = await db().rpc('buscar_articulos', { termino:termino.slice(0,200), pagina })
   if (error) throw error
   return data || []
+}
+
+export async function downloadProductsXlsx(termino = '') {
+  const all = []
+  for (let page = 0; page < 100000; page += 1) {
+    const rows = await searchProducts(termino, page)
+    all.push(...rows)
+    if (rows.length < 30) break
+  }
+  const detail = all.flatMap(product => (product.barcodes?.length ? product.barcodes : [{ barcode:'' }]).map(code => {
+    const presentation = product.presentations?.find(item => item.id === code.presentation_id) || product.presentations?.[0] || {}
+    return {
+      'ID producto':product.id, 'Código de barras':String(code.barcode || ''), 'Tipo de código':code.barcode_type || '',
+      'Nivel de empaque':code.packaging_level || '', 'Nombre':product.name || '', 'Descripción':product.description || '',
+      'Marca':product.brand || '', 'Fabricante':product.manufacturer || '', 'Categoría':product.category || '',
+      'Subcategoría':product.subcategory || '', 'Presentación':presentation.presentation || '',
+      'Contenido unitario':presentation.net_quantity ?? '', 'Unidad':presentation.net_unit || '',
+      'Unidades por caja/bulto':presentation.units_per_package ?? '', 'Imagen':product.image_url || '',
+      'Ingredientes':product.ingredients || '', 'Alérgenos':product.allergens || '',
+      'Información nutricional':product.nutrition_text || '', 'País de origen':product.country_of_origin || '',
+      'Actualizado':product.updated_at || '',
+    }
+  }))
+  const sources = all.flatMap(product => (product.sources || []).map(source => ({
+    'ID producto':product.id, 'Proveedor':source.provider || '', 'URL fuente':source.source_url || '',
+    'Consultado':source.retrieved_at || '', 'Registrado':source.recorded_at || '',
+  })))
+  const book = XLSX.utils.book_new()
+  const articlesSheet = XLSX.utils.json_to_sheet(detail)
+  const sourcesSheet = XLSX.utils.json_to_sheet(sources)
+  articlesSheet['!cols'] = [12,18,12,16,28,30,18,22,20,20,18,24,14,12,20,42,35,24,35,28,22].map(w => ({ wch:w }))
+  sourcesSheet['!cols'] = [{wch:40},{wch:24},{wch:60},{wch:24},{wch:24}]
+  XLSX.utils.book_append_sheet(book, articlesSheet, 'Artículos')
+  XLSX.utils.book_append_sheet(book, sourcesSheet, 'Fuentes')
+  const stamp = new Date().toISOString().slice(0,10)
+  XLSX.writeFile(book, `maestro-articulos-${stamp}.xlsx`, { bookType:'xlsx' })
+  return { count:detail.length, sources:sources.length }
 }
 
 export function validateProduct(form) {

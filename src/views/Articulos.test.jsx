@@ -2,15 +2,30 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import Articulos from './Articulos'
-import { productResolver, saveProduct } from '../lib/productQueries'
+import { productResolver, saveProduct, enrichProduct } from '../lib/productQueries'
 
 vi.mock('../lib/auth', () => ({ useAuth:() => ({ can:() => true, perfil:{ nombre:'Prueba' } }) }))
 vi.mock('../lib/adjuntos', () => ({ uploadAdjunto:vi.fn() }))
 vi.mock('../components/ProductBarcodeScanner', () => ({ default:() => <div>Lector listo</div> }))
-vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), saveProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn() }))
+vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), saveProduct:vi.fn(), enrichProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn() }))
 beforeEach(() => vi.clearAllMocks())
 afterEach(cleanup)
 describe('flujo artículos', () => {
+  it('presenta propuestas antes de aplicar y conserva los datos corregidos', async () => {
+    productResolver.resolve.mockResolvedValue({ product:{ name:'Mi azúcar',brand:'Mi marca' },origin:'external',warnings:[] })
+    enrichProduct.mockResolvedValue({ products:[{ name:'Nombre externo',brand:'Marca externa',category:'Azúcares',net_quantity:1,net_unit:'kg',source:{ provider:'Open Food Facts',source_url:'https://world.openfoodfacts.org/product/012345678905',retrieved_at:'2026-09-07T12:00:00Z' } }],warnings:[] })
+    render(<Articulos initialMode="scan" />)
+    fireEvent.change(screen.getByLabelText('O ingresá el código manualmente'),{ target:{ value:'012345678905' } })
+    fireEvent.click(screen.getByRole('button',{ name:'Buscar',exact:true }))
+    await screen.findByDisplayValue('Mi azúcar')
+    fireEvent.click(screen.getByRole('button',{name:'Completar datos faltantes'}))
+    await screen.findByText('Datos propuestos')
+    expect(screen.getByLabelText('Categoría')).toHaveValue('')
+    fireEvent.click(screen.getByRole('button',{name:'Aplicar datos propuestos'}))
+    expect(screen.getByLabelText('Categoría')).toHaveValue('Azúcares')
+    expect(screen.getByLabelText('Marca')).toHaveValue('Mi marca')
+    expect(saveProduct).not.toHaveBeenCalled()
+  })
   it('permite completar un desconocido, guardar y pasar al siguiente', async () => {
     productResolver.resolve.mockResolvedValue({ product:null, origin:'unknown', warnings:[] })
     saveProduct.mockImplementation(async form => ({ ...form, expected_updated_at:'2026-09-07T12:00:00Z' }))
