@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Barcode, Package, Search } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { productResolver, findProduct, saveProduct, searchProducts, validateProduct, enrichProduct } from '../lib/productQueries'
+import { productResolver, findProduct, saveProduct, searchProducts, validateProduct, enrichProduct, downloadProductsXlsx } from '../lib/productQueries'
 import { missingProposals, applyProductProposals, displayProductSources, PRODUCT_FIELD_LABELS } from '../lib/productEnrichment'
 import { barcodeType, normalizeBarcode, safeImageUrl, validCheckDigit } from '../lib/productBarcode'
 import { uploadAdjunto } from '../lib/adjuntos'
@@ -38,6 +38,7 @@ export default function Articulos({ initialMode = 'list' }) {
   const [page, setPage] = useState(0)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [listError, setListError] = useState('')
   const [refresh, setRefresh] = useState(0)
   const [sourceUrl, setSourceUrl] = useState('')
@@ -85,6 +86,13 @@ export default function Articulos({ initialMode = 'list' }) {
       setNotice(found.length ? 'Revisá los datos propuestos y su fuente antes de aplicarlos.' : 'No se encontraron datos adicionales para los campos vacíos. Los datos actuales se conservaron.')
     } catch (e) { if (!controller.signal.aborted) setError(e.message || 'No se pudo completar la búsqueda.') }
     finally { busyRef.current = false; setBusy(false) }
+  }
+  async function exportXlsx() {
+    if (exporting || loading) return
+    setExporting(true); setListError('')
+    try { const result = await downloadProductsXlsx(query); setNotice(`Excel descargado: ${result.count} filas de artículos y ${result.sources} fuentes.`) }
+    catch (e) { setListError(`No se pudo descargar el Excel: ${e.message}`) }
+    finally { setExporting(false) }
   }
   function acceptProposals() {
     setForm(current => applyProductProposals(current, proposals))
@@ -153,6 +161,7 @@ export default function Articulos({ initialMode = 'list' }) {
       <p>Se consulta primero nuestra base. Si el producto no está identificado, podés cargarlo manualmente.</p>
     </section>}
     {!form && mode === 'list' && <section>
+      <div className="articulos-actions"><button type="button" className="btn-ghost" disabled={exporting || loading} onClick={exportXlsx}>Descargar base en Excel</button></div>
       <form className="articulos-search" onSubmit={e => { e.preventDefault(); setQuery(search.trim()); setPage(0); setRefresh(n => n + 1) }}>
         <label htmlFor="article-search">Buscar por código, nombre, marca o categoría</label>
         <div><input id="article-search" className="input-dark" value={search} maxLength={200} onChange={e => setSearch(e.target.value)} /><button className="btn-ghost" aria-label="Buscar artículos"><Search size={18} /></button></div>
