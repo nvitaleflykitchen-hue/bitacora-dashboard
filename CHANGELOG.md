@@ -1,3 +1,9 @@
+## 2.9.13 - 2026-09-07
+- Maestro de artículos integrado en escritorio y móvil, con escaneo EAN/UPC/GTIN-14 y carga manual.
+- Resolución local antes de fuentes externas, procedencia conservada y presentaciones de cajas separadas del producto.
+- Guardado transaccional, prevención de duplicados y conflictos de edición, búsqueda y ficha editable.
+- Migración de cuatro tablas nuevas con permisos específicos del módulo; sin tablas de stock o movimientos.
+
 ## 2.9.12 - 2026-09-07
 - Informe de sede con previsualización, período y detalle de cumplimiento; errores de consulta visibles.
 - Bienes concesionados: clasificación triestado, entidad, referencia, filtro y detalle en informes; alta/edición móvil y flota.

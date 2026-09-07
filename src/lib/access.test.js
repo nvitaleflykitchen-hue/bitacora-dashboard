@@ -14,8 +14,8 @@ describe('matriz de acceso', () => {
   })
 
   // I+D es un acceso principal porque conecta proyectos, pruebas y validaciones.
-  it.each(ROLES)('limita el menú principal de %s a once accesos', rol => {
-    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(11)
+  it.each(ROLES)('limita el menú principal de %s a doce accesos, incluido Artículos', rol => {
+    expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(12)
   })
 
   it('deja al consultor en modo lectura', () => {

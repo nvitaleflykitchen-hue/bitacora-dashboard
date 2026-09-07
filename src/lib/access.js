@@ -161,6 +161,7 @@ export const PRIMARY_NAV = [
   { id:'idHub', label:'I+D', icon:'research', roles:new Set(['admin','editor','consultor','grupo','encargado','sede']) },
   { id:'sedesHub', label:'Sedes', icon:'sites', roles:ALL_OPERATIONAL_ROLES },
   { id:'requerimientos', label:'Compras', icon:'purchases', roles:ALL_OPERATIONAL_ROLES },
+  { id:'articulos', label:'Artículos', icon:'products', roles:new Set(['admin','editor','consultor','grupo','encargado','sede']) },
   { id:'mantenimientoHub', label:'Mantenimiento', icon:'maintenance', roles:MANTENIMIENTO_ROLES },
   { id:'flotaHub', label:'Flota', icon:'fleet', roles:new Set(['admin','editor','consultor','grupo','encargado','flota']) },
   { id:'calidadHub', label:'Calidad', icon:'quality', roles:new Set(['admin','editor','consultor','grupo','encargado']) },
@@ -168,6 +169,8 @@ export const PRIMARY_NAV = [
 ]
 
 const VIEW_ROLES = {
+  articulos: new Set(['admin','editor','consultor','grupo','encargado','sede']),
+  relevamientoArticulos: new Set(['admin','editor','grupo','encargado','sede']),
   inicio: ALL_OPERATIONAL_ROLES,
   tablon: ALL_OPERATIONAL_ROLES,
   actualizaciones: ALL_OPERATIONAL_ROLES,
@@ -226,6 +229,7 @@ export function getPrimaryNav(rol, perfil = null) {
 }
 
 const VIEW_SECTIONS = {
+  relevamientoArticulos:'articulos',
   dashboard:'inicio', sedeEncargado:'inicio',
   tareas:'pendientes', escalamientos:'pendientes', calendario:'pendientes',
   proyectosGestion:'proyectosGestion',
@@ -263,6 +267,7 @@ export function canWrite(rol, domain, action = 'manage', perfil = null) {
   }
   if (rol === 'sede') {
     return (
+      domain === 'articulos' ||
       (domain === 'bitacora' && ['report','attach'].includes(action)) ||
       (domain === 'mantenimiento' && ['report','attach'].includes(action)) ||
       (domain === 'compras' && action === 'request')

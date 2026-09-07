@@ -17,6 +17,8 @@ import OfflineStatus from './components/OfflineStatus'
 import { newScanEventId } from './lib/assetScans'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
+const Articulos = lazy(() => import('./views/Articulos'))
+const RelevamientoArticulos = lazy(() => import('./views/Articulos').then(m => ({ default:m.RelevamientoArticulos })))
 const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
 const InicioRol = lazy(() => import('./views/InicioRol'))
 const Tablon = lazy(() => import('./views/Tablon'))
@@ -62,6 +64,8 @@ const CredencialVerificacion = lazy(() => import('./views/CredencialVerificacion
 const EppEntregaConfirmacion = lazy(() => import('./views/EppEntregaConfirmacion'))
 
 const ALL_VIEWS = {
+  articulos: Articulos,
+  relevamientoArticulos: RelevamientoArticulos,
   inicio:          InicioRol,
   tablon:          Tablon,
   actualizaciones: Actualizaciones,

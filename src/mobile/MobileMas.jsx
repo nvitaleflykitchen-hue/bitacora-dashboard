@@ -6,6 +6,7 @@ import { useBackHandler } from '../lib/backStack'
 import { clearMobileRecents, loadMobileShortcuts, recordMobileRecent, saveMobileShortcuts, toggleMobileFavorite } from '../lib/mobileShortcuts'
 
 const MobileCapa = lazy(() => import('./MobileCapa'))
+const Articulos = lazy(() => import('../views/Articulos'))
 const MobilePersonal = lazy(() => import('./MobilePersonal'))
 const MobileMantenimiento = lazy(() => import('./MobileMantenimiento'))
 const MobileIndicadores = lazy(() => import('./MobileIndicadores'))
@@ -20,6 +21,8 @@ const AuditoriasInternas = lazy(() => import('../views/AuditoriasInternas'))
 const Capacitaciones = lazy(() => import('../views/Capacitaciones'))
 
 const MODULES = [
+  { key:'relevamientoArticulos', label:'Relevamiento de artículos', sub:'Escanear y registrar productos', icon:ClipboardList, view:'relevamientoArticulos' },
+  { key:'articulos', label:'Artículos', sub:'Consultar el maestro de productos', icon:ClipboardList, view:'articulos' },
   { key:'escalamientos', label:'Escalamientos', sub:'Casos que requieren seguimiento', icon:ClipboardCheck, view:'escalamientos' },
   { key:'checklist', label:'Checklist', sub:'Controles operativos de la sede', icon:ClipboardList, view:'inicio' },
   { key:'compras', label:'Compras', sub:'Requerimientos y seguimiento', icon:ClipboardList, view:'requerimientos' },
@@ -124,6 +127,8 @@ export default function MobileMas({ initialModule = null, userId = null, focusCo
         </button>
         <div style={{ flex:1, minHeight:0 }}>
           <Suspense fallback={<div style={{ minHeight:160, display:'grid', placeItems:'center', color:'var(--text-dim)', fontSize:'.8rem' }}>Cargando módulo…</div>}>
+          {mod.key === 'articulos' && <Articulos initialMode="list" />}
+          {mod.key === 'relevamientoArticulos' && <Articulos initialMode="scan" />}
           {mod.key === 'calidad' && <MobileCapa />}
           {mod.key === 'auditorias' && <AuditoriasInternas mobile />}
           {mod.key === 'capacitaciones' && <Capacitaciones mobile />}
