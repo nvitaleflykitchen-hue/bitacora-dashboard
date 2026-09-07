@@ -1,4 +1,6 @@
 import { safeImageUrl } from '../src/lib/productBarcode.js'
+import { cleanProductText, parsePresentation } from './productNormalization.js'
+import { lookupPrecialo } from './precialoProducts.js'
 
 export const PRODUCT_PROVIDERS = [
   { name:'Open Food Facts', host:'world.openfoodfacts.org' },
@@ -18,17 +20,24 @@ export function normalizeFacts(product, provider, barcode, now = new Date().toIS
   return {
     barcode, name:str(product.product_name_es || product.product_name),
     description:str(product.generic_name_es || product.generic_name), brand:str(product.brands),
-    manufacturer:'', category:str(product.categories), subcategory:'',
+    manufacturer:'', category:cleanProductText(str(product.categories)), subcategory:'',
     image_url:safeImageUrl(product.image_front_url), ingredients:str(product.ingredients_text_es || product.ingredients_text),
-    allergens:str(product.allergens), country_of_origin:str(product.origins),
+    allergens:cleanProductText(str(product.allergens)), country_of_origin:cleanProductText(str(product.origins)),
     nutrition_text:nutrition ? `Base informada: ${str(product.nutrition_data_per) || 'ver etiqueta'}. Porción: ${str(product.serving_size) || 'sin dato'}.\n${nutrition}` : '',
-    presentation:str(product.quantity), packaging_level:'unknown', net_quantity:'', net_unit:'', units_per_package:'',
+    presentation:str(product.quantity), ...parsePresentation(product.quantity, barcode),
     source:{ provider:provider.name, source_url:`https://${provider.host}/product/${barcode}`,
       raw_metadata:product, retrieved_at:now, license:'ODbL (datos), CC BY-SA (imágenes)' },
   }
 }
 
-export async function resolveExternal(barcode, { fetchImpl = fetch, providers = PRODUCT_PROVIDERS } = {}) {
+export async function resolveExternal(barcode, { fetchImpl = fetch, providers = PRODUCT_PROVIDERS, enrich = false, sourceUrl, skipPrecialo = false } = {}) {
+  if (enrich) {
+    const results = await Promise.all([
+      ...providers.map(provider => resolveExternal(barcode, { fetchImpl, providers:[provider], skipPrecialo:true })),
+      lookupPrecialo(barcode, { fetchImpl, sourceUrl }),
+    ])
+    return { products:results.map(r => r.product).filter(Boolean), warnings:results.flatMap(r => r.warnings) }
+  }
   const warnings = []
   for (const provider of providers) {
     try {
@@ -50,6 +59,10 @@ export async function resolveExternal(barcode, { fetchImpl = fetch, providers = 
     } catch {
       warnings.push(`${provider.name}: consulta no disponible. No se confirmó si el producto existe en esta fuente.`)
     }
+  }
+  if (!skipPrecialo) {
+    const extra = await lookupPrecialo(barcode, { fetchImpl, sourceUrl })
+    return { product:extra.product, warnings:[...warnings, ...extra.warnings] }
   }
   return { product:null, warnings }
 }

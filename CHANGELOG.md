@@ -1,3 +1,9 @@
+## 2.9.14 - 2026-09-07
+- Completar datos faltantes presenta propuestas con fuente y requiere aplicarlas antes de guardar; conserva los campos completos.
+- Normaliza contenidos simples y cantidades explícitas de multipacks, categorías conocidas en español y prefijos de idioma.
+- Consulta fichas Precialo por referencia verificada o enlace aportado, validando el código en los atributos del producto.
+- Sin migraciones ni cambios de permisos.
+
 ## 2.9.13 - 2026-09-07
 - Maestro de artículos integrado en escritorio y móvil, con escaneo EAN/UPC/GTIN-14 y carga manual.
 - Resolución local antes de fuentes externas, procedencia conservada y presentaciones de cajas separadas del producto.

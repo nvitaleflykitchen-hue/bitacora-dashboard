@@ -1,4 +1,16 @@
-# Relevamiento y maestro de artículos — 2.9.13
+# Relevamiento y maestro de artículos — 2.9.14
+
+## Completar datos faltantes
+
+En la ficha, **Completar datos faltantes** consulta las fuentes externas aun cuando el artículo ya está en el maestro. Muestra valores propuestos agrupados por fuente. **Aplicar datos propuestos** completa únicamente campos vacíos (y empaque «Por confirmar»); todavía es necesario **Guardar artículo**. Se vuelven a comprobar los campos al aplicar para conservar cambios posteriores a la consulta. Contenido y unidad se tratan juntos para no mezclar medidas incompatibles.
+
+Las consultas nuevas interpretan una cantidad explícita simple como «1kg» y una presentación múltiple como «192 u 8 g». En GTIN-14, una cantidad simple no se interpreta automáticamente como contenido individual. No se inventa fabricante. Se traducen categorías conocidas (por ejemplo Sugars → Azúcares) y se limpian prefijos de idioma como «es:». Los campos completos de artículos existentes se conservan y pueden corregirse manualmente.
+
+Precialo se incorpora como catálogo adicional. Su búsqueda pública no encontró el GTIN `17791620187218` aunque la ficha lo incluye. Por eso existe un registro de **referencias verificadas** (actualmente esa ficha), y se puede agregar un enlace `https://precialo.com.ar/p/...` para otros artículos. Esto no representa una búsqueda universal en toda la web. Se lee la ficha actual, se valida que el código exacto figure en sus GTIN o MultipleEan y se extraen los datos estructurados del producto. Si el código no coincide, no se importa. Los códigos asociados se conservan como evidencia, sin convertirlos automáticamente en aliases ni unidades individuales.
+
+Los proveedores de enriquecimiento se consultan en paralelo, con tiempos límite. Los enlaces se restringen al host y ruta pública de fichas; no se siguen redirecciones. Un error de fuente no se presenta como identificación exitosa. La procedencia de todas las propuestas aceptadas se conserva en `product_sources.raw_metadata` y se muestra al reabrir la ficha.
+
+No se requieren nuevas variables, migraciones ni permisos. La migración original fue autorizada y aplicada al publicar 2.9.13. Archivos nuevos: `server/precialoProducts.js`, `server/productNormalization.js`, `src/lib/productEnrichment.js` y sus pruebas.
 
 ## Uso
 

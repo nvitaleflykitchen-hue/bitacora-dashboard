@@ -33,6 +33,20 @@ export const productResolver = new ProductResolver({ findLocal:findProduct, prov
   },
 }] })
 
+export async function enrichProduct(barcode, { signal, sourceUrl = '' } = {}) {
+  const { data:{ session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Sesión vencida')
+  const response = await fetch('/api/product-resolver', {
+    method:'POST', signal, headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${session.access_token}` },
+    body:JSON.stringify({ barcode:normalizeBarcode(barcode), enrich:true, sourceUrl:sourceUrl.trim() }),
+  })
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}))
+    throw new Error(result.error || 'No se pudieron consultar las fuentes adicionales.')
+  }
+  return response.json()
+}
+
 export async function searchProducts(termino, pagina = 0) {
   const { data, error } = await db().rpc('buscar_articulos', { termino:termino.slice(0,200), pagina })
   if (error) throw error

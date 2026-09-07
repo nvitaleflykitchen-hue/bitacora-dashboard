@@ -1,5 +1,6 @@
 import { normalizeBarcode } from '../src/lib/productBarcode.js'
 import { resolveExternal } from '../server/productProviders.js'
+import { precialoUrl } from '../server/precialoProducts.js'
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
@@ -11,8 +12,11 @@ export default async function handler(req, res) {
   if (!configured) return res.status(503).json({ error:'Resolución externa no configurada' })
   const authorization = req.headers.authorization || ''
   if (!authorization.startsWith('Bearer ')) return res.status(401).json({ error:'Iniciá sesión' })
-  let barcode
-  try { barcode = normalizeBarcode(req.body?.barcode) } catch (error) { return res.status(400).json({ error:error.message }) }
+  let barcode, sourceUrl
+  try {
+    barcode = normalizeBarcode(req.body?.barcode)
+    if (req.body?.sourceUrl) sourceUrl = precialoUrl(req.body.sourceUrl)
+  } catch (error) { return res.status(400).json({ error:error.message }) }
   try {
     // Verifies the caller with Supabase; never forwards their JWT to external providers.
     const userResponse = await fetch(`${url}/auth/v1/user`, {
@@ -24,6 +28,6 @@ export default async function handler(req, res) {
       body:JSON.stringify({ escritura:false }), signal:AbortSignal.timeout(5000),
     })
     if (!access.ok || await access.json() !== true) return res.status(403).json({ error:'Sin acceso al maestro de artículos' })
-    return res.status(200).json(await resolveExternal(barcode))
+    return res.status(200).json(await resolveExternal(barcode, { enrich:req.body?.enrich === true, sourceUrl }))
   } catch { return res.status(503).json({ error:'No se pudo consultar. Reintentá o completá el artículo manualmente.' }) }
 }

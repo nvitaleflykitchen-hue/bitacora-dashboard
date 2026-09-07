@@ -39,7 +39,7 @@ describe('relevamiento de productos', () => {
   })
   it('no inventa fabricante, origen ni unidades del bulto', () => {
     const result = normalizeFacts({ product_name:'Mayonesa', brands:'Dánica', countries:'Argentina', quantity:'192 x 8 g', product_quantity:1536 }, { name:'Prueba', host:'example.com' }, '17791620187218')
-    expect(result).toMatchObject({ manufacturer:'', country_of_origin:'', net_quantity:'', units_per_package:'', packaging_level:'unknown', presentation:'192 x 8 g' })
+    expect(result).toMatchObject({ manufacturer:'', country_of_origin:'', net_quantity:8, units_per_package:192, packaging_level:'case', presentation:'192 x 8 g' })
     expect(result.source.raw_metadata.product_quantity).toBe(1536)
   })
   it('el adaptador rechaza productos con otro código y prueba el siguiente', async () => {

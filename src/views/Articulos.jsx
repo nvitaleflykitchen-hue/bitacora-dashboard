@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Barcode, Package, Search } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { productResolver, findProduct, saveProduct, searchProducts, validateProduct } from '../lib/productQueries'
+import { productResolver, findProduct, saveProduct, searchProducts, validateProduct, enrichProduct } from '../lib/productQueries'
+import { missingProposals, applyProductProposals, displayProductSources, PRODUCT_FIELD_LABELS } from '../lib/productEnrichment'
 import { barcodeType, normalizeBarcode, safeImageUrl, validCheckDigit } from '../lib/productBarcode'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { useBackHandler } from '../lib/backStack'
@@ -39,6 +40,8 @@ export default function Articulos({ initialMode = 'list' }) {
   const [loading, setLoading] = useState(false)
   const [listError, setListError] = useState('')
   const [refresh, setRefresh] = useState(0)
+  const [sourceUrl, setSourceUrl] = useState('')
+  const [proposals, setProposals] = useState([])
   useBackHandler(() => {
     if (busyRef.current) return
     if (scanner) setScanner(false)
@@ -66,10 +69,28 @@ export default function Articulos({ initialMode = 'list' }) {
     return () => { stale = true }
   }, [query, page, mode, form, refresh])
 
-  const reset = () => { setForm(null); setFile(null); uploaded.current = null; setDirty(false); setError(''); setWarnings([]); setConfirmedCode(false); setEditing(false) }
+  const reset = () => { setForm(null); setFile(null); uploaded.current = null; setDirty(false); setError(''); setWarnings([]); setConfirmedCode(false); setEditing(false); setProposals([]); setSourceUrl('') }
   const canLeave = () => !dirty || window.confirm('Hay cambios sin guardar. ¿Querés descartarlos?')
   const switchMode = next => { if (busyRef.current || !canLeave()) return; reset(); setMode(next); setNotice('') }
   const update = (key, value) => { setForm(f => ({ ...f, [key]:value })); setDirty(true) }
+  async function completeMissing() {
+    if (!form || !writable || busyRef.current) return
+    busyRef.current = true; setBusy(true); setError(''); setNotice(''); setProposals([])
+    request.current?.abort(); const controller = new AbortController(); request.current = controller
+    try {
+      const result = await enrichProduct(form.barcode, { signal:controller.signal, sourceUrl })
+      if (controller.signal.aborted) return
+      const found = missingProposals(form, result.products || [])
+      setProposals(found); setWarnings(result.warnings || [])
+      setNotice(found.length ? 'Revisá los datos propuestos y su fuente antes de aplicarlos.' : 'No se encontraron datos adicionales para los campos vacíos. Los datos actuales se conservaron.')
+    } catch (e) { if (!controller.signal.aborted) setError(e.message || 'No se pudo completar la búsqueda.') }
+    finally { busyRef.current = false; setBusy(false) }
+  }
+  function acceptProposals() {
+    setForm(current => applyProductProposals(current, proposals))
+    setProposals([]); setDirty(true); setEditing(true)
+    setNotice('Datos propuestos aplicados a campos vacíos. Revisá la ficha y guardá el artículo.')
+  }
   async function lookup(value, localOnly = false) {
     if (busyRef.current || !canLeave()) return
     let barcode
@@ -105,7 +126,7 @@ export default function Articulos({ initialMode = 'list' }) {
         saved = await saveProduct({ ...saved, image_url:uploaded.current.url })
         setForm(saved); setFile(null); uploaded.current = null
       }
-      setEditing(false); setRefresh(n => n + 1); setNotice('Artículo guardado en el maestro.')
+      setEditing(false); setProposals([]); setRefresh(n => n + 1); setNotice('Artículo guardado en el maestro.')
       if (next) { reset(); setCode(''); setMode('scan'); setScanner(true) }
     } catch (e) {
       setDirty(true)
@@ -145,6 +166,16 @@ export default function Articulos({ initialMode = 'list' }) {
     {form && <section className="articulos-card">
       <div className="articulos-actions"><button type="button" className="btn-ghost" disabled={busy} onClick={() => { if (canLeave()) reset() }}>← Volver</button>{writable && !editing && <button type="button" className="btn-primary" disabled={busy} onClick={() => setEditing(true)}>EDITAR</button>}</div>
       <div className="articulos-product-head">{image ? <img src={image} alt={form.name || 'Imagen del artículo'} referrerPolicy="no-referrer" /> : <div className="articulos-placeholder"><Package size={40} /><span>Sin imagen</span></div>}<div><h2>{form.name || 'Nuevo artículo'}</h2><p>{form.brand || 'Marca sin completar'}</p><code>{form.barcode}</code><p>{barcodeType(form.barcode)} · {({ unit:'Unidad', case:'Caja / bulto', unknown:'Presentación por confirmar' })[form.packaging_level]}</p><p>{form.presentation}</p></div></div>
+      {writable && <section className="articulos-enrichment" aria-label="Completar datos del artículo">
+        <button type="button" className="btn-ghost" disabled={busy} onClick={completeMissing}>Completar datos faltantes</button>
+        <p>Consulta fuentes adicionales y propone datos para campos vacíos. Se conservan tus correcciones.</p>
+        <details><summary>Agregar una ficha de Precialo</summary><label>Enlace de Precialo (opcional)<input className="input-dark" type="url" disabled={busy} value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://precialo.com.ar/p/..." /></label><p>Se comprueba que la ficha contenga el código exacto. Pegá el enlace y pulsá Completar datos faltantes.</p></details>
+        {proposals.length > 0 && <div className="articulos-proposals">
+          <h3>Datos propuestos</h3>
+          {proposals.map((proposal,i) => <div key={i}><p>Fuente: <a href={proposal.source.source_url} target="_blank" rel="noreferrer">{proposal.source.provider}</a>{proposal.source.provider?.startsWith('Open ') && ' · ODbL / CC BY-SA'}</p><dl>{Object.entries(proposal.fields).map(([key,value]) => <div key={key}><dt>{PRODUCT_FIELD_LABELS[key]}</dt><dd>{key === 'image_url' ? <img src={safeImageUrl(value)} alt="Imagen propuesta" referrerPolicy="no-referrer" /> : key === 'packaging_level' ? ({ unit:'Unidad individual', case:'Caja / bulto' })[value] : String(value)}</dd></div>)}</dl></div>)}
+          <div className="articulos-actions"><button type="button" className="btn-primary" disabled={busy} onClick={acceptProposals}>Aplicar datos propuestos</button><button type="button" className="btn-ghost" disabled={busy} onClick={() => setProposals([])}>Descartar propuestas</button></div>
+        </div>}
+      </section>}
       {!validCheckDigit(form.barcode) && <div className="articulos-warning">El dígito verificador no coincide. Cotejá todos los dígitos con la etiqueta.{editing && <label><input type="checkbox" checked={confirmedCode} onChange={e => setConfirmedCode(e.target.checked)} /> Revisé el código y confirmo que corresponde a la etiqueta.</label>}</div>}
       <form onSubmit={e => { e.preventDefault(); save(false) }}>
         <fieldset disabled={!editing || busy} className="articulos-fields">
@@ -158,7 +189,7 @@ export default function Articulos({ initialMode = 'list' }) {
           <label className="articulos-wide">Dirección de imagen (HTTPS)<input className="input-dark" type="url" value={form.image_url || ''} onChange={e => update('image_url', e.target.value)} /></label>
           {editing && <label className="articulos-wide">O tomar / subir foto (JPG, PNG o WebP, hasta 8 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const selected = e.target.files?.[0]; if (!selected) return; if (!['image/jpeg','image/png','image/webp'].includes(selected.type) || selected.size > 8 * 1024 * 1024) { setError('Elegí una imagen JPG, PNG o WebP de hasta 8 MB.'); e.target.value = ''; return } setFile(selected); uploaded.current = null; setDirty(true) }} /></label>}
         </fieldset>
-        <div className="articulos-sources"><h3>Fuentes y actualización</h3><p>{form.updated_at ? `Última actualización: ${new Date(form.updated_at).toLocaleString('es-AR')}` : 'Todavía no guardado'}</p>{[...(form.source ? [form.source] : []), ...(form.sources || [])].map((source,i) => <p key={source.id || i}>{safeImageUrl(source.source_url) ? <a href={source.source_url} target="_blank" rel="noreferrer">{source.provider}</a> : source.provider} · {new Date(source.retrieved_at).toLocaleString('es-AR')}{source.provider?.startsWith('Open ') && ' · ODbL (datos) / CC BY-SA (imágenes)'}</p>)}{!form.source && !form.sources?.length && <p>Carga manual: se registrará al guardar.</p>}</div>
+        <div className="articulos-sources"><h3>Fuentes y actualización</h3><p>{form.updated_at ? `Última actualización: ${new Date(form.updated_at).toLocaleString('es-AR')}` : 'Todavía no guardado'}</p>{displayProductSources([...(form.source ? [form.source] : []), ...(form.sources || [])]).map((source,i) => <p key={source.id || i}>{safeImageUrl(source.source_url) ? <a href={source.source_url} target="_blank" rel="noreferrer">{source.provider}</a> : source.provider} · {new Date(source.retrieved_at).toLocaleString('es-AR')}{source.provider?.startsWith('Open ') && ' · ODbL (datos) / CC BY-SA (imágenes)'}</p>)}{!form.source && !form.sources?.length && <p>Carga manual: se registrará al guardar.</p>}</div>
         {editing && writable && <div className="articulos-actions"><button className="btn-primary" disabled={busy}>GUARDAR ARTÍCULO</button><button type="button" className="btn-ghost" disabled={busy} onClick={() => save(true)}>GUARDAR Y ESCANEAR SIGUIENTE</button></div>}
       </form>
     </section>}
