@@ -24,6 +24,7 @@ export function writeAppRoute(currentUrl, view, target = null) {
 }
 
 export function mobileDestinationForView(view) {
+  if (view === 'articulos' || view === 'relevamientoArticulos') return { tab:'mas', module:view }
   if (view === 'calidadHub' || ['noConformidades','capa'].includes(view)) return { tab:'mas', module:'calidad' }
   if (view === 'mantenimientoHub' || ['mntActivos','mntInsumos','mntKanban','mntPlanes','mntProveedores','mntMatafuegos','mntResponsables'].includes(view)) return { tab:'mas', module:'mantenimiento' }
   if (view === 'equipo') return { tab:'mas', module:'personal' }

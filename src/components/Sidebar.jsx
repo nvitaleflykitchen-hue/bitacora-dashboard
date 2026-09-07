@@ -13,7 +13,7 @@ import {
   Wrench, Users, Menu, X, LogOut, KeyRound,
   Users2, ShoppingCart, Shield, ClipboardCheck, Megaphone, Plus, Truck,
   Sparkles, Activity,
-  FolderKanban, FlaskConical,
+  FolderKanban, FlaskConical, Barcode,
 } from 'lucide-react'
 import { APP_NAME, APP_VERSION } from '../data/releases'
 
@@ -124,6 +124,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
   const nav = (id) => { onNavigate(id); setMobileOpen(false) }
   const abrirReporte = () => { onNuevoReporte(); setMobileOpen(false) }
   const iconByName = {
+    products: Barcode,
     home: LayoutDashboard,
     announcement: Megaphone,
     updates: Sparkles,
