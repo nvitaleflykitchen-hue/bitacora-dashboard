@@ -1,4 +1,4 @@
-import { format, subDays, parseISO, eachDayOfInterval, isValid } from 'date-fns'
+import { format, subDays, subMonths, parseISO, eachDayOfInterval, isValid } from 'date-fns'
 import { db, supabase } from './supabase'
 import { PERSONA_DOCUMENTACION_TEMPLATE, SEDE_DOCUMENTACION_TEMPLATE, VEHICULO_DOCUMENTACION_TEMPLATE } from './documentacion'
 import { getResultadoEvaluacion } from './evaluacionResultado'
@@ -67,7 +67,7 @@ export async function cargarInformeSede({ sedeId, sedeNombre, desde, hasta }) {
   }
   await Promise.all([
     related('docsPersonal', 'personas', personas.map(p => String(p.id)), ids => db().from('documentacion_items').select('id,entity_id,codigo,titulo,estado,fecha_vencimiento,updated_at').eq('entity_type', 'persona').in('entity_id', ids)),
-    related('evaluaciones', 'personas', personas.filter(p => p.puntaje_promedio != null && !p.evaluacion_propia).map(p => p.id), ids => supabase.from('v_evaluaciones').select('id,persona_id,fecha_evaluacion,puntaje_calculado').in('persona_id', ids).gte('fecha_evaluacion', desde).lte('fecha_evaluacion', hasta)),
+    related('evaluaciones', 'personas', personas.filter(p => p.puntaje_promedio != null && !p.evaluacion_propia).map(p => p.id), ids => supabase.from('v_evaluaciones').select('id,persona_id,fecha_evaluacion,puntaje_calculado').in('persona_id', ids).lte('fecha_evaluacion', hasta)),
     related('docsVehiculo', 'activos', vehiculos.map(v => String(v.id)), ids => db().from('documentacion_items').select('id,entity_id,codigo,titulo,estado,fecha_vencimiento,updated_at').eq('entity_type', 'vehiculo').in('entity_id', ids)),
     related('preventivos', 'activos', vehiculos.map(v => v.id), ids => supabase.from('mnt_planes').select('id,activo_id,nombre,proxima_fecha,responsable,activo').in('activo_id', ids).eq('activo', true)),
   ])
@@ -127,21 +127,29 @@ export function construirInformeSede({ sources, sedeId, sedeNombre, desde, hasta
   }
 
   const restringidas = personas.filter(p => p.puntaje_promedio == null || p.evaluacion_propia)
-  const elegibles = personas.filter(p => !restringidas.includes(p) && (!p.fecha_ingreso || fechaInforme(p.fecha_ingreso) <= hasta))
+  const encargados = personas.filter(p => /\bencargad[oa]\b|\bresponsable de escala\b/i.test(p.puesto || ''))
+  const trimestreDesde = format(subMonths(parseISO(hasta), 3), 'yyyy-MM-dd')
+  const elegibles = personas.filter(p => !restringidas.includes(p) && !encargados.includes(p) && (!p.fecha_ingreso || fechaInforme(p.fecha_ingreso) <= hasta))
   const latest = new Map()
   data('evaluaciones').forEach(e => {
+    if (!e.fecha_evaluacion || fechaInforme(e.fecha_evaluacion) > hasta) return
     const old = latest.get(String(e.persona_id))
     if (!old || String(e.fecha_evaluacion) > String(old.fecha_evaluacion) || (e.fecha_evaluacion === old.fecha_evaluacion && String(e.id) > String(old.id))) latest.set(String(e.persona_id), e)
   })
-  const evaluadas = elegibles.filter(p => latest.has(String(p.id)))
+  const evaluadas = elegibles.filter(p => {
+    const score = Number(latest.get(String(p.id))?.puntaje_calculado)
+    return score >= 1 && score <= 5
+  })
   const scores = evaluadas.map(p => Number(latest.get(String(p.id)).puntaje_calculado)).filter(s => s >= 1 && s <= 5)
   const promedio = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) + '/5' : 'Sin puntajes válidos'
   add('evaluaciones', 'Evaluaciones del personal', ['personas', 'evaluaciones'], pct(evaluadas.length, elegibles.length),
-    `Cobertura del personal activo visible en el período; no certifica un ciclo obligatorio. Promedio: ${promedio} (${scores.length} personas, última evaluación por persona). ${restringidas.length} restringidas, excluidas del cálculo.`,
-    ['Persona', 'Puesto', 'Evaluación del período', 'Puntaje / resultado'], personas.map(p => {
+    `Última evaluación disponible hasta ${fechaLegible(hasta)}, incluyendo anteriores al período del informe. Promedio de sede: ${promedio} (${scores.length} personas con puntaje válido, una evaluación por persona). Últimos tres meses (${fechaLegible(trimestreDesde)} al ${fechaLegible(hasta)}): ${evaluadas.filter(p => fechaInforme(latest.get(String(p.id)).fecha_evaluacion) >= trimestreDesde).length} personas evaluadas. Cobertura sobre ${elegibles.length} personas elegibles; ${encargados.length} encargados / responsables de escala y ${restringidas.length} restringidas, excluidas del cálculo. Sin evaluación y puntajes cero no reducen el promedio.`,
+    ['Persona', 'Puesto', 'Última evaluación disponible', 'Puntaje / resultado'], personas.map(p => {
       const e = latest.get(String(p.id)), restricted = restringidas.includes(p)
       const score = e?.puntaje_calculado
-      return [nombre(p), p.puesto || 'Sin puesto', restricted ? 'Acceso restringido' : p.fecha_ingreso && fechaInforme(p.fecha_ingreso) > hasta ? 'Ingreso posterior al período' : e ? fechaLegible(e.fecha_evaluacion) : 'Sin evaluación visible', restricted ? 'Restringido' : e && getResultadoEvaluacion(score) ? `${Number(score).toFixed(2)}/5 · ${getResultadoEvaluacion(score)}` : '-']
+      const posterior = p.fecha_ingreso && fechaInforme(p.fecha_ingreso) > hasta
+      const valido = Number(score) >= 1 && Number(score) <= 5
+      return [nombre(p), p.puesto || 'Sin puesto', restricted ? 'Acceso restringido' : posterior ? 'Ingreso posterior al período' : e ? `${fechaLegible(e.fecha_evaluacion)} · ${fechaInforme(e.fecha_evaluacion) >= trimestreDesde ? 'Últimos tres meses' : 'Anterior al trimestre'}` : 'Sin evaluación visible', restricted ? 'Restringido' : posterior ? '-' : `${valido ? `${Number(score).toFixed(2)}/5 · ${getResultadoEvaluacion(score)}` : e ? 'Sin puntaje válido' : '-'}${encargados.includes(p) ? ' · Encargado: excluido del cálculo' : ''}`]
     }))
 
   const completos = activos.filter(a => a.nombre && a.tipo && a.estado && a.codigo_interno)

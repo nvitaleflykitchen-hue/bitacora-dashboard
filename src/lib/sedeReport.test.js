@@ -36,6 +36,28 @@ describe('informe de sede', () => {
     const s = construirInformeSede(f).summary.find(s => s.id === 'evaluaciones')
     expect(s.valor).toBe('100% (1/1)'); expect(s.detalle).toContain('4.00/5'); expect(s.detalle).toContain('1 restringidas')
   })
+  it('incluye historia, excluye encargados y ceros y no usa evaluaciones futuras', () => {
+    const f = fixtureInforme()
+    f.sources.personas.rows = [1,2,3,4,5].map(id => ({ id, nombre: `Persona ${id}`, puntaje_promedio: 0, puesto: id === 3 ? 'Encargado' : 'Cocinero' }))
+    f.sources.evaluaciones.rows = [
+      { persona_id:1, fecha_evaluacion:'2026-05-01', puntaje_calculado:4 },
+      { persona_id:2, fecha_evaluacion:'2026-07-01', puntaje_calculado:2 },
+      { persona_id:2, fecha_evaluacion:'2026-09-10', puntaje_calculado:5 },
+      { persona_id:3, fecha_evaluacion:'2026-07-01', puntaje_calculado:5 },
+      { persona_id:4, fecha_evaluacion:'2026-07-01', puntaje_calculado:0 },
+    ]
+    const r = construirInformeSede(f)
+    const s = r.summary.find(s => s.id === 'evaluaciones')
+    expect(s.valor).toBe('50% (2/4)')
+    expect(s.detalle).toContain('3.00/5 (2 personas')
+    expect(s.detalle).toContain('1 personas evaluadas')
+    const rows = r.sections.find(s => s.id === 'evaluaciones').rows
+    expect(rows[0][2]).toContain('Anterior al trimestre')
+    expect(rows[1][3]).toContain('2.00/5')
+    expect(rows[2][3]).toContain('excluido del cálculo')
+    expect(rows[3][3]).toBe('Sin puntaje válido')
+    expect(rows[4][2]).toBe('Sin evaluación visible')
+  })
   it('mide avance de planes incluyendo acciones terminadas y separa NC cerradas', () => {
     const f = fixtureInforme()
     f.sources.capas.rows = [{ codigo:'A', auditoria_codigo:'PLAN-1', estado:'Completada' }, { codigo:'B', auditoria_codigo:'PLAN-1', estado:'Pendiente', fecha_limite:'2026-09-01' }]
