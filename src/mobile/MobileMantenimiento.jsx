@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import ActivoConcesionFields, { ActivoConcesionBadge } from '../components/ActivoConcesionFields'
 import { useAuth } from '../lib/auth'
 import {
   getActivos, upsertActivo, getSedes, getTicketsActivo,
@@ -100,6 +101,7 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onB
           <Chip color={TIPO_COLOR_ACTIVO[activo.tipo] || '#888'}>{activo.tipo}</Chip>
           <Chip color={ESTADO_COLOR_ACTIVO[activo.estado] || '#888'}>{activo.estado?.replace('_', ' ')}</Chip>
           {activo.codigo_interno && <Chip color="#6B7280">#{activo.codigo_interno}</Chip>}
+          <ActivoConcesionBadge activo={activo}/>
         </div>
       </div>
 
@@ -110,7 +112,8 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onB
           <>
             <Card>
               {[['Marca / Modelo', [activo.marca, activo.modelo].filter(Boolean).join(' ')], ['Categoría', activo.categoria],
-                ['Sede / Unidad', sedeName], ['Responsable', activo.responsable], ['Nro. Serie', activo.numero_serie]]
+                ['Sede / Unidad', sedeName], ['Responsable', activo.responsable], ['Nro. Serie', activo.numero_serie],
+                ['Entidad concedente', activo.bien_concesionado === true ? activo.concesion_propietario : null], ['Contrato / acta', activo.bien_concesionado === true ? activo.concesion_referencia : null]]
                 .filter(([, v]) => v).map(([l, v]) => (
                   <div key={l} style={{ marginBottom: 8 }}>
                     <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{l}</p>
@@ -147,6 +150,7 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onB
         ) : (
           <Card>
             <Field label="Nombre *" value={{ val: form.nombre || '', set: v => set('nombre', v), ph: 'Ej: Horno convector 1' }} />
+            <ActivoConcesionFields form={form} onChange={set}/>
             <div style={{ marginBottom: 10 }}>
               <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Tipo</label>
               <select className="input-dark w-full" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
@@ -222,6 +226,7 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
 
   return (
     <SheetModal title="Nuevo activo" onClose={onClose}>
+      <ActivoConcesionFields form={form} onChange={set}/>
       <div style={{ marginBottom: 10 }}>
         <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede / Unidad</label>
         <select className="input-dark w-full" value={form.sede_id} onChange={e => set('sede_id', e.target.value)}>

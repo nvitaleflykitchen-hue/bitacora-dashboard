@@ -8,6 +8,8 @@ import PageHeader from '../../components/PageHeader'
 import DocumentacionChecklist from '../../components/DocumentacionChecklist'
 import { VEHICULO_DOCUMENTACION_TEMPLATE } from '../../lib/documentacion'
 import { isQualityOnlyProfile } from '../../lib/access'
+import ActivoConcesionFields, { ActivoConcesionBadge } from '../../components/ActivoConcesionFields'
+import { concesionLabel } from '../../lib/activoConcesion'
 
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
 const INPUT_S = { width:'100%', padding:'0.4rem 0.75rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(107,114,128,0.3)', color:'var(--text)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', boxSizing:'border-box', outline:'none' }
@@ -107,6 +109,8 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1.5rem' }}>
               <Field label="Marca / Modelo" value={[vehiculo.marca, vehiculo.modelo].filter(Boolean).join(' ')} />
               <Field label="Categoría" value={vehiculo.categoria} />
+              <Field label="Bien concesionado" value={concesionLabel(vehiculo.bien_concesionado)} />
+              {vehiculo.bien_concesionado === true && <><Field label="Entidad concedente" value={vehiculo.concesion_propietario || 'Sin registrar'} /><Field label="Contrato / acta" value={vehiculo.concesion_referencia || 'Sin referencia'} /></>}
               <Field label="Sede / Unidad" value={sedeName} />
               <Field label="Responsable" value={vehiculo.responsable} />
               <Field label="Dominio" value={vehiculo.dominio} />
@@ -171,6 +175,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW_S}><label style={LABEL_S}>Nombre / Patente *</label><input value={form.nombre} onChange={e=>set('nombre',e.target.value.toUpperCase())} style={INPUT_S} placeholder="Ej: AA239RK" required /></div>
+              <ActivoConcesionFields form={form} onChange={set}/>
               <div style={ROW_S}><label style={LABEL_S}>Dominio</label><input value={form.dominio||''} onChange={e=>set('dominio',e.target.value.toUpperCase())} style={INPUT_S} placeholder="Ej: AA239RK" /></div>
               <div style={ROW_S}><label style={LABEL_S}>Año</label><input type="number" value={form.anio||''} onChange={e=>set('anio',+e.target.value)} style={INPUT_S} placeholder="Ej: 2019" /></div>
             </div>
@@ -336,6 +341,7 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                   <td style={{ padding:'0.6rem 0.9rem' }}>
                     <p style={{ color:'var(--text)', fontWeight:600, margin:0 }}>{v.nombre}</p>
+                    <ActivoConcesionBadge activo={v}/>
                     <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', margin:0 }}>{v.dominio||'—'} {v.marca?`· ${v.marca} ${v.modelo||''}`:''}</p>
                   </td>
                   <td style={{ padding:'0.6rem 0.9rem', color:'var(--text-dim)' }}>{v.sede_nombre||'—'}</td>

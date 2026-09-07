@@ -1,3 +1,4 @@
+import { normalizarConcesion } from './activoConcesion'
 import { db, supabase } from "./supabase";
 import { formatCapaCode, nextCapaSequence } from "./capaCodes";
 import {
@@ -2060,7 +2061,7 @@ export async function getActivos(filtros = {}) {
 export async function upsertActivo(payload) {
   const { data, error } = await supabase
     .from("mnt_activos")
-    .upsert({ ...payload, updated_at: new Date().toISOString() })
+    .upsert({ ...normalizarConcesion(payload), updated_at: new Date().toISOString() })
     .select()
     .single();
   if (error) throw error;

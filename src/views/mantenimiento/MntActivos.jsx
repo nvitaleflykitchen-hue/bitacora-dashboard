@@ -10,6 +10,8 @@ import { Mail, MessageCircle, Phone, ScanLine } from 'lucide-react'
 import { normalizeQrLabel } from '../../lib/qrLabel'
 import AssetQrScannerModal from '../../components/AssetQrScannerModal'
 import { findScannedAsset } from '../../lib/assetQrScan'
+import ActivoConcesionFields, { ActivoConcesionBadge } from '../../components/ActivoConcesionFields'
+import { concesionLabel, coincideConcesion } from '../../lib/activoConcesion'
 
 const TIPO_COLOR  = { VEHICULO:'#3B82F6', EQUIPO:'#F59E0B', INSTALACION:'#8B5CF6' }
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
@@ -175,6 +177,7 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
                 <span className='chip' style={{ background:`${TIPO_COLOR[activo.tipo]||'#888'}22`, color:TIPO_COLOR[activo.tipo]||'#888', border:`1px solid ${TIPO_COLOR[activo.tipo]||'#888'}44`, borderRadius:2 }}>{activo.tipo}</span>
                 <span className='chip' style={{ background:`${ESTADO_COLOR[activo.estado]||'#888'}18`, color:ESTADO_COLOR[activo.estado]||'#888', border:`1px solid ${ESTADO_COLOR[activo.estado]||'#888'}33`, borderRadius:2 }}>{activo.estado}</span>
                 {activo.codigo_interno && <span className='chip' style={{ borderRadius:2 }}>#{activo.codigo_interno}</span>}
+                <ActivoConcesionBadge activo={activo}/>
               </div>
             )}
           </div>
@@ -208,6 +211,8 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1.5rem' }}>
               <Field label="Marca / Modelo" value={[activo.marca, activo.modelo].filter(Boolean).join(' ')} />
               <Field label="Categoría" value={activo.categoria} />
+              <Field label="Bien concesionado" value={concesionLabel(activo.bien_concesionado)} />
+              {activo.bien_concesionado === true && <><Field label="Propietario / entidad concedente" value={activo.concesion_propietario || 'Sin registrar'} /><Field label="Contrato / acta" value={activo.concesion_referencia || 'Sin referencia'} /></>}
               <Field label="Sede / Unidad" value={sedeName} />
               <Field label="Asignado a" value={custodioNombre || 'Sin asignar / uso compartido'} />
               <Field label="En custodia desde" value={activo.custodia_desde ? fmtFecha(activo.custodia_desde) : null} />
@@ -407,6 +412,7 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
               </div>}
             </div>
 
+            <ActivoConcesionFields form={form} onChange={set}/>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW_S}>
                 <label style={LABEL_S}>Código interno</label>
@@ -625,6 +631,7 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
   const [sedeId, setSedeId]   = useState('')
   const [filtroTipo, setFiltroTipo]     = useState('todos')
   const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [filtroConcesion, setFiltroConcesion] = useState('todos')
   const [busqueda, setBusqueda]         = useState('')
 
   useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
@@ -650,6 +657,7 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
   const filtrados = activos
     .filter(a => filtroTipo   === 'todos' || a.tipo   === filtroTipo)
     .filter(a => filtroEstado === 'todos' || a.estado === filtroEstado)
+    .filter(a => coincideConcesion(a, filtroConcesion))
     .filter(a => !busqueda || a.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || (a.codigo_interno||'').toLowerCase().includes(busqueda.toLowerCase()))
 
   const openScannedAsset = scanValue => {
@@ -697,6 +705,9 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
       {scannerError && <p role="alert" style={{ color:'#F59E0B', fontSize:'.75rem', margin:'0 0 .75rem' }}>{scannerError}</p>}
 
       <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'1rem', alignItems:'center' }}>
+        <select aria-label="Filtrar por bien concesionado" value={filtroConcesion} onChange={e=>setFiltroConcesion(e.target.value)} style={SEL_S}>
+          <option value="todos">Titularidad: todos</option><option value="si">Concesionados</option><option value="no">No concesionados</option><option value="sin_definir">Sin definir</option>
+        </select>
         <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
           placeholder="Buscar por nombre o código..."
           style={{ padding:'0.4rem 0.8rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.07)', color:'var(--text)', fontSize:'0.8rem', width:220 }} />
@@ -737,6 +748,7 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
                   {!tieneVencido && tieneProximo && <span style={{ color:'#F59E0B', fontSize:'0.65rem', marginLeft:6 }}>⚠ Próx. venc.</span>}
                 </p>
                 <p style={{ color:'var(--text-dim)', fontSize:'0.68rem' }}>{a.codigo_interno||'—'} · {a.categoria||'—'} · {sedeLabel}</p>
+                <ActivoConcesionBadge activo={a}/>
               </div>
               <span style={{ fontSize:'0.65rem', fontWeight:700, padding:'0.2rem 0.5rem', borderRadius:4,
                 background:`${TIPO_COLOR[a.tipo]||'#555'}22`, color:TIPO_COLOR[a.tipo]||'#555' }}>
