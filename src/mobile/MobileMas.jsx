@@ -86,6 +86,7 @@ export default function MobileMas({ initialModule = null, userId = null, focusCo
 
   const visibleModules = useMemo(() => MODULES.filter(mod =>
     canAccessView(rol, mod.view, perfil) &&
+    (rol !== 'deposito' || mod.key === 'relevamientoArticulos') &&
     (mod.key !== 'checklist' || rol !== 'consultor') &&
     (rol !== 'mnt_editor' || ['mantenimiento', 'actualizaciones', 'contactos'].includes(mod.key))
   ), [rol, perfil])

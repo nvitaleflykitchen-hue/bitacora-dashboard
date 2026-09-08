@@ -43,7 +43,7 @@ serve(async (req) => {
     let { persona_id } = input
     let { email, nombre, rol, telefono } = input
 
-    const allowedRoles = new Set(['admin', 'editor', 'encargado', 'consultor', 'grupo', 'sede', 'operario', 'flota', 'mnt_editor'])
+    const allowedRoles = new Set(['admin', 'editor', 'encargado', 'consultor', 'grupo', 'sede', 'deposito', 'operario', 'flota', 'mnt_editor'])
     if (!allowedRoles.has(String(rol || '').toLowerCase())) {
       return new Response(JSON.stringify({ error: 'Tipo de acceso inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }

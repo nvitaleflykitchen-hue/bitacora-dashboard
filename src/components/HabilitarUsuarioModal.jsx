@@ -5,7 +5,7 @@ import { toast } from "../lib/feedback";
 import { whatsappDigits } from "../lib/phoneUtils";
 
 const ROLES = [
-  ["operario", "Operario"], ["sede", "Usuario de sede"],
+  ["operario", "Operario"], ["sede", "Usuario de sede"], ["deposito", "Usuario de depósito"],
   ["encargado", "Encargado"], ["consultor", "Consultor"],
   ["grupo", "Responsable de grupo"], ["editor", "Editor"],
   ["flota", "Flota"], ["mnt_editor", "Gestión Mantenimiento"],

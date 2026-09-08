@@ -180,6 +180,7 @@ function AppInner() {
   const { user, perfil, rol, allowedSedeIds, accessBlocked, authError, loading, signOut, can } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
   const isComprasOnly = isComprasOnlyProfile(perfil)
+  const isDeposito = rol === 'deposito'
   // 'operario': rol mobile-only, sin acceso a escritorio sin importar el ancho de pantalla.
   const forceMobile = rol === 'operario'
   const [qrActivoId, setQrActivoId] = useState(() => new URLSearchParams(window.location.search).get('id'))
@@ -217,19 +218,19 @@ function AppInner() {
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
-        if (isQualityOnly || isComprasOnly) return
+        if (isQualityOnly || isComprasOnly || isDeposito) return
         setShowSearch(s => !s)
       }
       if (e.key === 'Escape') setShowSearch(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isQualityOnly, isComprasOnly])
+  }, [isQualityOnly, isComprasOnly, isDeposito])
 
   const isMobile = useIsMobile()
 
   // Notificaciones browser para escalamientos Pendientes sin gestionar
-  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !accessBlocked && !isMobile && !isQualityOnly && !isComprasOnly })
+  useEscalamientosAlert({ sedeIds: allowedSedeIds, enabled: !loading && !!user && !accessBlocked && !isMobile && !isQualityOnly && !isComprasOnly && !isDeposito })
 
   if (loading) return <LoadingScreen />
   if (authError) return <AuthStartupError message={authError} onRetry={() => window.location.reload()} onSignOut={signOut} />
@@ -278,8 +279,8 @@ function AppInner() {
       <div className="scanline" />
       <Sidebar activeView={activeView} onNavigate={navigate} onNuevoReporte={canReport ? () => openReport(null) : null} />
       <main className="flex-1 flex flex-col overflow-hidden pt-12 md:pt-0">
-        <AlertaBanner onNavigate={navigate} />
-        {showSearch && !isQualityOnly && !isComprasOnly && (
+        {!isDeposito && <AlertaBanner onNavigate={navigate} />}
+        {showSearch && !isQualityOnly && !isComprasOnly && !isDeposito && (
           <GlobalSearch onNavigate={navigate} onClose={() => setShowSearch(false)} />
         )}
         <Suspense fallback={<ViewLoading />}>
@@ -287,7 +288,7 @@ function AppInner() {
             ? <QRActivoView activoId={qrActivoId} scanEventId={qrScanEventId} onNavigate={navigate} />
             : <ActiveView
                 onNavigate={navigate}
-                onOpenSearch={!isQualityOnly && !isComprasOnly ? () => setShowSearch(true) : null}
+                onOpenSearch={!isQualityOnly && !isComprasOnly && !isDeposito ? () => setShowSearch(true) : null}
                 focusId={navigationTarget?.id || null}
                 focusType={navigationTarget?.type || null}
                 focusSedeId={navigationTarget?.sedeId || null}

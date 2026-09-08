@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Barcode, Package, Search } from 'lucide-react'
+import { ArrowLeft, Barcode, Package, Search } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { productResolver, findProduct, saveProduct, searchProducts, validateProduct, enrichProduct, downloadProductsXlsx } from '../lib/productQueries'
 import { missingProposals, applyProductProposals, displayProductSources, PRODUCT_FIELD_LABELS } from '../lib/productEnrichment'
@@ -14,10 +14,11 @@ const fields = [['name','Nombre del artículo *'],['brand','Marca'],['manufactur
 
 export function RelevamientoArticulos() { return <Articulos initialMode="scan" /> }
 
-export default function Articulos({ initialMode = 'list' }) {
+export default function Articulos({ initialMode = 'list', onNavigate }) {
   const { can, perfil } = useAuth()
   const writable = can('articulos')
-  const [mode, setMode] = useState(initialMode)
+  const scanOnly = perfil?.rol === 'deposito'
+  const [mode, setMode] = useState(scanOnly ? 'scan' : initialMode)
   const [code, setCode] = useState('')
   const [scanner, setScanner] = useState(false)
   const [form, setForm] = useState(null)
@@ -25,6 +26,7 @@ export default function Articulos({ initialMode = 'list' }) {
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
+  const codeInput = useRef(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [warnings, setWarnings] = useState([])
@@ -69,10 +71,19 @@ export default function Articulos({ initialMode = 'list' }) {
     }).finally(() => { if (!stale) setLoading(false) })
     return () => { stale = true }
   }, [query, page, mode, form, refresh])
+  useEffect(() => {
+    if (mode === 'scan' && !form && !scanner && !busy) codeInput.current?.focus()
+  }, [mode, form, scanner, busy])
 
-  const reset = () => { setForm(null); setFile(null); uploaded.current = null; setDirty(false); setError(''); setWarnings([]); setConfirmedCode(false); setEditing(false); setProposals([]); setSourceUrl('') }
+  const reset = () => { setForm(null); setCode(''); setFile(null); uploaded.current = null; setDirty(false); setError(''); setWarnings([]); setConfirmedCode(false); setEditing(false); setProposals([]); setSourceUrl('') }
   const canLeave = () => !dirty || window.confirm('Hay cambios sin guardar. ¿Querés descartarlos?')
-  const switchMode = next => { if (busyRef.current || !canLeave()) return; reset(); setMode(next); setNotice('') }
+  const goBack = () => {
+    if (busyRef.current || !canLeave()) return
+    reset()
+    if (onNavigate) onNavigate('inicio')
+    else window.history.back()
+  }
+  const switchMode = next => { if ((scanOnly && next !== 'scan') || busyRef.current || !canLeave()) return; reset(); setMode(next); setNotice('') }
   const update = (key, value) => { setForm(f => ({ ...f, [key]:value })); setDirty(true) }
   async function completeMissing() {
     if (!form || !writable || busyRef.current) return
@@ -102,14 +113,15 @@ export default function Articulos({ initialMode = 'list' }) {
   async function lookup(value, localOnly = false) {
     if (busyRef.current || !canLeave()) return
     let barcode
-    try { barcode = normalizeBarcode(value) } catch (e) { setError(e.message); return }
+    try { barcode = normalizeBarcode(value) } catch (e) { setCode(''); setError(e.message); codeInput.current?.focus(); return }
+    setCode('')
     busyRef.current = true; setBusy(true); setError(''); setNotice(''); setScanner(false)
     request.current?.abort(); const controller = new AbortController(); request.current = controller
     try {
       const result = localOnly ? { product:await findProduct(barcode), origin:'local', warnings:[] } : await productResolver.resolve(barcode, { signal:controller.signal })
       if (controller.signal.aborted) return
       if (localOnly && !result.product) throw new Error('El artículo ya no está disponible. Actualizá el listado.')
-      reset(); setCode(barcode); setWarnings(result.warnings || [])
+      reset(); setWarnings(result.warnings || [])
       setForm(result.product ? { ...empty(barcode), ...result.product } : empty(barcode))
       setEditing(result.origin !== 'local' && writable)
       setDirty(result.origin !== 'local')
@@ -135,7 +147,7 @@ export default function Articulos({ initialMode = 'list' }) {
         setForm(saved); setFile(null); uploaded.current = null
       }
       setEditing(false); setProposals([]); setRefresh(n => n + 1); setNotice('Artículo guardado en el maestro.')
-      if (next) { reset(); setCode(''); setMode('scan'); setScanner(true) }
+      if (next) { reset(); setMode('scan'); setScanner(false) }
     } catch (e) {
       setDirty(true)
       setError(`${saved ? 'El artículo se guardó, pero falta completar la imagen. Reintentá guardar. ' : ''}${e.message || 'No se pudo guardar.'}`)
@@ -143,10 +155,11 @@ export default function Articulos({ initialMode = 'list' }) {
   }
   const image = filePreview || safeImageUrl(form?.image_url)
   return <div className="articulos-view">
+    {!scanOnly && <button type="button" className="btn-ghost articulos-back" disabled={busy} onClick={goBack}><ArrowLeft size={18} /> Volver atrás</button>}
     <header><div><span className="articulos-eyebrow">MAESTRO DE PRODUCTOS</span><h1>{mode === 'scan' ? 'Relevamiento de artículos' : 'Artículos'}</h1><p>Identificá productos y registrá sus presentaciones.</p></div></header>
     <nav aria-label="Artículos" className="articulos-tabs">
       {writable && <button type="button" className={mode === 'scan' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('scan')}><Barcode size={18} /> Relevamiento de artículos</button>}
-      <button type="button" className={mode === 'list' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('list')}><Package size={18} /> Artículos</button>
+      {!scanOnly && <button type="button" className={mode === 'list' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('list')}><Package size={18} /> Artículos</button>}
     </nav>
     {error && <p className="articulos-error" role="alert">{error}</p>}
     {notice && <p className="articulos-notice" role="status">{notice}</p>}
@@ -155,8 +168,8 @@ export default function Articulos({ initialMode = 'list' }) {
     {!form && mode === 'scan' && <section className="articulos-card">
       <button type="button" className="btn-primary articulos-scan" disabled={busy} onClick={() => setScanner(true)}><Barcode size={28} /> ESCANEAR CÓDIGO</button>
       <form onSubmit={e => { e.preventDefault(); lookup(code) }} className="articulos-code">
-        <label htmlFor="product-code">O ingresá el código manualmente</label>
-        <div><input id="product-code" className="input-dark" inputMode="numeric" autoComplete="off" value={code} onChange={e => setCode(e.target.value)} placeholder="EAN, UPC o GTIN-14" maxLength={14} disabled={busy} /><button className="btn-ghost" disabled={busy || !code}>Buscar</button></div>
+        <label htmlFor="product-code">Escaneá con pistola o ingresá el código manualmente</label>
+        <div><input ref={codeInput} id="product-code" className="input-dark" inputMode="numeric" autoComplete="off" value={code} onChange={e => setCode(e.target.value)} placeholder="Listo para escanear · EAN, UPC o GTIN-14" maxLength={14} disabled={busy} /><button className="btn-ghost" disabled={busy || !code}>Buscar</button></div>
       </form>
       <p>Se consulta primero nuestra base. Si el producto no está identificado, podés cargarlo manualmente.</p>
     </section>}
