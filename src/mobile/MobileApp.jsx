@@ -15,6 +15,7 @@ import usePersistedState from '../hooks/usePersistedState'
 import { mobileDestinationForView } from '../lib/navigationRoutes'
 import AssetQrScannerModal from '../components/AssetQrScannerModal'
 import { parseInternalQrValue } from '../lib/assetQrScan'
+import { escanearSeguimientoCompra, parsePurchaseTrackingValue } from '../lib/comprasWorkflow'
 import { toast } from '../lib/feedback'
 import { newScanEventId } from '../lib/assetScans'
 import InternalCredentialView from '../components/InternalCredentialView'
@@ -57,14 +58,14 @@ export default function MobileApp() {
     if (isComprasOnly) return new Set(['home', 'compras'])
     if (isMaintenanceEditor) return new Set(['tickets', 'sedes', 'compras', 'mas'])
     if (rol === 'operario') return new Set(['home', 'checklist'])
-    if (isDeposito) return new Set(['mas'])
+    if (isDeposito) return new Set(['home', 'mas'])
     return null
   }, [isSafetyOnly, isQualityOnly, isComprasOnly, isMaintenanceEditor, isDeposito, rol])
   const bottomNavAllowed = useMemo(
     () => navAllowed || new Set(['home', 'tareas', 'sedes', 'tickets', 'mas']),
     [navAllowed],
   )
-  const initialTab = isDeposito ? 'mas' : (isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home')))
+  const initialTab = isDeposito ? 'home' : (isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home')))
   const [tab, setTab] = usePersistedState(`mobile.${user?.id}.tab`, initialTab, { validate:value => NAV.some(item => item.key === value) || value === 'perfil' })
   const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
@@ -74,6 +75,7 @@ export default function MobileApp() {
   const [reportContext, setReportContext] = useState(null)
   const [returnContext, setReturnContext] = useState(null)
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [purchaseScannerOpen, setPurchaseScannerOpen] = useState(false)
   const [credentialToken, setCredentialToken] = useState(null)
 
   const openScannedQr = async target => {
@@ -87,6 +89,17 @@ export default function MobileApp() {
       return
     }
     setCredentialToken(target.token)
+  }
+
+  const openPurchaseScanner = () => setPurchaseScannerOpen(true)
+  const scanPurchase = async token => {
+    setPurchaseScannerOpen(false)
+    try {
+      const updated = await escanearSeguimientoCompra(token)
+      toast.ok(updated.estado === 'Recibido' ? 'Pedido recibido en depósito.' : 'Pedido finalizado · cumplido.')
+    } catch (error) {
+      toast.error('No se pudo registrar: ' + (error?.message || 'revisá el código e intentá nuevamente.'))
+    }
   }
 
   const openContextualReport = context => {
@@ -115,7 +128,7 @@ export default function MobileApp() {
   }, [isDeposito, masModule, setMasModule])
 
   // Botón atrás del celular: navegar en vez de cerrar la app.
-  const tabInicio = isDeposito ? 'mas' : (isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : 'home'))
+  const tabInicio = isDeposito ? 'home' : (isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : 'home'))
   useEffect(() => initBackNavigation(), [])
   useBackHandler(() => { setMasModule(null); setTab(tabInicio) }, screen === 'main' && tab !== tabInicio)
   useBackHandler(() => setScreen('main'), screen !== 'main')
@@ -156,7 +169,7 @@ export default function MobileApp() {
       )
     }
     if (screen === 'marcacion') return <MobileMarcacion onBack={() => setScreen('main')} />
-    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} onOpenScanner={()=>setScannerOpen(true)} onOpenAttendance={()=>setScreen('marcacion')} />
+    if (tab === 'home')          return <MobileHome onNuevoReporte={canReport ? () => setScreen('reporte') : null} onOpenSearch={!isQualityOnly && !isComprasOnly && !['operario','flota'].includes(rol) ? () => setShowSearch(true) : null} onOpenScanner={()=>setScannerOpen(true)} onOpenPurchaseScanner={can('compras', 'receive') && !isQualityOnly ? openPurchaseScanner : null} onOpenAttendance={()=>setScreen('marcacion')} />
     if (tab === 'tareas')        return <MobileTareas />
     if (tab === 'sedes')         return <MobileSedes focusContext={returnContext} onCreateNovedad={canReport ? openContextualReport : null} />
     if (tab === 'escalamientos') return <MobileEscalamientos />
@@ -233,6 +246,19 @@ export default function MobileApp() {
           invalidMessage="El QR no corresponde a un activo ni a una credencial de Fly Gestión."
           placeholder="Pegá el enlace del QR…"
           help="La app reconoce el QR y abre su ficha interna según tus permisos."
+        />
+      )}
+      {purchaseScannerOpen && (
+        <AssetQrScannerModal
+          onClose={() => setPurchaseScannerOpen(false)}
+          onScan={scanPurchase}
+          parseValue={parsePurchaseTrackingValue}
+          title="Escanear pedido"
+          subtitle="Recepción y entrega de Compras"
+          prompt="Apuntá al QR de la orden de compra."
+          invalidMessage="El QR no corresponde a un pedido de Fly Gestión."
+          placeholder="Pegá el enlace de seguimiento"
+          help="Primera lectura: recepción en depósito. Segunda lectura: entrega al solicitante."
         />
       )}
       {credentialToken && <InternalCredentialView

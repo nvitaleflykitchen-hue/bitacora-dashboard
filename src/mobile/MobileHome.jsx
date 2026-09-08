@@ -107,7 +107,7 @@ function LimpiezaHoyBanner({ sedeId }) {
   )
 }
 
-export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner, onOpenAttendance }) {
+export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner, onOpenPurchaseScanner, onOpenAttendance }) {
   const { perfil, allowedSedeIds } = useAuth()
   const [registros, setRegistros] = useState([])
   const [tareas, setTareas] = useState([])
@@ -169,6 +169,10 @@ export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner
 
       {onOpenScanner && <button type="button" onClick={onOpenScanner} className="btn-primary" style={{ width:'100%', minHeight:48, marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontSize:'.9rem' }}>
         <ScanLine size={19}/> Escanear QR
+      </button>}
+
+      {onOpenPurchaseScanner && <button type="button" onClick={onOpenPurchaseScanner} className="btn-ghost" style={{ width:'100%', minHeight:48, marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontSize:'.9rem', color:'#2DD4BF', borderColor:'rgba(45,212,191,.35)' }}>
+        <ScanLine size={19}/> Escanear pedido
       </button>}
 
       {/* Boton principal */}
