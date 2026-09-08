@@ -18,13 +18,14 @@ describe('flujo artículos', () => {
     fireEvent.click(screen.getByRole('button', { name:'Volver atrás' }))
     expect(onNavigate).toHaveBeenCalledWith('inicio')
   })
-  it('deja al usuario de depósito únicamente en el relevamiento', () => {
+  it('da al usuario de depósito el relevamiento y el maestro completo', async () => {
     authState.rol = 'deposito'
     render(<Articulos initialMode="list" />)
     expect(screen.getByLabelText('Escaneá con pistola o ingresá el código manualmente')).toHaveFocus()
     expect(screen.getByRole('button', { name:'ESCANEAR CÓDIGO' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name:'Artículos' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Descargar base en Excel')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name:'Volver atrás' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name:'Artículos' }))
+    expect(await screen.findByText('Descargar base en Excel')).toBeInTheDocument()
   })
   it('presenta propuestas antes de aplicar y conserva los datos corregidos', async () => {
     productResolver.resolve.mockResolvedValue({ product:{ name:'Mi azúcar',brand:'Mi marca' },origin:'external',warnings:[] })
