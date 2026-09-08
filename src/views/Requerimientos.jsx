@@ -297,6 +297,9 @@ function shareRequerimiento(req, sedes, channel) {
 function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, canManage, isAdmin, onClose, onSaved }) {
   const [savedReq, setSavedReq] = useState(req || null)
   const activeReq = savedReq || req
+  useEffect(() => {
+    if (req?.id) setSavedReq(req)
+  }, [req])
   const editing = !!activeReq?.id
   const contenidoBloqueado = editing && (!!activeReq?.enviado_at || ['Enviado','En compra','Recibido','Cumplido','Rechazado','Cancelado'].includes(activeReq?.estado))
   const [form, setForm] = useState({
@@ -840,6 +843,7 @@ export default function Requerimientos({ focusId }) {
     try {
       const updated = await escanearSeguimientoCompra(token)
       setReqs(current=>current.map(item=>item.id===updated.id?{...item,...updated}:item))
+      setEditReq(current=>current?.id===updated.id ? {...current,...updated} : current)
       toast.ok(updated.estado==='Recibido' ? 'Pedido recibido y guardado en depósito.' : 'Entrega confirmada · pedido cumplido.')
     } catch (error) { toast.error('No se pudo registrar la lectura: ' + mensajeError(error)) }
   }
