@@ -17,8 +17,8 @@ export function RelevamientoArticulos() { return <Articulos initialMode="scan" /
 export default function Articulos({ initialMode = 'list', onNavigate }) {
   const { can, perfil } = useAuth()
   const writable = can('articulos')
-  const scanOnly = perfil?.rol === 'deposito'
-  const [mode, setMode] = useState(scanOnly ? 'scan' : initialMode)
+  const isDeposito = perfil?.rol === 'deposito'
+  const [mode, setMode] = useState(isDeposito ? 'scan' : initialMode)
   const [code, setCode] = useState('')
   const [scanner, setScanner] = useState(false)
   const [form, setForm] = useState(null)
@@ -83,7 +83,7 @@ export default function Articulos({ initialMode = 'list', onNavigate }) {
     if (onNavigate) onNavigate('inicio')
     else window.history.back()
   }
-  const switchMode = next => { if ((scanOnly && next !== 'scan') || busyRef.current || !canLeave()) return; reset(); setMode(next); setNotice('') }
+  const switchMode = next => { if (busyRef.current || !canLeave()) return; reset(); setMode(next); setNotice('') }
   const update = (key, value) => { setForm(f => ({ ...f, [key]:value })); setDirty(true) }
   async function completeMissing() {
     if (!form || !writable || busyRef.current) return
@@ -155,11 +155,11 @@ export default function Articulos({ initialMode = 'list', onNavigate }) {
   }
   const image = filePreview || safeImageUrl(form?.image_url)
   return <div className="articulos-view">
-    {!scanOnly && <button type="button" className="btn-ghost articulos-back" disabled={busy} onClick={goBack}><ArrowLeft size={18} /> Volver atrás</button>}
+    <button type="button" className="btn-ghost articulos-back" disabled={busy} onClick={goBack}><ArrowLeft size={18} /> Volver atrás</button>
     <header><div><span className="articulos-eyebrow">MAESTRO DE PRODUCTOS</span><h1>{mode === 'scan' ? 'Relevamiento de artículos' : 'Artículos'}</h1><p>Identificá productos y registrá sus presentaciones.</p></div></header>
     <nav aria-label="Artículos" className="articulos-tabs">
       {writable && <button type="button" className={mode === 'scan' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('scan')}><Barcode size={18} /> Relevamiento de artículos</button>}
-      {!scanOnly && <button type="button" className={mode === 'list' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('list')}><Package size={18} /> Artículos</button>}
+      <button type="button" className={mode === 'list' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('list')}><Package size={18} /> Artículos</button>
     </nav>
     {error && <p className="articulos-error" role="alert">{error}</p>}
     {notice && <p className="articulos-notice" role="status">{notice}</p>}

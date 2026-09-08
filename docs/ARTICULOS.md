@@ -47,7 +47,7 @@ La relación compuesta impide asociar un código a una presentación de otro pro
 ## Permisos propuestos
 
 - `admin`, `editor`, `grupo`, `encargado`, `sede`, `deposito`: leer, crear y editar el maestro global.
-- `deposito` abre directamente el relevamiento y solo navega dentro de Artículos; no accede a reportes, compras, alertas, sedes, mantenimiento, flota, calidad, equipo ni administración.
+- `deposito` abre directamente el relevamiento y puede usar el maestro completo de Artículos, incluidas fichas, cálculos por caja/bulto y descarga en Excel; no accede a reportes, compras, alertas, sedes, mantenimiento, flota, calidad, equipo ni administración.
 - `consultor`: lectura.
 - Perfiles inactivos, anónimos, operarios, flota y mantenimiento: sin acceso al módulo.
 - Se conservan las restricciones especiales de navegación de perfiles exclusivos de Calidad, Higiene y Seguridad y Compras. Los tres correos especiales de Calidad/Seguridad también se excluyen en la política del maestro.
