@@ -122,7 +122,7 @@ export default function ComentariosHilo({ entidadTipo, entidadId, compact = fals
     setTexto(next)
     setMentions(current => {
       if (!persona.perfil_id || current.some(item => String(item.perfil_id) === String(persona.perfil_id))) return current
-      return [...current, { perfil_id:persona.perfil_id, persona_id:persona.id, nombre }]
+      return [...current, { perfil_id:persona.perfil_id, persona_id:persona.persona_id || null, nombre }]
     })
     setCaretPos(nextCaret)
     requestAnimationFrame(() => {

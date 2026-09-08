@@ -1621,14 +1621,18 @@ export async function getPersonasMencionables() {
       const contacto =
         contactos.find((item) => item.perfil_id === perfil.id) ||
         contactos.find((item) => email && clean(item.email) === email);
+      // Las menciones apuntan a cuentas del sistema. El nombre canónico debe
+      // coincidir con Usuarios aunque la cuenta esté vinculada a una ficha de
+      // Equipo con otro nombre (algo habitual en cuentas operativas compartidas).
       const nombre =
+        perfil.nombre ||
         fullName(persona || {}) ||
         contacto?.nombre ||
-        perfil.nombre ||
         perfil.email;
       return {
-        id: persona?.id || contacto?.id || perfil.id,
+        id: perfil.id,
         perfil_id: perfil.id,
+        persona_id: persona?.id || null,
         nombre,
         apellido: "",
         puesto: persona?.puesto || contacto?.cargo || perfil.rol || "",
