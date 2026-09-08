@@ -72,6 +72,7 @@ describe('matriz de acceso', () => {
     expect(canAccessView('deposito', 'usuarios')).toBe(false)
     expect(canWrite('deposito', 'articulos', 'manage')).toBe(true)
     expect(canWrite('deposito', 'compras', 'request', { compras_permisos:['manage'] })).toBe(false)
+    expect(canWrite('deposito', 'compras', 'receive', { compras_permisos:['receive'] })).toBe(true)
     expect(canWrite('deposito', 'mantenimiento', 'manage', { mantenimiento_permisos:['manage_all'] })).toBe(false)
     expect(canWrite('deposito', 'bitacora', 'report')).toBe(false)
   })

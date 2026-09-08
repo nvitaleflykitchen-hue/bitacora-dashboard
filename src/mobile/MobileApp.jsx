@@ -189,7 +189,7 @@ export default function MobileApp() {
           <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: 4 }}>· {APP_NAME}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {!isQualityOnly && !isComprasOnly && !isDeposito && <NotificationCenter onNavigate={handleNotificationNavigate} />}
+          {!isQualityOnly && !isDeposito && <NotificationCenter onNavigate={handleNotificationNavigate} />}
           <button type="button" onClick={() => setTab('perfil')} aria-label="Abrir mi perfil" aria-current={tab === 'perfil' ? 'page' : undefined} style={{ background:'none', border:'none', padding:0, color:tab === 'perfil' ? 'var(--phosphor)' : 'var(--text-dim)', display:'grid', placeItems:'center', minWidth:44, minHeight:44 }}>
             <User size={20} aria-hidden="true" />
           </button>

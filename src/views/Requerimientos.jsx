@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../lib/auth'
 import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, getContactos, getPerfiles, getRegistroById, getAllSedeContactos, crearEntregaCompras, registrarAvisoEntregaCompras, confirmarEntregaCompras, crearComentario } from '../lib/queries'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
-import { Plus, RefreshCw, ShoppingCart, Send, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save, FileText, PackageCheck } from 'lucide-react'
+import { Plus, RefreshCw, ShoppingCart, X, ExternalLink, Image, Mail, MessageCircle, Paperclip, Eye, EyeOff, Clock3, Lock, BookOpen, ChevronDown, ChevronUp, Users, Save, FileText, PackageCheck, Store, ScanLine } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import RegistroModal from '../components/RegistroModal'
 import { uploadAdjunto } from '../lib/adjuntos'
@@ -14,6 +14,10 @@ import { operationalStateLabel } from '../lib/operationalStates'
 import useFormDraft from '../hooks/useFormDraft'
 import FormDraftNotice from '../components/FormDraftNotice'
 import FormErrorSummary from '../components/FormErrorSummary'
+import ComprasProveedoresModal from '../components/ComprasProveedoresModal'
+import OrdenCompraPanel from '../components/OrdenCompraPanel'
+import AssetQrScannerModal from '../components/AssetQrScannerModal'
+import { escanearSeguimientoCompra, parsePurchaseTrackingValue } from '../lib/comprasWorkflow'
 
 const ESTADOS   = ['Pendiente','Observado','Aprobado','Enviado','En compra','Recibido','Cumplido','Rechazado','Cancelado']
 const KANBAN_ACTIVOS = ['Pendiente','Aprobado','Enviado','En compra','Recibido']
@@ -173,12 +177,12 @@ function EquipoComprasModal({ onClose }) {
   )
 }
 const TRANSICIONES = {
-  Pendiente:['Observado','Aprobado','Rechazado','Cancelado'],
+  Pendiente:['Observado','Rechazado','Cancelado'],
   Observado:['Pendiente','Rechazado','Cancelado'],
-  Aprobado:['Enviado','Observado','Rechazado','Cancelado'],
+  Aprobado:['Observado','Rechazado','Cancelado'],
   Enviado:['En compra','Recibido','Cancelado'],
-  'En compra':['Recibido','Cancelado'],
-  Recibido:['En compra','Cumplido'],
+  'En compra':['Cancelado'],
+  Recibido:['En compra'],
   Cumplido:[], Rechazado:[], Cancelado:[],
 }
 
@@ -290,7 +294,7 @@ function shareRequerimiento(req, sedes, channel) {
 }
 
 // ─── Modal Form ────────────────────────────────────────────
-function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onClose, onSaved }) {
+function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, canManage, isAdmin, onClose, onSaved }) {
   const [savedReq, setSavedReq] = useState(req || null)
   const activeReq = savedReq || req
   const editing = !!activeReq?.id
@@ -606,6 +610,20 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
             </div>
           )}
 
+          {editing && activeReq?.id && (
+            <OrdenCompraPanel
+              requerimiento={activeReq}
+              perfil={perfil}
+              canManage={canManage}
+              isAdmin={isAdmin}
+              onChanged={async updated=>{
+                setSavedReq(updated)
+                setForm(current=>({ ...current, estado:updated.estado }))
+                await onSaved()
+              }}
+            />
+          )}
+
           {editing && Array.isArray(activeReq.historial_estados) && activeReq.historial_estados.length > 0 && (
             <div style={{ paddingTop:6, borderTop:'1px solid rgba(255,255,255,0.05)' }}>
               <label style={L}>Historial del proceso</label>
@@ -652,7 +670,7 @@ function RequerimientoForm({ req, sedes, solicitantes, perfil, emailCompras, onC
 }
 
 // ─── Tarjeta en kanban ─────────────────────────────────────
-function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
+function ReqCard({ req, onEdit, onUpdateEstado, readOnly = false }) {
   const urg = URG_COLOR[req.urgencia] || '#aaa'
   const diasEtapa = diasHabilesEntre(inicioEtapa(req))
   const diasCompra = req.enviado_at ? diasHabilesEntre(req.enviado_at, req.cumplido_at ? new Date(req.cumplido_at) : new Date()) : null
@@ -708,12 +726,6 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
           style={{ flex:1, background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.15)', color:'#e2e8f0', borderRadius:4, padding:'3px 6px', fontSize:'0.65rem', fontFamily:'inherit' }}>
           {estadosDisponibles(req).map(s=><option key={s} value={s} style={{ background:'#1a1a2e', color:'#e2e8f0' }}>{s}</option>)}
         </select>
-        {req.estado === 'Aprobado' && (
-          <button onClick={()=>onEnviar(req)} title="Enviar a compras"
-            style={{ background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)', color:'#F59E0B', borderRadius:4, padding:'3px 7px', cursor:'pointer', display:'flex', alignItems:'center', gap:3, fontSize:'0.62rem' }}>
-            <Send size={10}/> Enviar
-          </button>
-        )}
       </div>}
     </div>
   )
@@ -721,9 +733,10 @@ function ReqCard({ req, onEdit, onUpdateEstado, onEnviar, readOnly = false }) {
 
 // ─── Vista principal ───────────────────────────────────────
 export default function Requerimientos({ focusId }) {
-  const { allowedSedeIds, perfil, user, can } = useAuth()
+  const { allowedSedeIds, perfil, user, can, isAdmin } = useAuth()
   const canManage = can('compras', 'manage')
   const canRequest = can('compras', 'request') || canManage
+  const canReceive = can('compras', 'receive')
   const [reqs, setReqs]       = useState([])
   const [sedes, setSedes]     = useState([])
   const [contactos, setContactos] = useState([])
@@ -742,6 +755,8 @@ export default function Requerimientos({ focusId }) {
   const [showProcess, setShowProcess] = useState(false)
   const [showEquipoCompras, setShowEquipoCompras] = useState(false)
   const [observationReq, setObservationReq] = useState(null)
+  const [showProveedores, setShowProveedores] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -820,18 +835,13 @@ export default function Requerimientos({ focusId }) {
     }
   }
 
-  const handleEnviar = async (req) => {
-    if (!canManage) return
-    const dest = emailCompras || req.enviado_a || ''
-    const subject = encodeURIComponent(`[Requerimiento #${req.numero||req.id}] ${req.descripcion?.substring(0,50)}`)
-    const body = buildEmailBody(req, sedes)
-    window.open(`mailto:${dest}?subject=${subject}&body=${body}`, '_blank')
-    if (!await confirmar({ titulo: 'Envío a Compras', mensaje: '¿Confirmás que el correo fue enviado a Compras? Recién entonces comenzará el reloj del SLA.', confirmText: 'Sí, enviado' })) return
+  const handlePurchaseScan = async token => {
+    setShowScanner(false)
     try {
-      const payload = { ...buildTransitionPayload(req, 'Enviado', perfil), enviado_a:dest || null }
-      const updated = await updateRequerimiento(req.id, payload)
-      setReqs(prev=>prev.map(r=>r.id===req.id?{...r,...updated}:r))
-    } catch (e) { toast.error('No se pudo registrar el envío: ' + mensajeError(e)) }
+      const updated = await escanearSeguimientoCompra(token)
+      setReqs(current=>current.map(item=>item.id===updated.id?{...item,...updated}:item))
+      toast.ok(updated.estado==='Recibido' ? 'Pedido recibido y guardado en depósito.' : 'Entrega confirmada · pedido cumplido.')
+    } catch (error) { toast.error('No se pudo registrar la lectura: ' + mensajeError(error)) }
   }
 
   const handleAvisarRetiro = async (grupo) => {
@@ -907,6 +917,8 @@ export default function Requerimientos({ focusId }) {
     <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 2rem', display:'flex', flexDirection:'column', gap:16 }}>
       {observationReq && <ObservationModal personas={perfiles.filter(item=>item.activo!==false)} onClose={()=>setObservationReq(null)} onConfirm={confirmObservation} />}
       {showEquipoCompras && <EquipoComprasModal onClose={()=>setShowEquipoCompras(false)}/>} 
+      {showProveedores && <ComprasProveedoresModal userId={user.id} onClose={()=>setShowProveedores(false)} onChanged={load}/>}
+      {showScanner && <AssetQrScannerModal onClose={()=>setShowScanner(false)} onScan={handlePurchaseScan} parseValue={parsePurchaseTrackingValue} title="Escanear pedido" subtitle="Recepción y entrega de Compras" prompt="Apuntá al QR de la orden de compra." invalidMessage="El código no corresponde a un pedido de Fly Gestión." placeholder="Pegá el enlace de seguimiento" help="Primera lectura: recepción en depósito. Segunda lectura: entrega confirmada por el solicitante."/>}
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:10 }}>
         <div>
@@ -917,6 +929,8 @@ export default function Requerimientos({ focusId }) {
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <ContactosQuickBtn modulo="compras" />
+          {canManage && <button onClick={()=>setShowProveedores(true)} className="btn-ghost" style={{padding:'0.4rem 0.65rem',display:'flex',alignItems:'center',gap:5,fontSize:'0.65rem'}}><Store size={12}/> Proveedores</button>}
+          {(canReceive || canManage || isAdmin) && <button onClick={()=>setShowScanner(true)} className="btn-ghost" style={{padding:'0.4rem 0.65rem',display:'flex',alignItems:'center',gap:5,fontSize:'0.65rem',color:'#2DD4BF'}}><ScanLine size={12}/> Escanear pedido</button>}
           <button onClick={()=>setShowEquipoCompras(true)} className="btn-ghost"
             title="Ver responsables y alcance del equipo de compras"
             style={{ padding:'0.4rem 0.65rem', display:'flex', alignItems:'center', gap:5, fontSize:'0.65rem' }}>
@@ -946,7 +960,7 @@ export default function Requerimientos({ focusId }) {
       {showProcess && (
         <div className="glass rounded fade-in" style={{ borderRadius:3, padding:'12px 14px', border:'1px solid rgba(96,165,250,0.18)' }}>
           <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:6, marginBottom:10 }}>
-            {['Pendiente','Aprobado','Enviado','En compra','Recibido','Cumplido'].map((estado, i, arr)=>(
+            {['Pendiente','Aprobado','En compra','Recibido','Cumplido'].map((estado, i, arr)=>(
               <div key={estado} style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ padding:'5px 8px', borderRadius:3, border:`1px solid ${EST_COLOR[estado]}55`, color:EST_COLOR[estado], background:`${EST_COLOR[estado]}12`, fontSize:'0.62rem', fontWeight:700 }}>
                   {i + 1}. {estado}
@@ -1091,7 +1105,6 @@ export default function Requerimientos({ focusId }) {
                   <ReqCard key={r.id} req={r}
                     onEdit={r=>{ setEditReq(r); setShowForm(true) }}
                     onUpdateEstado={handleUpdateEstado}
-                    onEnviar={handleEnviar}
                     readOnly={!canManage && !(canRequest && ['Pendiente','Observado'].includes(r.estado))}/>
                 ))}
                 {items.length===0 && (
@@ -1112,6 +1125,8 @@ export default function Requerimientos({ focusId }) {
           solicitantes={solicitantes}
           perfil={perfil}
           emailCompras={emailCompras}
+          canManage={canManage}
+          isAdmin={isAdmin}
           onClose={()=>{ setShowForm(false); setEditReq(null) }}
           onSaved={load}/>
       )}

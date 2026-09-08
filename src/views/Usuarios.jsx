@@ -24,6 +24,7 @@ const ACCIONES_COMPRAS = [
   { accion: 'manage',    label: 'Gestionar',    desc: 'Tomar requerimientos y avanzar etapas post-Enviado' },
   { accion: 'supervise', label: 'Supervisar',   desc: 'Asignar y reasignar compradores, ver toda la bandeja' },
   { accion: 'invoice',   label: 'Facturación',  desc: 'Etapa documental y de facturación' },
+  { accion: 'receive',   label: 'Recibir mercadería', desc: 'Escanear el QR y dejar el pedido recibido en depósito' },
 ]
 
 const ACCIONES_PERSONAL = [

@@ -255,7 +255,7 @@ export function canWrite(rol, domain, action = 'manage', perfil = null) {
   }
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_WRITE_DOMAINS.has(domain)
   if (rol === 'admin' || rol === 'editor') return true
-  if (rol === 'deposito') return domain === 'articulos'
+  if (rol === 'deposito') return domain === 'articulos' || (domain === 'compras' && action === 'receive' && hasComprasPermission(perfil, 'receive'))
   if (domain === 'mantenimiento' && hasMantenimientoGlobalPermission(perfil)) return true
   if (domain === 'compras' && hasComprasPermission(perfil, action)) return true
   if (rol === 'consultor') return false

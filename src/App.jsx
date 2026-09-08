@@ -62,6 +62,7 @@ const EquipoView = lazy(() => import('./views/EquipoView'))
 const SedeEncargadoView = lazy(() => import('./views/SedeEncargadoView'))
 const CredencialVerificacion = lazy(() => import('./views/CredencialVerificacion'))
 const EppEntregaConfirmacion = lazy(() => import('./views/EppEntregaConfirmacion'))
+const PurchaseTrackingView = lazy(() => import('./views/PurchaseTrackingView'))
 
 const ALL_VIEWS = {
   articulos: Articulos,
@@ -181,6 +182,7 @@ function AppInner() {
   const isQualityOnly = isQualityOnlyProfile(perfil)
   const isComprasOnly = isComprasOnlyProfile(perfil)
   const isDeposito = rol === 'deposito'
+  const purchaseTrackingToken = new URLSearchParams(window.location.search).get('compra')
   // 'operario': rol mobile-only, sin acceso a escritorio sin importar el ancho de pantalla.
   const forceMobile = rol === 'operario'
   const [qrActivoId, setQrActivoId] = useState(() => new URLSearchParams(window.location.search).get('id'))
@@ -237,6 +239,7 @@ function AppInner() {
   if (!user)   return <LoginPage />
   if (accessBlocked) return <AccessBlocked onSignOut={signOut} />
   if (perfil?.must_change_password) return <CambiarContrasena />
+  if (purchaseTrackingToken) return <Suspense fallback={<LoadingScreen/>}><PurchaseTrackingView token={purchaseTrackingToken}/></Suspense>
   if (activeView === 'qrActivo' && isMobile) {
     return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} scanEventId={qrScanEventId} onNavigate={setActiveView} /></Suspense>
   }
