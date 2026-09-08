@@ -3,7 +3,7 @@ import { getRequerimientos, createRequerimiento, updateRequerimiento, getSedes, 
 import { useAuth } from '../lib/auth'
 import usePersistedState from '../hooks/usePersistedState'
 import { isQualityOnlyProfile } from '../lib/access'
-import { ShoppingCart, ChevronDown, FileText, Plus, X } from 'lucide-react'
+import { ShoppingCart, ChevronDown, FileText, Plus, X, ScanLine } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -29,6 +29,8 @@ import SkeletonTable from '../components/SkeletonTable'
 import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { generarReporteEficienciaCompras } from '../lib/comprasEficienciaPdf'
+import AssetQrScannerModal from '../components/AssetQrScannerModal'
+import { escanearSeguimientoCompra, parsePurchaseTrackingValue } from '../lib/comprasWorkflow'
 
 const URGENCIA_COLOR = { baja: '#39FF14', media: '#F59E0B', alta: '#FF2A2A' }
 
@@ -186,6 +188,7 @@ export default function MobileRequerimientos() {
   const { allowedSedeIds, can, rol, perfil } = useAuth()
   const canManage = (can('compras', 'manage') || ['admin','editor','encargado'].includes(rol)) && !isQualityOnlyProfile(perfil)
   const canRequest = (can('compras', 'request') || canManage) && !isQualityOnlyProfile(perfil)
+  const canReceive = can('compras', 'receive') && !isQualityOnlyProfile(perfil)
   const [reqs, setReqs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = usePersistedState(`mobile.${perfil?.id || 'anon'}.requerimientos.filtro`, 'activos', {
@@ -194,6 +197,7 @@ export default function MobileRequerimientos() {
   const [sedes, setSedes] = useState([])
   const [selectedSede, setSelectedSede] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -227,6 +231,15 @@ export default function MobileRequerimientos() {
     } catch (e) { toast.error('No se pudo confirmar: ' + mensajeError(e)) }
   }
 
+  const handlePurchaseScan = async token => {
+    setShowScanner(false)
+    try {
+      const updated=await escanearSeguimientoCompra(token)
+      toast.ok(updated.estado==='Recibido'?'Pedido recibido en depósito.':'Pedido finalizado · cumplido.')
+      load()
+    } catch(error) { toast.error('No se pudo registrar: '+mensajeError(error)) }
+  }
+
   const filtrados = reqs.filter(r => {
     if (filtro === 'activos' && ['Cumplido', 'Rechazado'].includes(r.estado)) return false
     if (selectedSede && r.sede_id !== selectedSede.id) return false
@@ -241,6 +254,16 @@ export default function MobileRequerimientos() {
         sedeInicial={selectedSede}
         onClose={()=>setShowCreate(false)}
         onSaved={load}
+      />}
+      {showScanner && <AssetQrScannerModal
+        onClose={()=>setShowScanner(false)}
+        onScan={handlePurchaseScan}
+        parseValue={parsePurchaseTrackingValue}
+        title="Escanear pedido"
+        subtitle="Recepción y entrega"
+        prompt="Apuntá al QR de la orden de compra."
+        invalidMessage="El QR no corresponde a un pedido."
+        placeholder="Pegá el enlace de seguimiento"
       />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
         <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700 }}>Compras</h1>
@@ -264,6 +287,7 @@ export default function MobileRequerimientos() {
       </div>
 
       {canRequest && <button onClick={()=>setShowCreate(true)} className="btn-primary" style={{width:'100%',padding:'.75rem',justifyContent:'center',marginBottom:12,flexShrink:0}}><Plus size={16}/> Nueva solicitud</button>}
+      {canReceive && <button onClick={()=>setShowScanner(true)} className="btn-ghost" style={{width:'100%',padding:'.7rem',justifyContent:'center',marginBottom:12,flexShrink:0,color:'#2DD4BF'}}><ScanLine size={16}/> Escanear recepción</button>}
 
       {/* Filtro de sede — solo si hay 2+ sedes */}
       {sedes.length > 1 && (
