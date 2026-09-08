@@ -1,4 +1,4 @@
-export const ROLES = ['admin', 'editor', 'consultor', 'grupo', 'encargado', 'sede', 'operario', 'flota', 'mnt_editor']
+export const ROLES = ['admin', 'editor', 'consultor', 'grupo', 'encargado', 'sede', 'deposito', 'operario', 'flota', 'mnt_editor']
 
 export const ROLE_LABELS = {
   admin: 'Administrador',
@@ -7,14 +7,14 @@ export const ROLE_LABELS = {
   grupo: 'Responsable de grupo',
   encargado: 'Encargado',
   sede: 'Usuario de sede',
+  deposito: 'Usuario de depósito',
   operario: 'Operario',
   flota: 'Responsable de Flota',
   mnt_editor: 'Gestión Mantenimiento',
 }
 
-// 'operario' es un rol acotado (solo bitácora + checklist, mobile-only) y
-// queda afuera de la navegación de escritorio: no entra en ALL_OPERATIONAL_ROLES.
-const ALL_OPERATIONAL_ROLES = new Set(ROLES.filter(r => r !== 'operario'))
+// 'operario' y 'deposito' tienen navegaciones propias y no entran en el menú operativo general.
+const ALL_OPERATIONAL_ROLES = new Set(ROLES.filter(r => !['operario', 'deposito'].includes(r)))
 // 'flota' tiene su propio módulo (Flota) y no necesita el de Mantenimiento de
 // edificios/equipos: se excluye puntualmente de mantenimientoHub.
 const MANTENIMIENTO_ROLES = new Set([...ALL_OPERATIONAL_ROLES].filter(r => r !== 'flota'))
@@ -161,7 +161,7 @@ export const PRIMARY_NAV = [
   { id:'idHub', label:'I+D', icon:'research', roles:new Set(['admin','editor','consultor','grupo','encargado','sede']) },
   { id:'sedesHub', label:'Sedes', icon:'sites', roles:ALL_OPERATIONAL_ROLES },
   { id:'requerimientos', label:'Compras', icon:'purchases', roles:ALL_OPERATIONAL_ROLES },
-  { id:'articulos', label:'Artículos', icon:'products', roles:new Set(['admin','editor','consultor','grupo','encargado','sede']) },
+  { id:'articulos', label:'Artículos', icon:'products', roles:new Set(['admin','editor','consultor','grupo','encargado','sede','deposito']) },
   { id:'mantenimientoHub', label:'Mantenimiento', icon:'maintenance', roles:MANTENIMIENTO_ROLES },
   { id:'flotaHub', label:'Flota', icon:'fleet', roles:new Set(['admin','editor','consultor','grupo','encargado','flota']) },
   { id:'calidadHub', label:'Calidad', icon:'quality', roles:new Set(['admin','editor','consultor','grupo','encargado']) },
@@ -169,8 +169,8 @@ export const PRIMARY_NAV = [
 ]
 
 const VIEW_ROLES = {
-  articulos: new Set(['admin','editor','consultor','grupo','encargado','sede']),
-  relevamientoArticulos: new Set(['admin','editor','grupo','encargado','sede']),
+  articulos: new Set(['admin','editor','consultor','grupo','encargado','sede','deposito']),
+  relevamientoArticulos: new Set(['admin','editor','grupo','encargado','sede','deposito']),
   inicio: ALL_OPERATIONAL_ROLES,
   tablon: ALL_OPERATIONAL_ROLES,
   actualizaciones: ALL_OPERATIONAL_ROLES,
@@ -255,6 +255,7 @@ export function canWrite(rol, domain, action = 'manage', perfil = null) {
   }
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_WRITE_DOMAINS.has(domain)
   if (rol === 'admin' || rol === 'editor') return true
+  if (rol === 'deposito') return domain === 'articulos'
   if (domain === 'mantenimiento' && hasMantenimientoGlobalPermission(perfil)) return true
   if (domain === 'compras' && hasComprasPermission(perfil, action)) return true
   if (rol === 'consultor') return false
@@ -310,6 +311,7 @@ export function getDefaultView(rol, perfil = null) {
   if (isSafetyOnlyProfile(perfil)) return 'calidadHub'
   if (isQualityOnlyProfile(perfil)) return 'calidadHub'
   if (isComprasOnlyProfile(perfil)) return 'requerimientos'
+  if (rol === 'deposito') return 'articulos'
   return canAccessView(rol, 'inicio', perfil) ? 'inicio' : null
 }
 

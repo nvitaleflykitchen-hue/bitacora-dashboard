@@ -48,23 +48,28 @@ export default function MobileApp() {
   const isComprasOnly = isComprasOnlyProfile(perfil)
   const isSafetyOnly = isSafetyOnlyProfile(perfil)
   const isMaintenanceEditor = rol === 'mnt_editor'
+  const isDeposito = rol === 'deposito'
   const canReport = !isQualityOnly && !isComprasOnly && !isMaintenanceEditor && (can('bitacora', 'report') || ['admin','editor','grupo','encargado'].includes(rol))
   const canUseChecklist = rol !== 'consultor'
-  // 'operario': rol acotado a Inicio (Nuevo Reporte) + Checklist, nada más.
-  const navAllowed = useMemo(() => isSafetyOnly
-    ? new Set(['tareas', 'sedes', 'tickets', 'compras', 'mas'])
-    : (isQualityOnly ? new Set(['tareas', 'tickets', 'compras', 'mas']) : (isComprasOnly ? new Set(['home', 'compras']) : (isMaintenanceEditor ? new Set(['tickets', 'sedes', 'compras', 'mas']) : (rol === 'operario' ? new Set(['home', 'checklist']) : null)))),
-  [isSafetyOnly, isQualityOnly, isComprasOnly, isMaintenanceEditor, rol])
+  const navAllowed = useMemo(() => {
+    if (isSafetyOnly) return new Set(['tareas', 'sedes', 'tickets', 'compras', 'mas'])
+    if (isQualityOnly) return new Set(['tareas', 'tickets', 'compras', 'mas'])
+    if (isComprasOnly) return new Set(['home', 'compras'])
+    if (isMaintenanceEditor) return new Set(['tickets', 'sedes', 'compras', 'mas'])
+    if (rol === 'operario') return new Set(['home', 'checklist'])
+    if (isDeposito) return new Set(['mas'])
+    return null
+  }, [isSafetyOnly, isQualityOnly, isComprasOnly, isMaintenanceEditor, isDeposito, rol])
   const bottomNavAllowed = useMemo(
     () => navAllowed || new Set(['home', 'tareas', 'sedes', 'tickets', 'mas']),
     [navAllowed],
   )
-  const initialTab = isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home'))
+  const initialTab = isDeposito ? 'mas' : (isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : (isComprasOnly ? 'compras' : 'home')))
   const [tab, setTab] = usePersistedState(`mobile.${user?.id}.tab`, initialTab, { validate:value => NAV.some(item => item.key === value) || value === 'perfil' })
   const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
   const [showSearch, setShowSearch] = useState(false)
-  const [masModule, setMasModule] = usePersistedState(`mobile.${user?.id}.masModule`, isSafetyOnly || isQualityOnly ? 'calidad' : null)
+  const [masModule, setMasModule] = usePersistedState(`mobile.${user?.id}.masModule`, isDeposito ? 'relevamientoArticulos' : (isSafetyOnly || isQualityOnly ? 'calidad' : null))
   const [showWhatsNew, setShowWhatsNew] = useState(() => user?.id ? !hasSeenLatestRelease(user.id) : false)
   const [reportContext, setReportContext] = useState(null)
   const [returnContext, setReturnContext] = useState(null)
@@ -105,9 +110,12 @@ export default function MobileApp() {
   useEffect(() => {
     if (!bottomNavAllowed.has(tab) && tab !== 'perfil') setTab(initialTab)
   }, [bottomNavAllowed, tab, initialTab, setTab])
+  useEffect(() => {
+    if (isDeposito && !['relevamientoArticulos', 'articulos'].includes(masModule)) setMasModule('relevamientoArticulos')
+  }, [isDeposito, masModule, setMasModule])
 
   // Botón atrás del celular: navegar en vez de cerrar la app.
-  const tabInicio = isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : 'home')
+  const tabInicio = isDeposito ? 'mas' : (isMaintenanceEditor ? 'tickets' : (isSafetyOnly || isQualityOnly ? 'tareas' : 'home'))
   useEffect(() => initBackNavigation(), [])
   useBackHandler(() => { setMasModule(null); setTab(tabInicio) }, screen === 'main' && tab !== tabInicio)
   useBackHandler(() => setScreen('main'), screen !== 'main')
@@ -181,7 +189,7 @@ export default function MobileApp() {
           <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginLeft: 4 }}>· {APP_NAME}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {!isQualityOnly && !isComprasOnly && <NotificationCenter onNavigate={handleNotificationNavigate} />}
+          {!isQualityOnly && !isComprasOnly && !isDeposito && <NotificationCenter onNavigate={handleNotificationNavigate} />}
           <button type="button" onClick={() => setTab('perfil')} aria-label="Abrir mi perfil" aria-current={tab === 'perfil' ? 'page' : undefined} style={{ background:'none', border:'none', padding:0, color:tab === 'perfil' ? 'var(--phosphor)' : 'var(--text-dim)', display:'grid', placeItems:'center', minWidth:44, minHeight:44 }}>
             <User size={20} aria-hidden="true" />
           </button>
@@ -238,7 +246,7 @@ export default function MobileApp() {
         }}
       />}
 
-      {showSearch && !isComprasOnly && (
+      {showSearch && !isComprasOnly && !isDeposito && (
         <GlobalSearch mobile onNavigate={handleSearchNavigate} onClose={() => setShowSearch(false)} />
       )}
 

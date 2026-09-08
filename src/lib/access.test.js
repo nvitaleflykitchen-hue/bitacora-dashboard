@@ -62,6 +62,20 @@ describe('matriz de acceso', () => {
     expect(getPrimaryNav('operario').length).toBe(0)
   })
 
+  it('acota depósito al relevamiento y carga de artículos', () => {
+    expect(getPrimaryNav('deposito').map(item => item.id)).toEqual(['articulos'])
+    expect(getDefaultView('deposito')).toBe('articulos')
+    expect(canAccessView('deposito', 'articulos')).toBe(true)
+    expect(canAccessView('deposito', 'relevamientoArticulos')).toBe(true)
+    expect(canAccessView('deposito', 'inicio')).toBe(false)
+    expect(canAccessView('deposito', 'requerimientos')).toBe(false)
+    expect(canAccessView('deposito', 'usuarios')).toBe(false)
+    expect(canWrite('deposito', 'articulos', 'manage')).toBe(true)
+    expect(canWrite('deposito', 'compras', 'request', { compras_permisos:['manage'] })).toBe(false)
+    expect(canWrite('deposito', 'mantenimiento', 'manage', { mantenimiento_permisos:['manage_all'] })).toBe(false)
+    expect(canWrite('deposito', 'bitacora', 'report')).toBe(false)
+  })
+
   it('da a flota su propio módulo, sin Mantenimiento ni Calidad', () => {
     expect(canAccessView('flota', 'flotaHub')).toBe(true)
     expect(canAccessView('flota', 'mantenimientoHub')).toBe(false)

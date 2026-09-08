@@ -8,8 +8,8 @@ import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import SkeletonTable from '../components/SkeletonTable'
 
-const ROLES = ['admin','editor','encargado','consultor','grupo','sede','operario','flota','mnt_editor']
-const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede', operario: 'Operario', flota: 'Flota', mnt_editor: 'Gestión Mantenimiento' }
+const ROLES = ['admin','editor','encargado','consultor','grupo','sede','deposito','operario','flota','mnt_editor']
+const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede', deposito: 'Usuario de depósito', operario: 'Operario', flota: 'Flota', mnt_editor: 'Gestión Mantenimiento' }
 
 function rolChip(rol) {
   const label = ROL_LABEL[rol] || rol
@@ -342,7 +342,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
             <div>
               <label className="font-metric text-xs mb-1 block" style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>ROL</label>
               <select className="input-dark w-full" value={form.rol} onChange={e => set('rol', e.target.value)}>
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                {ROLES.map(r => <option key={r} value={r}>{ROL_LABEL[r] || r}</option>)}
               </select>
             </div>
 
@@ -635,7 +635,7 @@ export default function Usuarios() {
                         {isEditing ? (
                           <select className="input-dark" style={{ maxWidth:140, fontSize:'0.72rem', padding:'0.25rem 0.4rem' }}
                             value={editData.rol} onChange={e => setEditData(d => ({ ...d, rol: e.target.value }))}>
-                            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                            {ROLES.map(r => <option key={r} value={r}>{ROL_LABEL[r] || r}</option>)}
                           </select>
                         ) : rolChip(p.rol)}
                       </td>

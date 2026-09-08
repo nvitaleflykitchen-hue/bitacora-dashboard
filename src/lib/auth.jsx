@@ -139,7 +139,10 @@ export function AuthProvider({ children }) {
     }
 
     const rol = data?.rol || 'consultor'
-    if (['admin', 'editor', 'consultor', 'flota'].includes(rol)) {
+    if (rol === 'deposito') {
+      setAllowedSedeIds([])
+      setAccessBlocked(false)
+    } else if (['admin', 'editor', 'consultor', 'flota'].includes(rol)) {
       setAllowedSedeIds(null)
       setAccessBlocked(false)
     } else if (rol === 'grupo' && data?.grupo_id) {
