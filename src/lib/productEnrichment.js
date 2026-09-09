@@ -4,6 +4,7 @@ export const PRODUCT_FIELD_LABELS = {
   allergens:'Alérgenos', country_of_origin:'País de origen', nutrition_text:'Información nutricional',
   presentation:'Presentación', packaging_level:'Nivel de empaque', net_quantity:'Contenido unitario',
   net_unit:'Unidad de contenido', units_per_package:'Unidades por caja / bulto',
+  rne:'RNE', rnpa:'RNPA', storage_conditions:'Condiciones de conservación',
 }
 const blank = (value, key) => value == null || String(value).trim() === '' || (key === 'packaging_level' && value === 'unknown')
 
@@ -45,7 +46,7 @@ export function applyProductProposals(current, proposals) {
   if (!valid.length) return current
   const sources = [...(current.source ? [current.source] : []), ...valid.map(p => p.source)]
   return { ...current, ...Object.assign({}, ...valid.map(p => p.fields)), source:{
-    provider:'Datos completados con fuentes verificadas', retrieved_at:new Date().toISOString(),
+    provider:'Datos completados con fuentes verificadas', source_code:'WEB', confidence:Math.min(...valid.map(p => Number(p.source.confidence) || 0.5)), verified:false, retrieved_at:new Date().toISOString(),
     source_url:valid[0].source.source_url,
     raw_metadata:{ sources, accepted_fields:valid.map(p => ({ fields:Object.keys(p.fields), source_url:p.source.source_url })) },
   } }

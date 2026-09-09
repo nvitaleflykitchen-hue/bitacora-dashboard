@@ -10,7 +10,7 @@ Precialo se incorpora como catálogo adicional. Su búsqueda pública no encontr
 
 Los proveedores de enriquecimiento se consultan en paralelo, con tiempos límite. Los enlaces se restringen al host y ruta pública de fichas; no se siguen redirecciones. Un error de fuente no se presenta como identificación exitosa. La procedencia de todas las propuestas aceptadas se conserva en `product_sources.raw_metadata` y se muestra al reabrir la ficha.
 
-No se requieren nuevas variables, migraciones ni permisos. La migración original fue autorizada y aplicada al publicar 2.9.13. Archivos nuevos: `server/precialoProducts.js`, `server/productNormalization.js`, `src/lib/productEnrichment.js` y sus pruebas.
+La Fase 1 agrega una migración revisable para catálogo SEPA, códigos relacionados y trazabilidad de consultas. No queda activa hasta aplicar `20260909110000_extend_product_master_phase1_REVIEW.sql` con autorización explícita.
 
 ## Uso
 
@@ -18,18 +18,18 @@ Escritorio: **Artículos → Relevamiento de artículos**. Celular: **Más → R
 
 1. Escanear con la cámara o ingresar el código como texto.
 2. Se consulta el maestro local. Un artículo conocido se abre sin consultar fuentes externas.
-3. Si no existe, se consultan Open Food Facts, Open Products Facts y Open Beauty Facts, en ese orden. Cada fuente tiene un plazo de 6 segundos; se continúa si está vacía o falla, mostrando los errores sin afirmar que hubo una búsqueda completa.
+3. Si no existe, se consulta SEPA/Precios Claros mayorista y luego Open Food Facts, Open Products Facts y Open Beauty Facts. Cada fuente tiene límite de tiempo; una caída de SEPA no bloquea las fuentes públicas.
 4. Revisar/corregir datos y presentación. Si no se identifica, completar manualmente.
 5. Guardar o guardar y escanear siguiente. Si falla el guardado, el formulario permanece abierto.
 6. Buscar por código, nombre, marca o categoría en Artículos y abrir la ficha para editar.
 
 EAN-8, UPC-A, EAN-13 y GTIN-14 se conservan como texto. El dígito de control incorrecto requiere revisión explícita de la etiqueta; no se corrige automáticamente. Se reconocen los GTIN equivalentes con ceros a la izquierda sin reemplazar el código original. El lector usa ZXing, cargado al abrir cámara, y funciona sin depender de BarcodeDetector.
 
-Una caja puede registrarse como presentación «caja», 192 unidades contenidas y contenido unitario 8 g. El sistema no deduce esas cantidades ni el nivel de empaque a partir de la longitud del código. El contenido de un envase no representa existencias.
+Una caja puede registrarse como presentación «caja», 192 unidades contenidas y contenido unitario 8 g. Cuando SEPA informa EAN y DUN-14 válidos en la misma fila, la ficha muestra ambos y, tras la confirmación humana, los vincula al mismo producto con presentaciones separadas. El contenido de un envase no representa existencias.
 
 ## Modelo y migración
 
-Migración: `supabase/migrations/20260907165101_maestro_articulos.sql`.
+Migraciones: `supabase/migrations/20260907165101_maestro_articulos.sql` y `supabase/migrations/20260909110000_extend_product_master_phase1_REVIEW.sql`.
 
 Cuatro tablas nuevas en `bitacora`:
 
@@ -39,6 +39,8 @@ Cuatro tablas nuevas en `bitacora`:
 | `product_presentations` | Presentación, contenido unitario, unidad y unidades por caja/bulto |
 | `product_barcodes` | Código original de texto, tipo, empaque, vínculo a producto/presentación y clave GTIN equivalente única |
 | `product_sources` | Proveedor, enlace, datos originales JSON, fecha de consulta y registro |
+| `sepa_products` | Catálogo mayorista importado, EAN, código de bulto y atributos normalizados |
+| `barcode_search_log` | Resultado, fuente, duración y usuario de cada búsqueda |
 
 La relación compuesta impide asociar un código a una presentación de otro producto. `guardar_articulo` guarda producto, presentación, código y fuente en una transacción. Serializa por GTIN, rechaza duplicados y comprueba la fecha de actualización para evitar pisar una edición ajena. Ante un alta cuya respuesta se perdió, informa que el artículo ya existe y solicita volver a buscarlo; nunca confirma cambios posteriores que no se guardaron.
 
@@ -65,7 +67,7 @@ Variables ya utilizadas por la aplicación, necesarias también en la función:
 - `VITE_SUPABASE_URL`: `https://mixyhfdlzjarvszinytk.supabase.co`.
 - `VITE_SUPABASE_ANON_KEY`: clave pública del mismo proyecto.
 
-No necesita service-role ni claves pagas nuevas. Vercel debe tener ambas variables en el entorno donde se pruebe/despliegue. En desarrollo, `npm run dev` solo sirve el frontend; el endpoint requiere el entorno Vercel (`vercel dev`) o un despliegue de prueba.
+La app no necesita service-role ni claves pagas nuevas. El importador local sí exige `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` únicamente en el entorno del proceso; nunca se envían al navegador. Antes de escribir, `node scripts/import-sepa.mjs <archivo.zip>` hace una simulación. Después de aplicar la migración, `--apply` reemplaza por dataset los lotes importados.
 
 Adaptadores: `server/productProviders.js`, registro `PRODUCT_PROVIDERS`. Documentación: [Open Food Facts](https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/ref-cheatsheet/), [Open Products Facts](https://support.openfoodfacts.org/help/en-gb/28-open-products-facts/103-where-can-i-find-the-open-products-facts-api), [ZXing Browser](https://github.com/zxing-js/browser).
 
@@ -78,7 +80,8 @@ Fotos: reutiliza `uploadAdjunto` y el bucket `bitacora-adjuntos`; JPG, PNG o Web
 - `src/views/Articulos.jsx`, `.css`: ambas pantallas y ficha.
 - `src/components/ProductBarcodeScanner.jsx`: cámara, lectura y limpieza de streams.
 - `src/lib/ProductResolver.js`, `productQueries.js`, `productBarcode.js`: resolución, persistencia, validación y GTIN.
-- `api/product-resolver.js`, `server/productProviders.js`: autenticación y fuentes externas.
+- `api/product-resolver.js`, `server/productProviders.js`, `server/sepaProvider.js`: autenticación y cascada de fuentes.
+- `scripts/import-sepa.mjs`: importación validada de ZIPs SEPA con ZIPs internos y CSV separados por `|`.
 - `src/App.jsx`, `src/components/Sidebar.jsx`, `src/mobile/MobileMas.jsx`, `src/lib/access.js`, `src/lib/navigationRoutes.js`: integración en la app.
 - Pruebas en `ProductResolver.test.js`, `productDatabase.test.js`, `productApi.test.js`, `Articulos.test.jsx`.
 - Versión, dependencias y Vercel: `package.json`, `package-lock.json`, `src/data/releases.js`, `CHANGELOG.md`, `vercel.json`.

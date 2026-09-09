@@ -2,13 +2,13 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import Articulos from './Articulos'
-import { productResolver, saveProduct, enrichProduct } from '../lib/productQueries'
+import { productResolver, saveProduct, enrichProduct, recordBarcodeSearch } from '../lib/productQueries'
 
 const authState = vi.hoisted(() => ({ rol:null }))
 vi.mock('../lib/auth', () => ({ useAuth:() => ({ can:() => true, perfil:{ nombre:'Prueba', rol:authState.rol } }) }))
 vi.mock('../lib/adjuntos', () => ({ uploadAdjunto:vi.fn() }))
 vi.mock('../components/ProductBarcodeScanner', () => ({ default:() => <div>Lector listo</div> }))
-vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), saveProduct:vi.fn(), enrichProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn() }))
+vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), saveProduct:vi.fn(), enrichProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn(), recordBarcodeSearch:vi.fn().mockResolvedValue() }))
 beforeEach(() => { vi.clearAllMocks(); authState.rol = null })
 afterEach(cleanup)
 describe('flujo artículos', () => {
@@ -49,6 +49,7 @@ describe('flujo artículos', () => {
     fireEvent.change(screen.getByLabelText('Escaneá con pistola o ingresá el código manualmente'), { target:{ value:'012345678905' } })
     fireEvent.click(screen.getByRole('button', { name:'Buscar', exact:true }))
     await screen.findByText('Producto no identificado')
+    expect(recordBarcodeSearch).toHaveBeenCalledWith(expect.objectContaining({ barcode:'012345678905',found:false,sourceCode:'NOT_FOUND' }))
     fireEvent.change(screen.getByLabelText('Nombre del artículo *'), { target:{ value:'Artículo de prueba' } })
     fireEvent.change(screen.getByLabelText('Nivel de empaque'), { target:{ value:'case' } })
     fireEvent.change(screen.getByLabelText('Contenido por unidad contenida'), { target:{ value:'8' } })

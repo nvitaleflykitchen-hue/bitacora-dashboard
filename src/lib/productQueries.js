@@ -13,11 +13,17 @@ export async function findProduct(barcode, { signal } = {}) {
     db().from('products').select('*').eq('id', code.product_id).single(),
     db().from('product_presentations').select('*').eq('id', code.presentation_id).single(),
     db().from('product_sources').select('*').eq('product_id', code.product_id).order('recorded_at', { ascending:false }).limit(20),
+    db().from('product_barcodes').select('*').eq('product_id', code.product_id).order('created_at'),
+    db().from('product_presentations').select('*').eq('product_id', code.product_id).order('created_at'),
   ])
   for (const result of results) if (result.error) throw result.error
-  const [product, presentation, sources] = results.map(r => r.data)
+  const [product, presentation, sources, barcodes, presentations] = results.map(r => r.data)
   return { ...product, ...presentation, ...code, product_id:product.id, expected_updated_at:product.updated_at,
-    updated_at:product.updated_at, sources, source:null }
+    updated_at:product.updated_at, sources, barcodes, presentations,
+    related_barcodes:barcodes.filter(item => item.id !== code.id).map(item => {
+      const relatedPresentation = presentations.find(value => value.id === item.presentation_id) || {}
+      return { ...relatedPresentation, ...item }
+    }), source:null }
 }
 
 export const productResolver = new ProductResolver({ findLocal:findProduct, providers:[{
@@ -72,11 +78,15 @@ export async function downloadProductsXlsx(termino = '') {
       'Unidades por caja/bulto':presentation.units_per_package ?? '', 'Imagen':product.image_url || '',
       'Ingredientes':product.ingredients || '', 'Alérgenos':product.allergens || '',
       'Información nutricional':product.nutrition_text || '', 'País de origen':product.country_of_origin || '',
+      'Estado de verificación':product.status || '', 'RNE':product.rne || '', 'RNPA':product.rnpa || '',
+      'Condiciones de conservación':product.storage_conditions || '',
       'Actualizado':product.updated_at || '',
     }
   }))
   const sources = all.flatMap(product => (product.sources || []).map(source => ({
     'ID producto':product.id, 'Proveedor':source.provider || '', 'URL fuente':source.source_url || '',
+    'Código de fuente':source.source_code || '', 'Referencia':source.source_reference || '',
+    'Confianza':source.confidence ?? '', 'Verificado':source.verified ?? '',
     'Consultado':source.retrieved_at || '', 'Registrado':source.recorded_at || '',
   })))
   const book = XLSX.utils.book_new()
@@ -104,10 +114,18 @@ export function validateProduct(form) {
 
 export async function saveProduct(form) {
   validateProduct(form)
-  const fields = ['product_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','source']
+  const fields = ['product_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','supplier_id','rne','rnpa','storage_conditions','related_barcodes','source']
   const payload = Object.fromEntries(fields.map(key => [key, form[key] ?? null]))
+  payload.status = form.status === 'inactive' ? 'inactive' : 'verified'
   const { data, error } = await db().rpc('guardar_articulo', { payload })
   if (error) throw error
   const recorded = form.source || { provider:'Carga manual', retrieved_at:data.updated_at }
-  return { ...form, ...data, expected_updated_at:data.updated_at, source:null, sources:[recorded, ...(form.sources || [])].slice(0,20) }
+  return { ...form, ...data, status:payload.status, expected_updated_at:data.updated_at, source:null, sources:[recorded, ...(form.sources || [])].slice(0,20) }
+}
+
+export async function recordBarcodeSearch({ barcode, found, sourceCode, durationMs, errorMessage = '' }) {
+  const payload = { barcode:normalizeBarcode(barcode), found:Boolean(found), source_code:sourceCode || 'UNKNOWN',
+    duration_ms:Math.max(0,Math.round(Number(durationMs) || 0)), error_message:String(errorMessage || '').slice(0,1000) }
+  const { error } = await db().rpc('registrar_busqueda_articulo', { payload })
+  if (error) throw error
 }

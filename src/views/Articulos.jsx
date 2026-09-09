@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Barcode, Package, Search } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { productResolver, findProduct, saveProduct, searchProducts, validateProduct, enrichProduct, downloadProductsXlsx } from '../lib/productQueries'
+import { productResolver, findProduct, saveProduct, searchProducts, validateProduct, enrichProduct, downloadProductsXlsx, recordBarcodeSearch } from '../lib/productQueries'
 import { missingProposals, applyProductProposals, displayProductSources, PRODUCT_FIELD_LABELS } from '../lib/productEnrichment'
 import { barcodeType, normalizeBarcode, safeImageUrl, validCheckDigit } from '../lib/productBarcode'
 import { uploadAdjunto } from '../lib/adjuntos'
@@ -9,8 +9,9 @@ import { useBackHandler } from '../lib/backStack'
 import ProductBarcodeScanner from '../components/ProductBarcodeScanner'
 import './Articulos.css'
 
-const empty = barcode => ({ product_id:crypto.randomUUID(), barcode, name:'', description:'', brand:'', manufacturer:'', category:'', subcategory:'', image_url:'', ingredients:'', allergens:'', nutrition_text:'', country_of_origin:'', presentation:'', net_quantity:'', net_unit:'', units_per_package:'', packaging_level:'unknown', source:null })
-const fields = [['name','Nombre del artículo *'],['brand','Marca'],['manufacturer','Fabricante'],['category','Categoría'],['subcategory','Subcategoría'],['country_of_origin','País de origen'],['presentation','Presentación / descripción del envase']]
+const empty = barcode => ({ product_id:crypto.randomUUID(), barcode, name:'', description:'', brand:'', manufacturer:'', category:'', subcategory:'', image_url:'', ingredients:'', allergens:'', nutrition_text:'', country_of_origin:'', presentation:'', net_quantity:'', net_unit:'', units_per_package:'', packaging_level:'unknown', rne:'', rnpa:'', storage_conditions:'', related_barcodes:[], source:null })
+const fields = [['name','Nombre del artículo *'],['brand','Marca'],['manufacturer','Fabricante'],['category','Categoría'],['subcategory','Subcategoría'],['country_of_origin','País de origen'],['rne','RNE'],['rnpa','RNPA'],['presentation','Presentación / descripción del envase']]
+const packagingLabels = { unit:'Unidad', pack:'Pack', box:'Caja', case:'Caja / bulto', pallet:'Pallet', unknown:'Presentación por confirmar' }
 
 export function RelevamientoArticulos() { return <Articulos initialMode="scan" /> }
 
@@ -117,6 +118,7 @@ export default function Articulos({ initialMode = 'list', onNavigate }) {
     setCode('')
     busyRef.current = true; setBusy(true); setError(''); setNotice(''); setScanner(false)
     request.current?.abort(); const controller = new AbortController(); request.current = controller
+    const started = performance.now()
     try {
       const result = localOnly ? { product:await findProduct(barcode), origin:'local', warnings:[] } : await productResolver.resolve(barcode, { signal:controller.signal })
       if (controller.signal.aborted) return
@@ -126,7 +128,8 @@ export default function Articulos({ initialMode = 'list', onNavigate }) {
       setEditing(result.origin !== 'local' && writable)
       setDirty(result.origin !== 'local')
       setNotice(result.origin === 'local' ? 'Artículo encontrado en nuestro maestro.' : result.product ? 'Datos encontrados. Revisá la etiqueta y completá la presentación antes de guardar.' : 'Producto no identificado')
-    } catch (e) { if (!controller.signal.aborted) setError(e.message || 'No se pudo buscar el artículo.') }
+      recordBarcodeSearch({ barcode, found:Boolean(result.product), sourceCode:result.origin === 'local' ? 'INTERNAL' : result.product?.source?.source_code || 'NOT_FOUND', durationMs:performance.now()-started }).catch(()=>{})
+    } catch (e) { if (!controller.signal.aborted) { setError(e.message || 'No se pudo buscar el artículo.'); recordBarcodeSearch({ barcode, found:false, sourceCode:'ERROR', durationMs:performance.now()-started, errorMessage:e.message }).catch(()=>{}) } }
     finally { busyRef.current = false; setBusy(false) }
   }
   async function save(next = false) {
@@ -187,7 +190,8 @@ export default function Articulos({ initialMode = 'list', onNavigate }) {
     </section>}
     {form && <section className="articulos-card">
       <div className="articulos-actions"><button type="button" className="btn-ghost" disabled={busy} onClick={() => { if (canLeave()) reset() }}>← Volver</button>{writable && !editing && <button type="button" className="btn-primary" disabled={busy} onClick={() => setEditing(true)}>EDITAR</button>}</div>
-      <div className="articulos-product-head">{image ? <img src={image} alt={form.name || 'Imagen del artículo'} referrerPolicy="no-referrer" /> : <div className="articulos-placeholder"><Package size={40} /><span>Sin imagen</span></div>}<div><h2>{form.name || 'Nuevo artículo'}</h2><p>{form.brand || 'Marca sin completar'}</p><code>{form.barcode}</code><p>{barcodeType(form.barcode)} · {({ unit:'Unidad', case:'Caja / bulto', unknown:'Presentación por confirmar' })[form.packaging_level]}</p><p>{form.presentation}</p></div></div>
+      <div className="articulos-product-head">{image ? <img src={image} alt={form.name || 'Imagen del artículo'} referrerPolicy="no-referrer" /> : <div className="articulos-placeholder"><Package size={40} /><span>Sin imagen</span></div>}<div><h2>{form.name || 'Nuevo artículo'}</h2><p>{form.brand || 'Marca sin completar'}</p><code>{form.barcode}</code><p>{barcodeType(form.barcode)} · {packagingLabels[form.packaging_level]}</p><p>{form.presentation}</p></div></div>
+      {form.related_barcodes?.length > 0 && <div className="articulos-related"><h3>Códigos relacionados del mismo producto</h3>{form.related_barcodes.map(item => <p key={item.barcode}><code>{item.barcode}</code> · {barcodeType(item.barcode)} · {packagingLabels[item.packaging_level] || item.packaging_level}{item.units_per_package ? ` · ${item.units_per_package} unidades` : ''}</p>)}<p>Al guardar, estos códigos quedarán vinculados a la misma ficha.</p></div>}
       {writable && <section className="articulos-enrichment" aria-label="Completar datos del artículo">
         <button type="button" className="btn-ghost" disabled={busy} onClick={completeMissing}>Completar datos faltantes</button>
         <p>Consulta fuentes adicionales y propone datos para campos vacíos. Se conservan tus correcciones.</p>
@@ -202,12 +206,13 @@ export default function Articulos({ initialMode = 'list', onNavigate }) {
       <form onSubmit={e => { e.preventDefault(); save(false) }}>
         <fieldset disabled={!editing || busy} className="articulos-fields">
           {fields.map(([key, label]) => <label key={key}>{label}<input className="input-dark" value={form[key] || ''} onChange={e => update(key, e.target.value)} maxLength={key === 'name' ? 500 : 2000} required={key === 'name'} /></label>)}
-          <label>Nivel de empaque<select className="input-dark" value={form.packaging_level} onChange={e => update('packaging_level', e.target.value)}><option value="unknown">Por confirmar</option><option value="unit">Unidad individual</option><option value="case">Caja / bulto</option></select></label>
+          <label>Nivel de empaque<select className="input-dark" value={form.packaging_level} onChange={e => update('packaging_level', e.target.value)}><option value="unknown">Por confirmar</option><option value="unit">Unidad individual</option><option value="pack">Pack</option><option value="box">Caja</option><option value="case">Caja / bulto</option><option value="pallet">Pallet</option></select></label>
           <label>Contenido por unidad contenida<input className="input-dark" type="number" min="0.001" step="any" value={form.net_quantity ?? ''} onChange={e => update('net_quantity', e.target.value)} placeholder="Ej.: 8" /></label>
           <label>Unidad de contenido<select className="input-dark" value={form.net_unit || ''} onChange={e => update('net_unit', e.target.value)}><option value="">Sin definir</option>{['g','kg','mg','ml','l','unidad','m','cm'].map(unit => <option key={unit}>{unit}</option>)}</select></label>
           <label>Unidades contenidas por caja / bulto<input className="input-dark" type="number" min="1" step="1" value={form.units_per_package ?? ''} onChange={e => update('units_per_package', e.target.value)} placeholder="Ej.: 192" /></label>
           <p className="articulos-wide">Una caja de 192 sobres de 8 g se registra como 192 unidades contenidas y 8 g por unidad. Verificá esos datos en el envase.</p>
           {[['description','Descripción comercial'],['ingredients','Ingredientes'],['allergens','Alérgenos'],['nutrition_text','Información nutricional (incluí base, porción y unidades)']].map(([key,label]) => <label key={key} className="articulos-wide">{label}<textarea className="input-dark" rows={3} maxLength={20000} value={form[key] || ''} onChange={e => update(key, e.target.value)} placeholder="Sin información registrada" /></label>)}
+          <label className="articulos-wide">Condiciones de conservación<textarea className="input-dark" rows={2} maxLength={2000} value={form.storage_conditions || ''} onChange={e => update('storage_conditions',e.target.value)} placeholder="Ej.: conservar refrigerado entre 2 °C y 8 °C" /></label>
           <label className="articulos-wide">Dirección de imagen (HTTPS)<input className="input-dark" type="url" value={form.image_url || ''} onChange={e => update('image_url', e.target.value)} /></label>
           {editing && <label className="articulos-wide">O tomar / subir foto (JPG, PNG o WebP, hasta 8 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const selected = e.target.files?.[0]; if (!selected) return; if (!['image/jpeg','image/png','image/webp'].includes(selected.type) || selected.size > 8 * 1024 * 1024) { setError('Elegí una imagen JPG, PNG o WebP de hasta 8 MB.'); e.target.value = ''; return } setFile(selected); uploaded.current = null; setDirty(true) }} /></label>}
         </fieldset>

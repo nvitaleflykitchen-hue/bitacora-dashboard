@@ -34,7 +34,7 @@ export function parsePrecialo(html, barcode, sourceUrl) {
     image_url:safeImageUrl(Array.isArray(product.image) ? product.image[0] : product.image),
     presentation:packaging.units_per_package ? `${packaging.units_per_package} unidades de ${packaging.net_quantity} ${packaging.net_unit}` : '',
     ...packaging,
-    source:{ provider:'Precialo', source_url:precialoUrl(sourceUrl), retrieved_at:new Date().toISOString(),
+    source:{ provider:'Precialo', source_code:'WEB', source_url:precialoUrl(sourceUrl), source_reference:barcode, confidence:0.7, verified:false, retrieved_at:new Date().toISOString(),
       raw_metadata:{ product, listed_codes:codes, breadcrumbs:crumbs, matched_barcode:barcode } },
   }
 }
