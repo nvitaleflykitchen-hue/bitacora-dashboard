@@ -302,8 +302,8 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
 
   const handleSaveEstado = async () => {
     const cierreTerminal = estado === 'Completada' || estado === 'Verificada'
-    const evidencia = evidenciaDescripcion.trim()
-    const fundamento = notas.trim()
+    const evidencia = String(evidenciaDescripcion || c.evidencia || '').trim()
+    const fundamento = String(notas || c.notas || '').trim()
     if (cierreTerminal && !evidencia) return toast.error('Describí qué demuestra la evidencia adjunta.')
     if (cierreTerminal && !fundamento) return toast.error('Indicá cómo y por qué se completó la acción.')
     if (estado === 'Verificada' && c.estado !== 'Completada' && c.estado !== 'Verificada') {
@@ -331,15 +331,17 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   }
 
   const handleToggleEficacia = async (checked) => {
-    if (checked && !evidenciaDescripcion.trim()) return toast.error('Describí qué demuestra la evidencia adjunta.')
-    if (checked && !notas.trim()) return toast.error('Indicá cómo y por qué se verificó la acción.')
+    const evidencia = String(evidenciaDescripcion || c.evidencia || '').trim()
+    const fundamento = String(notas || c.notas || '').trim()
+    if (checked && !evidencia) return toast.error('Describí qué demuestra la evidencia adjunta.')
+    if (checked && !fundamento) return toast.error('Indicá cómo y por qué se verificó la acción.')
     setSavingEficacia(true)
     try {
       const payload = {
         eficacia_verificada: checked,
         estado: checked ? 'Verificada' : (c.estado === 'Verificada' ? 'Completada' : c.estado),
         fecha_cierre: checked ? new Date().toISOString().split('T')[0] : c.fecha_cierre,
-        ...(checked ? { evidencia:evidenciaDescripcion.trim(), notas:notas.trim() } : {}),
+        ...(checked ? { evidencia, notas:fundamento } : {}),
       }
       await updateCapa(c.id, payload)
       c.eficacia_verificada = checked
