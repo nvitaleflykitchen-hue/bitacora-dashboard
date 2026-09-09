@@ -742,7 +742,7 @@ function CapaKanban({ items, perfiles, canWrite, onEstadoChange, onReload, focus
       {detail && (
         <CAPACardDetail
           c={detail} canWrite={canWrite}
-          onEstadoChange={async (id, estado) => { await onEstadoChange(id, estado); onReload() }}
+          onEstadoChange={async (id, estado, extra) => { await onEstadoChange(id, estado, extra); onReload() }}
           onClose={() => setDetail(null)}
           onReload={onReload}
           perfiles={perfiles}
@@ -1118,7 +1118,7 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
       {detail && (
         <CAPACardDetail
           c={detail} canWrite={canWrite}
-          onEstadoChange={async (id, estado) => { await onEstadoChange(id, estado); onReload() }}
+          onEstadoChange={async (id, estado, extra) => { await onEstadoChange(id, estado, extra); onReload() }}
           onClose={() => setDetail(null)}
           onReload={onReload}
           perfiles={perfiles}
