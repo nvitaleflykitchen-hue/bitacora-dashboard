@@ -2,16 +2,17 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
-import { getActivos, upsertActivo, getSedes, getTicketsActivo, getProveedores } from '../../lib/queries'
+import { deleteActivo, getActivos, upsertActivo, getSedes, getTicketsActivo, getProveedores } from '../../lib/queries'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
 import PageHeader from '../../components/PageHeader'
 import { isQualityOnlyProfile } from '../../lib/access'
-import { Mail, MessageCircle, Phone, ScanLine } from 'lucide-react'
+import { Mail, MessageCircle, Phone, ScanLine, Trash2 } from 'lucide-react'
 import { normalizeQrLabel } from '../../lib/qrLabel'
 import AssetQrScannerModal from '../../components/AssetQrScannerModal'
 import { findScannedAsset } from '../../lib/assetQrScan'
 import ActivoConcesionFields, { ActivoConcesionBadge } from '../../components/ActivoConcesionFields'
 import { concesionLabel, coincideConcesion } from '../../lib/activoConcesion'
+import { confirmarAccionSensible } from '../../lib/sensitiveActions'
 
 const TIPO_COLOR  = { VEHICULO:'#3B82F6', EQUIPO:'#F59E0B', INSTALACION:'#8B5CF6' }
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
@@ -65,11 +66,13 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
   const isNew = !activo?.id
   const { rol, perfil } = useAuth()
   const canEdit = ['admin','encargado','editor'].includes(rol) && !isQualityOnlyProfile(perfil)
+  const canDelete = rol === 'admin' && !isNew
 
   const [tab, setTab]         = useState('ficha')
   const [editing, setEditing] = useState(isNew)
-  const [form, setForm]       = useState(activo || { tipo:'EQUIPO', estado:'operativo', nombre:'' })
+  const [form, setForm]       = useState(activo || { tipo:'EQUIPO', estado:'operativo', nombre:'', sede_id:sedes.length === 1 ? sedes[0].id : null })
   const [saving, setSaving]   = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [err, setErr]         = useState(null)
   const [historial, setHistorial] = useState([])
   const [responsables, setResponsables] = useState([])
@@ -111,6 +114,7 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
 
   const handleSave = async () => {
     if (!form.nombre) { setErr('El nombre es obligatorio'); return }
+    if (!form.sede_id) { setErr('La sede es obligatoria'); return }
     setSaving(true); setErr(null)
     try {
       let payload = { ...form }
@@ -121,6 +125,28 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
       await upsertActivo(payload)
       onSaved()
     } catch(e) { setErr(e.message) } finally { setSaving(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!canDelete) return
+    const subject = `${activo.nombre}${activo.codigo_interno ? ` (${activo.codigo_interno})` : ''}`
+    if (!await confirmarAccionSensible({
+      action:'eliminar',
+      title:'Eliminar activo',
+      subject:`el activo ${subject}`,
+      consequence:'Se eliminará la ficha del maestro de activos y dejará de estar disponible para la operación.',
+      recovery:'La eliminación queda registrada en la trazabilidad para que un administrador pueda reconstruir la ficha si fue un error.',
+      confirmText:'Eliminar activo',
+    })) return
+    setDeleting(true); setErr(null)
+    try {
+      await deleteActivo(activo.id)
+      onSaved()
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   // Read-only ficha
@@ -375,9 +401,9 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
           <>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW_S}>
-                <label style={LABEL_S}>Sede / Unidad</label>
-                <select value={form.sede_id||''} onChange={e=>set('sede_id', e.target.value ? Number(e.target.value) : null)} style={INPUT_S}>
-                  <option value="">Sin asignar</option>
+                <label style={LABEL_S}>Sede / Unidad *</label>
+                <select required value={form.sede_id||''} onChange={e=>set('sede_id', e.target.value ? Number(e.target.value) : null)} style={INPUT_S}>
+                  <option value="">Seleccionar sede...</option>
                   {sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
                 </select>
               </div>
@@ -483,6 +509,12 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
 
         {/* Footer */}
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', marginTop:'1rem' }}>
+          {canDelete && !editing && tab === 'ficha' && (
+            <button onClick={handleDelete} disabled={deleting} className='btn-ghost'
+              style={{ marginRight:'auto', color:'#FF4D4D', borderColor:'rgba(255,77,77,.45)', display:'inline-flex', alignItems:'center', gap:6, opacity:deleting ? .55 : 1 }}>
+              <Trash2 size={15}/> {deleting ? 'Eliminando...' : 'Eliminar activo'}
+            </button>
+          )}
           {!isNew && !editing && tab === 'ficha' && onCreateNovedad && activo?.sede_id && (
             <button onClick={() => onCreateNovedad({ type:'activo', id:activo.id, label:activo.nombre, sedeId:activo.sede_id, sedeLabel:sedeName, returnView:'mntActivos' })} className='btn-primary'>+ Crear novedad</button>
           )}

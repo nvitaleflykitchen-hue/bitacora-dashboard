@@ -3,12 +3,12 @@ import { supabase } from '../lib/supabase'
 import ActivoConcesionFields, { ActivoConcesionBadge } from '../components/ActivoConcesionFields'
 import { useAuth } from '../lib/auth'
 import {
-  getActivos, upsertActivo, getSedes, getTicketsActivo,
+  deleteActivo, getActivos, upsertActivo, getSedes, getTicketsActivo,
   getInsumos, registrarMovimiento, getMatafuegos, upsertMatafuego,
 } from '../lib/queries'
 import { fmtFecha } from '../lib/dateUtils'
 import { isQualityOnlyProfile } from '../lib/access'
-import { Wrench, Package, Flame, Plus, X, ChevronRight, ChevronLeft, Search, ScanLine } from 'lucide-react'
+import { Wrench, Package, Flame, Plus, X, ChevronRight, ChevronLeft, Search, ScanLine, Trash2 } from 'lucide-react'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { TabPlanes, TabProveedores, TabResponsables, TabTablero } from './MobileMntTabs'
@@ -17,6 +17,7 @@ import AssetQrScannerModal from '../components/AssetQrScannerModal'
 import { findScannedAsset } from '../lib/assetQrScan'
 import { newScanEventId } from '../lib/assetScans'
 import AssetScanHistory from '../components/AssetScanHistory'
+import { confirmarAccionSensible } from '../lib/sensitiveActions'
 
 const TIPO_COLOR_ACTIVO = { EQUIPO: '#F59E0B', INSTALACION: '#8B5CF6' }
 import {
@@ -57,12 +58,13 @@ function Field({ label, value }) {
 
 // ───────────────────────── ACTIVOS ─────────────────────────
 
-function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onBack, onUpdated, onCreateNovedad, onCreateTicket }) {
+function ActivoFicha({ activo, sedes, canEdit, canDelete, canCreateTicket, scanEventId, onBack, onUpdated, onCreateNovedad, onCreateTicket }) {
   const [historial, setHistorial] = useState([])
   const [loadingHist, setLoadingHist] = useState(true)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(activo)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => {
@@ -75,6 +77,7 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onB
 
   const save = async () => {
     if (!form.nombre?.trim()) { toast.warn('El nombre es obligatorio.'); return }
+    if (!form.sede_id) { toast.warn('La sede es obligatoria.'); return }
     setSaving(true)
     try {
       let payload = { ...form }
@@ -86,6 +89,22 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onB
       setEditing(false)
       onUpdated()
     } catch (e) { toast.error('Error: ' + mensajeError(e)) } finally { setSaving(false) }
+  }
+
+  const remove = async () => {
+    const subject = `${activo.nombre}${activo.codigo_interno ? ` (${activo.codigo_interno})` : ''}`
+    if (!await confirmarAccionSensible({
+      action: 'eliminar', title: 'Eliminar activo', subject: `el activo ${subject}`,
+      consequence: 'Se eliminará la ficha del maestro de activos y dejará de estar disponible para la operación.',
+      recovery: 'La eliminación queda registrada en la trazabilidad para que un administrador pueda reconstruir la ficha si fue un error.',
+      confirmText: 'Eliminar activo',
+    })) return
+    setDeleting(true)
+    try {
+      await deleteActivo(activo.id)
+      toast.ok('Activo eliminado.')
+      onUpdated()
+    } catch (e) { toast.error('Error: ' + mensajeError(e)) } finally { setDeleting(false) }
   }
 
   const sedeName = activo.sede_nombre || sedes.find(s => s.id === activo.sede_id)?.nombre
@@ -128,6 +147,11 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onB
               )}
               {canEdit && (
                 <button onClick={() => setEditing(true)} className="btn-primary" style={{ marginTop: 10, fontSize: '0.72rem', padding: '0.5rem 0.8rem' }}>Editar</button>
+              )}
+              {canDelete && (
+                <button onClick={remove} disabled={deleting} className="btn-ghost" style={{ marginTop:10, marginLeft:8, color:'#FF4D4D', borderColor:'rgba(255,77,77,.45)', display:'inline-flex', alignItems:'center', gap:6 }}>
+                  <Trash2 size={15}/>{deleting ? 'Eliminando...' : 'Eliminar activo'}
+                </button>
               )}
             </Card>
 
@@ -181,9 +205,9 @@ function ActivoFicha({ activo, sedes, canEdit, canCreateTicket, scanEventId, onB
             <Field label="Modelo" value={{ val: form.modelo || '', set: v => set('modelo', v), ph: 'Ej: CPC 101' }} />
             <Field label="Categoría" value={{ val: form.categoria || '', set: v => set('categoria', v), ph: 'Ej: HORNO' }} />
             <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede / Unidad</label>
-              <select className="input-dark w-full" value={form.sede_id || ''} onChange={e => set('sede_id', e.target.value ? Number(e.target.value) : null)}>
-                <option value="">Sin asignar</option>
+              <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede / Unidad *</label>
+              <select required className="input-dark w-full" value={form.sede_id || ''} onChange={e => set('sede_id', e.target.value ? Number(e.target.value) : null)}>
+                <option value="">Seleccionar sede...</option>
                 {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
             </div>
@@ -214,6 +238,7 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
 
   const submit = async () => {
     if (!form.nombre.trim()) { toast.warn('El nombre es obligatorio.'); return }
+    if (!form.sede_id) { toast.warn('La sede es obligatoria.'); return }
     setSaving(true)
     try {
       let payload = { ...form, sede_id: form.sede_id ? Number(form.sede_id) : null }
@@ -228,9 +253,9 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
     <SheetModal title="Nuevo activo" onClose={onClose}>
       <ActivoConcesionFields form={form} onChange={set}/>
       <div style={{ marginBottom: 10 }}>
-        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede / Unidad</label>
-        <select className="input-dark w-full" value={form.sede_id} onChange={e => set('sede_id', e.target.value)}>
-          <option value="">Sin asignar</option>
+        <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Sede / Unidad *</label>
+        <select required className="input-dark w-full" value={form.sede_id} onChange={e => set('sede_id', e.target.value)}>
+          <option value="">Seleccionar sede...</option>
           {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
       </div>
@@ -250,7 +275,7 @@ function QuickActivoModal({ sedes, onClose, onCreated }) {
   )
 }
 
-function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, onCreateNovedad, onCreateTicket }) {
+function TabActivos({ allowedSedeIds, canEdit, canDelete, canCreateTicket, focusContext, onCreateNovedad, onCreateTicket }) {
   const focusType = focusContext?.type
   const focusId = focusContext?.id
   const [items, setItems] = useState([])
@@ -282,7 +307,7 @@ function TabActivos({ allowedSedeIds, canEdit, canCreateTicket, focusContext, on
   useEffect(() => { load() }, [load])
 
   if (selected) {
-    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} canCreateTicket={canCreateTicket} scanEventId={selectedScanEventId} onBack={() => { setSelected(null); setSelectedScanEventId(null) }} onUpdated={() => { load(); setSelected(null) }} onCreateNovedad={onCreateNovedad} onCreateTicket={onCreateTicket} />
+    return <ActivoFicha activo={selected} sedes={sedes} canEdit={canEdit} canDelete={canDelete} canCreateTicket={canCreateTicket} scanEventId={selectedScanEventId} onBack={() => { setSelected(null); setSelectedScanEventId(null) }} onUpdated={() => { load(); setSelected(null) }} onCreateNovedad={onCreateNovedad} onCreateTicket={onCreateTicket} />
   }
 
   const filtered = items.filter(a => !search || (a.nombre + ' ' + (a.codigo_interno || '') + ' ' + (a.categoria || '')).toLowerCase().includes(search.toLowerCase()))
@@ -595,7 +620,7 @@ export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
-        {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} canCreateTicket={canCreateTicket} focusContext={focusContext} onCreateNovedad={onCreateNovedad} onCreateTicket={setTicketOrigin} />}
+        {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} canDelete={rol === 'admin'} canCreateTicket={canCreateTicket} focusContext={focusContext} onCreateNovedad={onCreateNovedad} onCreateTicket={setTicketOrigin} />}
         {tab === 'insumos' && <TabInsumos />}
         {tab === 'matafuegos' && <TabMatafuegos allowedSedeIds={allowedSedeIds} />}
         {tab === 'tablero' && <TabTablero allowedSedeIds={allowedSedeIds} canManage={canEditActivos} />}
