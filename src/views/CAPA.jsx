@@ -283,7 +283,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   const [savingNotas, setSavingNotas] = useState(false)
   const [savingEficacia, setSavingEficacia] = useState(false)
   const [notasSaved, setNotasSaved]   = useState(false)
-  const [evidenciaDescripcion, setEvidenciaDescripcion] = useState(c.evidencia || '')
+  const [evidenciaDescripcion, setEvidenciaDescripcion] = useState(c.comentario_evidencia || c.evidencia || '')
   const [savingEvidencia, setSavingEvidencia] = useState(false)
   const [subtareas, setSubtareas]     = useState(Array.isArray(c.subtareas) ? c.subtareas : [])
   const [nuevaSubtarea, setNuevaSubtarea] = useState('')
@@ -311,7 +311,12 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     }
     setSaving(true)
     try {
-      await onEstadoChange(c.id, estado, cierreTerminal ? { evidencia, notas: fundamento } : {})
+      await onEstadoChange(c.id, estado, cierreTerminal ? {
+        evidencia,
+        notas: fundamento,
+        comentario_evidencia: evidencia,
+        comentario_cierre: fundamento,
+      } : {})
       onClose()
     }
     catch (e) { toast.error(mensajeError(e)) }
@@ -341,7 +346,12 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
         eficacia_verificada: checked,
         estado: checked ? 'Verificada' : (c.estado === 'Verificada' ? 'Completada' : c.estado),
         fecha_cierre: checked ? new Date().toISOString().split('T')[0] : c.fecha_cierre,
-        ...(checked ? { evidencia, notas:fundamento } : {}),
+        ...(checked ? {
+          evidencia,
+          notas:fundamento,
+          comentario_evidencia:evidencia,
+          comentario_cierre:fundamento,
+        } : {}),
       }
       await updateCapa(c.id, payload)
       c.eficacia_verificada = checked
@@ -358,8 +368,9 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     if (!evidencia) return toast.error('Describí qué demuestran los archivos adjuntos.')
     setSavingEvidencia(true)
     try {
-      await updateCapa(c.id, { evidencia })
+      await updateCapa(c.id, { evidencia, comentario_evidencia:evidencia })
       c.evidencia = evidencia
+      c.comentario_evidencia = evidencia
       onReload?.()
       toast.ok('Descripción de evidencia guardada.')
     } catch (e) { toast.error(mensajeError(e)) }
@@ -632,7 +643,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
                 style={{ resize:'vertical', fontSize:'0.75rem', lineHeight:1.45, width:'100%' }}
               />
               <div style={{ display:'flex', justifyContent:'flex-end', marginTop:6 }}>
-                <button type="button" onClick={handleSaveEvidencia} disabled={savingEvidencia || evidenciaDescripcion.trim() === String(c.evidencia || '').trim()} className="btn-ghost" style={{ padding:'0.25rem 0.75rem', fontSize:'0.65rem' }}>
+                <button type="button" onClick={handleSaveEvidencia} disabled={savingEvidencia || evidenciaDescripcion.trim() === String(c.comentario_evidencia || c.evidencia || '').trim()} className="btn-ghost" style={{ padding:'0.25rem 0.75rem', fontSize:'0.65rem' }}>
                   {savingEvidencia ? 'Guardando…' : 'Guardar descripción'}
                 </button>
               </div>
