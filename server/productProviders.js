@@ -25,7 +25,8 @@ export function normalizeFacts(product, provider, barcode, now = new Date().toIS
     allergens:cleanProductText(str(product.allergens)), country_of_origin:cleanProductText(str(product.origins)),
     nutrition_text:nutrition ? `Base informada: ${str(product.nutrition_data_per) || 'ver etiqueta'}. Porción: ${str(product.serving_size) || 'sin dato'}.\n${nutrition}` : '',
     presentation:str(product.quantity), ...parsePresentation(product.quantity, barcode),
-    source:{ provider:provider.name, source_url:`https://${provider.host}/product/${barcode}`,
+    source:{ provider:provider.name, source_code:({ 'Open Food Facts':'OPEN_FOOD_FACTS','Open Products Facts':'OPEN_PRODUCTS_FACTS','Open Beauty Facts':'OPEN_BEAUTY_FACTS' })[provider.name] || 'WEB',
+      source_url:`https://${provider.host}/product/${barcode}`, source_reference:barcode, confidence:0.8, verified:false,
       raw_metadata:product, retrieved_at:now, license:'ODbL (datos), CC BY-SA (imágenes)' },
   }
 }

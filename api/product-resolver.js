@@ -1,6 +1,7 @@
 import { normalizeBarcode } from '../src/lib/productBarcode.js'
 import { resolveExternal } from '../server/productProviders.js'
 import { precialoUrl } from '../server/precialoProducts.js'
+import { lookupSepa } from '../server/sepaProvider.js'
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
@@ -28,6 +29,15 @@ export default async function handler(req, res) {
       body:JSON.stringify({ escritura:false }), signal:AbortSignal.timeout(5000),
     })
     if (!access.ok || await access.json() !== true) return res.status(403).json({ error:'Sin acceso al maestro de artículos' })
-    return res.status(200).json(await resolveExternal(barcode, { enrich:req.body?.enrich === true, sourceUrl }))
+    let sepaProduct = null, sepaWarnings = []
+    try { sepaProduct = await lookupSepa(barcode, { url, key, authorization }) }
+    catch { sepaWarnings = ['SEPA mayorista: catálogo no disponible. Se continuó con las fuentes públicas.'] }
+    if (req.body?.enrich === true) {
+      const external = await resolveExternal(barcode, { enrich:true, sourceUrl })
+      return res.status(200).json({ ...external, products:[...(sepaProduct ? [sepaProduct] : []), ...(external.products || [])], warnings:[...sepaWarnings,...(external.warnings || [])] })
+    }
+    if (sepaProduct) return res.status(200).json({ product:sepaProduct, warnings:[] })
+    const external = await resolveExternal(barcode, { sourceUrl })
+    return res.status(200).json({ ...external, warnings:[...sepaWarnings,...(external.warnings || [])] })
   } catch { return res.status(503).json({ error:'No se pudo consultar. Reintentá o completá el artículo manualmente.' }) }
 }
