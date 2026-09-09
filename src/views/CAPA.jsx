@@ -283,6 +283,8 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   const [savingNotas, setSavingNotas] = useState(false)
   const [savingEficacia, setSavingEficacia] = useState(false)
   const [notasSaved, setNotasSaved]   = useState(false)
+  const [evidenciaDescripcion, setEvidenciaDescripcion] = useState(c.evidencia || '')
+  const [savingEvidencia, setSavingEvidencia] = useState(false)
   const [subtareas, setSubtareas]     = useState(Array.isArray(c.subtareas) ? c.subtareas : [])
   const [nuevaSubtarea, setNuevaSubtarea] = useState('')
   const [savingSubtareas, setSavingSubtareas] = useState(false)
@@ -299,8 +301,19 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   const [savingAsignacion, setSavingAsignacion] = useState(false)
 
   const handleSaveEstado = async () => {
+    const cierreTerminal = estado === 'Completada' || estado === 'Verificada'
+    const evidencia = evidenciaDescripcion.trim()
+    const fundamento = notas.trim()
+    if (cierreTerminal && !evidencia) return toast.error('Describí qué demuestra la evidencia adjunta.')
+    if (cierreTerminal && !fundamento) return toast.error('Indicá cómo y por qué se completó la acción.')
+    if (estado === 'Verificada' && c.estado !== 'Completada' && c.estado !== 'Verificada') {
+      return toast.error('Primero guardá la CAPA como Completada y luego verificá su eficacia.')
+    }
     setSaving(true)
-    try { await onEstadoChange(c.id, estado); onClose() }
+    try {
+      await onEstadoChange(c.id, estado, cierreTerminal ? { evidencia, notas: fundamento } : {})
+      onClose()
+    }
     catch (e) { toast.error(mensajeError(e)) }
     finally { setSaving(false) }
   }
@@ -318,12 +331,15 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   }
 
   const handleToggleEficacia = async (checked) => {
+    if (checked && !evidenciaDescripcion.trim()) return toast.error('Describí qué demuestra la evidencia adjunta.')
+    if (checked && !notas.trim()) return toast.error('Indicá cómo y por qué se verificó la acción.')
     setSavingEficacia(true)
     try {
       const payload = {
         eficacia_verificada: checked,
         estado: checked ? 'Verificada' : (c.estado === 'Verificada' ? 'Completada' : c.estado),
         fecha_cierre: checked ? new Date().toISOString().split('T')[0] : c.fecha_cierre,
+        ...(checked ? { evidencia:evidenciaDescripcion.trim(), notas:notas.trim() } : {}),
       }
       await updateCapa(c.id, payload)
       c.eficacia_verificada = checked
@@ -333,6 +349,19 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
       onReload?.()
     } catch (e) { toast.error(mensajeError(e)) }
     finally { setSavingEficacia(false) }
+  }
+
+  const handleSaveEvidencia = async () => {
+    const evidencia = evidenciaDescripcion.trim()
+    if (!evidencia) return toast.error('Describí qué demuestran los archivos adjuntos.')
+    setSavingEvidencia(true)
+    try {
+      await updateCapa(c.id, { evidencia })
+      c.evidencia = evidencia
+      onReload?.()
+      toast.ok('Descripción de evidencia guardada.')
+    } catch (e) { toast.error(mensajeError(e)) }
+    finally { setSavingEvidencia(false) }
   }
 
   const saveSubtareas = async next => {
@@ -583,6 +612,30 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
               </div>
             </div>
           )}
+
+          <div className="pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+            <label className="font-metric text-xs tracking-wider uppercase mb-1.5 block" style={{ color:'var(--text-dim)' }}>
+              Descripción de la evidencia
+            </label>
+            <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', marginBottom:6 }}>
+              Explicá qué muestran los archivos adjuntos y cómo acreditan que la acción fue realizada.
+            </p>
+            {canWrite ? <>
+              <textarea
+                value={evidenciaDescripcion}
+                onChange={e => setEvidenciaDescripcion(e.target.value)}
+                placeholder="Ej.: El informe adjunto confirma el análisis realizado y sus resultados conformes."
+                rows={3}
+                className="input-dark"
+                style={{ resize:'vertical', fontSize:'0.75rem', lineHeight:1.45, width:'100%' }}
+              />
+              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:6 }}>
+                <button type="button" onClick={handleSaveEvidencia} disabled={savingEvidencia || evidenciaDescripcion.trim() === String(c.evidencia || '').trim()} className="btn-ghost" style={{ padding:'0.25rem 0.75rem', fontSize:'0.65rem' }}>
+                  {savingEvidencia ? 'Guardando…' : 'Guardar descripción'}
+                </button>
+              </div>
+            </> : <p style={{ color:'var(--text)', fontSize:'0.75rem', lineHeight:1.5, whiteSpace:'pre-wrap' }}>{c.evidencia || 'Sin descripción de evidencia.'}</p>}
+          </div>
 
           <div className="pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <AdjuntosPanel entityType="capa" entityId={c.id} readOnly={!canWrite} />
@@ -1136,8 +1189,9 @@ export default function CAPA({ focusId, mode = 'quality' }) {
 
   const canWrite = can('calidad', 'manage')
 
-  const saveEstado = async (id, nuevoEstado) => {
+  const saveEstado = async (id, nuevoEstado, extra = {}) => {
     await updateCapa(id, {
+      ...extra,
       estado: nuevoEstado,
       fecha_cierre: nuevoEstado === 'Completada' || nuevoEstado === 'Verificada' ? format(new Date(), 'yyyy-MM-dd') : null,
       eficacia_verificada: nuevoEstado === 'Verificada',
