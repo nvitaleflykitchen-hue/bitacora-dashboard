@@ -2072,6 +2072,17 @@ export async function upsertActivo(payload) {
   return data;
 }
 
+export async function deleteActivo(id) {
+  const { data, error } = await supabase
+    .from("mnt_activos")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function getActivoById(id) {
   const { data, error } = await supabase
     .from("mnt_activos")
