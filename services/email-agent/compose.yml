@@ -1,0 +1,11 @@
+services:
+  correo-evidencias:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - correo-state:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+volumes:
+  correo-state:

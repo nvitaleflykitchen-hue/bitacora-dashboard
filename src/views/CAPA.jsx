@@ -3,6 +3,7 @@ import { format, isPast, isToday, differenceInDays } from 'date-fns'
 import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan, deleteCapaProject, getPerfiles, getColaboradoresProyecto } from '../lib/queries'
 import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil, Trash2, Search } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
+import CorreosGestion from '../components/CorreosGestion'
 import PageHeader from '../components/PageHeader'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
@@ -652,6 +653,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
 
           <div className="pt-2" style={{ borderTop:'1px solid rgba(255,255,255,0.05)' }}>
             <AdjuntosPanel entityType="capa" entityId={c.id} readOnly={!canWrite} />
+            <CorreosGestion codigo={c.auditoria_codigo} />
           </div>
         </div>
       </div>

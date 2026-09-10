@@ -6,6 +6,7 @@ import WorkspaceTabs from '../components/WorkspaceTabs'
 import Tareas from './Tareas'
 import Escalamientos from './Escalamientos'
 import Calendario from './Calendario'
+import Correos from './Correos'
 import { isQualityOnlyProfile } from '../lib/access'
 import usePersistedState from '../hooks/usePersistedState'
 import OperationalStateChip from '../components/OperationalStateChip'
@@ -15,6 +16,7 @@ const TABS = [
   { id:'tareas', label:'Tareas' },
   { id:'escalamientos', label:'Escalamientos' },
   { id:'calendario', label:'Calendario' },
+  { id:'correos', label:'Correos' },
 ]
 
 const VIEW_MODES = [
@@ -361,6 +363,7 @@ export default function PendientesHub({ onNavigate }) {
       {visibleTab === 'tareas' && <Tareas onNavigate={onNavigate} />}
       {!isQualityOnly && visibleTab === 'escalamientos' && <Escalamientos onNavigate={onNavigate} />}
       {visibleTab === 'calendario' && <Calendario />}
+      {visibleTab === 'correos' && <Correos />}
     </WorkspaceTabs>
   )
 }
