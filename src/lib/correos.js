@@ -17,11 +17,14 @@ export async function getCorreoContext() {
   return { mailboxes: checked(mailboxes), plans: checked(plans), memberships: checked(memberships) }
 }
 
-export async function getCorreos({ mailboxId, state, planId, page = 0 }) {
+export async function getCorreos({ mailboxId, state, planId, analysis, page = 0 }) {
   let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,sugerido_plan_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
   if (mailboxId) query = query.eq('buzon_id', mailboxId)
   if (state && state !== 'todos') query = query.eq('estado', state)
   if (planId) query = query.eq('plan_id', planId)
+  if (analysis === 'lista') query = query.eq('ai_estado', 'lista')
+  if (analysis === 'pendiente') query = query.in('ai_estado', ['pendiente', 'error'])
+  if (analysis === 'sugerencia') query = query.not('sugerido_plan_id', 'is', null)
   const result = await query.order('fecha_correo', { ascending: false, nullsFirst: false }).order('id').range(page * CORREO_PAGE_SIZE, (page + 1) * CORREO_PAGE_SIZE - 1)
   return { items: checked(result), total: result.count || 0 }
 }

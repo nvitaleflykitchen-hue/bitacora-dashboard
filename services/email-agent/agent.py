@@ -178,14 +178,14 @@ def classify(message, candidates, thread_ids=()):
     schema = {**SCHEMA, 'properties': {**SCHEMA['properties'],
               'plan_id': {'type': ['string', 'null'], 'enum': [None] + [p['id'] for p in candidates]}}}
     prompt = {'correo': {k: message.get(k) for k in ('asunto', 'remitente', 'destinatarios', 'fecha_correo')},
-              'texto': message['cuerpo'][:12000],
+              'texto': message['cuerpo'][:6000],
               'adjuntos_nombres': [f['nombre'] for f in message.get('adjuntos', [])],
               'gestiones_candidatas': candidates, 'gestiones_del_hilo': list(thread_ids)}
     response = http(origin + '/api/chat', 'POST', {
         'model': model, 'stream': False, 'format': schema,
-        'options': {'temperature': 0, 'num_ctx': 8192},
+        'options': {'temperature': 0, 'num_ctx': 4096, 'num_predict': 512},
         'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': json.dumps(prompt, ensure_ascii=False)}],
-    }, timeout=180)
+    }, timeout=300)
     return validate_result(json.loads(response['message']['content']), candidates)
 
 
@@ -240,7 +240,7 @@ class Store:
                 break
             offset += 500
         messages = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'ai_estado': 'in.(pendiente,error)',
-                             'estado': 'eq.pendiente', 'order': 'ai_intentos.asc,created_at.asc', 'limit': 10})
+                             'estado': 'eq.pendiente', 'order': 'ai_intentos.asc,fecha_correo.desc.nullslast,created_at.desc', 'limit': 10})
         for message in messages:
             ids = set()
             for reference in message['referencias'][-10:]:
@@ -260,6 +260,7 @@ class Store:
                 LOG.warning('Clasificación pendiente de reintento (%s)', type(exc).__name__)
             # No sobreescribir decisiones del usuario tomadas mientras Ollama trabajaba.
             self.table('correos', {'id': 'eq.' + message['id'], 'estado': 'eq.pendiente'}, 'PATCH', changes)
+            LOG.info('Clasificación %s: %s', message['id'], changes['ai_estado'])
 
 
 class Cursor:

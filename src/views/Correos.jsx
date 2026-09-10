@@ -82,6 +82,7 @@ export default function Correos({ planId = null }) {
   const [state, setState] = useState(planId ? 'vinculado' : 'pendiente')
   const [planFilter, setPlanFilter] = useState(planId || '')
   const [page, setPage] = useState(0)
+  const [analysis, setAnalysis] = useState('todos')
   const [result, setResult] = useState({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -103,39 +104,43 @@ export default function Correos({ planId = null }) {
     const sequence = ++request.current
     if (!mailboxId) return
     setLoading(true); setError(''); setResult({ items: [], total: 0 })
-    getCorreos({ mailboxId, state, planId: planId || planFilter, page }).then(data => {
+    getCorreos({ mailboxId, state, planId: planId || planFilter, analysis, page }).then(data => {
       if (request.current === sequence) setResult(data)
     }).catch(err => { if (request.current === sequence) setError(correoError(err)) })
       .finally(() => { if (request.current === sequence) setLoading(false) })
     return () => { request.current += 1 }
-  }, [mailboxId, state, planFilter, planId, page, revision])
+  }, [mailboxId, state, planFilter, planId, page, analysis, revision])
   const reviewer = context?.memberships.some(m => m.buzon_id === mailboxId && m.puede_revisar)
   function filter(setter, value) { setter(value); setPage(0); setOpened(null) }
   return <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4" style={{ color: 'var(--text)' }}>
     <header className="flex items-center justify-between gap-3 flex-wrap">
       <div><h1 className="font-title text-xl font-bold">{planId ? 'Correos y evidencias' : 'Correos'}</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>Revisá las sugerencias y reuní la documentación de cada gestión.</p></div>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>Ollama resume y clasifica cada correo. Abrilo para revisar la propuesta, vincularlo a un proyecto y consultar sus adjuntos.</p></div>
       <button className="btn-ghost" onClick={refresh} disabled={loading}>Actualizar</button>
     </header>
     {error && <p role="alert" className="glass p-4">{error}</p>}
     {context && !context.mailboxes.length && <p className="glass p-4">No tenés buzones habilitados. El acceso a los correos se asigna de forma individual.</p>}
     {!!context?.mailboxes.length && <>
       <div className="flex gap-3 flex-wrap">
+        <label>Análisis<select className="input-dark block" value={analysis} onChange={e => filter(setAnalysis, e.target.value)}><option value="todos">Todos</option><option value="lista">Analizados por Ollama</option><option value="sugerencia">Con proyecto sugerido</option><option value="pendiente">Pendientes de análisis</option></select></label>
         <label>Buzón<select className="input-dark block" value={mailboxId} onChange={e => filter(setMailboxId, e.target.value)}>{context.mailboxes.map(box => <option key={box.id} value={box.id}>{box.nombre}</option>)}</select></label>
         {!planId && <><label>Estado<select className="input-dark block" value={state} onChange={e => filter(setState, e.target.value)}>{Object.entries(states).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
           <label>Gestión vinculada<select className="input-dark block" value={planFilter} onChange={e => { filter(setPlanFilter, e.target.value); if (e.target.value) setState('vinculado') }}><option value="">Todas las gestiones</option>{context.plans.map(plan => <option key={plan.id} value={plan.id}>{title(plan)}</option>)}</select></label></>}
       </div>
+      {opened && <CorreoDetail key={opened} id={opened} plans={context.plans} canReview={reviewer} onClose={() => setOpened(null)} onSaved={refresh} />}
       {loading ? <p role="status">Cargando correos…</p> : <>
         {!result.items.length && !error && <p className="glass p-6">No hay correos en esta selección. Los mensajes aparecerán cuando el agente complete la importación.</p>}
         <div className="grid gap-3">{result.items.map(message => <button key={message.id} className="glass rounded p-4 text-left" onClick={() => setOpened(message.id)} aria-pressed={opened === message.id}>
           <span className="block font-bold" style={{ overflowWrap: 'anywhere' }}>{message.asunto}</span>
           <span className="block text-sm" style={{ color: 'var(--text-dim)', overflowWrap: 'anywhere' }}>{message.remitente} · {dateText(message.fecha_correo)}</span>
           <span className="block text-sm mt-2">{message.resumen || (message.ai_estado === 'error' ? 'Clasificación pendiente de reintento' : 'Clasificación pendiente')}</span>
+          {message.ai_estado === 'lista' && <span className="block text-sm mt-2">Analizado por Ollama · {message.tipo}{!message.plan_id && !message.sugerido_plan_id ? ' · Sin proyecto coincidente' : ''}</span>}
+          {message.nueva_gestion && <span className="block text-sm mt-2">Propuesta para revisar: {message.nueva_gestion}</span>}
+          <span className="block text-sm mt-2" style={{ color: 'var(--primary)' }}>Abrir análisis, vínculo y adjuntos</span>
           {(message.plan_id || message.sugerido_plan_id) && <span className="block text-sm mt-2">{message.plan_id ? 'Vinculado a: ' : 'Sugerencia: '}{title(context.plans.find(p => p.id === (message.plan_id || message.sugerido_plan_id)))}</span>}
         </button>)}</div>
         {result.total > CORREO_PAGE_SIZE && <nav aria-label="Páginas de correos" className="flex gap-3 items-center"><button className="btn-ghost" disabled={page === 0} onClick={() => { setPage(page - 1); setOpened(null) }}>Anterior</button><span>{page + 1} / {Math.ceil(result.total / CORREO_PAGE_SIZE)}</span><button className="btn-ghost" disabled={(page + 1) * CORREO_PAGE_SIZE >= result.total} onClick={() => { setPage(page + 1); setOpened(null) }}>Siguiente</button></nav>}
       </>}
-      {opened && <CorreoDetail key={opened} id={opened} plans={context.plans} canReview={reviewer} onClose={() => setOpened(null)} onSaved={refresh} />}
     </>}
   </div>
 }
