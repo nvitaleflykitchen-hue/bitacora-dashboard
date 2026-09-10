@@ -23,6 +23,10 @@ def raw_message():
 
 
 class AgentTests(unittest.TestCase):
+    def test_generic_context_does_not_match_unrelated_project(self):
+        plans = [{'id': 'tripan', 'titulo': 'TRIPAN Validación de conservación y regeneración operativa', 'objetivo': 'coordinar equipo pedidos viandas'}]
+        self.assertEqual(agent.candidate_plans({'asunto': 'Quinto Centenario', 'cuerpo': 'Coordinar equipo y pedidos de viandas'}, plans), [])
+
     def test_original_metadata_and_attachments(self):
         parsed = agent.parse_message(raw_message())
         self.assertEqual(parsed['destinatarios'], ['nico@example.com'])

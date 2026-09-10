@@ -146,6 +146,11 @@ def candidate_plans(message, plans, thread_ids=()):
     words = tokens(message['asunto'] + ' ' + message['cuerpo'][:12000])
     ranked = []
     for plan in plans:
+        code = plan.get('auditoria_codigo') or ''
+        explicit = bool(code and code.lower() in (message['asunto'] + ' ' + message['cuerpo']).lower())
+        identity = tokens(plan.get('titulo') or '') - {'validacion', 'operativa', 'operativo', 'seguimiento', 'proyecto', 'trabajo', 'accion', 'general'}
+        if plan['id'] not in thread_ids and not explicit and len(words & identity) < 2:
+            continue
         score = len(words & tokens(' '.join(str(plan.get(k) or '') for k in ('titulo', 'objetivo', 'alcance', 'sede_nombre', 'empresa_prestataria'))))
         if plan['id'] in thread_ids:
             score += 20
@@ -178,7 +183,7 @@ def classify(message, candidates, thread_ids=()):
     schema = {**SCHEMA, 'properties': {**SCHEMA['properties'],
               'plan_id': {'type': ['string', 'null'], 'enum': [None] + [p['id'] for p in candidates]}}}
     prompt = {'correo': {k: message.get(k) for k in ('asunto', 'remitente', 'destinatarios', 'fecha_correo')},
-              'texto': message['cuerpo'][:6000],
+              'texto': re.split(r'(?m)^\s*(?:>|_{5,}|De:|From:|El .+escribi[oó]:)', message['cuerpo'], maxsplit=1)[0][:6000],
               'adjuntos_nombres': [f['nombre'] for f in message.get('adjuntos', [])],
               'gestiones_candidatas': candidates, 'gestiones_del_hilo': list(thread_ids)}
     response = http(origin + '/api/chat', 'POST', {
