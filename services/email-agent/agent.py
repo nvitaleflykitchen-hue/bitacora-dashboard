@@ -142,6 +142,43 @@ def tokens(text):
     return set(re.findall(r'[a-z0-9]{4,}', text)) - {'para', 'como', 'este', 'esta', 'gestion', 'correo', 'buenas', 'gracias', 'saludos', 'mantenimiento'}
 
 
+DESTINATIONS = {'tarea': 'tarea_id', 'compra': 'compra_id', 'ticket': 'ticket_id'}
+
+def destination(message):
+    if message.get('plan_id'):
+        return message['plan_id']
+    for kind, column in DESTINATIONS.items():
+        if message.get(column) is not None:
+            return kind + ':' + str(message[column])
+    return None
+
+def destination_fields(key, suggested=False):
+    prefix = 'sugerido_' if suggested else ''
+    result = {prefix + column: None for column in ['plan_id', *DESTINATIONS.values()]}
+    if key:
+        if ':' not in key:
+            result[prefix + 'plan_id'] = key
+        else:
+            kind, value = key.split(':', 1)
+            result[prefix + DESTINATIONS[kind]] = value if kind == 'ticket' else int(value)
+    return result
+
+def explicit_targets(message, plans):
+    # Sólo el asunto y texto nuevo; el historial citado no autoriza un destino.
+    text = message['asunto'] + ' ' + re.split(r'(?m)^\s*(?:>|_{5,}|De:|From:|El .+escribi[oó]:)', message['cuerpo'], maxsplit=1)[0]
+    result = set()
+    for plan in plans:
+        key = plan['id']
+        if ':' in key:
+            kind, value = key.split(':', 1)
+            label = {'tarea': 'tarea', 'compra': '(?:compra|requerimiento)', 'ticket': 'ticket'}[kind]
+            if re.search(r'(?i)\b' + label + r'\s*(?:#|n[°º.]?)?\s*' + re.escape(value) + r'(?![\w-])', text):
+                result.add(key)
+        elif plan.get('auditoria_codigo') and plan['auditoria_codigo'].lower() in text.lower():
+            result.add(key)
+    return result
+
+
 def candidate_plans(message, plans, thread_ids=()):
     words = tokens(message['asunto'] + ' ' + message['cuerpo'][:12000])
     ranked = []
@@ -149,13 +186,15 @@ def candidate_plans(message, plans, thread_ids=()):
         code = plan.get('auditoria_codigo') or ''
         explicit = bool(code and code.lower() in (message['asunto'] + ' ' + message['cuerpo']).lower())
         identity = tokens(plan.get('titulo') or '') - {'validacion', 'operativa', 'operativo', 'seguimiento', 'proyecto', 'trabajo', 'accion', 'general'}
-        if plan['id'] not in thread_ids and not explicit and len(words & identity) < 2:
+        if plan['id'] not in thread_ids and plan['id'] not in explicit_targets(message, [plan]) and not explicit and len(words & identity) < 2:
             continue
         score = len(words & tokens(' '.join(str(plan.get(k) or '') for k in ('titulo', 'objetivo', 'alcance', 'sede_nombre', 'empresa_prestataria'))))
         if plan['id'] in thread_ids:
             score += 20
         if plan.get('auditoria_codigo', '').lower() in (message['asunto'] + ' ' + message['cuerpo']).lower() and plan.get('auditoria_codigo'):
             score += 50
+        if plan['id'] in explicit_targets(message, [plan]):
+            score += 100
         if score:
             ranked.append((score, plan))
     return [p for _, p in sorted(ranked, key=lambda pair: (-pair[0], pair[1]['id']))[:12]]
@@ -185,7 +224,7 @@ def classify(message, candidates, thread_ids=()):
     prompt = {'correo': {k: message.get(k) for k in ('asunto', 'remitente', 'destinatarios', 'fecha_correo')},
               'texto': re.split(r'(?m)^\s*(?:>|_{5,}|De:|From:|El .+escribi[oó]:)', message['cuerpo'], maxsplit=1)[0][:6000],
               'adjuntos_nombres': [f['nombre'] for f in message.get('adjuntos', [])],
-              'gestiones_candidatas': candidates, 'gestiones_del_hilo': list(thread_ids)}
+              'gestiones_candidatas': [{k: str(p.get(k) or '')[:500] for k in ('id', 'titulo', 'objetivo', 'sede_nombre', 'auditoria_codigo')} for p in candidates], 'gestiones_del_hilo': list(thread_ids)}
     response = http(origin + '/api/chat', 'POST', {
         'model': model, 'stream': False, 'format': schema,
         'options': {'temperature': 0, 'num_ctx': 4096, 'num_predict': 512},
@@ -203,8 +242,8 @@ class Store:
         self.headers = {'apikey': key, 'Authorization': f'Bearer {key}',
                         'Accept-Profile': 'bitacora', 'Content-Profile': 'bitacora'}
 
-    def table(self, name, params=None, method='GET', data=None, prefer=None):
-        headers = dict(self.headers)
+    def table(self, name, params=None, method='GET', data=None, prefer=None, schema='bitacora'):
+        headers = {**self.headers, 'Accept-Profile': schema, 'Content-Profile': schema}
         if prefer:
             headers['Prefer'] = prefer
         return http(self.url + '/rest/v1/' + name + '?' + urlencode(params or {}), method, data, headers)
@@ -236,35 +275,53 @@ class Store:
 
     def classify_pending(self, mailbox_id):
         plans = []
-        offset = 0
-        while True:
-            page = self.table('capa_planes', {'select': 'id,auditoria_codigo,titulo,objetivo,alcance,sede_nombre,empresa_prestataria',
-                'auditoria_codigo': 'like.FK-GEST-*', 'order': 'id', 'limit': 500, 'offset': offset})
-            plans.extend(page)
-            if len(page) < 500:
-                break
-            offset += 500
-        messages = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'ai_estado': 'in.(pendiente,error)',
+        sources = [('capa_planes', 'bitacora', None, 'id,auditoria_codigo,titulo,objetivo,alcance,sede_nombre,empresa_prestataria'),
+                   ('tareas', 'bitacora', 'tarea', 'id,titulo,descripcion,sede_id'),
+                   ('requerimientos', 'bitacora', 'compra', 'id,descripcion,sede_id'),
+                   ('mnt_tickets', 'public', 'ticket', 'id,descripcion,sede')]
+        for table, schema, kind, columns in sources:
+            offset = 0
+            while True:
+                params = {'select': columns, 'order': 'id', 'limit': 500, 'offset': offset}
+                if kind is None:
+                    params['auditoria_codigo'] = 'like.FK-GEST-*'
+                page = self.table(table, params, schema=schema)
+                for row in page:
+                    if kind:
+                        row['id'] = kind + ':' + str(row['id'])
+                        row['titulo'] = row.get('titulo') or row.get('descripcion') or ''
+                        row['objetivo'] = row.get('descripcion') or ''
+                        row['sede_nombre'] = row.get('sede') or ''
+                    plans.append(row)
+                if len(page) < 500:
+                    break
+                offset += 500
+        messages = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'or': '(ai_estado.in.(pendiente,error),ai_modelo.not.like.*destinos-v2)',
                              'estado': 'eq.pendiente', 'order': 'ai_intentos.asc,fecha_correo.desc.nullslast,created_at.desc', 'limit': 10})
         for message in messages:
             ids = set()
             for reference in message['referencias'][-10:]:
                 linked = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'message_id': 'eq.' + reference,
-                                    'estado': 'eq.vinculado', 'select': 'plan_id'})
-                ids.update(m['plan_id'] for m in linked if m['plan_id'])
+                                    'estado': 'eq.vinculado', 'select': 'plan_id,tarea_id,compra_id,ticket_id'})
+                ids.update(destination(m) for m in linked if destination(m))
             candidates = candidate_plans(message, plans, ids)
             attempt = message['ai_intentos'] + 1
             try:
                 result = classify(message, candidates, ids)
-                changes = {'sugerido_plan_id': result['plan_id'], 'tipo': result['tipo'],
+                changes = {**destination_fields(result['plan_id'], suggested=True), 'tipo': result['tipo'],
                            'resumen': result['resumen'], 'motivo': result['motivo'],
                            'nueva_gestion': result['nueva_gestion'], 'ai_estado': 'lista',
-                           'ai_modelo': os.getenv('OLLAMA_MODEL', 'llama3.2'), 'ai_error': None, 'ai_intentos': attempt}
+                           'ai_modelo': os.getenv('OLLAMA_MODEL', 'llama3.2') + '|destinos-v2', 'ai_error': None, 'ai_intentos': attempt}
+                # Sólo una referencia explícita, exacta y única admite asociación automática.
+                if result['plan_id'] and explicit_targets(message, plans) == {result['plan_id']}:
+                    changes.update(destination_fields(result['plan_id']))
+                    changes['estado'] = 'vinculado'
+                    changes['motivo'] = 'Vínculo automático por referencia explícita única. ' + result['motivo'][:1800]
             except Exception as exc:
                 changes = {'ai_estado': 'error', 'ai_error': type(exc).__name__, 'ai_intentos': attempt}
                 LOG.warning('Clasificación pendiente de reintento (%s)', type(exc).__name__)
             # No sobreescribir decisiones del usuario tomadas mientras Ollama trabajaba.
-            self.table('correos', {'id': 'eq.' + message['id'], 'estado': 'eq.pendiente'}, 'PATCH', changes)
+            self.table('correos', {'id': 'eq.' + message['id'], 'estado': 'eq.pendiente', 'updated_at': 'eq.' + message['updated_at']}, 'PATCH', changes)
             LOG.info('Clasificación %s: %s', message['id'], changes['ai_estado'])
 
 

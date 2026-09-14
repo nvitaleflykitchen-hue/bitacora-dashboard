@@ -1,3 +1,4 @@
+import CorreosEntidad from './CorreosEntidad'
 import { useState, useEffect } from 'react'
 import { X, MessageCircle, Mail, UserCheck } from 'lucide-react'
 import { createTarea, updateTarea, getSedes, getPerfilesConDirectorio, getContactos } from '../lib/queries'
@@ -387,6 +388,7 @@ export default function TareaForm({ onClose, onCreated, onUpdated, registroOrige
             </div>}
           </div>
 
+          {tareaEditar?.id && <CorreosEntidad entityType="tarea" entityId={tareaEditar.id} />}
           {tareaEditar?.id&&<CompromisoTareaPanel tareaId={tareaEditar.id} />}
 
           {registroOrigen && (
