@@ -1,3 +1,4 @@
+import React from 'react'
 import { destinoCorreo } from '../lib/correoDestinos'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CORREO_PAGE_SIZE, correoError, downloadCorreoFile, getCorreoContext, getCorreoDetail, getCorreos, reviewCorreo } from '../lib/correos'
