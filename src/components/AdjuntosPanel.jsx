@@ -1,3 +1,4 @@
+import CorreosEntidad from './CorreosEntidad'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Camera, Paperclip, Link2, Upload, X, FileText, Image, File, ExternalLink, Trash2, Plus, Pencil, RefreshCw } from 'lucide-react'
@@ -338,6 +339,8 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
           ))}
         </div>
       )}
+
+      <CorreosEntidad entityType={entityType} entityId={entityId} readOnly={readOnly} />
 
       {/* Lightbox — se monta vía portal en document.body para evitar quedar
           atrapado por el backdrop-filter de los modales padre (.glass crea

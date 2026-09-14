@@ -1,3 +1,4 @@
+import React from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Correos, { CorreoDetail } from './Correos'
@@ -28,6 +29,15 @@ describe('Bandeja de correos', () => {
     fireEvent.click(screen.getByText('Guardar vínculo'))
     await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(message, 'p1', 'vinculado'))
     expect(saved).toHaveBeenCalledOnce()
+  })
+  it.each(['tarea:7', 'compra:8', 'ticket:abc'])('guarda el destino %s desde el detalle', async key => {
+    const [kind, id] = key.split(':')
+    const current = { ...message, sugerido_plan_id: null, [`sugerido_${kind}_id`]: id }
+    api.getCorreoDetail.mockResolvedValue({ message: current, history: [] })
+    render(<CorreoDetail id="m1" plans={[{ id: key, titulo: 'Gestión destino' }]} canReview onClose={() => {}} onSaved={() => {}} />)
+    await screen.findByText('Presupuesto')
+    fireEvent.click(screen.getByText('Guardar vínculo'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(current, key, 'vinculado'))
   })
   it('no muestra acciones de asociación a lectores', async () => {
     render(<CorreoDetail id="m1" plans={plans} canReview={false} onClose={() => {}} onSaved={() => {}} />)
