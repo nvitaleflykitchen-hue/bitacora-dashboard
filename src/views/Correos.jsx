@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import React from 'react'
 import { destinoCorreo } from '../lib/correoDestinos'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -8,6 +9,17 @@ const title = plan => plan?.titulo || plan?.objetivo || plan?.auditoria_codigo |
 const dateText = value => value ? new Date(value).toLocaleString('es-AR') : 'Sin fecha en el original'
 
 export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
+  const dialogRef = useRef(null)
+  useEffect(() => {
+    const previous = document.activeElement
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    dialogRef.current?.focus({ preventScroll: true })
+    return () => {
+      document.body.style.overflow = overflow
+      if (previous?.isConnected) previous.focus({ preventScroll: true })
+    }
+  }, [])
   const [detail, setDetail] = useState(null)
   const [selected, setSelected] = useState('')
   const [busy, setBusy] = useState(false)
@@ -37,9 +49,20 @@ export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
     catch (err) { setError(correoError(err)) }
     finally { setBusy(false) }
   }
+  function handleDialogKey(event) {
+    if (event.key === 'Escape') { event.stopPropagation(); if (!busy) onClose(); return }
+    if (event.key !== 'Tab') return
+    const items = [...dialogRef.current.querySelectorAll('button:not(:disabled),select:not(:disabled),input:not(:disabled),summary,[tabindex="0"]')]
+    const first = items[0], last = items[items.length - 1]
+    if (!first) { event.preventDefault(); return }
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialogRef.current)) { event.preventDefault(); first.focus() }
+  }
   const message = detail?.message
-  return <section aria-label="Detalle del correo" className="glass rounded p-4 space-y-4" style={{ minWidth: 0 }}>
-    <button type="button" className="btn-ghost" onClick={onClose} disabled={busy}>Cerrar detalle</button>
+  return createPortal(<div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.65)', display: 'flex', justifyContent: 'flex-end' }}>
+    <section ref={dialogRef} role="dialog" aria-modal="true" aria-label="Detalle del correo" tabIndex={-1} onKeyDown={handleDialogKey} style={{ width: 'min(860px,100%)', height: '100dvh', minWidth: 0, background: 'var(--bg, #111215)', color: 'var(--text)', display: 'flex', flexDirection: 'column', boxShadow: '-12px 0 40px #0008' }}>
+      <header style={{ padding: '12px 20px', borderBottom: '1px solid #ffffff25', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><strong>Revisar correo</strong><button type="button" className="btn-ghost" onClick={onClose} disabled={busy}>Cerrar detalle</button></header>
+      <div className="p-4 space-y-4" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
     {error && <p role="alert" style={{ color: 'var(--alert)' }}>{error}</p>}
     {!message && !error && <p role="status">Cargando correo…</p>}
     {message && <>
@@ -75,7 +98,9 @@ export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
         <ul className="mt-2 space-y-2">{detail.history.map(event => <li key={event.id}>{dateText(event.created_at)} · {states[event.despues.estado]}{destinoCorreo(event.despues) ? ` · ${title(plans.find(p => p.id === destinoCorreo(event.despues)))}` : ''} · {event.actor_id ? 'Revisión de usuario' : 'Agente automático'}</li>)}</ul>
       </details>
     </>}
-  </section>
+      </div>
+    </section>
+  </div>, document.body)
 }
 
 export default function Correos({ planId = null, readOnly = false }) {
