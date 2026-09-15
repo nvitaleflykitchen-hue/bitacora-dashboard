@@ -30,6 +30,14 @@ describe('Bandeja de correos', () => {
     await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(message, 'p1', 'vinculado'))
     expect(saved).toHaveBeenCalledOnce()
   })
+  it('abre el detalle como panel fijo y permite cerrarlo con Escape', async () => {
+    const close = vi.fn()
+    render(<CorreoDetail id="m1" plans={plans} canReview onClose={close} onSaved={() => {}} />)
+    const dialog = await screen.findByRole('dialog', { name: 'Detalle del correo' })
+    expect(dialog.parentElement.style.position).toBe('fixed')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(close).toHaveBeenCalledOnce()
+  })
   it.each(['tarea:7', 'compra:8', 'ticket:abc'])('guarda el destino %s desde el detalle', async key => {
     const [kind, id] = key.split(':')
     const current = { ...message, sugerido_plan_id: null, [`sugerido_${kind}_id`]: id }
