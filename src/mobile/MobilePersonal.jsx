@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
@@ -21,6 +21,8 @@ import EmptyState from '../components/EmptyState'
 import CapacitacionesRelacionadas from '../components/CapacitacionesRelacionadas'
 import { confirmarAccionSensible } from '../lib/sensitiveActions'
 import { CREDENTIAL_AREA_OPTIONS } from '../lib/credentialAreas'
+
+const Correos = lazy(() => import('../views/Correos'))
 
 function SedePill({ label, active, onClick }) {
   return (
@@ -571,6 +573,9 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
 
         {tab === 'historial' && (
           <>
+            <Suspense fallback={<p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Cargando correos vinculados…</p>}>
+              <Correos personId={personaId} readOnly />
+            </Suspense>
             <CapacitacionesRelacionadas personaId={personaId} title="Capacitaciones realizadas" />
             {canManage && (
               <button onClick={() => setShowHist(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', padding: '0.5rem 0.8rem', marginBottom: 12 }}>

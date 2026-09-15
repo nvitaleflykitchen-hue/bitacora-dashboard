@@ -2,13 +2,14 @@ import { createPortal } from 'react-dom'
 import React from 'react'
 import { destinoCorreo } from '../lib/correoDestinos'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CORREO_PAGE_SIZE, correoError, downloadCorreoFile, getCorreoContext, getCorreoDetail, getCorreos, reviewCorreo } from '../lib/correos'
+import { CORREO_PAGE_SIZE, correoError, downloadCorreoFile, getCorreoContext, getCorreoDetail, getCorreos, reviewCorreo, reviewCorreoPersona } from '../lib/correos'
 
 const states = { pendiente: 'Por revisar', vinculado: 'Vinculados', ignorado: 'Archivados', todos: 'Todos' }
 const title = plan => plan?.titulo || plan?.objetivo || plan?.auditoria_codigo || 'Gestión'
+const personName = person => person ? `${person.apellido || ''}, ${person.nombre || ''}`.replace(/^,\s*/, '').trim() : 'Persona'
 const dateText = value => value ? new Date(value).toLocaleString('es-AR') : 'Sin fecha en el original'
 
-export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
+export function CorreoDetail({ id, plans, people = [], canReview, onClose, onSaved }) {
   const dialogRef = useRef(null)
   useEffect(() => {
     const previous = document.activeElement
@@ -22,16 +23,20 @@ export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
   }, [])
   const [detail, setDetail] = useState(null)
   const [selected, setSelected] = useState('')
+  const [selectedPerson, setSelectedPerson] = useState('')
+  const [personNotice, setPersonNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   useEffect(() => {
     let active = true
     setDetail(null)
     setError('')
+    setPersonNotice('')
     getCorreoDetail(id).then(data => {
       if (!active) return
       setDetail(data)
       setSelected(destinoCorreo(data.message) || destinoCorreo(data.message, true) || '')
+      setSelectedPerson(data.message.persona_id || data.message.sugerido_persona_id || '')
     }).catch(err => active && setError(correoError(err)))
     return () => { active = false }
   }, [id])
@@ -40,6 +45,17 @@ export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
     try {
       await reviewCorreo(detail.message, state === 'vinculado' ? selected : null, state)
       onSaved()
+    } catch (err) { setError(correoError(err)) }
+    finally { setBusy(false) }
+  }
+  async function savePerson() {
+    setBusy(true); setError(''); setPersonNotice('')
+    try {
+      await reviewCorreoPersona(detail.message, selectedPerson || null)
+      const fresh = await getCorreoDetail(id)
+      setDetail(fresh)
+      setSelectedPerson(fresh.message.persona_id || '')
+      setPersonNotice(fresh.message.persona_id ? 'Persona vinculada.' : 'Se quitó el vínculo con la persona.')
     } catch (err) { setError(correoError(err)) }
     finally { setBusy(false) }
   }
@@ -76,6 +92,16 @@ export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
         {message.ai_estado === 'error' && <p>La clasificación se reintentará. El original está guardado.</p>}
         {message.nueva_gestion && <p>Posible gestión nueva: {message.nueva_gestion}</p>}
         {canReview && <div className="space-y-2">
+          <label className="block">Persona relacionada
+            <select className="input-dark w-full mt-1" value={selectedPerson} onChange={e => { setSelectedPerson(e.target.value); setPersonNotice('') }} disabled={busy}>
+              <option value="">Sin persona vinculada</option>
+              {people.map(person => <option key={person.id} value={person.id}>{personName(person)}{person.puesto ? ` · ${person.puesto}` : ''}</option>)}
+            </select>
+          </label>
+          {message.sugerido_persona_id && !message.persona_id && <p style={{ color: 'var(--text-dim)' }}>Sugerencia automática: {personName(people.find(person => person.id === message.sugerido_persona_id))}</p>}
+          {personNotice && <p role="status" style={{ color: 'var(--primary)' }}>{personNotice}</p>}
+          <button type="button" className="btn-ghost" disabled={busy || (!selectedPerson && !message.persona_id)} onClick={savePerson}>{selectedPerson ? 'Guardar persona' : 'Quitar persona'}</button>
+          <hr style={{ borderColor: '#ffffff20' }} />
           <label className="block">Gestión
             <select className="input-dark w-full mt-1" value={selected} onChange={e => setSelected(e.target.value)} disabled={busy}>
               <option value="">Elegir gestión</option>
@@ -95,7 +121,7 @@ export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
       </div>
       <details><summary className="cursor-pointer">Leer mensaje</summary><pre className="mt-3 text-sm" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'inherit' }}>{message.cuerpo || 'El mensaje no contiene texto legible. Descargá el original.'}</pre></details>
       <details><summary className="cursor-pointer">Historial de asociaciones</summary>
-        <ul className="mt-2 space-y-2">{detail.history.map(event => <li key={event.id}>{dateText(event.created_at)} · {states[event.despues.estado]}{destinoCorreo(event.despues) ? ` · ${title(plans.find(p => p.id === destinoCorreo(event.despues)))}` : ''} · {event.actor_id ? 'Revisión de usuario' : 'Agente automático'}</li>)}</ul>
+        <ul className="mt-2 space-y-2">{detail.history.map(event => <li key={event.id}>{dateText(event.created_at)} · {states[event.despues.estado]}{destinoCorreo(event.despues) ? ` · ${title(plans.find(p => p.id === destinoCorreo(event.despues)))}` : ''}{event.despues.persona_id ? ` · ${personName(people.find(person => person.id === event.despues.persona_id))}` : ''} · {event.actor_id ? 'Revisión de usuario' : 'Agente automático'}</li>)}</ul>
       </details>
     </>}
       </div>
@@ -103,10 +129,10 @@ export function CorreoDetail({ id, plans, canReview, onClose, onSaved }) {
   </div>, document.body)
 }
 
-export default function Correos({ planId = null, readOnly = false }) {
+export default function Correos({ planId = null, personId = null, readOnly = false }) {
   const [context, setContext] = useState(null)
   const [mailboxId, setMailboxId] = useState('')
-  const [state, setState] = useState(planId ? 'vinculado' : 'pendiente')
+  const [state, setState] = useState(personId ? 'todos' : planId ? 'vinculado' : 'pendiente')
   const [planFilter, setPlanFilter] = useState(planId || '')
   const [page, setPage] = useState(0)
   const [analysis, setAnalysis] = useState('todos')
@@ -131,17 +157,17 @@ export default function Correos({ planId = null, readOnly = false }) {
     const sequence = ++request.current
     if (!mailboxId) return
     setLoading(true); setError(''); setResult({ items: [], total: 0 })
-    getCorreos({ mailboxId, state, planId: planId || planFilter, analysis, page }).then(data => {
+    getCorreos({ mailboxId, state, planId: planId || planFilter, personId, analysis, page }).then(data => {
       if (request.current === sequence) setResult(data)
     }).catch(err => { if (request.current === sequence) setError(correoError(err)) })
       .finally(() => { if (request.current === sequence) setLoading(false) })
     return () => { request.current += 1 }
-  }, [mailboxId, state, planFilter, planId, page, analysis, revision])
+  }, [mailboxId, state, planFilter, planId, personId, page, analysis, revision])
   const reviewer = !readOnly && context?.memberships.some(m => m.buzon_id === mailboxId && m.puede_revisar)
   function filter(setter, value) { setter(value); setPage(0); setOpened(null) }
-  return <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4" style={{ color: 'var(--text)' }}>
+  return <div className={personId ? 'space-y-4' : 'flex-1 overflow-auto p-4 md:p-6 space-y-4'} style={{ color: 'var(--text)' }}>
     <header className="flex items-center justify-between gap-3 flex-wrap">
-      <div><h1 className="font-title text-xl font-bold">{planId ? 'Correos y evidencias' : 'Correos'}</h1>
+      <div><h1 className="font-title text-xl font-bold">{personId ? 'Correos vinculados' : planId ? 'Correos y evidencias' : 'Correos'}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>Ollama resume y clasifica cada correo. Abrilo para revisar la propuesta, vincularlo a una tarea, compra, ticket o proyecto y consultar sus adjuntos.</p></div>
       <button type="button" className="btn-ghost" onClick={refresh} disabled={loading}>Actualizar</button>
     </header>
@@ -151,10 +177,10 @@ export default function Correos({ planId = null, readOnly = false }) {
       <div className="flex gap-3 flex-wrap">
         <label>Análisis<select className="input-dark block" value={analysis} onChange={e => filter(setAnalysis, e.target.value)}><option value="todos">Todos</option><option value="lista">Analizados por Ollama</option><option value="sugerencia">Con gestión sugerida</option><option value="pendiente">Pendientes de análisis</option></select></label>
         <label>Buzón<select className="input-dark block" value={mailboxId} onChange={e => filter(setMailboxId, e.target.value)}>{context.mailboxes.map(box => <option key={box.id} value={box.id}>{box.nombre}</option>)}</select></label>
-        {!planId && <><label>Estado<select className="input-dark block" value={state} onChange={e => filter(setState, e.target.value)}>{Object.entries(states).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+        {!planId && !personId && <><label>Estado<select className="input-dark block" value={state} onChange={e => filter(setState, e.target.value)}>{Object.entries(states).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
           <label>Gestión vinculada<select className="input-dark block" value={planFilter} onChange={e => { filter(setPlanFilter, e.target.value); if (e.target.value) setState('vinculado') }}><option value="">Todas las gestiones</option>{context.plans.map(plan => <option key={plan.id} value={plan.id}>{title(plan)}</option>)}</select></label></>}
       </div>
-      {opened && <CorreoDetail key={opened} id={opened} plans={context.plans} canReview={reviewer} onClose={() => setOpened(null)} onSaved={refresh} />}
+      {opened && <CorreoDetail key={opened} id={opened} plans={context.plans} people={context.personas} canReview={reviewer} onClose={() => setOpened(null)} onSaved={refresh} />}
       {loading ? <p role="status">Cargando correos…</p> : <>
         {!result.items.length && !error && <p className="glass p-6">No hay correos en esta selección. Los mensajes aparecerán cuando el agente complete la importación.</p>}
         <div className="grid gap-3">{result.items.map(message => <button type="button" key={message.id} className="glass rounded p-4 text-left" onClick={() => setOpened(message.id)} aria-pressed={opened === message.id}>
@@ -165,6 +191,7 @@ export default function Correos({ planId = null, readOnly = false }) {
           {message.nueva_gestion && <span className="block text-sm mt-2">Propuesta para revisar: {message.nueva_gestion}</span>}
           <span className="block text-sm mt-2" style={{ color: 'var(--primary)' }}>Abrir análisis, vínculo y adjuntos</span>
           {(destinoCorreo(message) || destinoCorreo(message, true)) && <span className="block text-sm mt-2">{destinoCorreo(message) ? 'Vinculado a: ' : 'Sugerencia: '}{title(context.plans.find(p => p.id === (destinoCorreo(message) || destinoCorreo(message, true))))}</span>}
+          {(message.persona_id || message.sugerido_persona_id) && <span className="block text-sm mt-2">{message.persona_id ? 'Persona: ' : 'Persona sugerida: '}{personName(context.personas.find(person => person.id === (message.persona_id || message.sugerido_persona_id)))}</span>}
         </button>)}</div>
         {result.total > CORREO_PAGE_SIZE && <nav aria-label="Páginas de correos" className="flex gap-3 items-center"><button type="button" className="btn-ghost" disabled={page === 0} onClick={() => { setPage(page - 1); setOpened(null) }}>Anterior</button><span>{page + 1} / {Math.ceil(result.total / CORREO_PAGE_SIZE)}</span><button type="button" className="btn-ghost" disabled={(page + 1) * CORREO_PAGE_SIZE >= result.total} onClick={() => { setPage(page + 1); setOpened(null) }}>Siguiente</button></nav>}
       </>}

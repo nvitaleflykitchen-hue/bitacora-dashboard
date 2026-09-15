@@ -179,6 +179,14 @@ def explicit_targets(message, plans):
     return result
 
 
+def suggested_person(message, people):
+    """Sugiere sólo una coincidencia exacta y única con el email del remitente."""
+    senders = {address.strip().lower() for _, address in getaddresses([message.get('remitente', '')]) if address}
+    matches = [person['id'] for person in people
+               if person.get('email') and person['email'].strip().lower() in senders]
+    return matches[0] if len(matches) == 1 else None
+
+
 def candidate_plans(message, plans, thread_ids=()):
     words = tokens(message['asunto'] + ' ' + message['cuerpo'][:12000])
     ranked = []
@@ -296,7 +304,8 @@ class Store:
                 if len(page) < 500:
                     break
                 offset += 500
-        messages = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'or': '(ai_estado.in.(pendiente,error),ai_modelo.not.like.*destinos-v2)',
+        people = self.table('personas', {'select': 'id,email', 'activo': 'eq.true', 'fecha_baja': 'is.null'}, schema='equipo')
+        messages = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'or': '(ai_estado.in.(pendiente,error),ai_modelo.not.like.*personas-v1)',
                              'estado': 'eq.pendiente', 'order': 'ai_intentos.asc,fecha_correo.desc.nullslast,created_at.desc', 'limit': 10})
         for message in messages:
             ids = set()
@@ -311,7 +320,9 @@ class Store:
                 changes = {**destination_fields(result['plan_id'], suggested=True), 'tipo': result['tipo'],
                            'resumen': result['resumen'], 'motivo': result['motivo'],
                            'nueva_gestion': result['nueva_gestion'], 'ai_estado': 'lista',
-                           'ai_modelo': os.getenv('OLLAMA_MODEL', 'llama3.2') + '|destinos-v2', 'ai_error': None, 'ai_intentos': attempt}
+                           'ai_modelo': os.getenv('OLLAMA_MODEL', 'llama3.2') + '|destinos-v2|personas-v1',
+                           'sugerido_persona_id': suggested_person(message, people),
+                           'ai_error': None, 'ai_intentos': attempt}
                 # Sólo una referencia explícita, exacta y única admite asociación automática.
                 if result['plan_id'] and explicit_targets(message, plans) == {result['plan_id']}:
                     changes.update(destination_fields(result['plan_id']))

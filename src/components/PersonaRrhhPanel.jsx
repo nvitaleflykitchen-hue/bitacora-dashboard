@@ -1,9 +1,21 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Download, Loader2, ShieldCheck } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { fmtFechaLarga } from "../lib/dateUtils";
 import { mensajeError } from "../lib/errores";
 import { generateFichaEntrevistaPdf } from "../lib/reclutamientoPdf";
+
+const Correos = lazy(() => import("../views/Correos"));
+
+function CorreosDePersona({ personaId }) {
+  return (
+    <section className="glass p-4">
+      <Suspense fallback={<p style={{ color: "var(--text-dim)" }}>Cargando correos vinculados…</p>}>
+        <Correos personId={personaId} readOnly />
+      </Suspense>
+    </section>
+  );
+}
 
 function Dato({ label, value }) {
   const visible = value !== null && value !== undefined && value !== "";
@@ -201,10 +213,8 @@ export default function PersonaRrhhPanel({ personaId }) {
 
   if (error && !ficha && !reclutamiento?.entrevista) {
     return (
-      <div
-        className="glass p-4"
-        style={{ borderColor: "rgba(239,68,68,0.35)" }}
-      >
+      <div className="space-y-4">
+      <div className="glass p-4" style={{ borderColor: "rgba(239,68,68,0.35)" }}>
         <p
           className="font-metric"
           style={{ color: "#ff5c5c", fontSize: "0.7rem" }}
@@ -221,11 +231,14 @@ export default function PersonaRrhhPanel({ personaId }) {
           {error}
         </p>
       </div>
+      <CorreosDePersona personaId={personaId} />
+      </div>
     );
   }
 
   if (!ficha && !reclutamiento?.entrevista) {
     return (
+      <div className="space-y-4">
       <div
         className="glass p-5"
         style={{ borderColor: "rgba(245,158,11,0.3)" }}
@@ -263,6 +276,8 @@ export default function PersonaRrhhPanel({ personaId }) {
             </p>
           </div>
         </div>
+      </div>
+      <CorreosDePersona personaId={personaId} />
       </div>
     );
   }
@@ -413,6 +428,7 @@ export default function PersonaRrhhPanel({ personaId }) {
           {error}
         </p>
       )}
+      <CorreosDePersona personaId={personaId} />
     </div>
   );
 }
