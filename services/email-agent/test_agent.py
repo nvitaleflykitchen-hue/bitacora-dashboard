@@ -31,7 +31,7 @@ class AgentTests(unittest.TestCase):
         for chosen, subject, expected in [('tarea:7','Tarea #7: avance', True), ('tarea:7','Avance operativo', False), ('compra:8','Tarea #7: avance', False), ('tarea:7','Tarea #7 y compra #8', False)]:
             store = agent.Store.__new__(agent.Store)
             message = {'id': 'mail', 'updated_at': 'version-original', 'referencias': [], 'ai_intentos': 0, 'asunto': subject, 'cuerpo': 'avance operativo'}
-            store.table = Mock(side_effect=[[], [{'id':7,'titulo':'Avance operativo'}], [{'id':8,'descripcion':'Avance operativo'}], [], [message], None])
+            store.table = Mock(side_effect=[[], [{'id':7,'titulo':'Avance operativo'}], [{'id':8,'descripcion':'Avance operativo'}], [], [], [message], None])
             result = {'plan_id':chosen,'tipo':'seguimiento','resumen':'Avance','motivo':'Referencia','nueva_gestion':None}
             with patch('agent.classify', return_value=result):
                 store.classify_pending(BOX)
@@ -46,6 +46,12 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(agent.explicit_targets({'asunto':'Consulta','cuerpo':'> Tarea #7'},plans),set())
         self.assertEqual(agent.destination_fields('compra:8')['compra_id'],8)
         self.assertEqual(agent.destination({'ticket_id':'abc'}),'ticket:abc')
+
+    def test_person_suggestion_requires_unique_exact_sender_email(self):
+        people = [{'id':'p1','email':'ana@example.com'}, {'id':'p2','email':'otra@example.com'}]
+        self.assertEqual(agent.suggested_person({'remitente':'Ana <ANA@example.com>'}, people), 'p1')
+        self.assertIsNone(agent.suggested_person({'remitente':'Proveedor <proveedor@example.com>'}, people))
+        self.assertIsNone(agent.suggested_person({'remitente':'Ana <ana@example.com>'}, people + [{'id':'p3','email':'ana@example.com'}]))
 
     def test_original_metadata_and_attachments(self):
         parsed = agent.parse_message(raw_message())
@@ -130,7 +136,7 @@ class AgentTests(unittest.TestCase):
     @patch('agent.classify', side_effect=ValueError('bad model output'))
     def test_ai_error_keeps_evidence_pending_and_records_retry(self, classify):
         store = agent.Store.__new__(agent.Store)
-        store.table = Mock(side_effect=[[], [], [], [], [{'updated_at': '2026-09-10T00:00:00Z', 'id': 'mail', 'referencias': [], 'ai_intentos': 0, 'asunto': 'a', 'cuerpo': ''}], None])
+        store.table = Mock(side_effect=[[], [], [], [], [], [{'updated_at': '2026-09-10T00:00:00Z', 'id': 'mail', 'referencias': [], 'ai_intentos': 0, 'asunto': 'a', 'cuerpo': ''}], None])
         store.classify_pending(BOX)
         args = store.table.call_args.args
         self.assertEqual(args[3]['ai_estado'], 'error')

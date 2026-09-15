@@ -18,30 +18,40 @@ async function allRows(makeQuery) {
   }
 }
 export async function getCorreoContext() {
-  const [mailboxes, plans, memberships, tareas, compras, tickets] = await Promise.all([
+  const [mailboxes, plans, memberships, tareas, compras, tickets, personas] = await Promise.all([
     db().from('correo_buzones').select('id,nombre').eq('activo', true),
     db().from('capa_planes').select('id,titulo,objetivo,auditoria_codigo').like('auditoria_codigo', 'FK-GEST-%').order('created_at', { ascending: false }),
     db().from('correo_buzon_miembros').select('buzon_id,puede_revisar'),
     allRows(() => db().from('tareas').select('id,titulo,sede_id')),
     allRows(() => db().from('requerimientos').select('id,descripcion,sede_id')),
     allRows(() => supabase.from('mnt_tickets').select('id,descripcion,sede')),
+    allRows(() => supabase.schema('equipo').from('personas').select('id,nombre,apellido,puesto').eq('activo', true).is('fecha_baja', null)),
   ])
   return { mailboxes: checked(mailboxes), plans: [...checked(plans),
     ...tareas.map(t => ({id: `tarea:${t.id}`, titulo: `Tarea #${t.id} · ${t.titulo}`})),
     ...compras.map(t => ({id: `compra:${t.id}`, titulo: `Compra #${t.id} · ${t.descripcion}`})),
-    ...tickets.map(t => ({id: `ticket:${t.id}`, titulo: `Mantenimiento · ${t.sede || ''} · ${t.descripcion}`}))], memberships: checked(memberships) }
+    ...tickets.map(t => ({id: `ticket:${t.id}`, titulo: `Mantenimiento · ${t.sede || ''} · ${t.descripcion}`}))],
+    personas, memberships: checked(memberships) }
 }
 
-export async function getCorreos({ mailboxId, state, planId, analysis, page = 0 }) {
-  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
+export async function getCorreos({ mailboxId, state, planId, personId, analysis, page = 0 }) {
+  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,sugerido_persona_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
   if (mailboxId) query = query.eq('buzon_id', mailboxId)
   if (state && state !== 'todos') query = query.eq('estado', state)
   if (planId) { const [column, value] = Object.entries(camposDestino(planId)).find(([, value]) => value != null); query = query.eq(column, value) }
+  if (personId) query = query.eq('persona_id', personId)
   if (analysis === 'lista') query = query.eq('ai_estado', 'lista')
   if (analysis === 'pendiente') query = query.in('ai_estado', ['pendiente', 'error'])
-  if (analysis === 'sugerencia') query = query.or('sugerido_plan_id.not.is.null,sugerido_tarea_id.not.is.null,sugerido_compra_id.not.is.null,sugerido_ticket_id.not.is.null')
+  if (analysis === 'sugerencia') query = query.or('sugerido_plan_id.not.is.null,sugerido_tarea_id.not.is.null,sugerido_compra_id.not.is.null,sugerido_ticket_id.not.is.null,sugerido_persona_id.not.is.null')
   const result = await query.order('fecha_correo', { ascending: false, nullsFirst: false }).order('id').range(page * CORREO_PAGE_SIZE, (page + 1) * CORREO_PAGE_SIZE - 1)
   return { items: checked(result), total: result.count || 0 }
+}
+
+export async function reviewCorreoPersona(message, personId) {
+  const result = await db().from('correos').update({ persona_id: personId || null })
+    .eq('id', message.id).eq('updated_at', message.updated_at).select('id')
+  const rows = checked(result)
+  if (!rows?.length) throw new Error('El correo cambió o ya no tenés permiso. Actualizá la bandeja.')
 }
 
 export async function getCorreoDetail(id) {

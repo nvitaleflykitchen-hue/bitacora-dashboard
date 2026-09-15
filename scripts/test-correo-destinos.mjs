@@ -11,6 +11,8 @@ const reader = '00000000-0000-0000-0000-000000000003'
 const box = 'a6bba28b-a681-4e24-b25f-c3bcaf9d33bf'
 const mail = '00000000-0000-0000-0000-000000000004'
 const plan = '00000000-0000-0000-0000-000000000005'
+const person = '00000000-0000-0000-0000-000000000006'
+const hiddenPerson = '00000000-0000-0000-0000-000000000007'
 await db.exec(`
   create role anon;
   create role authenticated;
@@ -68,18 +70,24 @@ await db.exec('reset role')
 assert.equal((await db.query('select public from storage.buckets')).rows[0].public, false)
 await db.exec(`
  create schema mantenimiento;
+ create schema equipo;
  create table bitacora.tareas(id integer primary key, visible boolean);
  create table bitacora.requerimientos(id integer primary key, visible boolean);
  create table mantenimiento.tickets(id uuid primary key, visible boolean);
+ create table equipo.personas(id uuid primary key, visible boolean);
  insert into bitacora.tareas values(1,true),(2,false);
  insert into bitacora.requerimientos values(1,true);
  insert into mantenimiento.tickets values('${plan}',true);
- grant usage on schema mantenimiento to authenticated;
- grant select on bitacora.tareas,bitacora.requerimientos,mantenimiento.tickets to authenticated;
+ insert into equipo.personas values('${person}',true),('${hiddenPerson}',false);
+ grant usage on schema mantenimiento,equipo to authenticated;
+ grant select on bitacora.tareas,bitacora.requerimientos,mantenimiento.tickets,equipo.personas to authenticated;
  alter table bitacora.tareas enable row level security;
  create policy visible_tarea on bitacora.tareas for select to authenticated using(visible);
+ alter table equipo.personas enable row level security;
+ create policy visible_persona on equipo.personas for select to authenticated using(visible);
 `)
 await db.exec(readFileSync('supabase/security/correo_destinos_REVIEW.sql','utf8'))
+await db.exec(readFileSync('supabase/security/correo_personas_REVIEW.sql','utf8'))
 await asUser(owner)
 await assert.rejects(db.exec(`update bitacora.correos set tarea_id=2,estado='vinculado' where id='${mail}'`), /row-level security/)
 for (const [column,value] of [['tarea_id','1'],['compra_id','1'],['ticket_id',`'${plan}'`]]) {
@@ -90,10 +98,15 @@ for (const [column,value] of [['tarea_id','1'],['compra_id','1'],['ticket_id',`'
 }
 await assert.rejects(db.exec(`update bitacora.correos set tarea_id=1 where id='${mail}'`), /correos_destino_check/)
 await assert.rejects(db.exec(`update bitacora.correos set sugerido_tarea_id=1 where id='${mail}'`), /permission denied/)
+await db.exec(`update bitacora.correos set persona_id='${person}' where id='${mail}'`)
+assert.equal((await db.query('select despues from bitacora.correo_historial order by id desc limit 1')).rows[0].despues.persona_id, person)
+await assert.rejects(db.exec(`update bitacora.correos set persona_id='${hiddenPerson}' where id='${mail}'`), /row-level security/)
+await assert.rejects(db.exec(`update bitacora.correos set sugerido_persona_id='${person}' where id='${mail}'`), /permission denied/)
 await asUser(reader)
 assert.equal((await db.query(`update bitacora.correos set tarea_id=1,ticket_id=null where id='${mail}' returning id`)).rows.length,0)
+assert.equal((await db.query(`update bitacora.correos set persona_id='${person}' where id='${mail}' returning id`)).rows.length,0)
 await asUser(other)
 assert.equal(await count('bitacora.correos'),0)
 await db.exec('reset role')
 await db.close()
-console.log('OK: destinos, RLS de gestión, revisión restringida, originales y auditoría verificados en PostgreSQL aislado.')
+console.log('OK: destinos, personas, RLS de gestión, revisión restringida, originales y auditoría verificados en PostgreSQL aislado.')
