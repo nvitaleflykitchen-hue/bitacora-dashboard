@@ -147,7 +147,6 @@ export default function Correos({ planId = null, readOnly = false }) {
   const [context, setContext] = useState(null)
   const [mailboxId, setMailboxId] = useState('')
   const [state, setState] = useState(planId ? 'vinculado' : 'pendiente')
-  const [planFilter, setPlanFilter] = useState(planId || '')
   const [page, setPage] = useState(0)
   const [analysis, setAnalysis] = useState('todos')
   const [result, setResult] = useState({ items: [], total: 0 })
@@ -171,12 +170,12 @@ export default function Correos({ planId = null, readOnly = false }) {
     const sequence = ++request.current
     if (!mailboxId) return
     setLoading(true); setError(''); setResult({ items: [], total: 0 })
-    getCorreos({ mailboxId, state, planId: planId || planFilter, analysis, page }).then(data => {
+    getCorreos({ mailboxId, state, planId, analysis, page }).then(data => {
       if (request.current === sequence) setResult(data)
     }).catch(err => { if (request.current === sequence) setError(correoError(err)) })
       .finally(() => { if (request.current === sequence) setLoading(false) })
     return () => { request.current += 1 }
-  }, [mailboxId, state, planFilter, planId, page, analysis, revision])
+  }, [mailboxId, state, planId, page, analysis, revision])
   const reviewer = !readOnly && context?.memberships.some(m => m.buzon_id === mailboxId && m.puede_revisar)
   function filter(setter, value) { setter(value); setPage(0); setOpened(null) }
   return <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4" style={{ color: 'var(--text)' }}>
@@ -191,8 +190,7 @@ export default function Correos({ planId = null, readOnly = false }) {
       <div className="flex gap-3 flex-wrap">
         <label>Análisis<select className="input-dark block" value={analysis} onChange={e => filter(setAnalysis, e.target.value)}><option value="todos">Todos</option><option value="lista">Analizados por Ollama</option><option value="sugerencia">Con gestión sugerida</option><option value="pendiente">Pendientes de análisis</option></select></label>
         <label>Buzón<select className="input-dark block" value={mailboxId} onChange={e => filter(setMailboxId, e.target.value)}>{context.mailboxes.map(box => <option key={box.id} value={box.id}>{box.nombre}</option>)}</select></label>
-        {!planId && <><label>Estado<select className="input-dark block" value={state} onChange={e => filter(setState, e.target.value)}>{Object.entries(states).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-          <label>Gestión vinculada<select className="input-dark block" value={planFilter} onChange={e => { filter(setPlanFilter, e.target.value); if (e.target.value) setState('vinculado') }}><option value="">Todas las gestiones</option>{context.plans.map(plan => <option key={plan.id} value={plan.id}>{title(plan)}</option>)}</select></label></>}
+        {!planId && <label>Estado<select className="input-dark block" value={state} onChange={e => filter(setState, e.target.value)}>{Object.entries(states).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>}
       </div>
       {opened && <CorreoDetail key={opened} id={opened} plans={context.plans} destinations={context.destinations} canReview={reviewer} onClose={() => setOpened(null)} onSaved={refresh} />}
       {loading ? <p role="status">Cargando correos…</p> : <>
