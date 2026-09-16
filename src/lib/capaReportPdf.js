@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import { format } from 'date-fns'
 import { getAdjuntos } from './adjuntos'
+import { fmtFechaLarga } from './dateUtils'
 
 // Generación de informe PDF de avance + evidencia para un plan de acción CAPA
 // (agrupado por auditoria_codigo). Formato inspirado en el modelo de Plan de
@@ -214,7 +215,7 @@ export async function generarInformeCapaPDF({ grupo, plan }) {
     escribirCampo('Hallazgo', hallazgo)
     escribirCampo('Acción correctiva', accion)
     escribirCampo('Responsable', it.responsable)
-    escribirCampo('Plazo objetivo', it.fecha_limite ? format(new Date(it.fecha_limite), 'dd/MM/yyyy') : null)
+    escribirCampo('Plazo objetivo', it.fecha_limite ? fmtFechaLarga(it.fecha_limite) : null)
     escribirCampo('Evidencia de cierre esperada', evidenciaEsperada)
     escribirCampo('Notas de avance', notasLibres)
 
