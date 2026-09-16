@@ -14,14 +14,17 @@ beforeAll(async () => {
   await pg.exec(`create schema auth; create schema bitacora;
     create role anon; create role authenticated; create role service_role;
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.user',true),'')::uuid $$;
-    create table bitacora.perfiles(id uuid primary key, rol text, email text, activo boolean);
-    insert into bitacora.perfiles values ('${actor}','admin','admin@example.test',true);
+    create table bitacora.perfiles(id uuid primary key, rol text, email text, activo boolean, sede_ids integer[] default '{}', grupo_id integer);
+    create table bitacora.sedes(id integer primary key, nombre text not null, tipo text not null, activa boolean not null default true, grupo_id integer);
+    insert into bitacora.sedes(id,nombre,tipo) values (1,'Kiosco Centro','Comedor'),(2,'Kiosco Norte','Comedor');
+    insert into bitacora.perfiles(id,rol,email,activo,sede_ids) values ('${actor}','admin','admin@example.test',true,array[1]);
     grant usage on schema auth,bitacora to authenticated,anon;
-    grant select on bitacora.perfiles to authenticated;
+    grant select on bitacora.perfiles,bitacora.sedes to authenticated;
     select set_config('test.user','${actor}',false);`)
   await pg.exec(readFileSync(new URL('../../supabase/migrations/20260907165101_maestro_articulos.sql', import.meta.url), 'utf8'))
   await pg.exec('create table bitacora.compras_proveedores(id uuid primary key); grant usage on schema bitacora to service_role;')
   await pg.exec(readFileSync(new URL('../../supabase/migrations/20260909110000_extend_product_master_phase1_REVIEW.sql', import.meta.url), 'utf8'))
+  await pg.exec(readFileSync(new URL('../../supabase/migrations/20260916221133_articulos_kiosco_multisede_phase3.sql', import.meta.url), 'utf8'))
 }, 60000)
 afterAll(async () => { await pg?.close() })
 describe('maestro SQL', () => {
@@ -70,5 +73,19 @@ describe('maestro SQL', () => {
     expect((await pg.query('select * from bitacora.products')).rows).toHaveLength(0)
     await pg.exec('reset role; set role anon;')
     await expect(pg.query('select * from bitacora.products')).rejects.toThrow('permission denied')
+  })
+  it('genera código interno y configura Kiosco solo para sedes habilitadas y asignadas', async () => {
+    await pg.exec("reset role; update bitacora.perfiles set rol='admin',activo=true,sede_ids=array[1]; update bitacora.sedes set kiosk_enabled=true; set role authenticated;")
+    const product = (await pg.query('select internal_code,stock_unit from bitacora.products where id=$1',[productId])).rows[0]
+    expect(product.internal_code).toMatch(/^ART-\d{6,}$/)
+    expect(product.stock_unit).toBe('unidad')
+    expect((await pg.query('select * from bitacora.buscar_articulos($1,0)',[product.internal_code])).rows).toHaveLength(1)
+    expect((await pg.query('select stock_factor from bitacora.product_presentations where product_id=$1 order by stock_factor desc limit 1',[productId])).rows[0].stock_factor).toBe('200')
+    expect((await pg.query('select * from bitacora.listar_sedes_kiosco()')).rows.map(row=>row.id)).toEqual([1])
+    const presentationId=(await pg.query('select presentation_id from bitacora.product_barcodes where product_id=$1 and barcode=$2',[productId,payload.barcode])).rows[0].presentation_id
+    const config={ sede_id:1,product_id:productId,presentation_id:presentationId,sale_price:3200,reference_cost:2100,stock_minimum:5,active:true }
+    const saved=(await pg.query('select bitacora.guardar_configuracion_kiosco_articulo($1::jsonb) as value',[JSON.stringify(config)])).rows[0].value
+    expect(saved).toMatchObject({ sede_id:1,sale_price:3200,reference_cost:2100,stock_minimum:5,active:true })
+    await expect(pg.query('select bitacora.guardar_configuracion_kiosco_articulo($1::jsonb)',[JSON.stringify({ ...config,sede_id:2 })])).rejects.toThrow('Sin permiso')
   })
 })

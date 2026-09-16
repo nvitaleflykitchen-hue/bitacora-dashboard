@@ -60,6 +60,40 @@ export async function searchProducts(termino, pagina = 0) {
   return data || []
 }
 
+export async function listKioskSites() {
+  const { data, error } = await db().rpc('listar_sedes_kiosco')
+  if (error) throw error
+  return data || []
+}
+
+export async function loadProductSiteSettings(productId, presentationId) {
+  if (!productId || !presentationId) return []
+  const { data, error } = await db().from('product_site_settings')
+    .select('id,sede_id,product_id,presentation_id,sale_price,reference_cost,stock_minimum,currency,active,updated_at')
+    .eq('product_id', productId)
+    .eq('presentation_id', presentationId)
+  if (error) throw error
+  return data || []
+}
+
+export async function saveProductSiteSetting(setting) {
+  const payload = {
+    sede_id:Number(setting.sede_id), product_id:setting.product_id, presentation_id:setting.presentation_id,
+    sale_price:setting.sale_price === '' ? null : Number(setting.sale_price),
+    reference_cost:setting.reference_cost === '' ? null : Number(setting.reference_cost),
+    stock_minimum:setting.stock_minimum === '' ? 0 : Number(setting.stock_minimum),
+    currency:setting.currency || 'ARS', active:Boolean(setting.active),
+  }
+  if (!Number.isInteger(payload.sede_id)) throw new Error('Seleccioná una sede válida.')
+  for (const [key,label] of [['sale_price','precio'],['reference_cost','costo'],['stock_minimum','stock mínimo']]) {
+    if (payload[key] != null && (!Number.isFinite(payload[key]) || payload[key] < 0)) throw new Error(`El ${label} no puede ser negativo.`)
+  }
+  if (payload.active && (!payload.sale_price || payload.sale_price <= 0)) throw new Error('Ingresá un precio mayor que cero para habilitar la venta.')
+  const { data, error } = await db().rpc('guardar_configuracion_kiosco_articulo', { payload })
+  if (error) throw error
+  return data
+}
+
 export async function downloadProductsXlsx(termino = '') {
   const all = []
   for (let page = 0; page < 100000; page += 1) {
@@ -72,6 +106,7 @@ export async function downloadProductsXlsx(termino = '') {
     return {
       'ID producto':product.id, 'Código de barras':String(code.barcode || ''), 'Tipo de código':code.barcode_type || '',
       'Nivel de empaque':code.packaging_level || '', 'Nombre':product.name || '', 'Descripción':product.description || '',
+      'Código interno':product.internal_code || '', 'Unidad de stock':product.stock_unit || '', 'Factor de stock':presentation.stock_factor ?? '',
       'Marca':product.brand || '', 'Fabricante':product.manufacturer || '', 'Categoría':product.category || '',
       'Subcategoría':product.subcategory || '', 'Presentación':presentation.presentation || '',
       'Contenido unitario':presentation.net_quantity ?? '', 'Unidad':presentation.net_unit || '',
@@ -102,21 +137,32 @@ export async function downloadProductsXlsx(termino = '') {
 }
 
 export function validateProduct(form) {
-  normalizeBarcode(form.barcode)
+  const primaryCode = normalizeBarcode(form.barcode)
   if (!form.name?.trim()) throw new Error('Completá el nombre del artículo.')
   if (form.name.trim().length > 500) throw new Error('El nombre no puede superar 500 caracteres.')
   if (form.image_url && !safeImageUrl(form.image_url)) throw new Error('La imagen debe tener una dirección HTTPS válida.')
   if (form.net_quantity !== '' && form.net_quantity != null && (!Number.isFinite(Number(form.net_quantity)) || Number(form.net_quantity) <= 0)) throw new Error('El contenido unitario debe ser mayor que cero.')
   if (form.units_per_package !== '' && form.units_per_package != null && (!Number.isInteger(Number(form.units_per_package)) || Number(form.units_per_package) <= 0)) throw new Error('Las unidades por bulto deben ser un entero mayor que cero.')
   if (form.net_quantity && !form.net_unit) throw new Error('Indicá la unidad del contenido.')
+  if (!form.stock_unit?.trim()) throw new Error('Indicá la unidad base de stock.')
+  if (!Number.isFinite(Number(form.stock_factor)) || Number(form.stock_factor) <= 0) throw new Error('El factor de stock debe ser mayor que cero.')
+  const codes = new Set([primaryCode.padStart(14,'0')])
+  for (const item of form.related_barcodes || []) {
+    const related = normalizeBarcode(item.barcode)
+    const key = related.padStart(14,'0')
+    if (codes.has(key)) throw new Error(`El código ${related} está repetido en la ficha.`)
+    codes.add(key)
+    const factor = item.stock_factor === '' || item.stock_factor == null ? item.units_per_package || 1 : item.stock_factor
+    if (!Number.isFinite(Number(factor)) || Number(factor) <= 0) throw new Error(`El factor de stock de ${related} debe ser mayor que cero.`)
+  }
   return form
 }
 
 export async function saveProduct(form) {
   validateProduct(form)
-  const fields = ['product_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','supplier_id','rne','rnpa','storage_conditions','related_barcodes','source']
+  const fields = ['product_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','supplier_id','rne','rnpa','storage_conditions','related_barcodes','source','stock_unit','stock_factor','presentation_active']
   const payload = Object.fromEntries(fields.map(key => [key, form[key] ?? null]))
-  payload.status = form.status === 'inactive' ? 'inactive' : 'verified'
+  payload.status = ['pending','verified','inactive'].includes(form.status) ? form.status : 'verified'
   const { data, error } = await db().rpc('guardar_articulo', { payload })
   if (error) throw error
   const recorded = form.source || { provider:'Carga manual', retrieved_at:data.updated_at }

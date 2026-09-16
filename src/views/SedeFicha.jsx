@@ -56,7 +56,7 @@ function KpiCard({ label, val, sub, color, onClick }) {
   )
 }
 
-const EMPTY_FORM = { nombre:'', tipo:'Comedor', convenio_cct:'', direccion:'', telefono:'', responsable:'', contacto_nombre:'', descripcion:'', lat:'', lng:'', activa:true, grupo_id:null, dias_operacion:[1,2,3,4,5,6,0] }
+const EMPTY_FORM = { nombre:'', tipo:'Comedor', convenio_cct:'', direccion:'', telefono:'', responsable:'', contacto_nombre:'', descripcion:'', lat:'', lng:'', activa:true, kiosk_enabled:false, grupo_id:null, dias_operacion:[1,2,3,4,5,6,0] }
 
 function SedeModal({ sede, personal = [], onClose, onSaved }) {
   const [form, setForm] = useState(sede ? {
@@ -71,6 +71,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
     lat: sede.lat || '',
     lng: sede.lng || '',
     activa: sede.activa !== false,
+    kiosk_enabled: sede.kiosk_enabled === true,
     grupo_id: sede.grupo_id || null,
     dias_operacion: sede.dias_operacion || [1,2,3,4,5,6,0],
   } : { ...EMPTY_FORM })
@@ -111,6 +112,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
         lat: form.lat !== '' ? parseFloat(form.lat) : null,
         lng: form.lng !== '' ? parseFloat(form.lng) : null,
         activa: form.activa,
+        kiosk_enabled: form.kiosk_enabled,
         grupo_id: grupoId || null,
         dias_operacion: form.dias_operacion,
       }
@@ -238,6 +240,10 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
           <input type="checkbox" id="activa" checked={form.activa} onChange={e=>set('activa',e.target.checked)} style={{ accentColor:'#39FF14' }}/>
           <label htmlFor="activa" style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', cursor:'pointer' }}>Sede activa</label>
         </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18, padding:'10px 12px', border:'1px solid rgba(57,255,20,.16)', background:'rgba(57,255,20,.04)' }}>
+          <input type="checkbox" id="kiosk-enabled" checked={form.kiosk_enabled} onChange={e=>set('kiosk_enabled',e.target.checked)} style={{ accentColor:'#39FF14' }}/>
+          <label htmlFor="kiosk-enabled" style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.65)', cursor:'pointer' }}><strong style={{color:'#39FF14'}}>Kiosco habilitado</strong><br/><span style={{fontSize:'.68rem'}}>Permite configurar productos y operar el POS en esta sede. Los usuarios también deben tener la sede asignada.</span></label>
+        </div>
 
         {error && <div style={{ fontSize:'0.75rem', color:'#ff5050', marginBottom:10, padding:'6px 10px', background:'rgba(255,80,80,0.1)', borderRadius:2, border:'1px solid rgba(255,80,80,0.2)' }}>{error}</div>}
 
@@ -274,7 +280,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
 
   const loadSedes = useCallback(() => {
     let query = supabase.schema('bitacora').from('sedes')
-      .select('id,nombre,tipo,direccion,lat,lng,telefono,contacto_nombre,responsable,descripcion,activa')
+      .select('id,nombre,tipo,direccion,lat,lng,telefono,contacto_nombre,responsable,descripcion,activa,kiosk_enabled')
       .order('tipo').order('nombre')
     if (allowedSedeIds?.length) query = query.in('id', allowedSedeIds)
     return query
@@ -423,6 +429,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                 <span style={{ fontSize:'18px', fontWeight:800, color:'#e2e8f0' }}>{sede.nombre}</span>
                 <span style={{ fontSize:'0.65rem', padding:'2px 8px', borderRadius:2, fontWeight:700, background:tc.bg, color:tc.color, border:'1px solid ' + tc.color + '44' }}>{sede.tipo?.toUpperCase()}</span>
                 {!sede.activa && <span style={{ fontSize:'0.65rem', padding:'2px 8px', borderRadius:2, background:'rgba(255,80,80,0.1)', color:'#ff5050', border:'1px solid rgba(255,80,80,0.2)' }}>INACTIVA</span>}
+                {sede.kiosk_enabled && <span style={{ fontSize:'0.65rem', padding:'2px 8px', borderRadius:2, background:'rgba(57,255,20,.08)', color:'#39FF14', border:'1px solid rgba(57,255,20,.24)' }}>KIOSCO</span>}
               </div>
               <div style={{ display:'flex', gap:20, marginTop:6, flexWrap:'wrap' }}>
                 {sede.direccion && <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:4 }}><MapPin size={11}/>  {sede.direccion}</span>}

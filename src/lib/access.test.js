@@ -75,6 +75,16 @@ describe('matriz de acceso', () => {
     expect(canWrite('deposito', 'compras', 'receive', { compras_permisos:['receive'] })).toBe(true)
     expect(canWrite('deposito', 'mantenimiento', 'manage', { mantenimiento_permisos:['manage_all'] })).toBe(false)
     expect(canWrite('deposito', 'bitacora', 'report')).toBe(false)
+    expect(canWrite('deposito', 'kiosco', 'operate')).toBe(true)
+    expect(canWrite('deposito', 'kiosco', 'configure')).toBe(false)
+  })
+
+  it('separa operación y configuración de Kiosco', () => {
+    expect(canWrite('admin', 'kiosco', 'configure')).toBe(true)
+    expect(canWrite('encargado', 'kiosco', 'configure')).toBe(true)
+    expect(canWrite('sede', 'kiosco', 'configure')).toBe(false)
+    expect(canWrite('sede', 'kiosco', 'operate')).toBe(true)
+    expect(canWrite('consultor', 'kiosco', 'operate')).toBe(false)
   })
 
   it('da a flota su propio módulo, sin Mantenimiento ni Calidad', () => {

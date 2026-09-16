@@ -48,7 +48,7 @@ Las tablas del maestro tienen RLS activa, no permiten acceso anónimo ni borrado
 ## 2. Decisiones de diseño
 
 1. `products`, `product_presentations` y `product_barcodes` siguen siendo la única fuente del maestro. No se crean `articles` ni catálogos paralelos.
-2. El stock se controla por `product_id + sede_id` en una unidad base. Una caja, pack o unidad escaneada consume o ingresa el factor definido en su presentación.
+2. El stock se controla siempre por `sede_id + product_id + presentation_id`, expresado en la unidad base del producto. Una caja, pack o unidad escaneada consume o ingresa el factor definido en su presentación. Nunca existe un saldo global que mezcle sedes.
 3. El saldo actual se conserva como proyección rápida, pero ningún usuario ni formulario puede editarlo. Solo lo modifican RPC transaccionales que también insertan el movimiento correspondiente.
 4. El libro de movimientos es append-only. No tendrá permisos `UPDATE` ni `DELETE` para usuarios autenticados.
 5. Los precios se asocian a presentación y sede. Una venta guarda una copia del precio aplicado; cambiar un precio futuro no altera ventas históricas.
@@ -74,20 +74,23 @@ Las tablas del maestro tienen RLS activa, no permiten acceso anónimo ni borrado
 
 ### Configuración y saldo
 
-**`bitacora.product_site_inventory`**
+**`bitacora.sedes`**
 
-- `product_id`, `sede_id` como clave única.
-- `stock_current numeric` como saldo teórico proyectado y protegido.
-- `stock_minimum numeric`.
-- `reference_cost numeric`.
-- `active`, `version`, `created_at`, `updated_at`.
-- Restricción `stock_current >= 0`.
+- `kiosk_enabled boolean`: deshabilitado por defecto. Una sede sin esta habilitación no puede recibir configuración ni operaciones Kiosco.
 
-**`bitacora.product_presentation_prices`**
+**`bitacora.product_site_settings`**
 
-- `presentation_id`, `sede_id`, `sale_price`, `currency`, `active`.
+- `product_id`, `presentation_id`, `sede_id` como clave única.
+- `sale_price`, `reference_cost`, `stock_minimum`, `currency`, `active`.
 - Fechas y usuario de modificación.
-- Una sola tarifa activa por presentación/sede.
+- Una sola configuración por presentación/sede.
+
+**`bitacora.product_site_inventory`** (fase 4)
+
+- `product_id`, `presentation_id`, `sede_id` como clave única.
+- `stock_current numeric` como saldo teórico proyectado y protegido.
+- `version`, `created_at`, `updated_at`.
+- Restricción `stock_current >= 0`.
 
 ### Reposición
 
@@ -186,14 +189,14 @@ Si una línea se vuelve a contar mientras el relevamiento está abierto, la últ
 
 | Perfil actual | Alcance propuesto |
 |---|---|
-| `admin`, `editor` | configuración, maestro, precios, todas las operaciones e historial |
+| `admin`, `editor` | configuración, maestro, precios, operaciones e historial solo en sedes asignadas; habilitación global de sedes desde administración |
 | `grupo`, `encargado` | operación y supervisión solo en sedes de su alcance; reposición, relevamiento y anulación |
 | `sede` | venta, consulta, reposición y relevamiento en sus sedes; sin configurar permisos globales |
 | `deposito` | venta, consulta y reposición en `sede_ids`; sin anulaciones ni cambios de precio salvo permiso futuro explícito |
 | `consultor` | lectura de maestro, stock e historial autorizado |
 | `operario`, `flota`, `mnt_editor` | sin acceso al Kiosco en esta etapa |
 
-La autorización definitiva se comprobará en PostgreSQL; ocultar botones en React es solo una mejora de interfaz.
+La autorización definitiva se comprobará en PostgreSQL; ocultar botones en React es solo una mejora de interfaz. Ningún rol obtiene acceso operativo global implícito: la sede debe tener `kiosk_enabled=true` y pertenecer al alcance explícito de `perfiles.sede_ids`, o al grupo asignado cuando el rol sea `grupo`.
 
 ## 7. Interfaz propuesta
 
