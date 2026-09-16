@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gestionActionPayload, gestionHealth, isGestionProjectAction } from './gestionProjects'
+import { gestionActionPayload, gestionHealth, gestionProjectLifecycle, isGestionProjectAction } from './gestionProjects'
 
 describe('protocolo de gestión', () => {
   const now = new Date('2026-07-20T12:00:00Z')
@@ -25,5 +25,11 @@ describe('protocolo de gestión', () => {
       tipo:'Desarrollo',
       descripcion:'Evaluar alternativa',
     })
+  })
+
+  it('separa proyectos activos, finalizados y obsoletos sin borrar acciones', () => {
+    expect(gestionProjectLifecycle([{ estado:'Pendiente' }], { estado:'activo' })).toBe('activos')
+    expect(gestionProjectLifecycle([{ estado:'Completada' }, { estado:'Verificada' }], { estado:'activo' })).toBe('finalizados')
+    expect(gestionProjectLifecycle([{ estado:'Pendiente' }], { estado:'obsoleto' })).toBe('obsoletos')
   })
 })

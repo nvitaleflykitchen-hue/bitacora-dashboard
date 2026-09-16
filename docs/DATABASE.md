@@ -322,6 +322,7 @@ Formato: `columna : tipo` — `NN` (NOT NULL) o `N` (nullable) — default si ex
 | descripcion | text | NO | — |
 | responsable | text | YES | — |
 | 🔗 responsable_id | uuid | YES | → `perfiles.id` (`ON DELETE SET NULL`; aplicado 2026-07-20) |
+| estado | text | NO | `activo`; admite `activo`, `obsoleto` |
 | prioridad | text | NO | `'Media'`; `Alta`, `Media`, `Baja` |
 | subtareas | jsonb | NO | `'[]'`; pasos operativos de la acción |
 | fecha_limite | date | YES | — |

@@ -14,8 +14,10 @@ import {
   Users2, ShoppingCart, Shield, ClipboardCheck, Megaphone, Plus, Truck,
   Sparkles, Activity,
   FolderKanban, FlaskConical, Barcode,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { APP_NAME, APP_VERSION } from '../data/releases'
+import usePersistedState from '../hooks/usePersistedState'
 
 function SectionLabel({ children }) {
   return (
@@ -120,6 +122,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
   const isQualityOnly = isQualityOnlyProfile(perfil)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [showPwModal, setShowPwModal] = useState(false)
+  const [desktopCollapsed, setDesktopCollapsed] = usePersistedState('sidebar.desktopCollapsed', false, { validate:value => typeof value === 'boolean' })
 
   const nav = (id) => { onNavigate(id); setMobileOpen(false) }
   const abrirReporte = () => { onNuevoReporte(); setMobileOpen(false) }
@@ -259,9 +262,24 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
         <div className="md:hidden fixed inset-0 z-30 bg-black/60" onClick={() => setMobileOpen(false)} />
       )}
 
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0">
-        {sidebarContent}
-      </aside>
+      {desktopCollapsed ? (
+        <aside className="hidden md:flex flex-col flex-shrink-0" style={{ width:42, background:'var(--surface)', borderRight:'1px solid rgba(57,255,20,0.08)' }}>
+          <button type="button" onClick={() => setDesktopCollapsed(false)} className="btn-ghost"
+            aria-label="Desplegar menú lateral" title="Desplegar menú lateral"
+            style={{ margin:7, padding:'0.45rem 0', display:'flex', justifyContent:'center' }}>
+            <ChevronRight size={15} />
+          </button>
+        </aside>
+      ) : (
+        <aside className="hidden md:flex flex-col w-52 flex-shrink-0" style={{ position:'relative' }}>
+          {sidebarContent}
+          <button type="button" onClick={() => setDesktopCollapsed(true)} className="btn-ghost"
+            aria-label="Replegar menú lateral" title="Replegar menú lateral"
+            style={{ position:'absolute', top:8, right:7, padding:'0.28rem', zIndex:2 }}>
+            <ChevronLeft size={14} />
+          </button>
+        </aside>
+      )}
 
       <aside className={`md:hidden fixed top-0 left-0 h-full w-52 z-40 flex flex-col
         transform transition-transform duration-200

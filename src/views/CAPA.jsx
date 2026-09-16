@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
-import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan, deleteCapaProject, getPerfiles, getColaboradoresProyecto } from '../lib/queries'
-import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil, Trash2, Search } from 'lucide-react'
+import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan, updateCapaPlanEstado, getPerfiles, getColaboradoresProyecto } from '../lib/queries'
+import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil, Archive, RotateCcw, Search } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import CorreosGestion from '../components/CorreosGestion'
 import PageHeader from '../components/PageHeader'
@@ -9,12 +9,11 @@ import { uploadAdjunto } from '../lib/adjuntos'
 import { useAuth } from '../lib/auth'
 import OperationalStateChip from '../components/OperationalStateChip'
 import { generarInformeCapaPDF } from '../lib/capaReportPdf'
-import { gestionActionPayload, gestionHealth, isGestionProjectAction } from '../lib/gestionProjects'
+import { gestionActionPayload, gestionHealth, gestionProjectLifecycle, isGestionProjectAction } from '../lib/gestionProjects'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import useFormDraft from '../hooks/useFormDraft'
 import FormDraftNotice from '../components/FormDraftNotice'
-import { confirmarAccionSensible } from '../lib/sensitiveActions'
 import { diasHasta, esVencida, fmtFecha, fmtFechaLarga } from '../lib/dateUtils'
 
 const ESTADOS_CAPA = ['Pendiente','En ejecución','Completada','Verificada']
@@ -770,6 +769,7 @@ function CapaPlanForm({ auditoriaCodigo, sedeId, sedeNombre, plan, perfiles, col
     titulo: plan?.titulo || plan?.objetivo || '',
     supervisor_id: plan?.supervisor_id || '',
     colaborador_ids: plan?.colaborador_ids || [],
+    estado: plan?.estado || 'activo',
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -876,6 +876,7 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
   const [planes, setPlanes] = useState({})
   const [editingPlan, setEditingPlan] = useState(null)
   const [generando, setGenerando] = useState(null)
+  const [seccionGestion, setSeccionGestion] = useState('activos')
 
   useEffect(() => {
     if (focusId) setDetail(items.find(item => String(item.id) === String(focusId)) || null)
@@ -939,29 +940,44 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
     setEditingPlan({ grupo, plan })
   }
 
-  const handleEliminarPlan = async (grupo) => {
+  const handleEstadoPlan = async (grupo, estado) => {
     const plan = await ensurePlan(grupo.auditoria_codigo)
     if (!plan) return toast.error('No se encontró el proyecto.')
-    if (!await confirmarAccionSensible({
-      action:'eliminar',
-      subject:`el proyecto “${plan.titulo || plan.objetivo || grupo.auditoria_codigo}”`,
-      consequence:'Se eliminarán también todas sus acciones CAPA y dejarán de aparecer en los informes.',
-      recovery:'No existe papelera para proyectos CAPA. Para conservar trazabilidad, cancelá y cerrá o completá sus acciones.',
-      confirmText:'Eliminar proyecto',
-    })) return
     try {
-      await deleteCapaProject(plan)
-      toast.success('Proyecto eliminado.')
-      setPlanes(prev => { const next = { ...prev }; delete next[grupo.auditoria_codigo]; return next })
-      onReload()
+      const actualizado = await updateCapaPlanEstado(plan.id, estado)
+      setPlanes(prev => ({ ...prev, [grupo.auditoria_codigo]: { ...plan, ...actualizado } }))
+      toast.success(estado === 'obsoleto' ? 'Proyecto movido a Obsoletos.' : 'Proyecto restaurado a Activos.')
     } catch (e) {
-      toast.error('No se pudo eliminar: ' + mensajeError(e))
+      toast.error('No se pudo actualizar el proyecto: ' + mensajeError(e))
     }
   }
 
+  const entradasGrupos = Object.entries(grupos)
+  const clasificarGrupo = ([, grupo]) => gestionProjectLifecycle(grupo.items, planes[grupo.auditoria_codigo])
+  const conteosGestion = entradasGrupos.reduce((acc, entry) => {
+    acc[clasificarGrupo(entry)] += 1
+    return acc
+  }, { activos:0, finalizados:0, obsoletos:0 })
+  const gruposVisibles = mode === 'gestion'
+    ? entradasGrupos.filter(entry => clasificarGrupo(entry) === seccionGestion)
+    : entradasGrupos
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      {Object.entries(grupos).map(([key, grupo]) => {
+      {mode === 'gestion' && (
+        <div className="glass" style={{ display:'flex', gap:6, padding:8, borderRadius:3, flexWrap:'wrap' }}>
+          {[
+            ['activos', 'Activos'],
+            ['finalizados', 'Finalizados'],
+            ['obsoletos', 'Obsoletos'],
+          ].map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setSeccionGestion(value)} className={seccionGestion === value ? 'btn-primary' : 'btn-ghost'}>
+              {label} ({conteosGestion[value]})
+            </button>
+          ))}
+        </div>
+      )}
+      {gruposVisibles.map(([key, grupo]) => {
         const total = grupo.items.length
         const cerradas = grupo.items.filter(i => ['Completada','Verificada'].includes(i.estado)).length
         const pct = total > 0 ? Math.round(cerradas / total * 100) : 0
@@ -1054,10 +1070,11 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
                     <Pencil size={11} /> Datos del plan
                   </button>
                 )}
-                {canWrite && mode === 'gestion' && grupo.auditoria_codigo && (
-                  <button onClick={() => handleEliminarPlan(grupo)} className="btn-ghost flex items-center gap-1"
-                    style={{ padding:'0.25rem 0.5rem', fontSize:'0.62rem', color:'var(--alert)' }} title="Eliminar proyecto">
-                    <Trash2 size={11} /> Eliminar
+                {canWrite && mode === 'gestion' && grupo.auditoria_codigo && seccionGestion !== 'finalizados' && (
+                  <button onClick={() => handleEstadoPlan(grupo, seccionGestion === 'obsoletos' ? 'activo' : 'obsoleto')} className="btn-ghost flex items-center gap-1"
+                    style={{ padding:'0.25rem 0.5rem', fontSize:'0.62rem', color:seccionGestion === 'obsoletos' ? 'var(--phosphor)' : 'var(--warn)' }} title={seccionGestion === 'obsoletos' ? 'Restaurar proyecto' : 'Mover a obsoletos'}>
+                    {seccionGestion === 'obsoletos' ? <RotateCcw size={11} /> : <Archive size={11} />}
+                    {seccionGestion === 'obsoletos' ? 'Restaurar' : 'Obsoleto'}
                   </button>
                 )}
                 <button onClick={() => handleDescargarInforme(grupo)}
@@ -1117,6 +1134,11 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
           </div>
         )
       })}
+      {mode === 'gestion' && gruposVisibles.length === 0 && (
+        <div className="glass" style={{ padding:'2rem', textAlign:'center', color:'var(--text-dim)', fontSize:'0.75rem' }}>
+          No hay proyectos en esta sección.
+        </div>
+      )}
 
       {detail && (
         <CAPACardDetail
