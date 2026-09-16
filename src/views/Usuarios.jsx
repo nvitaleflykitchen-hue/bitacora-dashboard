@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { getPerfilesConDirectorio, upsertPerfil, getGrupos, getSedes, getPermisosCompras, setPermisoCompras, getPermisosMantenimiento, setPermisoMantenimiento, getPermisosPersonal, setPermisoPersonal } from '../lib/queries'
 import { supabase } from '../lib/supabase'
-import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart, Wrench, ContactRound } from 'lucide-react'
+import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart, Wrench, ContactRound, Search, MapPin } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import { confirmar, toast } from '../lib/feedback'
@@ -17,6 +17,87 @@ function rolChip(rol) {
   if (rol === 'encargado')  return <span className="chip chip-yellow">{label}</span>
   if (rol === 'editor')     return <span className="chip chip-blue">{label}</span>
   return <span className="chip chip-gray">{label}</span>
+}
+
+export function SedesMultiSelector({ sedes, grupos, grupoId, selectedIds = [], onChange }) {
+  const [search, setSearch] = useState('')
+  const selected = new Set(selectedIds.map(Number))
+  const grupo = grupos.find(g => String(g.id) === String(grupoId))
+  const sedesDelGrupo = grupoId
+    ? sedes.filter(s => String(s.grupo_id) === String(grupoId))
+    : []
+  const sedesVisibles = sedes.filter(s =>
+    s.nombre?.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))
+  )
+  const sedesSeleccionadas = sedes.filter(s => selected.has(Number(s.id)))
+
+  const ordenar = ids => {
+    const idSet = new Set(ids.map(Number))
+    return sedes.filter(s => idSet.has(Number(s.id))).map(s => Number(s.id))
+  }
+
+  const toggleSede = sedeId => {
+    const id = Number(sedeId)
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onChange(ordenar([...next]))
+  }
+
+  const seleccionarGrupo = () => {
+    onChange(ordenar([...selected, ...sedesDelGrupo.map(s => Number(s.id))]))
+  }
+
+  return (
+    <details style={{ minWidth:280 }}>
+      <summary className="btn-ghost" style={{ cursor:'pointer', listStyle:'none', display:'flex', alignItems:'center', gap:6, justifyContent:'space-between', padding:'0.35rem 0.5rem' }}>
+        <span className="flex items-center gap-1.5"><MapPin size={12}/>{selected.size ? `${selected.size} sede${selected.size === 1 ? '' : 's'} seleccionada${selected.size === 1 ? '' : 's'}` : 'Elegir sedes'}</span>
+        <span aria-hidden="true">▾</span>
+      </summary>
+
+      <div className="glass rounded" style={{ marginTop:5, padding:8, background:'var(--surface)', border:'1px solid rgba(57,255,20,.18)' }}>
+        {grupo && sedesDelGrupo.length > 0 && (
+          <button type="button" className="btn-ghost" onClick={seleccionarGrupo}
+            style={{ width:'100%', marginBottom:7, color:'var(--phosphor)', fontSize:'.66rem', textAlign:'left' }}>
+            + Agregar las {sedesDelGrupo.length} sedes de {grupo.nombre}
+          </button>
+        )}
+
+        <label style={{ position:'relative', display:'block', marginBottom:7 }}>
+          <Search size={12} style={{ position:'absolute', left:8, top:8, color:'var(--text-dim)' }}/>
+          <input className="input-dark" aria-label="Buscar sede" placeholder="Buscar sede…" value={search}
+            onChange={e => setSearch(e.target.value)} style={{ width:'100%', paddingLeft:26, fontSize:'.68rem' }}/>
+        </label>
+
+        <div style={{ maxHeight:220, overflowY:'auto', display:'flex', flexDirection:'column', gap:3 }}>
+          {sedesVisibles.map(s => (
+            <label key={s.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 7px', cursor:'pointer', background:selected.has(Number(s.id))?'rgba(57,255,20,.07)':'transparent', border:'1px solid rgba(57,255,20,.07)', borderRadius:3 }}>
+              <input type="checkbox" checked={selected.has(Number(s.id))} onChange={() => toggleSede(s.id)}
+                style={{ accentColor:'var(--phosphor)', flexShrink:0 }}/>
+              <span style={{ color:'var(--text)', fontSize:'.68rem' }}>{s.nombre}</span>
+            </label>
+          ))}
+          {!sedesVisibles.length && <span style={{ color:'var(--text-dim)', fontSize:'.66rem', padding:7 }}>No se encontraron sedes.</span>}
+        </div>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, marginTop:7 }}>
+          <span style={{ color:'var(--text-dim)', fontSize:'.62rem' }}>{selected.size} seleccionada{selected.size === 1 ? '' : 's'}</span>
+          {selected.size > 0 && <button type="button" className="btn-ghost" onClick={() => onChange([])} style={{ fontSize:'.62rem', padding:'0.2rem 0.4rem' }}>Limpiar</button>}
+        </div>
+      </div>
+
+      {sedesSeleccionadas.length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:5 }}>
+          {sedesSeleccionadas.map(s => (
+            <button type="button" key={s.id} onClick={() => toggleSede(s.id)} title={`Quitar ${s.nombre}`}
+              className="chip chip-gray" style={{ fontSize:'.58rem', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3 }}>
+              {s.nombre}<XIcon size={9}/>
+            </button>
+          ))}
+        </div>
+      )}
+    </details>
+  )
 }
 
 const ACCIONES_COMPRAS = [
@@ -642,21 +723,20 @@ export default function Usuarios() {
                       </td>
                       <td>
                         {isEditing ? (
-                          <div style={{ display:'flex', flexDirection:'column', gap:4, minWidth:160 }}>
+                          <div style={{ display:'flex', flexDirection:'column', gap:4, minWidth:280 }}>
                             <select className="input-dark" style={{ fontSize:'0.7rem', padding:'0.2rem 0.35rem' }}
                               value={editData.grupo_id} onChange={e => handleGrupoChange(e.target.value)}>
                               <option value="">— Sin grupo —</option>
                               {grupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
                             </select>
-                            <select multiple className="input-dark" size={3}
-                              style={{ fontSize:'0.65rem', padding:'0.15rem 0.3rem' }}
-                              value={(editData.sede_ids || []).map(String)}
-                              onChange={e => setEditData(d => ({
-                                ...d,
-                                sede_ids: Array.from(e.target.selectedOptions).map(o => Number(o.value)),
-                              }))}>
-                              {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                            </select>
+                            <span style={{ color:'var(--text-dim)', fontSize:'.6rem' }}>Al cambiar el grupo se seleccionan todas sus sedes. Después podés agregar o quitar cada una.</span>
+                            <SedesMultiSelector
+                              sedes={sedes}
+                              grupos={grupos}
+                              grupoId={editData.grupo_id}
+                              selectedIds={editData.sede_ids || []}
+                              onChange={sedeIds => setEditData(d => ({ ...d, sede_ids:sedeIds }))}
+                            />
                           </div>
                         ) : (
                           p.grupo_id
