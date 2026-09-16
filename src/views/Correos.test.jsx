@@ -47,6 +47,25 @@ describe('Bandeja de correos', () => {
     fireEvent.click(screen.getByText('Guardar vínculo'))
     await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(current, key, 'vinculado'))
   })
+  it('busca y asocia el correo a una persona específica', async () => {
+    const destinations = {
+      tickets: [], compras: [], tareas: [], planes: plans,
+      personas: [
+        { id: 'persona:p1', titulo: 'Romina Rodríguez', meta: 'Nutricionista', search: 'Romina Rodríguez Nutricionista' },
+        { id: 'persona:p2', titulo: 'Pablo Fernández', meta: 'Mantenimiento', search: 'Pablo Fernández Mantenimiento' },
+      ],
+    }
+    api.getCorreoDetail.mockResolvedValue({ message: { ...message, sugerido_plan_id: null }, history: [] })
+    render(<CorreoDetail id="m1" plans={plans} destinations={destinations} canReview onClose={() => {}} onSaved={() => {}} />)
+    await screen.findByText('Presupuesto')
+    fireEvent.click(screen.getByRole('tab', { name: /Personas/ }))
+    fireEvent.change(screen.getByPlaceholderText('Nombre, apellido o puesto…'), { target: { value: 'Romina' } })
+    expect(screen.getByText('Romina Rodríguez')).toBeTruthy()
+    expect(screen.queryByText('Pablo Fernández')).toBeNull()
+    fireEvent.click(screen.getByText('Romina Rodríguez'))
+    fireEvent.click(screen.getByText('Guardar vínculo'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), 'persona:p1', 'vinculado'))
+  })
   it('no muestra acciones de asociación a lectores', async () => {
     render(<CorreoDetail id="m1" plans={plans} canReview={false} onClose={() => {}} onSaved={() => {}} />)
     await screen.findByText('Presupuesto')

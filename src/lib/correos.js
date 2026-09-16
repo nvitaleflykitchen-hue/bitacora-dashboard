@@ -18,22 +18,29 @@ async function allRows(makeQuery) {
   }
 }
 export async function getCorreoContext() {
-  const [mailboxes, plans, memberships, tareas, compras, tickets] = await Promise.all([
+  const [mailboxes, plans, memberships, capas, tareas, compras, tickets, personas] = await Promise.all([
     db().from('correo_buzones').select('id,nombre').eq('activo', true),
-    db().from('capa_planes').select('id,titulo,objetivo,auditoria_codigo').like('auditoria_codigo', 'FK-GEST-%').order('created_at', { ascending: false }),
+    db().from('capa_planes').select('id,titulo,objetivo,auditoria_codigo,sede_nombre,estado').like('auditoria_codigo', 'FK-GEST-%').neq('estado', 'obsoleto').order('created_at', { ascending: false }),
     db().from('correo_buzon_miembros').select('buzon_id,puede_revisar'),
-    allRows(() => db().from('tareas').select('id,titulo,sede_id')),
-    allRows(() => db().from('requerimientos').select('id,descripcion,sede_id')),
-    allRows(() => supabase.from('mnt_tickets').select('id,descripcion,sede')),
+    allRows(() => db().from('capa').select('auditoria_codigo').not('estado', 'in', '(Completada,Verificada)')),
+    allRows(() => db().from('tareas').select('id,titulo,descripcion,sede_id,responsable,estado,fecha_limite').in('estado', ['Pendiente', 'En proceso'])),
+    allRows(() => db().from('requerimientos').select('id,numero,descripcion,sede_id,sede_nombre,solicitante,estado,fecha_necesidad').not('estado', 'in', '(Cumplido,Rechazado,Cancelado)')),
+    allRows(() => supabase.from('mnt_tickets').select('id,numero,descripcion,sede,estado,prioridad,responsable,fecha_limite').not('estado', 'in', '(Completada,Verificada,Resuelto,Rechazado,Cancelado,cerrado,resuelto,rechazado,cancelado)')),
+    allRows(() => supabase.from('v_personas').select('id,nombre,apellido,puesto,sede_ids,activo').eq('activo', true)),
   ])
-  return { mailboxes: checked(mailboxes), plans: [...checked(plans),
-    ...tareas.map(t => ({id: `tarea:${t.id}`, titulo: `Tarea #${t.id} · ${t.titulo}`})),
-    ...compras.map(t => ({id: `compra:${t.id}`, titulo: `Compra #${t.id} · ${t.descripcion}`})),
-    ...tickets.map(t => ({id: `ticket:${t.id}`, titulo: `Mantenimiento · ${t.sede || ''} · ${t.descripcion}`}))], memberships: checked(memberships) }
+  const openPlanCodes = new Set(capas.map(c => c.auditoria_codigo))
+  const destinations = {
+    planes: checked(plans).filter(p => openPlanCodes.has(p.auditoria_codigo)).map(p => ({ ...p, kind: 'plan', meta: [p.sede_nombre, p.auditoria_codigo].filter(Boolean).join(' · '), search: [p.titulo, p.objetivo, p.auditoria_codigo, p.sede_nombre].join(' ') })),
+    tareas: tareas.map(t => ({ ...t, id: `tarea:${t.id}`, kind: 'tarea', titulo: t.titulo || `Tarea #${t.id}`, meta: [t.estado, t.responsable].filter(Boolean).join(' · '), search: [t.id, t.titulo, t.descripcion, t.responsable, t.estado].join(' ') })),
+    compras: compras.map(c => ({ ...c, id: `compra:${c.id}`, kind: 'compra', titulo: `Compra #${c.numero || c.id} · ${c.descripcion}`, meta: [c.sede_nombre, c.estado, c.solicitante].filter(Boolean).join(' · '), search: [c.numero, c.descripcion, c.sede_nombre, c.solicitante, c.estado].join(' ') })),
+    tickets: tickets.map(t => ({ ...t, id: `ticket:${t.id}`, kind: 'ticket', titulo: `Mantenimiento${t.numero ? ` #${t.numero}` : ''} · ${t.descripcion}`, meta: [t.sede, t.estado, t.responsable].filter(Boolean).join(' · '), search: [t.numero, t.descripcion, t.sede, t.estado, t.responsable].join(' ') })),
+    personas: personas.map(p => ({ ...p, id: `persona:${p.id}`, kind: 'persona', titulo: `${p.nombre || ''} ${p.apellido || ''}`.trim(), meta: p.puesto || 'Persona', search: [p.nombre, p.apellido, p.puesto].join(' ') })),
+  }
+  return { mailboxes: checked(mailboxes), destinations, plans: Object.values(destinations).flat(), memberships: checked(memberships) }
 }
 
 export async function getCorreos({ mailboxId, state, planId, analysis, page = 0 }) {
-  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
+  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
   if (mailboxId) query = query.eq('buzon_id', mailboxId)
   if (state && state !== 'todos') query = query.eq('estado', state)
   if (planId) { const [column, value] = Object.entries(camposDestino(planId)).find(([, value]) => value != null); query = query.eq(column, value) }
