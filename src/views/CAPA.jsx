@@ -1004,7 +1004,7 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
                 <span style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>
                   {cerradas} de {total} completadas
                   {responsables.length > 0 && ` · Responsable${responsables.length > 1 ? 's' : ''}: ${responsables.join(', ')}`}
-                  {proximoVencimiento && ` · Próximo vencimiento: ${format(new Date(proximoVencimiento), 'dd/MM')}`}
+                  {proximoVencimiento && ` · Próximo vencimiento: ${fmtFecha(proximoVencimiento).slice(0, 5)}`}
                 </span>
                 {mode === 'gestion' && planes[grupo.auditoria_codigo] && (
                   <div style={{ fontSize:'0.62rem', color:'var(--text-dim)', marginTop:4 }}>
