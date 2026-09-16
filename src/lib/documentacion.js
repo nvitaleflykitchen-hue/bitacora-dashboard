@@ -35,6 +35,25 @@ export const VEHICULO_DOCUMENTACION_TEMPLATE = [
   { codigo: 'plan_mantenimiento_preventivo', titulo: 'Plan de mantenimiento preventivo y registros', seccion: 'Vehículos' },
 ]
 
+export const VEHICULO_AEROPUERTO_DOCUMENTACION_TEMPLATE = [
+  {
+    codigo: 'seguro_ariel_aeropuerto',
+    titulo: 'Seguro de línea aérea - Responsabilidad Civil Propietarios y Operadores de Aeropuertos (ARIEL)',
+    seccion: 'Seguridad aeroportuaria',
+    aviso_dias: 30,
+  },
+]
+
+export function esSedeAeropuerto(sedeNombre) {
+  return /\baeropuerto\b/i.test(String(sedeNombre || ''))
+}
+
+export function getVehiculoDocumentacionTemplate(sedeNombre) {
+  return esSedeAeropuerto(sedeNombre)
+    ? [...VEHICULO_DOCUMENTACION_TEMPLATE, ...VEHICULO_AEROPUERTO_DOCUMENTACION_TEMPLATE]
+    : VEHICULO_DOCUMENTACION_TEMPLATE
+}
+
 export const SEDE_DOCUMENTACION_TEMPLATE = [
   { codigo: 'habilitacion_establecimiento', titulo: 'Habilitación del establecimiento', seccion: 'Establecimiento' },
   { codigo: 'certificado_plagas', titulo: 'Certificado de manejo de plagas actualizado', seccion: 'Establecimiento' },

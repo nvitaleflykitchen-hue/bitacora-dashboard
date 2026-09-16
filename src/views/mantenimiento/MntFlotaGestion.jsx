@@ -6,7 +6,7 @@ import { getActivos, upsertActivo, getSedes } from '../../lib/queries'
 import { Plus, RefreshCw, Filter } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
 import DocumentacionChecklist from '../../components/DocumentacionChecklist'
-import { VEHICULO_DOCUMENTACION_TEMPLATE } from '../../lib/documentacion'
+import { getVehiculoDocumentacionTemplate } from '../../lib/documentacion'
 import { isQualityOnlyProfile } from '../../lib/access'
 import ActivoConcesionFields, { ActivoConcesionBadge } from '../../components/ActivoConcesionFields'
 import { concesionLabel } from '../../lib/activoConcesion'
@@ -125,7 +125,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
               <DocumentacionChecklist
                 entityType="vehiculo"
                 entityId={vehiculo.id}
-                template={VEHICULO_DOCUMENTACION_TEMPLATE}
+                template={getVehiculoDocumentacionTemplate(sedeName)}
                 canEdit={canEdit}
                 title="Documentación auditoría / flota"
               />

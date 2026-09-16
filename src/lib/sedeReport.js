@@ -1,6 +1,6 @@
 import { format, subDays, subMonths, parseISO, eachDayOfInterval, isValid } from 'date-fns'
 import { db, supabase } from './supabase'
-import { PERSONA_DOCUMENTACION_TEMPLATE, SEDE_DOCUMENTACION_TEMPLATE, VEHICULO_DOCUMENTACION_TEMPLATE } from './documentacion'
+import { PERSONA_DOCUMENTACION_TEMPLATE, SEDE_DOCUMENTACION_TEMPLATE, getVehiculoDocumentacionTemplate } from './documentacion'
 import { getResultadoEvaluacion } from './evaluacionResultado'
 import { concesionLabel } from './activoConcesion'
 
@@ -174,7 +174,7 @@ export function construirInformeSede({ sources, sedeId, sedeNombre, desde, hasta
 
   const vehiculos = activos.filter(a => a.tipo === 'VEHICULO')
   const flotaRows = vehiculos.map(v => {
-    const docs = resumenDocumental([{ id: v.id, nombre: v.nombre }], data('docsVehiculo'), VEHICULO_DOCUMENTACION_TEMPLATE, hoy)
+    const docs = resumenDocumental([{ id: v.id, nombre: v.nombre }], data('docsVehiculo'), getVehiculoDocumentacionTemplate(sede.nombre), hoy)
     const vencimientos = [['Seguro', v.vencimiento_seguro], ['VTV', v.vencimiento_vtv], ['SENASA', v.vencimiento_senasa], ['RMTSA', v.vencimiento_rmtsa]].filter(([, f]) => atraso(f, hoy)).map(([k]) => k)
     return [v.nombre, `${v.marca || ''} ${v.modelo || ''} · ${v.estado || 'Sin estado'}`, error('docsVehiculo') ? 'Checklist no disponible' : `Checklist: ${docs.valor}`, vencimientos.length ? `Vencido en ficha: ${vencimientos.join(', ')}` : 'Sin vencimientos registrados en ficha']
   })

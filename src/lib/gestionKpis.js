@@ -1,4 +1,4 @@
-import { PERSONA_DOCUMENTACION_TEMPLATE, SEDE_DOCUMENTACION_TEMPLATE, VEHICULO_DOCUMENTACION_TEMPLATE } from './documentacion'
+import { PERSONA_DOCUMENTACION_TEMPLATE, SEDE_DOCUMENTACION_TEMPLATE, getVehiculoDocumentacionTemplate } from './documentacion'
 
 export const GESTION_DIMENSIONS = [
   { id:'cumplimiento', label:'Cumplimiento', weight:30 },
@@ -22,14 +22,18 @@ const ratio = (ok, total) => total > 0 ? clamp((ok / total) * 100) : null
 const inSede = (item, sedeId) => sedeId == null || String(item?.sede_id) === String(sedeId)
 const completed = (items, type) => items.filter(item => FINAL[type].has(item.estado)).length
 
-const DOC_TEMPLATES = { persona:PERSONA_DOCUMENTACION_TEMPLATE, vehiculo:VEHICULO_DOCUMENTACION_TEMPLATE, sede:SEDE_DOCUMENTACION_TEMPLATE }
+const DOC_TEMPLATES = { persona:PERSONA_DOCUMENTACION_TEMPLATE, sede:SEDE_DOCUMENTACION_TEMPLATE }
 
 function documentSummary(data, type, entities, hasta) {
   const items = (data.documentacion?.items || []).filter(item => item.entity_type === type)
   const itemMap = new Map(items.map(item => [`${item.entity_id}|${item.codigo}`, item]))
   const result = { type, entities:entities.length, total:0, vigente:0, proximo7:0, proximo15:0, proximo30:0, vencido:0, observado:0, pendiente:0, sinCargar:0 }
   const end = new Date(`${hasta}T12:00:00`)
-  entities.forEach(entity => DOC_TEMPLATES[type].forEach(expected => {
+  entities.forEach(entity => {
+    const template = type === 'vehiculo'
+      ? getVehiculoDocumentacionTemplate(entity.sede_nombre || entity.sede)
+      : DOC_TEMPLATES[type]
+    template.forEach(expected => {
     const item = itemMap.get(`${entity.id}|${expected.codigo}`)
     if (item?.estado === 'no_aplica') return
     result.total += 1
@@ -45,7 +49,8 @@ function documentSummary(data, type, entities, hasta) {
       else if (days != null && days <= 15) result.proximo15 += 1
       else if (days != null && days <= 30) result.proximo30 += 1
     }
-  }))
+    })
+  })
   result.score = ratio(result.vigente, result.total)
   return result
 }
