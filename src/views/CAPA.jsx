@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { format, isPast, isToday, differenceInDays } from 'date-fns'
+import { format } from 'date-fns'
 import { getCapa, createCapa, updateCapa, getNoConformidades, getSedes, getCapaPlan, upsertCapaPlan, deleteCapaProject, getPerfiles, getColaboradoresProyecto } from '../lib/queries'
 import { Plus, X, RefreshCw, Columns, LayoutList, ClipboardList, FileDown, Pencil, Trash2, Search } from 'lucide-react'
 import AdjuntosPanel from '../components/AdjuntosPanel'
@@ -15,6 +15,7 @@ import { mensajeError } from '../lib/errores'
 import useFormDraft from '../hooks/useFormDraft'
 import FormDraftNotice from '../components/FormDraftNotice'
 import { confirmarAccionSensible } from '../lib/sensitiveActions'
+import { diasHasta, esVencida, fmtFecha, fmtFechaLarga } from '../lib/dateUtils'
 
 const ESTADOS_CAPA = ['Pendiente','En ejecución','Completada','Verificada']
 const TIPOS_CAPA   = ['Correctiva','Preventiva']
@@ -38,9 +39,9 @@ const COL_CONFIG = {
 
 function vencimientoChip(fechaLimite, estado) {
   if (!fechaLimite || estado === 'Completada' || estado === 'Verificada') return null
-  const d = new Date(fechaLimite)
-  const diff = differenceInDays(d, new Date())
-  if (isPast(d) && !isToday(d)) return <span className="chip chip-red" style={{ fontSize:'0.6rem' }}>Vencido</span>
+  const diff = diasHasta(fechaLimite)
+  if (diff === null) return null
+  if (diff < 0) return <span className="chip chip-red" style={{ fontSize:'0.6rem' }}>Vencido</span>
   if (diff < 7) return <span className="chip chip-yellow" style={{ fontSize:'0.6rem' }}>&lt;7 días</span>
   return <span className="chip chip-green" style={{ fontSize:'0.6rem' }}>A tiempo</span>
 }
@@ -522,7 +523,7 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
           )}
           {c.fecha_limite && (
             <p style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>
-              <span style={{ color:'var(--phosphor)' }}>Vencimiento:</span> {format(new Date(c.fecha_limite), 'dd/MM/yyyy')}
+              <span style={{ color:'var(--phosphor)' }}>Vencimiento:</span> {fmtFechaLarga(c.fecha_limite)}
             </p>
           )}
           {c.evidencia && (
@@ -691,7 +692,7 @@ function CapaKanban({ items, perfiles, canWrite, onEstadoChange, onReload, focus
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:8, display:'flex', flexDirection:'column', gap:7 }}>
               {cards.map(c => {
-                const vencida = c.fecha_limite && isPast(new Date(c.fecha_limite)) && !isToday(new Date(c.fecha_limite))
+                const vencida = c.fecha_limite && esVencida(c.fecha_limite)
                   && c.estado !== 'Completada' && c.estado !== 'Verificada'
                 return (
                   <div key={c.id}
@@ -725,9 +726,9 @@ function CapaKanban({ items, perfiles, canWrite, onEstadoChange, onReload, focus
                       <div style={{ display:'flex', gap:3, flexShrink:0 }}>
                         {vencida && <span className="chip chip-red" style={{ fontSize:'0.6rem', padding:'1px 4px' }}>⚠ VEN</span>}
                         {c.fecha_limite && !vencida && (
-                          differenceInDays(new Date(c.fecha_limite), new Date()) < 7
+                          diasHasta(c.fecha_limite) < 7
                             ? <span className="chip chip-yellow" style={{ fontSize:'0.6rem', padding:'1px 4px' }}>&lt;7d</span>
-                            : <span style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{format(new Date(c.fecha_limite),'dd/MM')}</span>
+                            : <span style={{ color:'var(--text-dim)', fontSize:'0.6rem' }}>{fmtFecha(c.fecha_limite).slice(0, 5)}</span>
                         )}
                       </div>
                     </div>
@@ -965,7 +966,7 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
         const cerradas = grupo.items.filter(i => ['Completada','Verificada'].includes(i.estado)).length
         const pct = total > 0 ? Math.round(cerradas / total * 100) : 0
         const vencidas = grupo.items.filter(i =>
-          i.fecha_limite && isPast(new Date(i.fecha_limite)) && !isToday(new Date(i.fecha_limite))
+          i.fecha_limite && esVencida(i.fecha_limite)
           && !['Completada','Verificada'].includes(i.estado)
         ).length
         const responsables = [...new Set(grupo.items.map(responsableNombre).filter(Boolean))]
@@ -1083,7 +1084,7 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
                   <span className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.4)', minWidth:90, textAlign:'right', letterSpacing:'0.08em' }}>ESTADO</span>
                 </div>
                 {grupo.items.map(c => {
-                  const vencida = c.fecha_limite && isPast(new Date(c.fecha_limite)) && !isToday(new Date(c.fecha_limite))
+                  const vencida = c.fecha_limite && esVencida(c.fecha_limite)
                     && !['Completada','Verificada'].includes(c.estado)
                   return (
                     <div key={c.id}
@@ -1105,7 +1106,7 @@ function CapaAuditoria({ items, perfiles, colaboradores, canWrite, onEstadoChang
                         {responsableNombre(c) || '—'}
                       </span>
                       <span style={{ fontSize:'0.62rem', color: vencida ? 'var(--alert)' : 'var(--text-dim)', minWidth:50, textAlign:'right', flexShrink:0 }}>
-                        {c.fecha_limite ? format(new Date(c.fecha_limite), 'dd/MM') : '—'}
+                        {c.fecha_limite ? fmtFecha(c.fecha_limite).slice(0, 5) : '—'}
                       </span>
                       <div style={{ minWidth:90, textAlign:'right', flexShrink:0 }}>{estadoChip(c.estado)}</div>
                     </div>
@@ -1217,7 +1218,7 @@ export default function CAPA({ focusId, mode = 'quality' }) {
   const pendientes  = items.filter(i => i.estado === 'Pendiente').length
   const enEjecucion = items.filter(i => i.estado === 'En ejecución').length
   const completadas = items.filter(i => i.estado === 'Completada' || i.estado === 'Verificada').length
-  const vencidas    = items.filter(i => i.fecha_limite && isPast(new Date(i.fecha_limite)) && !isToday(new Date(i.fecha_limite)) && i.estado !== 'Completada' && i.estado !== 'Verificada').length
+  const vencidas    = items.filter(i => i.fecha_limite && esVencida(i.fecha_limite) && i.estado !== 'Completada' && i.estado !== 'Verificada').length
 
   const sedesConPlan = [...new Map(items.filter(i => i.sede_id).map(i => [i.sede_id, { id: i.sede_id, nombre: i.sede_nombre }])).values()]
   const auditorias   = [...new Set(items.map(i => i.auditoria_codigo).filter(Boolean))]
