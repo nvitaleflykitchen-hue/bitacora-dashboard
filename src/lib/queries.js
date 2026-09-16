@@ -608,6 +608,20 @@ export async function upsertCapaPlan(payload) {
   return { ...data, colaborador_ids };
 }
 
+export async function updateCapaPlanEstado(id, estado) {
+  if (!id || !["activo", "obsoleto"].includes(estado)) {
+    throw new Error("Estado de proyecto inválido.");
+  }
+  const { data, error } = await db()
+    .from("capa_planes")
+    .update({ estado, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function getColaboradoresProyecto() {
   const [perfiles, personasResult] = await Promise.all([
     getPerfiles(),

@@ -8,6 +8,12 @@ export function gestionActionPayload(form = {}) {
   return actionPayload
 }
 
+export function gestionProjectLifecycle(items = [], plan = null) {
+  if (plan?.estado === 'obsoleto') return 'obsoletos'
+  if (items.length > 0 && items.every(item => ['Completada', 'Verificada'].includes(item?.estado))) return 'finalizados'
+  return 'activos'
+}
+
 export function gestionHealth(item, now = new Date()) {
   if (['Completada', 'Verificada'].includes(item?.estado) || item?.gestion_estado === 'Cumplida') return { level:'ok', label:'Cumplida', days:0 }
   const base = item?.ultima_gestion_at || item?.aceptado_at || item?.updated_at || item?.created_at
