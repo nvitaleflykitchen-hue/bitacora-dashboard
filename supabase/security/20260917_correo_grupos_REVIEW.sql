@@ -1,4 +1,4 @@
--- REQUIERE APROBACIÓN EXPLÍCITA DEL USUARIO ANTES DE EJECUTAR.
+-- AUTORIZADO («si autorizo») y aplicado 2026-09-17. No volver a ejecutar.
 -- Proyecto destino exclusivo: mixyhfdlzjarvszinytk (cerdova-db).
 -- Permite asociar y sugerir correos para un grupo activo de sedes.
 begin;
