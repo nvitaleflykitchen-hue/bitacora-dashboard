@@ -49,7 +49,7 @@ describe('Bandeja de correos', () => {
   })
   it('busca y asocia el correo a una persona específica', async () => {
     const destinations = {
-      tickets: [], compras: [], tareas: [], planes: plans, proyectos: [], sedes: [], vehiculos: [], id: [],
+      tickets: [], compras: [], tareas: [], planes: plans, proyectos: [], grupos: [], sedes: [], vehiculos: [], id: [],
       personas: [
         { id: 'persona:p1', titulo: 'Romina Rodríguez', meta: 'Nutricionista', search: 'Romina Rodríguez Nutricionista' },
         { id: 'persona:p2', titulo: 'Pablo Fernández', meta: 'Mantenimiento', search: 'Pablo Fernández Mantenimiento' },
@@ -67,12 +67,14 @@ describe('Bandeja de correos', () => {
     await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), 'persona:p1', 'vinculado'))
   })
   it.each([
+    ['Grupos', 'grupo:3', 'Comedores Centro'],
     ['Sedes', 'sede:4', 'Hospital Villa Dolores'],
     ['Vehículos', 'vehiculo:v1', 'Camión AA123BB'],
     ['I+D', 'idproyecto:i1', 'FK-ID-2026-0001 · Postre nuevo'],
   ])('busca y asocia desde %s', async (tab, key, label) => {
     const destinations = {
       tickets: [], compras: [], tareas: [], planes: [], proyectos: [], personas: [],
+      grupos: tab === 'Grupos' ? [{ id:key, titulo:label, search:label }] : [],
       sedes: tab === 'Sedes' ? [{ id:key, titulo:label, search:label }] : [],
       vehiculos: tab === 'Vehículos' ? [{ id:key, titulo:label, search:label }] : [],
       id: tab === 'I+D' ? [{ id:key, titulo:label, search:label }] : [],
@@ -87,7 +89,7 @@ describe('Bandeja de correos', () => {
   })
   it('separa los planes de acción de los proyectos de gestión', async () => {
     const destinations = {
-      tickets: [], compras: [], tareas: [], personas: [], sedes: [], vehiculos: [], id: [],
+      tickets: [], compras: [], tareas: [], personas: [], grupos: [], sedes: [], vehiculos: [], id: [],
       planes: [{ id:'plan-min', titulo:'Plan Ministerio Villa Dolores' }],
       proyectos: [{ id:'plan-gest', titulo:'Relocalización operativa' }],
     }

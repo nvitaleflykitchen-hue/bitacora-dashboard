@@ -9,12 +9,13 @@ const title = plan => plan?.titulo || plan?.objetivo || plan?.auditoria_codigo |
 const dateText = value => value ? new Date(value).toLocaleString('es-AR') : 'Sin fecha en el original'
 const destinationTabs = [
   ['tickets', 'Mantenimiento'], ['compras', 'Compras'], ['tareas', 'Tareas'],
-  ['planes', 'Planes de acción'], ['proyectos', 'Proyectos'], ['sedes', 'Sedes'],
+  ['planes', 'Planes de acción'], ['proyectos', 'Proyectos'], ['grupos', 'Grupos'], ['sedes', 'Sedes'],
   ['vehiculos', 'Vehículos'], ['id', 'I+D'], ['personas', 'Personas'],
 ]
 const destinationHelp = {
   planes: 'Hallazgos, inspecciones, auditorías, incumplimientos y sus acciones correctivas.',
   proyectos: 'Iniciativas con un objetivo, alcance, responsables y entregables.',
+  grupos: 'Información transversal que corresponde a todas las sedes de un grupo.',
   sedes: 'Documentación o información general que pertenece a una unidad.',
   vehiculos: 'Documentación, novedades o gestiones de una unidad de flota.',
   id: 'Desarrollos de producto, pruebas e iniciativas de innovación.',
@@ -23,7 +24,8 @@ const categoryFor = (value, destinations = {}) => value?.startsWith('ticket:') ?
   : value?.startsWith('compra:') ? 'compras'
     : value?.startsWith('tarea:') ? 'tareas'
       : value?.startsWith('persona:') ? 'personas'
-        : value?.startsWith('sede:') ? 'sedes'
+        : value?.startsWith('grupo:') ? 'grupos'
+          : value?.startsWith('sede:') ? 'sedes'
           : value?.startsWith('vehiculo:') ? 'vehiculos'
             : value?.startsWith('idproyecto:') ? 'id'
               : Object.entries(destinations).find(([, items]) => items.some(item => String(item.id) === String(value)))?.[0] || 'planes'
@@ -85,7 +87,7 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
     planes: plans.filter(p => !String(p.id).includes(':')), proyectos: [],
     tareas: plans.filter(p => String(p.id).startsWith('tarea:')), compras: plans.filter(p => String(p.id).startsWith('compra:')),
     tickets: plans.filter(p => String(p.id).startsWith('ticket:')), personas: plans.filter(p => String(p.id).startsWith('persona:')),
-    sedes: plans.filter(p => String(p.id).startsWith('sede:')), vehiculos: plans.filter(p => String(p.id).startsWith('vehiculo:')),
+    grupos: plans.filter(p => String(p.id).startsWith('grupo:')), sedes: plans.filter(p => String(p.id).startsWith('sede:')), vehiculos: plans.filter(p => String(p.id).startsWith('vehiculo:')),
     id: plans.filter(p => String(p.id).startsWith('idproyecto:')),
   }
   const allDestinations = Object.values(destinationGroups).flat()
