@@ -98,7 +98,7 @@ describe('flujo artículos', () => {
     await screen.findByText('Sede Rosario')
     fireEvent.change(screen.getByLabelText('Precio de venta'),{ target:{ value:'3200' } })
     fireEvent.change(screen.getByLabelText('Stock mínimo'),{ target:{ value:'5' } })
-    fireEvent.click(screen.getByRole('button',{name:'Guardar sede'}))
+    fireEvent.click(screen.getByRole('button',{name:'Guardar precio'}))
     await waitFor(() => expect(saveProductSiteSetting).toHaveBeenCalledWith(expect.objectContaining({ sede_id:7,product_id:'p1',presentation_id:'pr1',sale_price:'3200',stock_minimum:'5',active:true })))
   })
 })
