@@ -24,7 +24,7 @@ beforeAll(async () => {
   await pg.exec(readFileSync(new URL('../../supabase/migrations/20260907165101_maestro_articulos.sql', import.meta.url), 'utf8'))
   await pg.exec('create table bitacora.compras_proveedores(id uuid primary key); grant usage on schema bitacora to service_role;')
   await pg.exec(readFileSync(new URL('../../supabase/migrations/20260909110000_extend_product_master_phase1_REVIEW.sql', import.meta.url), 'utf8'))
-  await pg.exec(readFileSync(new URL('../../supabase/migrations/20260916221133_articulos_kiosco_multisede_phase3.sql', import.meta.url), 'utf8'))
+  await pg.exec(readFileSync(new URL('../../supabase/migrations/20260916224011_articulos_kiosco_multisede_phase3.sql', import.meta.url), 'utf8'))
 }, 60000)
 afterAll(async () => { await pg?.close() })
 describe('maestro SQL', () => {
