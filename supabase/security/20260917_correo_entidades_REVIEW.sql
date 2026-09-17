@@ -1,4 +1,4 @@
--- PROPUESTA PENDIENTE DE APROBACIÓN EXPLÍCITA. NO APLICADA AÚN.
+-- AUTORIZADO («autorizo») y aplicado 2026-09-17. No volver a ejecutar.
 -- Proyecto destino exclusivo: mixyhfdlzjarvszinytk (cerdova-db).
 -- Amplía el vínculo documental de correos a sedes, vehículos y proyectos I+D.
 -- También permite que plan_id apunte tanto a planes CAPA como a proyectos de gestión.
