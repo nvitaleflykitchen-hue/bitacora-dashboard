@@ -754,6 +754,7 @@ export default function Requerimientos({ focusId }) {
   const [filtroSede, setFiltroSede] = usePersistedState('reqs.filtroSede', '')
   const [emailCompras, setEmailCompras] = useState('compras.gerencia@serviciosdrill.com.ar;compras@flykitchen.com.ar')
   const [showClosed, setShowClosed] = usePersistedState('reqs.showClosed', false)
+  const [showRetirements, setShowRetirements] = usePersistedState('reqs.showRetirements', false)
   const [showKpis, setShowKpis] = useState(false)
   const [showProcess, setShowProcess] = useState(false)
   const [showEquipoCompras, setShowEquipoCompras] = useState(false)
@@ -1061,12 +1062,15 @@ export default function Requerimientos({ focusId }) {
 
       {/* Kanban */}
       {(recibidosSinLote.length > 0 || lotesActivos.length > 0) && (
-        <section style={{ padding:'12px', border:'1px solid rgba(45,212,191,.25)', background:'rgba(45,212,191,.045)', borderRadius:5 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:9, color:'#2DD4BF', fontSize:'.68rem', fontWeight:800 }}><PackageCheck size={14}/> RETIROS Y CUSTODIA</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+        <section style={{ padding:showRetirements?'12px':'8px 12px', border:'1px solid rgba(45,212,191,.25)', background:'rgba(45,212,191,.045)', borderRadius:5 }}>
+          <button type="button" onClick={()=>setShowRetirements(v=>!v)} aria-expanded={showRetirements} className="btn-ghost" style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'.38rem .5rem', color:'#2DD4BF' }}>
+            <span style={{ display:'flex', alignItems:'center', gap:7, fontSize:'.68rem', fontWeight:800 }}><PackageCheck size={14}/> RETIROS Y CUSTODIA <small style={{ color:'var(--text-dim)', fontWeight:600 }}>· {recibidosSinLote.length + lotesActivos.length} gestiones pendientes</small></span>
+            <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:'.62rem' }}>{showRetirements?'OCULTAR':'MOSTRAR'} {showRetirements?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</span>
+          </button>
+          {showRetirements && <div style={{ display:'flex', flexWrap:'wrap', gap:8, paddingTop:9, marginTop:7, borderTop:'1px solid rgba(45,212,191,.18)' }}>
             {recibidosSinLote.map(g=><button key={g.sedeId} className="btn-ghost" disabled={!!processingEntrega} onClick={()=>handleAvisarRetiro(g)} style={{ color:'#2DD4BF' }}><MessageCircle size={12}/> Avisar retiro · {g.sedeNombre} ({g.requerimientos.length})</button>)}
             {lotesActivos.map(l=><button key={l.entregaId} className="btn-primary" disabled={!!processingEntrega || l.estado==='preparado'} onClick={()=>handleConfirmarRetiro(l.entregaId,l.items)} title={l.estado==='preparado'?'Compras todavía no registró el aviso':'Aceptar la custodia del lote'}><PackageCheck size={12}/> Confirmar retiro · {l.sedeNombre} ({l.items.length})</button>)}
-          </div>
+          </div>}
         </section>
       )}
       <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginBottom:-8 }}>
