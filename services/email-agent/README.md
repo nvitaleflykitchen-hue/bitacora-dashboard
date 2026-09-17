@@ -69,8 +69,13 @@ filtrar por gestión vinculada, por lo que no depende de abrir la tarjeta.
 - Original completo en EML; cuerpo de consulta limitado a 100.000 caracteres.
   Ollama recibe hasta 12.000 caracteres y los nombres de los adjuntos. **Todavía
   no interpreta PDF, imágenes ni documentos adjuntos.**
-- Hasta 12 gestiones candidatas por coincidencias de texto y antecedentes de hilos
-  confirmados. Los candidatos y correos se consideran datos no confiables. Sin
+- Hasta 12 destinos candidatos por coincidencias de texto, antecedentes de hilos
+  y patrones de vínculos confirmados. El aprendizaje compara remitente, dominio y
+  términos distintivos del asunto. Nunca aprende de una sugerencia sin confirmar.
+  Con uno o dos antecedentes presenta el destino y la confianza para revisión. Sólo
+  vincula automáticamente cuando existen al menos tres antecedentes coincidentes,
+  la señal es inequívoca y Ollama llega al mismo destino. El umbral puede elevarse
+  con `LEARNING_AUTO_LINK_MIN_EXAMPLES`. Los candidatos y correos se consideran datos no confiables. Sin
   herramientas ejecutables ni acciones de negocio controladas por el modelo.
 - La IA sugiere una gestión existente o un título para una gestión nueva. La
   creación automática de gestiones y la vinculación automática quedan para una

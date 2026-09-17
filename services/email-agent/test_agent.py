@@ -31,7 +31,8 @@ class AgentTests(unittest.TestCase):
         for chosen, subject, expected in [('tarea:7','Tarea #7: avance', True), ('tarea:7','Avance operativo', False), ('compra:8','Tarea #7: avance', False), ('tarea:7','Tarea #7 y compra #8', False)]:
             store = agent.Store.__new__(agent.Store)
             message = {'id': 'mail', 'updated_at': 'version-original', 'referencias': [], 'ai_intentos': 0, 'asunto': subject, 'cuerpo': 'avance operativo'}
-            store.table = Mock(side_effect=[[], [{'id':7,'titulo':'Avance operativo'}], [{'id':8,'descripcion':'Avance operativo'}], [], [message], None])
+            sources = [[], [{'id':7,'titulo':'Avance operativo'}], [{'id':8,'descripcion':'Avance operativo'}], [], [], [], [], []]
+            store.table = Mock(side_effect=[*sources, [], [message], None])
             result = {'plan_id':chosen,'tipo':'seguimiento','resumen':'Avance','motivo':'Referencia','nueva_gestion':None}
             with patch('agent.classify', return_value=result):
                 store.classify_pending(BOX)
@@ -46,6 +47,39 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(agent.explicit_targets({'asunto':'Consulta','cuerpo':'> Tarea #7'},plans),set())
         self.assertEqual(agent.destination_fields('compra:8')['compra_id'],8)
         self.assertEqual(agent.destination({'ticket_id':'abc'}),'ticket:abc')
+        self.assertEqual(agent.destination_fields('persona:abc')['persona_id'],'abc')
+        self.assertEqual(agent.destination_fields('sede:9')['sede_id'],9)
+
+    def test_learns_only_from_confirmed_similar_associations(self):
+        message = {'asunto': 'RE: Presupuesto compresor Rosario', 'remitente': 'Ventas <ventas@proveedor.com>'}
+        examples = [
+            {'asunto': 'Presupuesto compresor Rosario', 'remitente': 'ventas@proveedor.com', 'ticket_id': 'ticket-1'},
+            {'asunto': 'RV: Presupuesto compresor Rosario', 'remitente': 'ventas@proveedor.com', 'ticket_id': 'ticket-1'},
+            {'asunto': 'Uniformes Córdoba', 'remitente': 'otro@proveedor.com', 'compra_id': 8},
+            {'asunto': 'Presupuesto compresor Rosario', 'remitente': 'ventas@proveedor.com'},
+        ]
+        learned = agent.learned_destinations(message, examples)
+        self.assertEqual(learned['best'], 'ticket:ticket-1')
+        self.assertGreaterEqual(learned['confidence'], 75)
+        self.assertEqual(learned['matches'], 2)
+        plans = [{'id':'ticket:ticket-1','titulo':'Cambio de compresor'}, {'id':'compra:8','titulo':'Uniformes'}]
+        self.assertEqual(agent.candidate_plans({'asunto':'Sin palabras del ticket','cuerpo':''}, plans, learned_scores=learned['scores'])[0]['id'], 'ticket:ticket-1')
+
+    def test_ambiguous_history_caps_confidence(self):
+        message = {'asunto': 'Cotización mensual', 'remitente': 'ventas@proveedor.com'}
+        examples = [
+            {'asunto': 'Cotización mensual', 'remitente': 'ventas@proveedor.com', 'compra_id': 1},
+            {'asunto': 'Cotización mensual', 'remitente': 'ventas@proveedor.com', 'compra_id': 2},
+        ]
+        learned = agent.learned_destinations(message, examples)
+        self.assertLessEqual(learned['confidence'], 60)
+
+    def test_auto_learning_requires_three_examples_and_model_agreement(self):
+        learned = {'best': 'ticket:1', 'confidence': 94, 'matches': 3}
+        self.assertTrue(agent.can_auto_link_learned('ticket:1', learned))
+        self.assertFalse(agent.can_auto_link_learned('compra:1', learned))
+        self.assertFalse(agent.can_auto_link_learned('ticket:1', {**learned, 'matches': 2}))
+        self.assertFalse(agent.can_auto_link_learned('ticket:1', {**learned, 'confidence': 60}))
 
     def test_original_metadata_and_attachments(self):
         parsed = agent.parse_message(raw_message())
@@ -130,7 +164,8 @@ class AgentTests(unittest.TestCase):
     @patch('agent.classify', side_effect=ValueError('bad model output'))
     def test_ai_error_keeps_evidence_pending_and_records_retry(self, classify):
         store = agent.Store.__new__(agent.Store)
-        store.table = Mock(side_effect=[[], [], [], [], [{'updated_at': '2026-09-10T00:00:00Z', 'id': 'mail', 'referencias': [], 'ai_intentos': 0, 'asunto': 'a', 'cuerpo': ''}], None])
+        message = {'updated_at': '2026-09-10T00:00:00Z', 'id': 'mail', 'referencias': [], 'ai_intentos': 0, 'asunto': 'a', 'remitente': '', 'cuerpo': ''}
+        store.table = Mock(side_effect=[[], [], [], [], [], [], [], [], [], [message], None])
         store.classify_pending(BOX)
         args = store.table.call_args.args
         self.assertEqual(args[3]['ai_estado'], 'error')

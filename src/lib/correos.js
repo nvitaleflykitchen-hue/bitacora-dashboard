@@ -49,7 +49,7 @@ export async function getCorreoContext() {
 }
 
 export async function getCorreos({ mailboxId, state, planId, analysis, page = 0 }) {
-  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,sede_id,vehiculo_id,id_proyecto_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
+  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,sede_id,vehiculo_id,id_proyecto_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,sugerido_persona_id,sugerido_sede_id,sugerido_vehiculo_id,sugerido_id_proyecto_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_confianza,ai_fuente,ai_error,updated_at', { count: 'exact' })
   if (mailboxId) query = query.eq('buzon_id', mailboxId)
   if (state && state !== 'todos') query = query.eq('estado', state)
   if (planId) { const [column, value] = Object.entries(camposDestino(planId)).find(([, value]) => value != null); query = query.eq(column, value) }
