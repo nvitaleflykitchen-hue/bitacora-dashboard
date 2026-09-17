@@ -8,18 +8,31 @@ const states = { pendiente: 'Por revisar', vinculado: 'Vinculados', ignorado: 'A
 const title = plan => plan?.titulo || plan?.objetivo || plan?.auditoria_codigo || 'Gestión'
 const dateText = value => value ? new Date(value).toLocaleString('es-AR') : 'Sin fecha en el original'
 const destinationTabs = [
-  ['tickets', 'Mantenimiento'], ['compras', 'Compras'], ['tareas', 'Tareas'], ['planes', 'Planes de acción'], ['personas', 'Personas'],
+  ['tickets', 'Mantenimiento'], ['compras', 'Compras'], ['tareas', 'Tareas'],
+  ['planes', 'Planes de acción'], ['proyectos', 'Proyectos'], ['sedes', 'Sedes'],
+  ['vehiculos', 'Vehículos'], ['id', 'I+D'], ['personas', 'Personas'],
 ]
-const categoryFor = value => value?.startsWith('ticket:') ? 'tickets'
+const destinationHelp = {
+  planes: 'Hallazgos, inspecciones, auditorías, incumplimientos y sus acciones correctivas.',
+  proyectos: 'Iniciativas con un objetivo, alcance, responsables y entregables.',
+  sedes: 'Documentación o información general que pertenece a una unidad.',
+  vehiculos: 'Documentación, novedades o gestiones de una unidad de flota.',
+  id: 'Desarrollos de producto, pruebas e iniciativas de innovación.',
+}
+const categoryFor = (value, destinations = {}) => value?.startsWith('ticket:') ? 'tickets'
   : value?.startsWith('compra:') ? 'compras'
     : value?.startsWith('tarea:') ? 'tareas'
-      : value?.startsWith('persona:') ? 'personas' : 'planes'
+      : value?.startsWith('persona:') ? 'personas'
+        : value?.startsWith('sede:') ? 'sedes'
+          : value?.startsWith('vehiculo:') ? 'vehiculos'
+            : value?.startsWith('idproyecto:') ? 'id'
+              : Object.entries(destinations).find(([, items]) => items.some(item => String(item.id) === String(value)))?.[0] || 'planes'
 const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 export function DestinationPicker({ destinations, selected, onSelect, disabled }) {
-  const [category, setCategory] = useState(() => categoryFor(selected))
+  const [category, setCategory] = useState(() => categoryFor(selected, destinations))
   const [search, setSearch] = useState('')
-  useEffect(() => { if (selected) setCategory(categoryFor(selected)) }, [selected])
+  useEffect(() => { if (selected) setCategory(categoryFor(selected, destinations)) }, [selected, destinations])
   const options = destinations?.[category] || []
   const needle = normalize(search)
   const visible = needle ? options.filter(item => normalize(`${item.search || ''} ${title(item)} ${item.meta || ''}`).includes(needle)) : options
@@ -38,6 +51,7 @@ export function DestinationPicker({ destinations, selected, onSelect, disabled }
       <input className="input-dark w-full mt-1" type="search" value={search} onChange={e => setSearch(e.target.value)} disabled={disabled}
         placeholder={category === 'personas' ? 'Nombre, apellido o puesto…' : 'Asunto, número, sede, responsable o estado…'} />
     </label>
+    {destinationHelp[category] && <p className="text-sm" style={{ color: 'var(--text-dim)' }}>{destinationHelp[category]}</p>}
     <div role="listbox" aria-label={`Resultados de ${category}`} style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #ffffff20', borderRadius: 6 }}>
       {!visible.length && <p className="p-4" style={{ color: 'var(--text-dim)' }}>{search ? 'No hay coincidencias.' : 'No hay elementos abiertos en esta categoría.'}</p>}
       {visible.map(item => <button type="button" role="option" aria-selected={String(selected) === String(item.id)} key={item.id} disabled={disabled}
@@ -67,7 +81,13 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
   const [selected, setSelected] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const destinationGroups = destinations || { planes: plans.filter(p => !String(p.id).includes(':')), tareas: plans.filter(p => String(p.id).startsWith('tarea:')), compras: plans.filter(p => String(p.id).startsWith('compra:')), tickets: plans.filter(p => String(p.id).startsWith('ticket:')), personas: plans.filter(p => String(p.id).startsWith('persona:')) }
+  const destinationGroups = destinations || {
+    planes: plans.filter(p => !String(p.id).includes(':')), proyectos: [],
+    tareas: plans.filter(p => String(p.id).startsWith('tarea:')), compras: plans.filter(p => String(p.id).startsWith('compra:')),
+    tickets: plans.filter(p => String(p.id).startsWith('ticket:')), personas: plans.filter(p => String(p.id).startsWith('persona:')),
+    sedes: plans.filter(p => String(p.id).startsWith('sede:')), vehiculos: plans.filter(p => String(p.id).startsWith('vehiculo:')),
+    id: plans.filter(p => String(p.id).startsWith('idproyecto:')),
+  }
   const allDestinations = Object.values(destinationGroups).flat()
   useEffect(() => {
     let active = true
@@ -181,7 +201,7 @@ export default function Correos({ planId = null, readOnly = false }) {
   return <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4" style={{ color: 'var(--text)' }}>
     <header className="flex items-center justify-between gap-3 flex-wrap">
       <div><h1 className="font-title text-xl font-bold">{planId ? 'Correos y evidencias' : 'Correos'}</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>Ollama resume y clasifica cada correo. Abrilo para vincularlo a mantenimiento, compras, tareas, planes de acción o una persona.</p></div>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>Ollama resume y clasifica cada correo. Abrilo para vincularlo a una gestión, proyecto, sede, vehículo, iniciativa de I+D o persona.</p></div>
       <button type="button" className="btn-ghost" onClick={refresh} disabled={loading}>Actualizar</button>
     </header>
     {error && <p role="alert" className="glass p-4">{error}</p>}

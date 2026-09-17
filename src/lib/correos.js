@@ -18,29 +18,38 @@ async function allRows(makeQuery) {
   }
 }
 export async function getCorreoContext() {
-  const [mailboxes, plans, memberships, capas, tareas, compras, tickets, personas] = await Promise.all([
+  const [mailboxes, plans, memberships, capas, tareas, compras, tickets, personas, sedes, vehiculos, idProyectos] = await Promise.all([
     db().from('correo_buzones').select('id,nombre').eq('activo', true),
-    db().from('capa_planes').select('id,titulo,objetivo,auditoria_codigo,sede_nombre,estado').like('auditoria_codigo', 'FK-GEST-%').neq('estado', 'obsoleto').order('created_at', { ascending: false }),
+    db().from('capa_planes').select('id,titulo,objetivo,auditoria_codigo,sede_nombre,estado').neq('estado', 'obsoleto').order('created_at', { ascending: false }),
     db().from('correo_buzon_miembros').select('buzon_id,puede_revisar'),
     allRows(() => db().from('capa').select('auditoria_codigo').not('estado', 'in', '(Completada,Verificada)')),
     allRows(() => db().from('tareas').select('id,titulo,descripcion,sede_id,responsable,estado,fecha_limite').in('estado', ['Pendiente', 'En proceso'])),
     allRows(() => db().from('requerimientos').select('id,numero,descripcion,sede_id,sede_nombre,solicitante,estado,fecha_necesidad').not('estado', 'in', '(Cumplido,Rechazado,Cancelado)')),
     allRows(() => supabase.from('mnt_tickets').select('id,numero,descripcion,sede,estado,prioridad,responsable,fecha_limite').not('estado', 'in', '(Completada,Verificada,Resuelto,Rechazado,Cancelado,cerrado,resuelto,rechazado,cancelado)')),
     allRows(() => supabase.from('v_personas').select('id,nombre,apellido,puesto,sede_ids,activo').eq('activo', true)),
+    allRows(() => db().from('sedes').select('id,nombre,tipo,activa,en_pausa').eq('activa', true).eq('en_pausa', false)),
+    allRows(() => supabase.from('mnt_activos').select('id,nombre,marca,modelo,sede,sede_id,estado').eq('tipo', 'VEHICULO')),
+    allRows(() => db().from('id_proyectos').select('id,codigo,titulo,categoria,etapa,situacion,sede_id').not('situacion', 'in', '(Completado,Cancelado)')),
   ])
   const openPlanCodes = new Set(capas.map(c => c.auditoria_codigo))
+  const openPlans = checked(plans).filter(p => openPlanCodes.has(p.auditoria_codigo))
+  const planDestination = (p, kind) => ({ ...p, kind, meta: [p.sede_nombre, p.auditoria_codigo].filter(Boolean).join(' · '), search: [p.titulo, p.objetivo, p.auditoria_codigo, p.sede_nombre].join(' ') })
   const destinations = {
-    planes: checked(plans).filter(p => openPlanCodes.has(p.auditoria_codigo)).map(p => ({ ...p, kind: 'plan', meta: [p.sede_nombre, p.auditoria_codigo].filter(Boolean).join(' · '), search: [p.titulo, p.objetivo, p.auditoria_codigo, p.sede_nombre].join(' ') })),
+    planes: openPlans.filter(p => !String(p.auditoria_codigo).toUpperCase().startsWith('FK-GEST-')).map(p => planDestination(p, 'plan')),
+    proyectos: openPlans.filter(p => String(p.auditoria_codigo).toUpperCase().startsWith('FK-GEST-')).map(p => planDestination(p, 'proyecto')),
     tareas: tareas.map(t => ({ ...t, id: `tarea:${t.id}`, kind: 'tarea', titulo: t.titulo || `Tarea #${t.id}`, meta: [t.estado, t.responsable].filter(Boolean).join(' · '), search: [t.id, t.titulo, t.descripcion, t.responsable, t.estado].join(' ') })),
     compras: compras.map(c => ({ ...c, id: `compra:${c.id}`, kind: 'compra', titulo: `Compra #${c.numero || c.id} · ${c.descripcion}`, meta: [c.sede_nombre, c.estado, c.solicitante].filter(Boolean).join(' · '), search: [c.numero, c.descripcion, c.sede_nombre, c.solicitante, c.estado].join(' ') })),
     tickets: tickets.map(t => ({ ...t, id: `ticket:${t.id}`, kind: 'ticket', titulo: `Mantenimiento${t.numero ? ` #${t.numero}` : ''} · ${t.descripcion}`, meta: [t.sede, t.estado, t.responsable].filter(Boolean).join(' · '), search: [t.numero, t.descripcion, t.sede, t.estado, t.responsable].join(' ') })),
     personas: personas.map(p => ({ ...p, id: `persona:${p.id}`, kind: 'persona', titulo: `${p.nombre || ''} ${p.apellido || ''}`.trim(), meta: p.puesto || 'Persona', search: [p.nombre, p.apellido, p.puesto].join(' ') })),
+    sedes: sedes.map(s => ({ ...s, id: `sede:${s.id}`, kind: 'sede', titulo: s.nombre, meta: s.tipo || 'Sede', search: [s.nombre, s.tipo].join(' ') })),
+    vehiculos: vehiculos.map(v => ({ ...v, id: `vehiculo:${v.id}`, kind: 'vehiculo', titulo: v.nombre || [v.marca, v.modelo].filter(Boolean).join(' ') || 'Vehículo', meta: [v.sede, v.estado, v.marca, v.modelo].filter(Boolean).join(' · '), search: [v.nombre, v.marca, v.modelo, v.sede, v.estado].join(' ') })),
+    id: idProyectos.map(p => ({ ...p, id: `idproyecto:${p.id}`, kind: 'idproyecto', titulo: `${p.codigo} · ${p.titulo}`, meta: [p.categoria, p.etapa, p.situacion].filter(Boolean).join(' · '), search: [p.codigo, p.titulo, p.categoria, p.etapa, p.situacion].join(' ') })),
   }
   return { mailboxes: checked(mailboxes), destinations, plans: Object.values(destinations).flat(), memberships: checked(memberships) }
 }
 
 export async function getCorreos({ mailboxId, state, planId, analysis, page = 0 }) {
-  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
+  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,sede_id,vehiculo_id,id_proyecto_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_error,updated_at', { count: 'exact' })
   if (mailboxId) query = query.eq('buzon_id', mailboxId)
   if (state && state !== 'todos') query = query.eq('estado', state)
   if (planId) { const [column, value] = Object.entries(camposDestino(planId)).find(([, value]) => value != null); query = query.eq(column, value) }
