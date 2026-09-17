@@ -140,7 +140,9 @@ export function AuthProvider({ children }) {
 
     const rol = data?.rol || 'consultor'
     if (rol === 'deposito') {
-      setAllowedSedeIds([])
+      // Depósito conserva su navegación específica, pero el Kiosco es
+      // estrictamente multisede: nunca recibe alcance global implícito.
+      setAllowedSedeIds((data?.sede_ids || []).map(Number))
       setAccessBlocked(false)
     } else if (['admin', 'editor', 'consultor', 'flota'].includes(rol)) {
       setAllowedSedeIds(null)

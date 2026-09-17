@@ -2,13 +2,13 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import Articulos from './Articulos'
-import { productResolver, saveProduct, enrichProduct, recordBarcodeSearch } from '../lib/productQueries'
+import { productResolver, saveProduct, enrichProduct, recordBarcodeSearch, listKioskSites, loadProductSiteSettings, saveProductSiteSetting } from '../lib/productQueries'
 
 const authState = vi.hoisted(() => ({ rol:null }))
 vi.mock('../lib/auth', () => ({ useAuth:() => ({ can:() => true, perfil:{ nombre:'Prueba', rol:authState.rol } }) }))
 vi.mock('../lib/adjuntos', () => ({ uploadAdjunto:vi.fn() }))
 vi.mock('../components/ProductBarcodeScanner', () => ({ default:() => <div>Lector listo</div> }))
-vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), saveProduct:vi.fn(), enrichProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn(), recordBarcodeSearch:vi.fn().mockResolvedValue() }))
+vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), saveProduct:vi.fn(), enrichProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn(), recordBarcodeSearch:vi.fn().mockResolvedValue(), listKioskSites:vi.fn().mockResolvedValue([]), loadProductSiteSettings:vi.fn().mockResolvedValue([]), saveProductSiteSetting:vi.fn() }))
 beforeEach(() => { vi.clearAllMocks(); authState.rol = null })
 afterEach(cleanup)
 describe('flujo artículos', () => {
@@ -86,5 +86,19 @@ describe('flujo artículos', () => {
     await screen.findByText('Sin conexión')
     expect(screen.getByLabelText('Nombre del artículo *')).toHaveValue('Se conserva')
     expect(screen.queryByText('Lector listo')).not.toBeInTheDocument()
+  })
+  it('configura precio y mínimo de forma independiente para una sede Kiosco asignada', async () => {
+    listKioskSites.mockResolvedValue([{ id:7,nombre:'Sede Rosario',tipo:'Comedor' }])
+    loadProductSiteSettings.mockResolvedValue([{ sede_id:7,product_id:'p1',presentation_id:'pr1',sale_price:3000,reference_cost:2000,stock_minimum:4,currency:'ARS',active:true }])
+    saveProductSiteSetting.mockResolvedValue({ sede_id:7,product_id:'p1',presentation_id:'pr1',sale_price:3200,reference_cost:2000,stock_minimum:5,currency:'ARS',active:true })
+    productResolver.resolve.mockResolvedValue({ origin:'local',warnings:[],product:{ product_id:'p1',presentation_id:'pr1',expected_updated_at:'2026-09-16T12:00:00Z',name:'Coca Cola 500 ml',barcode:'012345678905',stock_unit:'unidad',stock_factor:1,status:'verified',related_barcodes:[] } })
+    render(<Articulos initialMode="scan" />)
+    fireEvent.change(screen.getByLabelText('Escaneá con pistola o ingresá el código manualmente'),{ target:{ value:'012345678905' } })
+    fireEvent.click(screen.getByRole('button',{name:'Buscar',exact:true}))
+    await screen.findByText('Sede Rosario')
+    fireEvent.change(screen.getByLabelText('Precio de venta'),{ target:{ value:'3200' } })
+    fireEvent.change(screen.getByLabelText('Stock mínimo'),{ target:{ value:'5' } })
+    fireEvent.click(screen.getByRole('button',{name:'Guardar sede'}))
+    await waitFor(() => expect(saveProductSiteSetting).toHaveBeenCalledWith(expect.objectContaining({ sede_id:7,product_id:'p1',presentation_id:'pr1',sale_price:'3200',stock_minimum:'5',active:true })))
   })
 })
