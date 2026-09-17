@@ -1,4 +1,4 @@
--- REQUIERE APROBACIÓN EXPLÍCITA ANTES DE EJECUTAR.
+-- AUTORIZADO («autorizo») y aplicado 2026-09-17. No volver a ejecutar.
 -- Proyecto destino exclusivo: mixyhfdlzjarvszinytk (cerdova-db).
 -- Guarda sugerencias aprendidas para personas, sedes, vehículos e I+D y expone
 -- la confianza/origen del análisis. No cambia RLS, GRANT ni vínculos confirmados.
