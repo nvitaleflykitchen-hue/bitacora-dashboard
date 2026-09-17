@@ -49,7 +49,7 @@ describe('Bandeja de correos', () => {
   })
   it('busca y asocia el correo a una persona específica', async () => {
     const destinations = {
-      tickets: [], compras: [], tareas: [], planes: plans,
+      tickets: [], compras: [], tareas: [], planes: plans, proyectos: [], sedes: [], vehiculos: [], id: [],
       personas: [
         { id: 'persona:p1', titulo: 'Romina Rodríguez', meta: 'Nutricionista', search: 'Romina Rodríguez Nutricionista' },
         { id: 'persona:p2', titulo: 'Pablo Fernández', meta: 'Mantenimiento', search: 'Pablo Fernández Mantenimiento' },
@@ -65,6 +65,40 @@ describe('Bandeja de correos', () => {
     fireEvent.click(screen.getByText('Romina Rodríguez'))
     fireEvent.click(screen.getByText('Guardar vínculo'))
     await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), 'persona:p1', 'vinculado'))
+  })
+  it.each([
+    ['Sedes', 'sede:4', 'Hospital Villa Dolores'],
+    ['Vehículos', 'vehiculo:v1', 'Camión AA123BB'],
+    ['I+D', 'idproyecto:i1', 'FK-ID-2026-0001 · Postre nuevo'],
+  ])('busca y asocia desde %s', async (tab, key, label) => {
+    const destinations = {
+      tickets: [], compras: [], tareas: [], planes: [], proyectos: [], personas: [],
+      sedes: tab === 'Sedes' ? [{ id:key, titulo:label, search:label }] : [],
+      vehiculos: tab === 'Vehículos' ? [{ id:key, titulo:label, search:label }] : [],
+      id: tab === 'I+D' ? [{ id:key, titulo:label, search:label }] : [],
+    }
+    api.getCorreoDetail.mockResolvedValue({ message: { ...message, sugerido_plan_id:null }, history:[] })
+    render(<CorreoDetail id="m1" destinations={destinations} canReview onClose={() => {}} onSaved={() => {}} />)
+    await screen.findByText('Presupuesto')
+    fireEvent.click(screen.getByRole('tab', { name:new RegExp(tab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }))
+    fireEvent.click(screen.getByText(label))
+    fireEvent.click(screen.getByText('Guardar vínculo'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), key, 'vinculado'))
+  })
+  it('separa los planes de acción de los proyectos de gestión', async () => {
+    const destinations = {
+      tickets: [], compras: [], tareas: [], personas: [], sedes: [], vehiculos: [], id: [],
+      planes: [{ id:'plan-min', titulo:'Plan Ministerio Villa Dolores' }],
+      proyectos: [{ id:'plan-gest', titulo:'Relocalización operativa' }],
+    }
+    api.getCorreoDetail.mockResolvedValue({ message: { ...message, sugerido_plan_id:null }, history:[] })
+    render(<CorreoDetail id="m1" destinations={destinations} canReview onClose={() => {}} onSaved={() => {}} />)
+    await screen.findByText('Presupuesto')
+    expect(screen.getByText('Plan Ministerio Villa Dolores')).toBeTruthy()
+    expect(screen.queryByText('Relocalización operativa')).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name:/Proyectos/ }))
+    expect(screen.getByText('Relocalización operativa')).toBeTruthy()
+    expect(screen.queryByText('Plan Ministerio Villa Dolores')).toBeNull()
   })
   it('no muestra acciones de asociación a lectores', async () => {
     render(<CorreoDetail id="m1" plans={plans} canReview={false} onClose={() => {}} onSaved={() => {}} />)
