@@ -344,7 +344,6 @@ class Store:
             ('tareas', 'bitacora', 'tarea', 'id,titulo,descripcion,sede_id,responsable,estado', {'estado': 'in.(Pendiente,En proceso)'}),
             ('requerimientos', 'bitacora', 'compra', 'id,numero,descripcion,sede_id,sede_nombre,solicitante,estado', {'estado': 'not.in.(Cumplido,Rechazado,Cancelado)'}),
             ('mnt_tickets', 'public', 'ticket', 'id,numero,descripcion,sede,estado,responsable', {'estado': 'not.in.(Completada,Verificada,Resuelto,Rechazado,Cancelado,cerrado,resuelto,rechazado,cancelado)'}),
-            ('v_personas', 'public', 'persona', 'id,nombre,apellido,puesto', {'activo': 'eq.true'}),
             ('sedes', 'bitacora', 'sede', 'id,nombre,tipo', {'activa': 'eq.true', 'en_pausa': 'eq.false'}),
             ('mnt_activos', 'public', 'vehiculo', 'id,nombre,marca,modelo,sede,estado', {'tipo': 'eq.VEHICULO'}),
             ('id_proyectos', 'bitacora', 'idproyecto', 'id,codigo,titulo,categoria,etapa,situacion,sede_id', {'situacion': 'not.in.(Completado,Cancelado)'}),
@@ -371,6 +370,16 @@ class Store:
         confirmed = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'estado': 'eq.vinculado',
                                'select': 'id,asunto,remitente,' + destination_columns,
                                'order': 'fecha_correo.desc.nullslast', 'limit': 1000})
+        # La vista completa de personas exige una sesión humana por sus campos
+        # confidenciales. Para aprender un vínculo personal alcanza el UUID ya
+        # confirmado; la app resuelve el nombre bajo la sesión del revisor.
+        known_ids = {plan['id'] for plan in plans}
+        for example in confirmed:
+            key = destination(example)
+            if key and key.startswith('persona:') and key not in known_ids:
+                plans.append({'id': key, 'titulo': 'Persona vinculada anteriormente',
+                              'objetivo': '', 'sede_nombre': ''})
+                known_ids.add(key)
         messages = self.table('correos', {'buzon_id': 'eq.' + mailbox_id, 'or': '(ai_estado.in.(pendiente,error),ai_modelo.not.like.*aprendizaje-v1)',
                              'estado': 'eq.pendiente', 'order': 'ai_intentos.asc,fecha_correo.desc.nullslast,created_at.desc', 'limit': 10})
         for message in messages:

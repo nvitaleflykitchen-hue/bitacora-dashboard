@@ -31,7 +31,7 @@ class AgentTests(unittest.TestCase):
         for chosen, subject, expected in [('tarea:7','Tarea #7: avance', True), ('tarea:7','Avance operativo', False), ('compra:8','Tarea #7: avance', False), ('tarea:7','Tarea #7 y compra #8', False)]:
             store = agent.Store.__new__(agent.Store)
             message = {'id': 'mail', 'updated_at': 'version-original', 'referencias': [], 'ai_intentos': 0, 'asunto': subject, 'cuerpo': 'avance operativo'}
-            sources = [[], [{'id':7,'titulo':'Avance operativo'}], [{'id':8,'descripcion':'Avance operativo'}], [], [], [], [], []]
+            sources = [[], [{'id':7,'titulo':'Avance operativo'}], [{'id':8,'descripcion':'Avance operativo'}], [], [], [], []]
             store.table = Mock(side_effect=[*sources, [], [message], None])
             result = {'plan_id':chosen,'tipo':'seguimiento','resumen':'Avance','motivo':'Referencia','nueva_gestion':None}
             with patch('agent.classify', return_value=result):
@@ -165,7 +165,7 @@ class AgentTests(unittest.TestCase):
     def test_ai_error_keeps_evidence_pending_and_records_retry(self, classify):
         store = agent.Store.__new__(agent.Store)
         message = {'updated_at': '2026-09-10T00:00:00Z', 'id': 'mail', 'referencias': [], 'ai_intentos': 0, 'asunto': 'a', 'remitente': '', 'cuerpo': ''}
-        store.table = Mock(side_effect=[[], [], [], [], [], [], [], [], [], [message], None])
+        store.table = Mock(side_effect=[[], [], [], [], [], [], [], [], [message], None])
         store.classify_pending(BOX)
         args = store.table.call_args.args
         self.assertEqual(args[3]['ai_estado'], 'error')
