@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, CalendarPlus, FileCheck2, Save } from 'lucide-react'
 import AdjuntosPanel from './AdjuntosPanel'
+import CorreosEntidad from './CorreosEntidad'
 import {
   DOCUMENTACION_ESTADOS,
   DOCUMENTACION_AVISO_DIAS_DEFAULT,
@@ -260,6 +261,9 @@ export default function DocumentacionChecklist({ entityType, entityId, template 
           </div>
         </div>
       ))}
+      <div className="glass p-4 mt-4">
+        <CorreosEntidad entityType={entityType} entityId={entityId} readOnly={!canEdit} />
+      </div>
     </div>
   )
 }
