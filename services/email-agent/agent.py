@@ -146,10 +146,10 @@ def tokens(text):
 
 DESTINATIONS = {
     'tarea': 'tarea_id', 'compra': 'compra_id', 'ticket': 'ticket_id',
-    'persona': 'persona_id', 'sede': 'sede_id', 'vehiculo': 'vehiculo_id',
+    'persona': 'persona_id', 'grupo': 'grupo_id', 'sede': 'sede_id', 'vehiculo': 'vehiculo_id',
     'idproyecto': 'id_proyecto_id',
 }
-NUMERIC_DESTINATIONS = {'tarea', 'compra', 'sede'}
+NUMERIC_DESTINATIONS = {'tarea', 'compra', 'grupo', 'sede'}
 
 def destination(message):
     if message.get('plan_id'):
@@ -344,6 +344,7 @@ class Store:
             ('tareas', 'bitacora', 'tarea', 'id,titulo,descripcion,sede_id,responsable,estado', {'estado': 'in.(Pendiente,En proceso)'}),
             ('requerimientos', 'bitacora', 'compra', 'id,numero,descripcion,sede_id,sede_nombre,solicitante,estado', {'estado': 'not.in.(Cumplido,Rechazado,Cancelado)'}),
             ('mnt_tickets', 'public', 'ticket', 'id,numero,descripcion,sede,estado,responsable', {'estado': 'not.in.(Completada,Verificada,Resuelto,Rechazado,Cancelado,cerrado,resuelto,rechazado,cancelado)'}),
+            ('grupos', 'bitacora', 'grupo', 'id,nombre,slug', {'activo': 'eq.true'}),
             ('sedes', 'bitacora', 'sede', 'id,nombre,tipo', {'activa': 'eq.true', 'en_pausa': 'eq.false'}),
             ('mnt_activos', 'public', 'vehiculo', 'id,nombre,marca,modelo,sede,estado', {'tipo': 'eq.VEHICULO'}),
             ('id_proyectos', 'bitacora', 'idproyecto', 'id,codigo,titulo,categoria,etapa,situacion,sede_id', {'situacion': 'not.in.(Completado,Cancelado)'}),

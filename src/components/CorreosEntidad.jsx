@@ -4,6 +4,7 @@ const kinds = {
   tarea: 'tarea',
   requerimiento: 'compra',
   ticket: 'ticket',
+  grupo: 'grupo',
   sede: 'sede',
   persona: 'persona',
   vehiculo: 'vehiculo',

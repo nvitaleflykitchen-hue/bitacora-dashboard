@@ -3,6 +3,7 @@ export const DESTINOS = {
   compra: 'compra_id',
   ticket: 'ticket_id',
   persona: 'persona_id',
+  grupo: 'grupo_id',
   sede: 'sede_id',
   vehiculo: 'vehiculo_id',
   idproyecto: 'id_proyecto_id',
@@ -22,6 +23,7 @@ export function camposDestino(key) {
     compra_id: null,
     ticket_id: null,
     persona_id: null,
+    grupo_id: null,
     sede_id: null,
     vehiculo_id: null,
     id_proyecto_id: null,
@@ -32,7 +34,7 @@ export function camposDestino(key) {
   else {
     const [kind, id] = parts
     if (parts.length !== 2 || !DESTINOS[kind] || !id) throw new Error('Destino de correo inválido')
-    const numeric = ['tarea', 'compra', 'sede'].includes(kind)
+    const numeric = ['tarea', 'compra', 'grupo', 'sede'].includes(kind)
     if (numeric && !/^\d+$/.test(id)) throw new Error('Destino de correo inválido')
     fields[DESTINOS[kind]] = numeric ? Number(id) : id
   }

@@ -17,4 +17,8 @@ describe('CorreosEntidad', () => {
   it('omite tipos que todavía no tienen vínculo de correo', () => {
     expect(correoEntityPlanId('documentacion_item', 'doc-1')).toBeNull()
   })
+
+  it('permite consultar correos asociados a un grupo', () => {
+    expect(correoEntityPlanId('grupo', 3)).toBe('grupo:3')
+  })
 })
