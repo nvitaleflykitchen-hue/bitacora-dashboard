@@ -137,6 +137,9 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
         <p><strong>{message.tipo}</strong> · {states[message.estado]}</p>
         {message.resumen && <p>{message.resumen}</p>}
         {message.motivo && <p style={{ color: 'var(--text-dim)' }}>Motivo de la sugerencia: {message.motivo}</p>}
+        {message.ai_fuente === 'aprendizaje' && <p className="text-sm" style={{ color: 'var(--green)' }}>
+          Sugerencia aprendida de tus vínculos anteriores{message.ai_confianza != null ? ` · ${message.ai_confianza}% de confianza` : ''}
+        </p>}
         {message.ai_estado === 'pendiente' && <p>Guardado como evidencia. Clasificación pendiente.</p>}
         {message.ai_estado === 'error' && <p>La clasificación se reintentará. El original está guardado.</p>}
         {message.nueva_gestion && <p>Posible gestión nueva: {message.nueva_gestion}</p>}
@@ -223,6 +226,7 @@ export default function Correos({ planId = null, readOnly = false }) {
           {message.nueva_gestion && <span className="block text-sm mt-2">Propuesta para revisar: {message.nueva_gestion}</span>}
           <span className="block text-sm mt-2" style={{ color: 'var(--primary)' }}>Abrir análisis, vínculo y adjuntos</span>
           {(destinoCorreo(message) || destinoCorreo(message, true)) && <span className="block text-sm mt-2">{destinoCorreo(message) ? 'Vinculado a: ' : 'Sugerencia: '}{title(context.plans.find(p => p.id === (destinoCorreo(message) || destinoCorreo(message, true))))}</span>}
+          {!destinoCorreo(message) && destinoCorreo(message, true) && message.ai_fuente === 'aprendizaje' && <span className="block text-xs mt-1" style={{ color: 'var(--green)' }}>Aprendido de tus decisiones anteriores{message.ai_confianza != null ? ` · ${message.ai_confianza}%` : ''}</span>}
         </button>)}</div>
         {result.total > CORREO_PAGE_SIZE && <nav aria-label="Páginas de correos" className="flex gap-3 items-center"><button type="button" className="btn-ghost" disabled={page === 0} onClick={() => { setPage(page - 1); setOpened(null) }}>Anterior</button><span>{page + 1} / {Math.ceil(result.total / CORREO_PAGE_SIZE)}</span><button type="button" className="btn-ghost" disabled={(page + 1) * CORREO_PAGE_SIZE >= result.total} onClick={() => { setPage(page + 1); setOpened(null) }}>Siguiente</button></nav>}
       </>}
