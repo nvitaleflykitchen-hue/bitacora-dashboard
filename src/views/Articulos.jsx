@@ -211,7 +211,24 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     } finally { busyRef.current = false; setBusy(false) }
   }
   const image = filePreview || safeImageUrl(form?.image_url)
-  return <div className="articulos-view">
+  const siteSettingsPanel = form?.expected_updated_at && <section className="articulos-site-settings" aria-label="Precios y configuración Kiosco por sede">
+    <div className="articulos-site-heading"><div><span className="articulos-eyebrow">PRECIO Y VENTA</span><h3>Configuración Kiosco por sede</h3></div><p>El precio, costo, mínimo y disponibilidad pertenecen a cada sede.</p></div>
+    {siteConfigError && <p className="articulos-error" role="alert">{siteConfigError}</p>}
+    {!kioskSites.length ? <p>No tenés sedes asignadas con Kiosco habilitado.</p> : <div className="articulos-site-grid">
+      {kioskSites.map(site => {
+        const setting = siteSettings[site.id] || { sale_price:'',reference_cost:'',stock_minimum:0,currency:'ARS',active:false }
+        return <article key={site.id} className="articulos-site-card">
+          <div><strong>{site.nombre}</strong><span>{site.tipo}</span></div>
+          <label>Precio de venta<input className="input-dark" type="number" min="0" step="0.01" disabled={!canConfigureKiosk || siteConfigBusy === site.id} value={setting.sale_price} onChange={e => updateSiteSetting(site.id,'sale_price',e.target.value)} /></label>
+          <label>Costo de referencia<input className="input-dark" type="number" min="0" step="0.01" disabled={!canConfigureKiosk || siteConfigBusy === site.id} value={setting.reference_cost} onChange={e => updateSiteSetting(site.id,'reference_cost',e.target.value)} /></label>
+          <label>Stock mínimo<input className="input-dark" type="number" min="0" step="any" disabled={!canConfigureKiosk || siteConfigBusy === site.id} value={setting.stock_minimum} onChange={e => updateSiteSetting(site.id,'stock_minimum',e.target.value)} /></label>
+          <label className="articulos-checkbox"><input type="checkbox" disabled={!canConfigureKiosk || siteConfigBusy === site.id} checked={Boolean(setting.active)} onChange={e => updateSiteSetting(site.id,'active',e.target.checked)} /> Disponible para vender</label>
+          {canConfigureKiosk && <button type="button" className="btn-primary" disabled={Boolean(siteConfigBusy)} onClick={() => saveSiteSetting(site)}>{siteConfigBusy === site.id ? 'Guardando…' : 'Guardar precio'}</button>}
+        </article>
+      })}
+    </div>}
+  </section>
+  return <div className={`articulos-view${embedded ? ' articulos-embedded' : ''}`}>
     {!embedded && <button type="button" className="btn-ghost articulos-back" disabled={busy} onClick={goBack}><ArrowLeft size={18} /> Volver atrás</button>}
     <header><div><span className="articulos-eyebrow">MAESTRO DE PRODUCTOS</span><h1>{mode === 'scan' ? 'Relevamiento de artículos' : 'Artículos'}</h1><p>Identificá productos y registrá sus presentaciones.</p></div></header>
     <nav aria-label="Artículos" className="articulos-tabs">
@@ -245,6 +262,7 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     {form && <section className="articulos-card">
       <div className="articulos-actions"><button type="button" className="btn-ghost" disabled={busy} onClick={() => { if (canLeave()) reset() }}>← Volver</button>{writable && !editing && <button type="button" className="btn-primary" disabled={busy} onClick={() => setEditing(true)}>EDITAR</button>}</div>
       <div className="articulos-product-head">{image ? <img src={image} alt={form.name || 'Imagen del artículo'} referrerPolicy="no-referrer" /> : <div className="articulos-placeholder"><Package size={40} /><span>Sin imagen</span></div>}<div><h2>{form.name || 'Nuevo artículo'}</h2><p>{form.internal_code || 'El código interno se asignará al guardar'} · {form.brand || 'Marca sin completar'}</p><code>{form.barcode}</code><p>{barcodeType(form.barcode)} · {packagingLabels[form.packaging_level]}</p><p>{form.presentation}</p></div></div>
+      {siteSettingsPanel}
       {form.related_barcodes?.length > 0 && <div className="articulos-related"><h3>Códigos relacionados del mismo producto</h3>{form.related_barcodes.map(item => <p key={item.barcode}><code>{item.barcode}</code> · {barcodeType(item.barcode)} · {packagingLabels[item.packaging_level] || item.packaging_level}{item.units_per_package ? ` · ${item.units_per_package} unidades` : ''}</p>)}<p>Al guardar, estos códigos quedarán vinculados a la misma ficha.</p></div>}
       {writable && <section className="articulos-enrichment" aria-label="Completar datos del artículo">
         <button type="button" className="btn-ghost" disabled={busy} onClick={completeMissing}>Completar datos faltantes</button>
@@ -281,33 +299,15 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
             </div>)}
             {!(form.related_barcodes || []).length && <p>No hay códigos adicionales asociados.</p>}
           </section>
-          {[['description','Descripción comercial'],['ingredients','Ingredientes'],['allergens','Alérgenos'],['nutrition_text','Información nutricional (incluí base, porción y unidades)']].map(([key,label]) => <label key={key} className="articulos-wide">{label}<textarea className="input-dark" rows={3} maxLength={20000} value={form[key] || ''} onChange={e => update(key, e.target.value)} placeholder="Sin información registrada" /></label>)}
-          <label className="articulos-wide">Condiciones de conservación<textarea className="input-dark" rows={2} maxLength={2000} value={form.storage_conditions || ''} onChange={e => update('storage_conditions',e.target.value)} placeholder="Ej.: conservar refrigerado entre 2 °C y 8 °C" /></label>
-          <label className="articulos-wide articulos-checkbox"><input type="checkbox" checked={form.presentation_active !== false} onChange={e => update('presentation_active',e.target.checked)} /> Presentación disponible</label>
-          <label className="articulos-wide">Dirección de imagen (HTTPS)<input className="input-dark" type="url" value={form.image_url || ''} onChange={e => update('image_url', e.target.value)} /></label>
-          {editing && <label className="articulos-wide">O tomar / subir foto (JPG, PNG o WebP, hasta 8 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const selected = e.target.files?.[0]; if (!selected) return; if (!['image/jpeg','image/png','image/webp'].includes(selected.type) || selected.size > 8 * 1024 * 1024) { setError('Elegí una imagen JPG, PNG o WebP de hasta 8 MB.'); e.target.value = ''; return } setFile(selected); uploaded.current = null; setDirty(true) }} /></label>}
+          {[['description','Descripción comercial'],['ingredients','Ingredientes'],['allergens','Alérgenos'],['nutrition_text','Información nutricional (incluí base, porción y unidades)']].map(([key,label]) => <label key={key}>{label}<textarea className="input-dark" rows={2} maxLength={20000} value={form[key] || ''} onChange={e => update(key, e.target.value)} placeholder="Sin información registrada" /></label>)}
+          <label>Condiciones de conservación<textarea className="input-dark" rows={2} maxLength={2000} value={form.storage_conditions || ''} onChange={e => update('storage_conditions',e.target.value)} placeholder="Ej.: conservar refrigerado entre 2 °C y 8 °C" /></label>
+          <label className="articulos-checkbox"><input type="checkbox" checked={form.presentation_active !== false} onChange={e => update('presentation_active',e.target.checked)} /> Presentación disponible</label>
+          <label>Dirección de imagen (HTTPS)<input className="input-dark" type="url" value={form.image_url || ''} onChange={e => update('image_url', e.target.value)} /></label>
+          {editing && <label>O tomar / subir foto (JPG, PNG o WebP, hasta 8 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const selected = e.target.files?.[0]; if (!selected) return; if (!['image/jpeg','image/png','image/webp'].includes(selected.type) || selected.size > 8 * 1024 * 1024) { setError('Elegí una imagen JPG, PNG o WebP de hasta 8 MB.'); e.target.value = ''; return } setFile(selected); uploaded.current = null; setDirty(true) }} /></label>}
         </fieldset>
         <div className="articulos-sources"><h3>Fuentes y actualización</h3><p>{form.updated_at ? `Última actualización: ${new Date(form.updated_at).toLocaleString('es-AR')}` : 'Todavía no guardado'}</p>{displayProductSources([...(form.source ? [form.source] : []), ...(form.sources || [])]).map((source,i) => <p key={source.id || i}>{safeImageUrl(source.source_url) ? <a href={source.source_url} target="_blank" rel="noreferrer">{source.provider}</a> : source.provider} · {new Date(source.retrieved_at).toLocaleString('es-AR')}{source.provider?.startsWith('Open ') && ' · ODbL (datos) / CC BY-SA (imágenes)'}</p>)}{!form.source && !form.sources?.length && <p>Carga manual: se registrará al guardar.</p>}</div>
         {editing && writable && <div className="articulos-actions"><button className="btn-primary" disabled={busy}>GUARDAR ARTÍCULO</button><button type="button" className="btn-ghost" disabled={busy} onClick={() => save(true)}>GUARDAR Y ESCANEAR SIGUIENTE</button></div>}
       </form>
-      {form.expected_updated_at && <section className="articulos-site-settings" aria-label="Configuración Kiosco por sede">
-        <h3>Configuración Kiosco por sede</h3>
-        <p>El maestro es global. Precio, costo de referencia, mínimo y disponibilidad se guardan de forma independiente para esta presentación en cada sede asignada con Kiosco habilitado.</p>
-        {siteConfigError && <p className="articulos-error" role="alert">{siteConfigError}</p>}
-        {!kioskSites.length ? <p>No tenés sedes asignadas con Kiosco habilitado.</p> : <div className="articulos-site-grid">
-          {kioskSites.map(site => {
-            const setting = siteSettings[site.id] || { sale_price:'',reference_cost:'',stock_minimum:0,currency:'ARS',active:false }
-            return <article key={site.id} className="articulos-site-card">
-              <div><strong>{site.nombre}</strong><span>{site.tipo}</span></div>
-              <label>Precio de venta<input className="input-dark" type="number" min="0" step="0.01" disabled={!canConfigureKiosk || siteConfigBusy === site.id} value={setting.sale_price} onChange={e => updateSiteSetting(site.id,'sale_price',e.target.value)} /></label>
-              <label>Costo de referencia<input className="input-dark" type="number" min="0" step="0.01" disabled={!canConfigureKiosk || siteConfigBusy === site.id} value={setting.reference_cost} onChange={e => updateSiteSetting(site.id,'reference_cost',e.target.value)} /></label>
-              <label>Stock mínimo<input className="input-dark" type="number" min="0" step="any" disabled={!canConfigureKiosk || siteConfigBusy === site.id} value={setting.stock_minimum} onChange={e => updateSiteSetting(site.id,'stock_minimum',e.target.value)} /></label>
-              <label className="articulos-checkbox"><input type="checkbox" disabled={!canConfigureKiosk || siteConfigBusy === site.id} checked={Boolean(setting.active)} onChange={e => updateSiteSetting(site.id,'active',e.target.checked)} /> Disponible para vender</label>
-              {canConfigureKiosk && <button type="button" className="btn-ghost" disabled={Boolean(siteConfigBusy)} onClick={() => saveSiteSetting(site)}>{siteConfigBusy === site.id ? 'Guardando…' : 'Guardar sede'}</button>}
-            </article>
-          })}
-        </div>}
-      </section>}
     </section>}
     {scanner && <ProductBarcodeScanner onClose={() => setScanner(false)} onScan={barcode => { setScanner(false); lookup(barcode) }} />}
   </div>
