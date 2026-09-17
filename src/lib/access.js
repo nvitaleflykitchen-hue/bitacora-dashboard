@@ -161,7 +161,7 @@ export const PRIMARY_NAV = [
   { id:'idHub', label:'I+D', icon:'research', roles:new Set(['admin','editor','consultor','grupo','encargado','sede']) },
   { id:'sedesHub', label:'Sedes', icon:'sites', roles:ALL_OPERATIONAL_ROLES },
   { id:'requerimientos', label:'Compras', icon:'purchases', roles:ALL_OPERATIONAL_ROLES },
-  { id:'articulos', label:'Artículos', icon:'products', roles:new Set(['admin','editor','consultor','grupo','encargado','sede','deposito']) },
+  { id:'kiosco', label:'Kiosco', icon:'products', roles:new Set(['admin','editor','consultor','grupo','encargado','sede','deposito']) },
   { id:'mantenimientoHub', label:'Mantenimiento', icon:'maintenance', roles:MANTENIMIENTO_ROLES },
   { id:'flotaHub', label:'Flota', icon:'fleet', roles:new Set(['admin','editor','consultor','grupo','encargado','flota']) },
   { id:'calidadHub', label:'Calidad', icon:'quality', roles:new Set(['admin','editor','consultor','grupo','encargado']) },
@@ -169,6 +169,7 @@ export const PRIMARY_NAV = [
 ]
 
 const VIEW_ROLES = {
+  kiosco: new Set(['admin','editor','consultor','grupo','encargado','sede','deposito']),
   articulos: new Set(['admin','editor','consultor','grupo','encargado','sede','deposito']),
   relevamientoArticulos: new Set(['admin','editor','grupo','encargado','sede','deposito']),
   inicio: ALL_OPERATIONAL_ROLES,
@@ -218,6 +219,7 @@ export function canAccessView(rol, view, perfil = null) {
   if (isSafetyOnlyProfile(perfil)) return SAFETY_ONLY_VIEWS.has(view)
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_VIEWS.has(view)
   if (isComprasOnlyProfile(perfil)) return COMPRAS_ONLY_VIEWS.has(view)
+  if (view === 'kiosco') return Boolean(VIEW_ROLES.kiosco.has(rol) && perfil?.kiosk_sede_ids?.length)
   return Boolean(VIEW_ROLES[view]?.has(rol))
 }
 
@@ -225,10 +227,11 @@ export function getPrimaryNav(rol, perfil = null) {
   if (isSafetyOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => SAFETY_ONLY_NAV.has(item.id))
   if (isQualityOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => QUALITY_ONLY_NAV.has(item.id))
   if (isComprasOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => COMPRAS_ONLY_NAV.has(item.id))
-  return PRIMARY_NAV.filter(item => item.roles.has(rol))
+  return PRIMARY_NAV.filter(item => item.roles.has(rol) && (item.id !== 'kiosco' || perfil?.kiosk_sede_ids?.length))
 }
 
 const VIEW_SECTIONS = {
+  kiosco:'kiosco', articulos:'kiosco',
   relevamientoArticulos:'articulos',
   dashboard:'inicio', sedeEncargado:'inicio',
   tareas:'pendientes', escalamientos:'pendientes', calendario:'pendientes',
@@ -256,8 +259,11 @@ export function canWrite(rol, domain, action = 'manage', perfil = null) {
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_WRITE_DOMAINS.has(domain)
   if (rol === 'admin' || rol === 'editor') return true
   if (domain === 'kiosco') {
-    if (action === 'configure') return ['grupo','encargado'].includes(rol)
-    return ['grupo','encargado','sede','deposito'].includes(rol)
+    if (!perfil?.kiosk_sede_ids?.length) return false
+    if (action === 'configure' || action === 'annul') return ['grupo','encargado'].includes(rol)
+    if (action === 'count') return ['grupo','encargado','sede'].includes(rol)
+    if (action === 'sell' || action === 'replenish' || action === 'operate') return ['grupo','encargado','sede','deposito'].includes(rol)
+    return false
   }
   if (rol === 'deposito') return domain === 'articulos' || (domain === 'compras' && action === 'receive' && hasComprasPermission(perfil, 'receive'))
   if (domain === 'mantenimiento' && hasMantenimientoGlobalPermission(perfil)) return true
@@ -315,7 +321,7 @@ export function getDefaultView(rol, perfil = null) {
   if (isSafetyOnlyProfile(perfil)) return 'calidadHub'
   if (isQualityOnlyProfile(perfil)) return 'calidadHub'
   if (isComprasOnlyProfile(perfil)) return 'requerimientos'
-  if (rol === 'deposito') return 'articulos'
+  if (rol === 'deposito') return perfil?.kiosk_sede_ids?.length ? 'kiosco' : null
   return canAccessView(rol, 'inicio', perfil) ? 'inicio' : null
 }
 

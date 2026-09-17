@@ -28,6 +28,7 @@ function perfilEqual(a, b) {
     && a.nombre === b.nombre
     && a.email === b.email
     && JSON.stringify(a.sede_ids) === JSON.stringify(b.sede_ids)
+    && JSON.stringify(a.kiosk_sede_ids || []) === JSON.stringify(b.kiosk_sede_ids || [])
     && JSON.stringify(a.compras_permisos || []) === JSON.stringify(b.compras_permisos || [])
     && JSON.stringify(a.mantenimiento_permisos || []) === JSON.stringify(b.mantenimiento_permisos || [])
 }
@@ -123,6 +124,22 @@ export function AuthProvider({ children }) {
     } catch (permisosError) {
       console.warn('[auth] no se pudieron cargar permisos de módulos', permisosError)
       data = { ...data, compras_permisos: [], mantenimiento_permisos: [] }
+    }
+
+    try {
+      const { data: kioskSites, error: kioskError } = await withTimeout(
+        db().rpc('listar_sedes_kiosco'),
+        'Carga de sedes con Kiosco',
+      )
+      if (kioskError) throw kioskError
+      data = {
+        ...data,
+        kiosk_sites: kioskSites || [],
+        kiosk_sede_ids: (kioskSites || []).map(site => Number(site.id)),
+      }
+    } catch (kioskError) {
+      console.warn('[auth] no se pudieron cargar sedes con Kiosco', kioskError)
+      data = { ...data, kiosk_sites: [], kiosk_sede_ids: [] }
     }
     localStorage.setItem(offlinePerfilKey(authUser.id),JSON.stringify(data))
 

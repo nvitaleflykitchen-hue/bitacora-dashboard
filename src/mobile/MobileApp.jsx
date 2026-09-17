@@ -70,7 +70,7 @@ export default function MobileApp() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [screen, setScreen] = useState('main') // 'main' | 'reporte' | 'checklist'
   const [showSearch, setShowSearch] = useState(false)
-  const [masModule, setMasModule] = usePersistedState(`mobile.${user?.id}.masModule`, isDeposito ? 'relevamientoArticulos' : (isSafetyOnly || isQualityOnly ? 'calidad' : null))
+  const [masModule, setMasModule] = usePersistedState(`mobile.${user?.id}.masModule`, isDeposito ? 'kiosco' : (isSafetyOnly || isQualityOnly ? 'calidad' : null))
   const [showWhatsNew, setShowWhatsNew] = useState(() => user?.id ? !hasSeenLatestRelease(user.id) : false)
   const [reportContext, setReportContext] = useState(null)
   const [returnContext, setReturnContext] = useState(null)
@@ -124,7 +124,7 @@ export default function MobileApp() {
     if (!bottomNavAllowed.has(tab) && tab !== 'perfil') setTab(initialTab)
   }, [bottomNavAllowed, tab, initialTab, setTab])
   useEffect(() => {
-    if (isDeposito && !['relevamientoArticulos', 'articulos'].includes(masModule)) setMasModule('relevamientoArticulos')
+    if (isDeposito && masModule !== 'kiosco') setMasModule('kiosco')
   }, [isDeposito, masModule, setMasModule])
 
   // Botón atrás del celular: navegar en vez de cerrar la app.
