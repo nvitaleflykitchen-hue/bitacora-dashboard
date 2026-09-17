@@ -25,6 +25,7 @@ beforeAll(async () => {
   await pg.exec('create table bitacora.compras_proveedores(id uuid primary key); grant usage on schema bitacora to service_role;')
   await pg.exec(readFileSync(new URL('../../supabase/migrations/20260909110000_extend_product_master_phase1_REVIEW.sql', import.meta.url), 'utf8'))
   await pg.exec(readFileSync(new URL('../../supabase/migrations/20260916224011_articulos_kiosco_multisede_phase3.sql', import.meta.url), 'utf8'))
+  await pg.exec(readFileSync(new URL('../../supabase/migrations/20260917130000_kiosco_operativo_completo.sql', import.meta.url), 'utf8'))
 }, 60000)
 afterAll(async () => { await pg?.close() })
 describe('maestro SQL', () => {
@@ -87,5 +88,25 @@ describe('maestro SQL', () => {
     const saved=(await pg.query('select bitacora.guardar_configuracion_kiosco_articulo($1::jsonb) as value',[JSON.stringify(config)])).rows[0].value
     expect(saved).toMatchObject({ sede_id:1,sale_price:3200,reference_cost:2100,stock_minimum:5,active:true })
     await expect(pg.query('select bitacora.guardar_configuracion_kiosco_articulo($1::jsonb)',[JSON.stringify({ ...config,sede_id:2 })])).rejects.toThrow('Sin permiso')
+  })
+  it('registra reposición, venta y anulación sin permitir stock directo desde la app', async () => {
+    const presentationId=(await pg.query('select presentation_id from bitacora.product_barcodes where product_id=$1 and barcode=$2',[productId,payload.barcode])).rows[0].presentation_id
+    const receipt=(await pg.query('select bitacora.confirmar_reposicion($1::jsonb,$2) as value',[JSON.stringify({sede_id:1,items:[{presentation_id:presentationId,quantity:2,unit_cost:2000}]}),'receipt-test'])).rows[0].value
+    expect(receipt.operation_number).toMatch(/^REP-/)
+    expect(Number((await pg.query('select stock_current from bitacora.product_site_inventory where sede_id=1 and presentation_id=$1',[presentationId])).rows[0].stock_current)).toBe(400)
+    const sale=(await pg.query('select bitacora.confirmar_venta($1::jsonb,$2) as value',[JSON.stringify({sede_id:1,items:[{presentation_id:presentationId,quantity:1}],payment_method:'EFECTIVO',received:4000}),'sale-test'])).rows[0].value
+    expect(sale.operation_number).toMatch(/^VTA-/)
+    expect(Number((await pg.query('select stock_current from bitacora.product_site_inventory where sede_id=1 and presentation_id=$1',[presentationId])).rows[0].stock_current)).toBe(200)
+    await pg.query('select bitacora.anular_venta($1,$2,$3)',[sale.id,'Prueba de anulación','annul-test'])
+    expect(Number((await pg.query('select stock_current from bitacora.product_site_inventory where sede_id=1 and presentation_id=$1',[presentationId])).rows[0].stock_current)).toBe(400)
+    expect((await pg.query('select count(*)::int n from bitacora.inventory_movements where sede_id=1')).rows[0].n).toBe(3)
+  })
+  it('conserva ventas posteriores al conteo cuando finaliza el relevamiento', async () => {
+    const presentationId=(await pg.query('select presentation_id from bitacora.product_barcodes where product_id=$1 and barcode=$2',[productId,payload.barcode])).rows[0].presentation_id
+    const count=(await pg.query("select bitacora.iniciar_relevamiento(1,'Conteo concurrente') as value")).rows[0].value
+    await pg.query('select bitacora.guardar_linea_relevamiento($1,$2,$3,$4)',[count.id,presentationId,350,payload.barcode])
+    await pg.query('select bitacora.confirmar_venta($1::jsonb,$2)',[JSON.stringify({sede_id:1,items:[{presentation_id:presentationId,quantity:0.25}],payment_method:'TARJETA'}),'sale-after-count'])
+    await pg.query('select bitacora.finalizar_relevamiento($1,$2)',[count.id,'finish-count'])
+    expect(Number((await pg.query('select stock_current from bitacora.product_site_inventory where sede_id=1 and presentation_id=$1',[presentationId])).rows[0].stock_current)).toBe(300)
   })
 })

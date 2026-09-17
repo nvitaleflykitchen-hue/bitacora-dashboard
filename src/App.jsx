@@ -18,6 +18,7 @@ import { newScanEventId } from './lib/assetScans'
 
 const MobileApp = lazy(() => import('./mobile/MobileApp'))
 const Articulos = lazy(() => import('./views/Articulos'))
+const Kiosco = lazy(() => import('./views/Kiosco'))
 const RelevamientoArticulos = lazy(() => import('./views/Articulos').then(m => ({ default:m.RelevamientoArticulos })))
 const MobileReporte = lazy(() => import('./mobile/MobileReporte'))
 const InicioRol = lazy(() => import('./views/InicioRol'))
@@ -65,6 +66,7 @@ const EppEntregaConfirmacion = lazy(() => import('./views/EppEntregaConfirmacion
 const PurchaseTrackingView = lazy(() => import('./views/PurchaseTrackingView'))
 
 const ALL_VIEWS = {
+  kiosco: Kiosco,
   articulos: Articulos,
   relevamientoArticulos: RelevamientoArticulos,
   inicio:          InicioRol,

@@ -15,7 +15,7 @@ const packagingLabels = { unit:'Unidad', pack:'Pack', box:'Caja', case:'Caja / b
 
 export function RelevamientoArticulos() { return <Articulos initialMode="scan" /> }
 
-export default function Articulos({ initialMode = 'list', onNavigate }) {
+export default function Articulos({ initialMode = 'list', onNavigate, embedded = false }) {
   const { can, perfil } = useAuth()
   const writable = can('articulos')
   const canConfigureKiosk = can('kiosco', 'configure')
@@ -212,7 +212,7 @@ export default function Articulos({ initialMode = 'list', onNavigate }) {
   }
   const image = filePreview || safeImageUrl(form?.image_url)
   return <div className="articulos-view">
-    <button type="button" className="btn-ghost articulos-back" disabled={busy} onClick={goBack}><ArrowLeft size={18} /> Volver atrás</button>
+    {!embedded && <button type="button" className="btn-ghost articulos-back" disabled={busy} onClick={goBack}><ArrowLeft size={18} /> Volver atrás</button>}
     <header><div><span className="articulos-eyebrow">MAESTRO DE PRODUCTOS</span><h1>{mode === 'scan' ? 'Relevamiento de artículos' : 'Artículos'}</h1><p>Identificá productos y registrá sus presentaciones.</p></div></header>
     <nav aria-label="Artículos" className="articulos-tabs">
       {writable && <button type="button" className={mode === 'scan' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('scan')}><Barcode size={18} /> Relevamiento de artículos</button>}

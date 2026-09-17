@@ -14,7 +14,7 @@ describe('matriz de acceso', () => {
   })
 
   // I+D es un acceso principal porque conecta proyectos, pruebas y validaciones.
-  it.each(ROLES)('limita el menú principal de %s a doce accesos, incluido Artículos', rol => {
+  it.each(ROLES)('limita el menú principal de %s a doce accesos', rol => {
     expect(getPrimaryNav(rol).length).toBeLessThanOrEqual(12)
   })
 
@@ -62,9 +62,14 @@ describe('matriz de acceso', () => {
     expect(getPrimaryNav('operario').length).toBe(0)
   })
 
-  it('acota depósito al relevamiento y carga de artículos', () => {
-    expect(getPrimaryNav('deposito').map(item => item.id)).toEqual(['articulos'])
-    expect(getDefaultView('deposito')).toBe('articulos')
+  it('muestra Kiosco a depósito solo cuando tiene una sede habilitada', () => {
+    const perfil = { rol:'deposito', kiosk_sede_ids:[1] }
+    expect(getPrimaryNav('deposito').map(item => item.id)).toEqual([])
+    expect(getPrimaryNav('deposito', perfil).map(item => item.id)).toEqual(['kiosco'])
+    expect(getDefaultView('deposito', perfil)).toBe('kiosco')
+    expect(getDefaultView('deposito')).toBe(null)
+    expect(canAccessView('deposito', 'kiosco', perfil)).toBe(true)
+    expect(canAccessView('deposito', 'kiosco')).toBe(false)
     expect(canAccessView('deposito', 'articulos')).toBe(true)
     expect(canAccessView('deposito', 'relevamientoArticulos')).toBe(true)
     expect(canAccessView('deposito', 'inicio')).toBe(false)
@@ -75,16 +80,17 @@ describe('matriz de acceso', () => {
     expect(canWrite('deposito', 'compras', 'receive', { compras_permisos:['receive'] })).toBe(true)
     expect(canWrite('deposito', 'mantenimiento', 'manage', { mantenimiento_permisos:['manage_all'] })).toBe(false)
     expect(canWrite('deposito', 'bitacora', 'report')).toBe(false)
-    expect(canWrite('deposito', 'kiosco', 'operate')).toBe(true)
-    expect(canWrite('deposito', 'kiosco', 'configure')).toBe(false)
+    expect(canWrite('deposito', 'kiosco', 'operate', perfil)).toBe(true)
+    expect(canWrite('deposito', 'kiosco', 'configure', perfil)).toBe(false)
   })
 
   it('separa operación y configuración de Kiosco', () => {
+    const perfil = { kiosk_sede_ids:[1] }
     expect(canWrite('admin', 'kiosco', 'configure')).toBe(true)
-    expect(canWrite('encargado', 'kiosco', 'configure')).toBe(true)
-    expect(canWrite('sede', 'kiosco', 'configure')).toBe(false)
-    expect(canWrite('sede', 'kiosco', 'operate')).toBe(true)
-    expect(canWrite('consultor', 'kiosco', 'operate')).toBe(false)
+    expect(canWrite('encargado', 'kiosco', 'configure', perfil)).toBe(true)
+    expect(canWrite('sede', 'kiosco', 'configure', perfil)).toBe(false)
+    expect(canWrite('sede', 'kiosco', 'operate', perfil)).toBe(true)
+    expect(canWrite('consultor', 'kiosco', 'operate', perfil)).toBe(false)
   })
 
   it('da a flota su propio módulo, sin Mantenimiento ni Calidad', () => {
