@@ -1,4 +1,4 @@
-.kiosk-shell{padding:1.5rem;min-height:100%;color:var(--text)}
+.kiosk-shell{flex:1;min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding:1.5rem;color:var(--text)}
 .kiosk-header,.kiosk-section-head,.kiosk-confirm-bar,.kiosk-count-entry,.kiosk-table-row,.kiosk-movements article,.kiosk-history article,.kiosk-history button{display:flex;align-items:center;gap:1rem}
 .kiosk-header{justify-content:space-between;margin-bottom:1rem}.kiosk-header span{color:var(--phosphor);font:700 .72rem var(--font-mono);letter-spacing:.13em}.kiosk-header h1{font-size:2rem;margin:.2rem 0}.kiosk-header p,.kiosk-section p{color:var(--text-dim)}
 .kiosk-header label,.kiosk-payment label,.kiosk-filters label,.kiosk-operation-list label{display:grid;gap:.35rem;color:var(--text-dim);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
