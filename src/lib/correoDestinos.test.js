@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { camposDestino, destinoCorreo } from './correoDestinos'
+import { camposDestino, destinoCorreo, personasCorreo } from './correoDestinos'
 
 describe('destinos de correo', () => {
   it('serializa la asociación a una persona sin perder los otros destinos', () => {
@@ -21,5 +21,10 @@ describe('destinos de correo', () => {
     expect(fields[column]).toBe(value)
     expect(Object.values(fields).filter(item => item != null)).toEqual([value])
     expect(destinoCorreo({ [column]: value })).toBe(key)
+  })
+
+  it('reúne la persona principal y las adicionales sin duplicados', () => {
+    expect(personasCorreo({ persona_id:'p1', persona_ids:['p1','p2'] })).toEqual(['persona:p1','persona:p2'])
+    expect(personasCorreo({ sugerido_persona_id:'p3' }, true)).toEqual(['persona:p3'])
   })
 })

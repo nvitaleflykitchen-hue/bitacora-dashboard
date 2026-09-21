@@ -51,10 +51,17 @@ export async function getCorreoContext() {
 }
 
 export async function getCorreos({ mailboxId, state, planId, analysis, page = 0 }) {
-  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,grupo_id,sede_id,vehiculo_id,id_proyecto_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,sugerido_persona_id,sugerido_grupo_id,sugerido_sede_id,sugerido_vehiculo_id,sugerido_id_proyecto_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_confianza,ai_fuente,ai_error,updated_at', { count: 'exact' })
+  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,persona_ids,grupo_id,sede_id,vehiculo_id,id_proyecto_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,sugerido_persona_id,sugerido_grupo_id,sugerido_sede_id,sugerido_vehiculo_id,sugerido_id_proyecto_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_confianza,ai_fuente,ai_error,updated_at', { count: 'exact' })
   if (mailboxId) query = query.eq('buzon_id', mailboxId)
   if (state && state !== 'todos') query = query.eq('estado', state)
-  if (planId) { const [column, value] = Object.entries(camposDestino(planId)).find(([, value]) => value != null); query = query.eq(column, value) }
+  if (planId?.startsWith('persona:')) {
+    const personId = planId.slice('persona:'.length)
+    if (!/^[0-9a-f-]{36}$/i.test(personId)) throw new Error('Persona inválida')
+    query = query.or(`persona_id.eq.${personId},persona_ids.cs.{${personId}}`)
+  } else if (planId) {
+    const [column, value] = Object.entries(camposDestino(planId)).find(([, value]) => value != null)
+    query = query.eq(column, value)
+  }
   if (analysis === 'lista') query = query.eq('ai_estado', 'lista')
   if (analysis === 'pendiente') query = query.in('ai_estado', ['pendiente', 'error'])
   if (analysis === 'sugerencia') query = query.or('sugerido_plan_id.not.is.null,sugerido_tarea_id.not.is.null,sugerido_compra_id.not.is.null,sugerido_ticket_id.not.is.null,sugerido_persona_id.not.is.null,sugerido_grupo_id.not.is.null,sugerido_sede_id.not.is.null,sugerido_vehiculo_id.not.is.null,sugerido_id_proyecto_id.not.is.null')
@@ -70,9 +77,17 @@ export async function getCorreoDetail(id) {
   return { message: checked(message), history: checked(history) }
 }
 
-export async function reviewCorreo(message, planId, state) {
-  if ((state === 'vinculado') !== Boolean(planId)) throw new Error('Elegí una gestión para vincular el correo.')
-  const result = await db().from('correos').update({ ...camposDestino(planId), estado: state })
+export async function reviewCorreo(message, planId, state, personKeys = []) {
+  const people = [...new Set(personKeys.map(key => String(key).replace(/^persona:/, '')).filter(Boolean))]
+  if (planId?.startsWith('persona:')) {
+    people.unshift(planId.slice('persona:'.length))
+    planId = null
+  }
+  const uniquePeople = [...new Set(people)]
+  if ((state === 'vinculado') !== Boolean(planId || uniquePeople.length)) throw new Error('Elegí una gestión o al menos una persona para vincular el correo.')
+  const fields = camposDestino(planId)
+  if (!planId && uniquePeople.length) fields.persona_id = uniquePeople[0]
+  const result = await db().from('correos').update({ ...fields, persona_ids: state === 'vinculado' ? uniquePeople : [], estado: state })
     .eq('id', message.id).eq('updated_at', message.updated_at).select('id')
   const rows = checked(result)
   if (!rows?.length) throw new Error('El correo cambió o ya no tenés permiso. Actualizá la bandeja.')

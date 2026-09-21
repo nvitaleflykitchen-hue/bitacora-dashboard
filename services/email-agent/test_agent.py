@@ -48,6 +48,8 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(agent.destination_fields('compra:8')['compra_id'],8)
         self.assertEqual(agent.destination({'ticket_id':'abc'}),'ticket:abc')
         self.assertEqual(agent.destination_fields('persona:abc')['persona_id'],'abc')
+        self.assertEqual(agent.destination_fields('persona:abc')['persona_ids'],['abc'])
+        self.assertNotIn('persona_ids', agent.destination_fields('persona:abc', suggested=True))
         self.assertEqual(agent.destination_fields('grupo:3')['grupo_id'],3)
         self.assertEqual(agent.destination_fields('sede:9')['sede_id'],9)
 

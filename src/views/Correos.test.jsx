@@ -27,7 +27,7 @@ describe('Bandeja de correos', () => {
     await screen.findByText('Presupuesto')
     expect(document.querySelector('script')).toBeNull()
     fireEvent.click(screen.getByText('Guardar vínculo'))
-    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(message, 'p1', 'vinculado'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(message, 'p1', 'vinculado', []))
     expect(saved).toHaveBeenCalledOnce()
   })
   it('abre el detalle como panel fijo y permite cerrarlo con Escape', async () => {
@@ -45,7 +45,8 @@ describe('Bandeja de correos', () => {
     render(<CorreoDetail id="m1" plans={[{ id: key, titulo: 'Gestión destino' }]} canReview onClose={() => {}} onSaved={() => {}} />)
     await screen.findByText('Presupuesto')
     fireEvent.click(screen.getByText('Guardar vínculo'))
-    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(current, key, 'vinculado'))
+    const people = key.startsWith('persona:') ? [key] : []
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(current, key.startsWith('persona:') ? '' : key, 'vinculado', people))
   })
   it('busca y asocia el correo a una persona específica', async () => {
     const destinations = {
@@ -63,8 +64,26 @@ describe('Bandeja de correos', () => {
     expect(screen.getByText('Romina Rodríguez')).toBeTruthy()
     expect(screen.queryByText('Pablo Fernández')).toBeNull()
     fireEvent.click(screen.getByText('Romina Rodríguez'))
+    fireEvent.change(screen.getByPlaceholderText('Nombre, apellido o puesto…'), { target: { value: 'Pablo' } })
+    fireEvent.click(screen.getByText('Pablo Fernández'))
     fireEvent.click(screen.getByText('Guardar vínculo'))
-    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), 'persona:p1', 'vinculado'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), '', 'vinculado', ['persona:p1', 'persona:p2']))
+  })
+  it('conserva una gestión y varias personas en la misma revisión', async () => {
+    const destinations = {
+      tickets: [], compras: [{ id:'compra:8', titulo:'Compra de estantería' }], tareas: [], planes: [], proyectos: [], grupos: [], sedes: [], vehiculos: [], id: [],
+      personas: [{ id:'persona:p1', titulo:'Romina Rodríguez' }, { id:'persona:p2', titulo:'Pablo Fernández' }],
+    }
+    api.getCorreoDetail.mockResolvedValue({ message:{ ...message, sugerido_plan_id:null }, history:[] })
+    render(<CorreoDetail id="m1" destinations={destinations} canReview onClose={() => {}} onSaved={() => {}} />)
+    await screen.findByText('Presupuesto')
+    fireEvent.click(screen.getByRole('tab', { name:/Compras/ }))
+    fireEvent.click(screen.getByText('Compra de estantería'))
+    fireEvent.click(screen.getByRole('tab', { name:/Personas/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name:'Asociar a Romina Rodríguez' }))
+    fireEvent.click(screen.getByRole('checkbox', { name:'Asociar a Pablo Fernández' }))
+    fireEvent.click(screen.getByText('Guardar vínculo'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), 'compra:8', 'vinculado', ['persona:p1','persona:p2']))
   })
   it.each([
     ['Grupos', 'grupo:3', 'Comedores Centro'],
@@ -85,7 +104,7 @@ describe('Bandeja de correos', () => {
     fireEvent.click(screen.getByRole('tab', { name:new RegExp(tab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }))
     fireEvent.click(screen.getByText(label))
     fireEvent.click(screen.getByText('Guardar vínculo'))
-    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), key, 'vinculado'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), key, 'vinculado', []))
   })
   it('separa los planes de acción de los proyectos de gestión', async () => {
     const destinations = {

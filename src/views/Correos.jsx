@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import React from 'react'
-import { destinoCorreo } from '../lib/correoDestinos'
+import { destinoCorreo, personasCorreo } from '../lib/correoDestinos'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CORREO_PAGE_SIZE, correoError, downloadCorreoFile, getCorreoContext, getCorreoDetail, getCorreos, reviewCorreo } from '../lib/correos'
 
@@ -31,14 +31,15 @@ const categoryFor = (value, destinations = {}) => value?.startsWith('ticket:') ?
               : Object.entries(destinations).find(([, items]) => items.some(item => String(item.id) === String(value)))?.[0] || 'planes'
 const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
-export function DestinationPicker({ destinations, selected, onSelect, disabled }) {
-  const [category, setCategory] = useState(() => categoryFor(selected, destinations))
+export function DestinationPicker({ destinations, selected, selectedPeople = [], onSelect, onTogglePerson, disabled }) {
+  const [category, setCategory] = useState(() => selectedPeople.length ? 'personas' : categoryFor(selected, destinations))
   const [search, setSearch] = useState('')
   useEffect(() => { if (selected) setCategory(categoryFor(selected, destinations)) }, [selected, destinations])
   const options = destinations?.[category] || []
   const needle = normalize(search)
   const visible = needle ? options.filter(item => normalize(`${item.search || ''} ${title(item)} ${item.meta || ''}`).includes(needle)) : options
-  const selectedItem = Object.values(destinations || {}).flat().find(item => String(item.id) === String(selected))
+  const selectedItem = Object.values(destinations || {}).flat().find(item => item.kind !== 'persona' && String(item.id) === String(selected))
+  const people = (destinations?.personas || []).filter(item => selectedPeople.includes(String(item.id)))
   return <div className="space-y-3" aria-label="Asociar correo">
     <div>
       <strong className="block mb-2">¿Dónde querés asociar este correo?</strong>
@@ -49,6 +50,10 @@ export function DestinationPicker({ destinations, selected, onSelect, disabled }
       </div>
     </div>
     {selectedItem && <div className="glass p-3" style={{ borderColor: 'var(--primary)' }}><span className="text-xs block" style={{ color: 'var(--text-dim)' }}>VÍNCULO SELECCIONADO</span><strong>{title(selectedItem)}</strong>{selectedItem.meta && <span className="block text-sm">{selectedItem.meta}</span>}</div>}
+    {!!people.length && <div className="glass p-3" style={{ borderColor: 'var(--primary)' }}>
+      <span className="text-xs block mb-2" style={{ color: 'var(--text-dim)' }}>PERSONAS ASOCIADAS ({people.length})</span>
+      <div className="flex gap-2 flex-wrap">{people.map(person => <button type="button" className="btn-ghost" key={person.id} disabled={disabled} onClick={() => onTogglePerson(String(person.id))} aria-label={`Quitar a ${title(person)}`}>{title(person)} ×</button>)}</div>
+    </div>}
     <label className="block">Buscar en {destinationTabs.find(([key]) => key === category)?.[1]}
       <input className="input-dark w-full mt-1" type="search" value={search} onChange={e => setSearch(e.target.value)} disabled={disabled}
         placeholder={category === 'personas' ? 'Nombre, apellido o puesto…' : 'Asunto, número, sede, responsable o estado…'} />
@@ -56,13 +61,17 @@ export function DestinationPicker({ destinations, selected, onSelect, disabled }
     {destinationHelp[category] && <p className="text-sm" style={{ color: 'var(--text-dim)' }}>{destinationHelp[category]}</p>}
     <div role="listbox" aria-label={`Resultados de ${category}`} style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #ffffff20', borderRadius: 6 }}>
       {!visible.length && <p className="p-4" style={{ color: 'var(--text-dim)' }}>{search ? 'No hay coincidencias.' : 'No hay elementos abiertos en esta categoría.'}</p>}
-      {visible.map(item => <button type="button" role="option" aria-selected={String(selected) === String(item.id)} key={item.id} disabled={disabled}
-        onClick={() => onSelect(String(item.id))} className="w-full text-left p-3"
-        style={{ display: 'block', borderBottom: '1px solid #ffffff18', background: String(selected) === String(item.id) ? 'rgba(52,255,28,.12)' : 'transparent', color: 'inherit' }}>
-        <strong style={{ overflowWrap: 'anywhere' }}>{title(item)}</strong>
-        {item.meta && <span className="block text-sm mt-1" style={{ color: 'var(--text-dim)' }}>{item.meta}</span>}
-        {String(selected) === String(item.id) && <span className="block text-sm mt-1" style={{ color: 'var(--primary)' }}>Seleccionado</span>}
-      </button>)}
+      {visible.map(item => { const isPerson = category === 'personas'; const isSelected = isPerson ? selectedPeople.includes(String(item.id)) : String(selected) === String(item.id); const style = { display: 'block', borderBottom: '1px solid #ffffff18', background: isSelected ? 'rgba(52,255,28,.12)' : 'transparent', color: 'inherit' }; return isPerson
+        ? <label key={item.id} className="w-full p-3 flex items-start gap-3 cursor-pointer" style={style}>
+          <input type="checkbox" checked={isSelected} disabled={disabled} onChange={() => onTogglePerson(String(item.id))} aria-label={`Asociar a ${title(item)}`} />
+          <span><strong style={{ overflowWrap: 'anywhere' }}>{title(item)}</strong>{item.meta && <span className="block text-sm mt-1" style={{ color: 'var(--text-dim)' }}>{item.meta}</span>}</span>
+        </label>
+        : <button type="button" role="option" aria-selected={isSelected} key={item.id} disabled={disabled}
+          onClick={() => onSelect(String(item.id))} className="w-full text-left p-3" style={style}>
+          <strong style={{ overflowWrap: 'anywhere' }}>{title(item)}</strong>
+          {item.meta && <span className="block text-sm mt-1" style={{ color: 'var(--text-dim)' }}>{item.meta}</span>}
+          {isSelected && <span className="block text-sm mt-1" style={{ color: 'var(--primary)' }}>Seleccionado</span>}
+        </button>})}
     </div>
   </div>
 }
@@ -81,6 +90,7 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
   }, [])
   const [detail, setDetail] = useState(null)
   const [selected, setSelected] = useState('')
+  const [selectedPeople, setSelectedPeople] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const destinationGroups = destinations || {
@@ -98,17 +108,23 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
     getCorreoDetail(id).then(data => {
       if (!active) return
       setDetail(data)
-      setSelected(destinoCorreo(data.message) || destinoCorreo(data.message, true) || '')
+      const current = destinoCorreo(data.message)
+      const suggested = destinoCorreo(data.message, true)
+      setSelected(current?.startsWith('persona:') ? '' : (current || (suggested?.startsWith('persona:') ? '' : suggested) || ''))
+      setSelectedPeople(personasCorreo(data.message).length ? personasCorreo(data.message) : personasCorreo(data.message, true))
     }).catch(err => active && setError(correoError(err)))
     return () => { active = false }
   }, [id])
   async function save(state) {
     setBusy(true); setError('')
     try {
-      await reviewCorreo(detail.message, state === 'vinculado' ? selected : null, state)
+      await reviewCorreo(detail.message, state === 'vinculado' ? selected : null, state, state === 'vinculado' ? selectedPeople : [])
       onSaved()
     } catch (err) { setError(correoError(err)) }
     finally { setBusy(false) }
+  }
+  function togglePerson(key) {
+    setSelectedPeople(current => current.includes(key) ? current.filter(item => item !== key) : [...current, key])
   }
   async function download(path, name) {
     setBusy(true); setError('')
@@ -145,10 +161,11 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
         {message.ai_estado === 'pendiente' && <p>Guardado como evidencia. Clasificación pendiente.</p>}
         {message.ai_estado === 'error' && <p>La clasificación se reintentará. El original está guardado.</p>}
         {message.nueva_gestion && <p>Posible gestión nueva: {message.nueva_gestion}</p>}
+        {!canReview && !!personasCorreo(message).length && <p>Personas asociadas: {personasCorreo(message).map(key => title(allDestinations.find(item => item.id === key))).join(', ')}</p>}
         {canReview && <div className="space-y-2">
-          <DestinationPicker destinations={destinationGroups} selected={selected} onSelect={setSelected} disabled={busy} />
+          <DestinationPicker destinations={destinationGroups} selected={selected} selectedPeople={selectedPeople} onSelect={setSelected} onTogglePerson={togglePerson} disabled={busy} />
           <div className="flex gap-2 flex-wrap">
-            <button type="button" className="btn-primary" disabled={busy || !selected} onClick={() => save('vinculado')}>Guardar vínculo</button>
+            <button type="button" className="btn-primary" disabled={busy || (!selected && !selectedPeople.length)} onClick={() => save('vinculado')}>Guardar vínculo</button>
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => save('pendiente')}>Dejar por revisar</button>
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => save('ignorado')}>Archivar sin gestión</button>
           </div>
@@ -160,7 +177,7 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
       </div>
       <details><summary className="cursor-pointer">Leer mensaje</summary><pre className="mt-3 text-sm" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'inherit' }}>{message.cuerpo || 'El mensaje no contiene texto legible. Descargá el original.'}</pre></details>
       <details><summary className="cursor-pointer">Historial de asociaciones</summary>
-        <ul className="mt-2 space-y-2">{detail.history.map(event => <li key={event.id}>{dateText(event.created_at)} · {states[event.despues.estado]}{destinoCorreo(event.despues) ? ` · ${title(allDestinations.find(p => p.id === destinoCorreo(event.despues)))}` : ''} · {event.actor_id ? 'Revisión de usuario' : 'Agente automático'}</li>)}</ul>
+        <ul className="mt-2 space-y-2">{detail.history.map(event => { const eventPeople = personasCorreo(event.despues).map(key => title(allDestinations.find(p => p.id === key))); return <li key={event.id}>{dateText(event.created_at)} · {states[event.despues.estado]}{destinoCorreo(event.despues) && !destinoCorreo(event.despues).startsWith('persona:') ? ` · ${title(allDestinations.find(p => p.id === destinoCorreo(event.despues)))}` : ''}{eventPeople.length ? ` · Personas: ${eventPeople.join(', ')}` : ''} · {event.actor_id ? 'Revisión de usuario' : 'Agente automático'}</li>})}</ul>
       </details>
     </>}
       </div>
@@ -228,6 +245,7 @@ export default function Correos({ planId = null, readOnly = false }) {
           {message.nueva_gestion && <span className="block text-sm mt-2">Propuesta para revisar: {message.nueva_gestion}</span>}
           <span className="block text-sm mt-2" style={{ color: 'var(--primary)' }}>Abrir análisis, vínculo y adjuntos</span>
           {(destinoCorreo(message) || destinoCorreo(message, true)) && <span className="block text-sm mt-2">{destinoCorreo(message) ? 'Vinculado a: ' : 'Sugerencia: '}{title(context.plans.find(p => p.id === (destinoCorreo(message) || destinoCorreo(message, true))))}</span>}
+          {!!personasCorreo(message).length && <span className="block text-sm mt-1">Personas: {personasCorreo(message).map(key => title(context.plans.find(item => item.id === key))).join(', ')}</span>}
           {!destinoCorreo(message) && destinoCorreo(message, true) && message.ai_fuente === 'aprendizaje' && <span className="block text-xs mt-1" style={{ color: 'var(--green)' }}>Aprendido de tus decisiones anteriores{message.ai_confianza != null ? ` · ${message.ai_confianza}%` : ''}</span>}
         </button>)}</div>
         {result.total > CORREO_PAGE_SIZE && <nav aria-label="Páginas de correos" className="flex gap-3 items-center"><button type="button" className="btn-ghost" disabled={page === 0} onClick={() => { setPage(page - 1); setOpened(null) }}>Anterior</button><span>{page + 1} / {Math.ceil(result.total / CORREO_PAGE_SIZE)}</span><button type="button" className="btn-ghost" disabled={(page + 1) * CORREO_PAGE_SIZE >= result.total} onClick={() => { setPage(page + 1); setOpened(null) }}>Siguiente</button></nav>}
