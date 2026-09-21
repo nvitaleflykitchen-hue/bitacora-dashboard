@@ -162,12 +162,16 @@ def destination(message):
 def destination_fields(key, suggested=False):
     prefix = 'sugerido_' if suggested else ''
     result = {prefix + column: None for column in ['plan_id', *DESTINATIONS.values()]}
+    if not suggested:
+        result['persona_ids'] = []
     if key:
         if ':' not in key:
             result[prefix + 'plan_id'] = key
         else:
             kind, value = key.split(':', 1)
             result[prefix + DESTINATIONS[kind]] = int(value) if kind in NUMERIC_DESTINATIONS else value
+            if kind == 'persona' and not suggested:
+                result['persona_ids'] = [value]
     return result
 
 

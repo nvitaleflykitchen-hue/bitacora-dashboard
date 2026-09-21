@@ -16,6 +16,12 @@ export function destinoCorreo(message, suggested = false) {
   }
   return ''
 }
+
+export function personasCorreo(message, suggested = false) {
+  if (suggested) return message?.sugerido_persona_id ? [`persona:${message.sugerido_persona_id}`] : []
+  const ids = [...(message?.persona_ids || []), message?.persona_id].filter(Boolean)
+  return [...new Set(ids.map(id => `persona:${id}`))]
+}
 export function camposDestino(key) {
   const fields = {
     plan_id: null,
