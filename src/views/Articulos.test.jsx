@@ -2,14 +2,14 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import Articulos from './Articulos'
-import { productResolver, saveProduct, enrichProduct, recordBarcodeSearch, listKioskSites, loadProductSiteSettings, saveProductSiteSetting } from '../lib/productQueries'
+import { productResolver, saveProduct, enrichProduct, recordBarcodeSearch, listKioskSites, loadProductSiteSettings, saveProductSiteSetting, listProductMasterValues } from '../lib/productQueries'
 
 const authState = vi.hoisted(() => ({ rol:null }))
 vi.mock('../lib/auth', () => ({ useAuth:() => ({ can:() => true, perfil:{ nombre:'Prueba', rol:authState.rol } }) }))
 vi.mock('../lib/adjuntos', () => ({ uploadAdjunto:vi.fn() }))
 vi.mock('../components/ProductBarcodeScanner', () => ({ default:() => <div>Lector listo</div> }))
-vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), saveProduct:vi.fn(), enrichProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn(), recordBarcodeSearch:vi.fn().mockResolvedValue(), listKioskSites:vi.fn().mockResolvedValue([]), loadProductSiteSettings:vi.fn().mockResolvedValue([]), saveProductSiteSetting:vi.fn() }))
-beforeEach(() => { vi.clearAllMocks(); authState.rol = null })
+vi.mock('../lib/productQueries', () => ({ productResolver:{ resolve:vi.fn() }, findProduct:vi.fn(), findProductById:vi.fn(), saveProduct:vi.fn(), enrichProduct:vi.fn(), searchProducts:vi.fn().mockResolvedValue([]), validateProduct:vi.fn(), recordBarcodeSearch:vi.fn().mockResolvedValue(), listKioskSites:vi.fn().mockResolvedValue([]), loadProductSiteSettings:vi.fn().mockResolvedValue([]), saveProductSiteSetting:vi.fn(), listProductMasterValues:vi.fn(), saveProductMasterValue:vi.fn() }))
+beforeEach(() => { vi.clearAllMocks(); authState.rol = null; listProductMasterValues.mockResolvedValue([{ id:'b1',kind:'brand',name:'Marca prueba',active:true },{ id:'u1',kind:'stock_unit',name:'unidad',active:true }]) })
 afterEach(cleanup)
 describe('flujo artículos', () => {
   it('permite volver al inicio desde el maestro de artículos', () => {
@@ -39,7 +39,7 @@ describe('flujo artículos', () => {
     expect(screen.getByLabelText('Categoría')).toHaveValue('')
     fireEvent.click(screen.getByRole('button',{name:'Aplicar datos propuestos'}))
     expect(screen.getByLabelText('Categoría')).toHaveValue('Azúcares')
-    expect(screen.getByLabelText('Marca')).toHaveValue('Mi marca')
+    expect(screen.getByLabelText(/^Marca \*/)).toHaveValue('Mi marca')
     expect(saveProduct).not.toHaveBeenCalled()
   })
   it('permite completar un desconocido, guardar y pasar al siguiente', async () => {
@@ -51,9 +51,11 @@ describe('flujo artículos', () => {
     await screen.findByText('Producto no identificado')
     expect(recordBarcodeSearch).toHaveBeenCalledWith(expect.objectContaining({ barcode:'012345678905',found:false,sourceCode:'NOT_FOUND' }))
     fireEvent.change(screen.getByLabelText('Nombre del artículo *'), { target:{ value:'Artículo de prueba' } })
-    fireEvent.change(screen.getByLabelText('Nivel de empaque'), { target:{ value:'case' } })
-    fireEvent.change(screen.getByLabelText('Contenido por unidad contenida'), { target:{ value:'8' } })
-    fireEvent.change(screen.getByLabelText('Unidad de contenido'), { target:{ value:'g' } })
+    fireEvent.change(screen.getByLabelText(/^Marca \*/), { target:{ value:'Marca prueba' } })
+    fireEvent.change(screen.getByLabelText(/^Unidad base de stock \*/), { target:{ value:'unidad' } })
+    fireEvent.change(screen.getByLabelText('Nivel de empaque *'), { target:{ value:'case' } })
+    fireEvent.change(screen.getByLabelText('Contenido por unidad contenida *'), { target:{ value:'8' } })
+    fireEvent.change(screen.getByLabelText('Unidad de contenido *'), { target:{ value:'g' } })
     fireEvent.change(screen.getByLabelText('Unidades contenidas por caja / bulto'), { target:{ value:'192' } })
     fireEvent.click(screen.getByRole('button', { name:'GUARDAR Y ESCANEAR SIGUIENTE' }))
     const codeInput = await screen.findByLabelText('Escaneá con pistola o ingresá el código manualmente')
@@ -82,6 +84,11 @@ describe('flujo artículos', () => {
     fireEvent.click(screen.getByRole('button', { name:'Buscar', exact:true }))
     await screen.findByText('Producto no identificado')
     fireEvent.change(screen.getByLabelText('Nombre del artículo *'), { target:{ value:'Se conserva' } })
+    fireEvent.change(screen.getByLabelText(/^Marca \*/), { target:{ value:'Marca prueba' } })
+    fireEvent.change(screen.getByLabelText(/^Unidad base de stock \*/), { target:{ value:'unidad' } })
+    fireEvent.change(screen.getByLabelText('Nivel de empaque *'), { target:{ value:'unit' } })
+    fireEvent.change(screen.getByLabelText('Contenido por unidad contenida *'), { target:{ value:'1' } })
+    fireEvent.change(screen.getByLabelText('Unidad de contenido *'), { target:{ value:'unidad' } })
     fireEvent.click(screen.getByRole('button', { name:'GUARDAR Y ESCANEAR SIGUIENTE' }))
     await screen.findByText('Sin conexión')
     expect(screen.getByLabelText('Nombre del artículo *')).toHaveValue('Se conserva')
@@ -100,5 +107,20 @@ describe('flujo artículos', () => {
     fireEvent.change(screen.getByLabelText('Stock mínimo'),{ target:{ value:'5' } })
     fireEvent.click(screen.getByRole('button',{name:'Guardar precio'}))
     await waitFor(() => expect(saveProductSiteSetting).toHaveBeenCalledWith(expect.objectContaining({ sede_id:7,product_id:'p1',presentation_id:'pr1',sale_price:'3200',stock_minimum:'5',active:true })))
+  })
+  it('abre y guarda una ficha manual sin exigir código de barras', async () => {
+    saveProduct.mockImplementation(async form => ({ ...form, internal_code:'ART-000010', presentation_id:'pr10', expected_updated_at:'2026-09-21T12:00:00Z' }))
+    render(<Articulos />)
+    fireEvent.click(screen.getByRole('button', { name:'Agregar artículo' }))
+    await screen.findByRole('option', { name:'Marca prueba' })
+    expect(screen.getByText('Sin código de barras')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Nombre del artículo *'), { target:{ value:'Vaso descartable' } })
+    fireEvent.change(screen.getByLabelText(/^Marca \*/), { target:{ value:'Marca prueba' } })
+    fireEvent.change(screen.getByLabelText(/^Unidad base de stock \*/), { target:{ value:'unidad' } })
+    fireEvent.change(screen.getByLabelText('Nivel de empaque *'), { target:{ value:'unit' } })
+    fireEvent.change(screen.getByLabelText('Contenido por unidad contenida *'), { target:{ value:'1' } })
+    fireEvent.change(screen.getByLabelText('Unidad de contenido *'), { target:{ value:'unidad' } })
+    fireEvent.click(screen.getByRole('button', { name:'GUARDAR ARTÍCULO' }))
+    await waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ barcode:'', name:'Vaso descartable', brand:'Marca prueba', net_quantity:'1', net_unit:'unidad' })))
   })
 })

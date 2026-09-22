@@ -26,6 +26,27 @@ export async function findProduct(barcode, { signal } = {}) {
     }), source:null }
 }
 
+export async function findProductById(productId) {
+  const results = await Promise.all([
+    db().from('products').select('*').eq('id', productId).single(),
+    db().from('product_presentations').select('*').eq('product_id', productId).order('created_at'),
+    db().from('product_barcodes').select('*').eq('product_id', productId).order('created_at'),
+    db().from('product_sources').select('*').eq('product_id', productId).order('recorded_at', { ascending:false }).limit(20),
+  ])
+  for (const result of results) if (result.error) throw result.error
+  const [product, presentations, barcodes, sources] = results.map(result => result.data)
+  const primary = barcodes.find(item => item.is_primary) || barcodes[0]
+  const presentation = presentations.find(item => item.id === primary?.presentation_id) || presentations[0]
+  if (!presentation) throw new Error('El artículo no tiene una presentación registrada.')
+  return { ...product, ...presentation, ...(primary || {}), product_id:product.id,
+    presentation_id:presentation.id, barcode:primary?.barcode || '',
+    packaging_level:primary?.packaging_level || presentation.packaging_level || 'unknown',
+    expected_updated_at:product.updated_at, updated_at:product.updated_at, sources, barcodes, presentations,
+    related_barcodes:barcodes.filter(item => item.id !== primary?.id).map(item => ({
+      ...presentations.find(value => value.id === item.presentation_id), ...item,
+    })), source:null }
+}
+
 export const productResolver = new ProductResolver({ findLocal:findProduct, providers:[{
   name:'Fuentes externas',
   async lookup(barcode, { signal }) {
@@ -58,6 +79,19 @@ export async function searchProducts(termino, pagina = 0) {
   const { data, error } = await db().rpc('buscar_articulos', { termino:termino.slice(0,200), pagina })
   if (error) throw error
   return data || []
+}
+
+export async function listProductMasterValues() {
+  const { data, error } = await db().from('product_master_values')
+    .select('id,kind,name,active,updated_at').order('name')
+  if (error) throw error
+  return data || []
+}
+
+export async function saveProductMasterValue(value) {
+  const { data, error } = await db().rpc('guardar_valor_maestro_articulo', { payload:value })
+  if (error) throw error
+  return data
 }
 
 export async function listKioskSites() {
@@ -137,16 +171,19 @@ export async function downloadProductsXlsx(termino = '') {
 }
 
 export function validateProduct(form) {
-  const primaryCode = normalizeBarcode(form.barcode)
+  const primaryCode = form.barcode?.trim() ? normalizeBarcode(form.barcode) : ''
   if (!form.name?.trim()) throw new Error('Completá el nombre del artículo.')
   if (form.name.trim().length > 500) throw new Error('El nombre no puede superar 500 caracteres.')
+  if (!form.brand?.trim()) throw new Error('Seleccioná una marca.')
+  if (!form.stock_unit?.trim()) throw new Error('Seleccioná la unidad base de stock.')
+  if (!form.packaging_level || form.packaging_level === 'unknown') throw new Error('Seleccioná el nivel de empaque.')
+  if (form.net_quantity === '' || form.net_quantity == null || !Number.isFinite(Number(form.net_quantity)) || Number(form.net_quantity) <= 0) throw new Error('Ingresá una cantidad por unidad mayor que cero.')
+  if (!form.net_unit?.trim()) throw new Error('Seleccioná la unidad de contenido.')
   if (form.image_url && !safeImageUrl(form.image_url)) throw new Error('La imagen debe tener una dirección HTTPS válida.')
-  if (form.net_quantity !== '' && form.net_quantity != null && (!Number.isFinite(Number(form.net_quantity)) || Number(form.net_quantity) <= 0)) throw new Error('El contenido unitario debe ser mayor que cero.')
   if (form.units_per_package !== '' && form.units_per_package != null && (!Number.isInteger(Number(form.units_per_package)) || Number(form.units_per_package) <= 0)) throw new Error('Las unidades por bulto deben ser un entero mayor que cero.')
-  if (form.net_quantity && !form.net_unit) throw new Error('Indicá la unidad del contenido.')
-  if (!form.stock_unit?.trim()) throw new Error('Indicá la unidad base de stock.')
   if (!Number.isFinite(Number(form.stock_factor)) || Number(form.stock_factor) <= 0) throw new Error('El factor de stock debe ser mayor que cero.')
-  const codes = new Set([primaryCode.padStart(14,'0')])
+  if (!primaryCode && form.related_barcodes?.length) throw new Error('Guardá el artículo sin códigos adicionales; los códigos requieren una presentación con código principal.')
+  const codes = new Set(primaryCode ? [primaryCode.padStart(14,'0')] : [])
   for (const item of form.related_barcodes || []) {
     const related = normalizeBarcode(item.barcode)
     const key = related.padStart(14,'0')
@@ -160,10 +197,10 @@ export function validateProduct(form) {
 
 export async function saveProduct(form) {
   validateProduct(form)
-  const fields = ['product_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','supplier_id','rne','rnpa','storage_conditions','related_barcodes','source','stock_unit','stock_factor','presentation_active']
+  const fields = ['product_id','presentation_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','supplier_id','rne','rnpa','storage_conditions','related_barcodes','source','stock_unit','stock_factor','presentation_active']
   const payload = Object.fromEntries(fields.map(key => [key, form[key] ?? null]))
   payload.status = ['pending','verified','inactive'].includes(form.status) ? form.status : 'verified'
-  const { data, error } = await db().rpc('guardar_articulo', { payload })
+  const { data, error } = await db().rpc(form.barcode?.trim() ? 'guardar_articulo' : 'guardar_articulo_sin_codigo', { payload })
   if (error) throw error
   const recorded = form.source || { provider:'Carga manual', retrieved_at:data.updated_at }
   return { ...form, ...data, status:payload.status, expected_updated_at:data.updated_at, source:null, sources:[recorded, ...(form.sources || [])].slice(0,20) }

@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Barcode, Package, Search } from 'lucide-react'
+import { ArrowLeft, Barcode, Package, Plus, Search } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { productResolver, findProduct, saveProduct, searchProducts, validateProduct, enrichProduct, downloadProductsXlsx, recordBarcodeSearch, listKioskSites, loadProductSiteSettings, saveProductSiteSetting } from '../lib/productQueries'
+import { productResolver, findProduct, findProductById, saveProduct, searchProducts, validateProduct, enrichProduct, downloadProductsXlsx, recordBarcodeSearch, listKioskSites, loadProductSiteSettings, saveProductSiteSetting, listProductMasterValues, saveProductMasterValue } from '../lib/productQueries'
 import { missingProposals, applyProductProposals, displayProductSources, PRODUCT_FIELD_LABELS } from '../lib/productEnrichment'
 import { barcodeType, normalizeBarcode, safeImageUrl, validCheckDigit } from '../lib/productBarcode'
 import { uploadAdjunto } from '../lib/adjuntos'
 import { useBackHandler } from '../lib/backStack'
 import ProductBarcodeScanner from '../components/ProductBarcodeScanner'
+import ProductMasters from '../components/ProductMasters'
 import './Articulos.css'
 
-const empty = barcode => ({ product_id:crypto.randomUUID(), barcode, name:'', description:'', brand:'', manufacturer:'', category:'', subcategory:'', image_url:'', ingredients:'', allergens:'', nutrition_text:'', country_of_origin:'', presentation:'', net_quantity:'', net_unit:'', units_per_package:'', packaging_level:'unknown', rne:'', rnpa:'', storage_conditions:'', related_barcodes:[], source:null, stock_unit:'unidad', stock_factor:'1', presentation_active:true, status:'verified' })
-const fields = [['name','Nombre del artículo *'],['brand','Marca'],['manufacturer','Fabricante'],['category','Categoría'],['subcategory','Subcategoría'],['country_of_origin','País de origen'],['rne','RNE'],['rnpa','RNPA'],['presentation','Presentación / descripción del envase']]
+const empty = barcode => ({ product_id:crypto.randomUUID(), barcode, name:'', description:'', brand:'', manufacturer:'', category:'', subcategory:'', image_url:'', ingredients:'', allergens:'', nutrition_text:'', country_of_origin:'', presentation:'', net_quantity:'', net_unit:'', units_per_package:'', packaging_level:'unknown', rne:'', rnpa:'', storage_conditions:'', related_barcodes:[], source:null, stock_unit:'', stock_factor:'1', presentation_active:true, status:'verified' })
+const fields = [['category','Categoría'],['subcategory','Subcategoría'],['country_of_origin','País de origen'],['rne','RNE'],['rnpa','RNPA'],['presentation','Presentación / descripción del envase']]
 const packagingLabels = { unit:'Unidad', pack:'Pack', box:'Caja', case:'Caja / bulto', pallet:'Pallet', unknown:'Presentación por confirmar' }
 
 export function RelevamientoArticulos() { return <Articulos initialMode="scan" /> }
@@ -51,6 +52,9 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
   const [siteSettings, setSiteSettings] = useState({})
   const [siteConfigBusy, setSiteConfigBusy] = useState(null)
   const [siteConfigError, setSiteConfigError] = useState('')
+  const [masterValues, setMasterValues] = useState([])
+  const [masterError, setMasterError] = useState('')
+  const [showMasters, setShowMasters] = useState(false)
   useBackHandler(() => {
     if (busyRef.current) return
     if (scanner) setScanner(false)
@@ -86,6 +90,12 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     return () => { stale = true }
   }, [])
   useEffect(() => {
+    let stale = false
+    listProductMasterValues().then(data => { if (!stale) setMasterValues(data) })
+      .catch(cause => { if (!stale) setMasterError(cause.message || 'No se pudieron cargar los maestros.') })
+    return () => { stale = true }
+  }, [])
+  useEffect(() => {
     if (!form?.expected_updated_at || !form?.presentation_id) { setSiteSettings({}); return }
     let stale = false
     setSiteConfigError('')
@@ -107,7 +117,33 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     if (onNavigate) onNavigate('inicio')
     else window.history.back()
   }
-  const switchMode = next => { if (busyRef.current || !canLeave()) return; reset(); setMode(next); setNotice('') }
+  const switchMode = next => { if (busyRef.current || !canLeave()) return; reset(); setShowMasters(false); setMode(next); setNotice('') }
+  const startManual = () => {
+    if (busyRef.current || !canLeave()) return
+    reset(); setShowMasters(false); setMode('list'); setForm(empty('')); setEditing(true)
+  }
+  const openProduct = async productId => {
+    if (busyRef.current || !canLeave()) return
+    busyRef.current = true; setBusy(true); setError(''); setNotice('')
+    try { const product = await findProductById(productId); reset(); setForm({ ...empty(product.barcode), ...product }); setNotice('Artículo encontrado en nuestro maestro.') }
+    catch (cause) { setError(cause.message || 'No se pudo abrir el artículo.') }
+    finally { busyRef.current = false; setBusy(false) }
+  }
+  const saveMaster = async value => {
+    const previous = masterValues.find(item => item.id === value.id)
+    await saveProductMasterValue(value)
+    setMasterValues(await listProductMasterValues())
+    if (previous && previous.name !== value.name) {
+      const key = value.kind === 'brand' ? 'brand' : value.kind === 'manufacturer' ? 'manufacturer' : 'stock_unit'
+      setForm(current => current?.[key] === previous.name ? { ...current, [key]:value.name } : current)
+    }
+    setRefresh(current => current + 1)
+  }
+  const masterOptions = (kind, selected) => {
+    const values = masterValues.filter(item => item.kind === kind && (item.active || item.name === selected)).map(item => item.name)
+    if (selected && !values.includes(selected)) values.push(selected)
+    return values.sort((a,b) => a.localeCompare(b, 'es'))
+  }
   const update = (key, value) => { setForm(f => ({ ...f, [key]:value })); setDirty(true) }
   const addRelatedBarcode = () => {
     setForm(current => ({ ...current, related_barcodes:[...(current.related_barcodes || []), { barcode:'',presentation:'',packaging_level:'unit',stock_factor:'1',units_per_package:'' }] }))
@@ -190,7 +226,7 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     if (!writable || busyRef.current) return
     try {
       validateProduct(form)
-      if (!validCheckDigit(form.barcode) && !confirmedCode) throw new Error('El dígito verificador no coincide. Revisá el código y confirmá que lo cotejaste con la etiqueta.')
+      if (form.barcode && !validCheckDigit(form.barcode) && !confirmedCode) throw new Error('El dígito verificador no coincide. Revisá el código y confirmá que lo cotejaste con la etiqueta.')
     } catch (e) { setError(e.message); return }
     busyRef.current = true; setBusy(true); setError(''); setNotice('')
     let saved
@@ -234,12 +270,16 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     <nav aria-label="Artículos" className="articulos-tabs">
       {writable && <button type="button" className={mode === 'scan' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('scan')}><Barcode size={18} /> Relevamiento de artículos</button>}
       <button type="button" className={mode === 'list' ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => switchMode('list')}><Package size={18} /> Artículos</button>
+      {writable && <button type="button" className="btn-primary" disabled={busy} onClick={startManual}><Plus size={18} /> Agregar artículo</button>}
+      <button type="button" className={showMasters ? 'btn-primary' : 'btn-ghost'} disabled={busy} onClick={() => setShowMasters(current => !current)}>Maestros</button>
     </nav>
     {error && <p className="articulos-error" role="alert">{error}</p>}
+    {masterError && <p className="articulos-error" role="alert">{masterError}</p>}
     {notice && <p className="articulos-notice" role="status">{notice}</p>}
     {warnings.map((w, i) => <p key={i} className="articulos-warning">{w}</p>)}
     {busy && <p role="status">{form ? 'Guardando / consultando artículo…' : 'Buscando en el maestro y las fuentes disponibles…'}</p>}
-    {!form && mode === 'scan' && <section className="articulos-card">
+    {showMasters && <ProductMasters values={masterValues} onSave={saveMaster} canEdit={writable} canEditExisting={!form} />}
+    {!showMasters && !form && mode === 'scan' && <section className="articulos-card">
       <button type="button" className="btn-primary articulos-scan" disabled={busy} onClick={() => setScanner(true)}><Barcode size={28} /> ESCANEAR CÓDIGO</button>
       <form onSubmit={e => { e.preventDefault(); lookup(code) }} className="articulos-code">
         <label htmlFor="product-code">Escaneá con pistola o ingresá el código manualmente</label>
@@ -247,24 +287,24 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
       </form>
       <p>Se consulta primero nuestra base. Si el producto no está identificado, podés cargarlo manualmente.</p>
     </section>}
-    {!form && mode === 'list' && <section>
+    {!showMasters && !form && mode === 'list' && <section>
       <div className="articulos-actions"><button type="button" className="btn-ghost" disabled={exporting || loading} onClick={exportXlsx}>Descargar base en Excel</button></div>
       <form className="articulos-search" onSubmit={e => { e.preventDefault(); setQuery(search.trim()); setPage(0); setRefresh(n => n + 1) }}>
         <label htmlFor="article-search">Buscar por código, nombre, marca o categoría</label>
         <div><input id="article-search" className="input-dark" value={search} maxLength={200} onChange={e => setSearch(e.target.value)} /><button className="btn-ghost" aria-label="Buscar artículos"><Search size={18} /></button></div>
       </form>
-      {loading ? <p role="status">Cargando artículos…</p> : listError ? <p role="alert" className="articulos-error">{listError} <button className="btn-ghost" onClick={() => setRefresh(n => n + 1)}>Reintentar</button></p> : rows.length === 0 ? <p>No hay artículos para esta búsqueda.</p> : <div className="articulos-list">{rows.map(row => <button disabled={busy} className="articulos-card articulos-row" type="button" key={row.id} onClick={() => lookup(row.barcodes?.[0]?.barcode || '', true)}>
+      {loading ? <p role="status">Cargando artículos…</p> : listError ? <p role="alert" className="articulos-error">{listError} <button className="btn-ghost" onClick={() => setRefresh(n => n + 1)}>Reintentar</button></p> : rows.length === 0 ? <p>No hay artículos para esta búsqueda.</p> : <div className="articulos-list">{rows.map(row => <button disabled={busy} className="articulos-card articulos-row" type="button" key={row.id} onClick={() => openProduct(row.id)}>
         {safeImageUrl(row.image_url) ? <img src={safeImageUrl(row.image_url)} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <Package size={32} />}
         <span><strong>{row.name}</strong><span>{row.internal_code || 'Código interno pendiente'} · {row.brand || 'Sin marca registrada'} · {row.category || 'Sin categoría'}</span><span>{row.presentations?.map(p => p.presentation).filter(Boolean).join(' · ')}</span><code>{row.barcodes?.map(b => b.barcode).join(' · ')}</code></span><span>Ver ficha →</span>
       </button>)}</div>}
       <div className="articulos-actions"><button className="btn-ghost" disabled={page === 0 || loading || busy} onClick={() => setPage(p => p - 1)}>Anterior</button><span>Página {page + 1}</span><button className="btn-ghost" disabled={rows.length < 30 || loading || busy} onClick={() => setPage(p => p + 1)}>Siguiente</button></div>
     </section>}
-    {form && <section className="articulos-card">
+    {!showMasters && form && <section className="articulos-card">
       <div className="articulos-actions"><button type="button" className="btn-ghost" disabled={busy} onClick={() => { if (canLeave()) reset() }}>← Volver</button>{writable && !editing && <button type="button" className="btn-primary" disabled={busy} onClick={() => setEditing(true)}>EDITAR</button>}</div>
-      <div className="articulos-product-head">{image ? <img src={image} alt={form.name || 'Imagen del artículo'} referrerPolicy="no-referrer" /> : <div className="articulos-placeholder"><Package size={40} /><span>Sin imagen</span></div>}<div><h2>{form.name || 'Nuevo artículo'}</h2><p>{form.internal_code || 'El código interno se asignará al guardar'} · {form.brand || 'Marca sin completar'}</p><code>{form.barcode}</code><p>{barcodeType(form.barcode)} · {packagingLabels[form.packaging_level]}</p><p>{form.presentation}</p></div></div>
+      <div className="articulos-product-head">{image ? <img src={image} alt={form.name || 'Imagen del artículo'} referrerPolicy="no-referrer" /> : <div className="articulos-placeholder"><Package size={40} /><span>Sin imagen</span></div>}<div><h2>{form.name || 'Nuevo artículo'}</h2><p>{form.internal_code || 'El código interno se asignará al guardar'} · {form.brand || 'Marca sin completar'}</p><code>{form.barcode || 'Sin código de barras'}</code><p>{form.barcode ? barcodeType(form.barcode) : 'Carga manual'} · {packagingLabels[form.packaging_level]}</p><p>{form.presentation}</p></div></div>
       {siteSettingsPanel}
       {form.related_barcodes?.length > 0 && <div className="articulos-related"><h3>Códigos relacionados del mismo producto</h3>{form.related_barcodes.map(item => <p key={item.barcode}><code>{item.barcode}</code> · {barcodeType(item.barcode)} · {packagingLabels[item.packaging_level] || item.packaging_level}{item.units_per_package ? ` · ${item.units_per_package} unidades` : ''}</p>)}<p>Al guardar, estos códigos quedarán vinculados a la misma ficha.</p></div>}
-      {writable && <section className="articulos-enrichment" aria-label="Completar datos del artículo">
+      {writable && form.barcode && <section className="articulos-enrichment" aria-label="Completar datos del artículo">
         <button type="button" className="btn-ghost" disabled={busy} onClick={completeMissing}>Completar datos faltantes</button>
         <p>Consulta fuentes adicionales y propone datos para campos vacíos. Se conservan tus correcciones.</p>
         <details><summary>Agregar una ficha de Precialo</summary><label>Enlace de Precialo (opcional)<input className="input-dark" type="url" disabled={busy} value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://precialo.com.ar/p/..." /></label><p>Se comprueba que la ficha contenga el código exacto. Pegá el enlace y pulsá Completar datos faltantes.</p></details>
@@ -274,20 +314,23 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
           <div className="articulos-actions"><button type="button" className="btn-primary" disabled={busy} onClick={acceptProposals}>Aplicar datos propuestos</button><button type="button" className="btn-ghost" disabled={busy} onClick={() => setProposals([])}>Descartar propuestas</button></div>
         </div>}
       </section>}
-      {!validCheckDigit(form.barcode) && <div className="articulos-warning">El dígito verificador no coincide. Cotejá todos los dígitos con la etiqueta.{editing && <label><input type="checkbox" checked={confirmedCode} onChange={e => setConfirmedCode(e.target.checked)} /> Revisé el código y confirmo que corresponde a la etiqueta.</label>}</div>}
+      {form.barcode && !validCheckDigit(form.barcode) && <div className="articulos-warning">El dígito verificador no coincide. Cotejá todos los dígitos con la etiqueta.{editing && <label><input type="checkbox" checked={confirmedCode} onChange={e => setConfirmedCode(e.target.checked)} /> Revisé el código y confirmo que corresponde a la etiqueta.</label>}</div>}
       <form onSubmit={e => { e.preventDefault(); save(false) }}>
         <fieldset disabled={!editing || busy} className="articulos-fields">
           <label>Código interno<input className="input-dark" value={form.internal_code || 'Se asigna automáticamente'} readOnly /></label>
           <label>Estado del artículo<select className="input-dark" value={form.status || 'verified'} onChange={e => update('status',e.target.value)}><option value="verified">Activo / verificado</option><option value="pending">Pendiente de verificación</option><option value="inactive">Inactivo</option></select></label>
-          {fields.map(([key, label]) => <label key={key}>{label}<input className="input-dark" value={form[key] || ''} onChange={e => update(key, e.target.value)} maxLength={key === 'name' ? 500 : 2000} required={key === 'name'} /></label>)}
-          <label>Unidad base de stock<input className="input-dark" value={form.stock_unit || ''} onChange={e => update('stock_unit',e.target.value)} maxLength={30} placeholder="Ej.: unidad" /></label>
+          <label>Nombre del artículo *<input className="input-dark" value={form.name || ''} onChange={e => update('name',e.target.value)} maxLength={500} required /></label>
+          <label>Marca *<select className="input-dark" value={form.brand || ''} onChange={e => update('brand',e.target.value)} required><option value="">Seleccionar marca</option>{masterOptions('brand', form.brand).map(name => <option key={name} value={name}>{name}</option>)}</select><span className="articulos-help">¿Falta una marca? Agregala en Maestros.</span></label>
+          <label>Fabricante / proveedor<select className="input-dark" value={form.manufacturer || ''} onChange={e => update('manufacturer',e.target.value)}><option value="">Sin definir</option>{masterOptions('manufacturer', form.manufacturer).map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+          {fields.map(([key, label]) => <label key={key}>{label}<input className="input-dark" value={form[key] || ''} onChange={e => update(key, e.target.value)} maxLength={2000} /></label>)}
+          <label>Unidad base de stock *<select className="input-dark" value={form.stock_unit || ''} onChange={e => update('stock_unit',e.target.value)} required><option value="">Seleccionar unidad</option>{masterOptions('stock_unit', form.stock_unit).map(name => <option key={name} value={name}>{name}</option>)}</select></label>
           <label>Factor de stock de esta presentación<input className="input-dark" type="number" min="0.001" step="any" value={form.stock_factor ?? ''} onChange={e => update('stock_factor',e.target.value)} /><span className="articulos-help">Cuántas unidades base representa este código. Ej.: una caja de 12 = 12.</span></label>
-          <label>Nivel de empaque<select className="input-dark" value={form.packaging_level} onChange={e => update('packaging_level', e.target.value)}><option value="unknown">Por confirmar</option><option value="unit">Unidad individual</option><option value="pack">Pack</option><option value="box">Caja</option><option value="case">Caja / bulto</option><option value="pallet">Pallet</option></select></label>
-          <label>Contenido por unidad contenida<input className="input-dark" type="number" min="0.001" step="any" value={form.net_quantity ?? ''} onChange={e => update('net_quantity', e.target.value)} placeholder="Ej.: 8" /></label>
-          <label>Unidad de contenido<select className="input-dark" value={form.net_unit || ''} onChange={e => update('net_unit', e.target.value)}><option value="">Sin definir</option>{['g','kg','mg','ml','l','unidad','m','cm'].map(unit => <option key={unit}>{unit}</option>)}</select></label>
+          <label>Nivel de empaque *<select className="input-dark" value={form.packaging_level} onChange={e => update('packaging_level', e.target.value)} required><option value="unknown" disabled>Seleccionar nivel</option><option value="unit">Unidad individual</option><option value="pack">Pack</option><option value="box">Caja</option><option value="case">Caja / bulto</option><option value="pallet">Pallet</option></select></label>
+          <label>Contenido por unidad contenida *<input className="input-dark" type="number" min="0.001" step="any" value={form.net_quantity ?? ''} onChange={e => update('net_quantity', e.target.value)} placeholder="Ej.: 8" required /></label>
+          <label>Unidad de contenido *<select className="input-dark" value={form.net_unit || ''} onChange={e => update('net_unit', e.target.value)} required><option value="">Seleccionar unidad</option>{['g','kg','mg','ml','l','unidad','m','cm'].map(unit => <option key={unit}>{unit}</option>)}</select></label>
           <label>Unidades contenidas por caja / bulto<input className="input-dark" type="number" min="1" step="1" value={form.units_per_package ?? ''} onChange={e => update('units_per_package', e.target.value)} placeholder="Ej.: 192" /></label>
           <p className="articulos-wide">Una caja de 192 sobres de 8 g se registra como 192 unidades contenidas y 8 g por unidad. Verificá esos datos en el envase.</p>
-          <section className="articulos-wide articulos-barcodes-editor">
+          {form.barcode && <section className="articulos-wide articulos-barcodes-editor">
             <div className="articulos-section-title"><div><h3>Códigos adicionales</h3><p>Asociá otros EAN, UPC o GTIN-14 a este mismo producto y definí cuántas unidades base representa cada presentación.</p></div>{editing && <button type="button" className="btn-ghost" onClick={addRelatedBarcode}>+ Agregar código</button>}</div>
             {(form.related_barcodes || []).map((item,index) => <div className="articulos-barcode-line" key={item.id || `${index}-${item.barcode}`}>
               <label>Código<input className="input-dark" inputMode="numeric" maxLength={14} value={item.barcode || ''} onChange={e => updateRelatedBarcode(index,'barcode',e.target.value)} /></label>
@@ -298,7 +341,7 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
               {item.id && <span className="articulos-code-saved">Registrado</span>}
             </div>)}
             {!(form.related_barcodes || []).length && <p>No hay códigos adicionales asociados.</p>}
-          </section>
+          </section>}
           {[['description','Descripción comercial'],['ingredients','Ingredientes'],['allergens','Alérgenos'],['nutrition_text','Información nutricional (incluí base, porción y unidades)']].map(([key,label]) => <label key={key}>{label}<textarea className="input-dark" rows={2} maxLength={20000} value={form[key] || ''} onChange={e => update(key, e.target.value)} placeholder="Sin información registrada" /></label>)}
           <label>Condiciones de conservación<textarea className="input-dark" rows={2} maxLength={2000} value={form.storage_conditions || ''} onChange={e => update('storage_conditions',e.target.value)} placeholder="Ej.: conservar refrigerado entre 2 °C y 8 °C" /></label>
           <label className="articulos-checkbox"><input type="checkbox" checked={form.presentation_active !== false} onChange={e => update('presentation_active',e.target.checked)} /> Presentación disponible</label>
