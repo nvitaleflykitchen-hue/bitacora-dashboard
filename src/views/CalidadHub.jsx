@@ -10,6 +10,7 @@ import ISO9001Dashboard from './ISO9001Dashboard'
 import AuditoriasInternas from './AuditoriasInternas'
 import Capacitaciones from './Capacitaciones'
 import BibliotecaRecursos from '../components/BibliotecaRecursos'
+import Microbiologia from './Microbiologia'
 
 const TABS = [
   { id:'iso9001', label:'ISO 9001' },
@@ -17,6 +18,7 @@ const TABS = [
   { id:'capa', label:'CAPA' },
   { id:'auditorias', label:'Auditorías' },
   { id:'capacitaciones', label:'Capacitaciones' },
+  { id:'microbiologia', label:'Microbiología' },
   { id:'recursos', label:'Recursos BPM' },
   { id:'comedores', label:'Comedores' },
   { id:'indicadores', label:'Indicadores' },
@@ -29,6 +31,7 @@ export default function CalidadHub({ onNavigate }) {
     : activeTab === 'capa' ? CAPA
     : activeTab === 'auditorias' ? AuditoriasInternas
     : activeTab === 'capacitaciones' ? Capacitaciones
+    : activeTab === 'microbiologia' ? Microbiologia
     : activeTab === 'recursos' ? () => <BibliotecaRecursos categoria="Calidad e inocuidad" />
     : activeTab === 'indicadores' ? Indicadores
     : activeTab === 'comedores' ? ComedoresMetricas
