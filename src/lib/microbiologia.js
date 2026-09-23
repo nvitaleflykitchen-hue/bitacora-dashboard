@@ -8,8 +8,8 @@ export function buildMicroStats(records) {
   const valid = records.filter(row => !row.anulado_en)
   return {
     total:valid.length,
-    cumple:valid.filter(row => row.conclusion === 'cumple').length,
-    observado:valid.filter(row => row.conclusion === 'observado').length,
-    noCumple:valid.filter(row => row.conclusion === 'no_cumple').length,
+    cumple:valid.filter(row => row.estado === 'cumple').length,
+    observado:valid.filter(row => row.estado === 'observado').length,
+    noCumple:valid.filter(row => row.estado === 'no_cumple').length,
   }
 }

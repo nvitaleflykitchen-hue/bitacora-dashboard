@@ -1,5 +1,11 @@
 # KNOWN_ISSUES — bitacora-dashboard
 
+## Microbiología: acceso amplio en la tabla histórica (pendiente de migración)
+
+- Severidad: ALTO. Cualquier usuario autenticado tiene actualmente SELECT, INSERT, UPDATE y DELETE sobre `bitacora.microbiologia_resultados` sin filtro de sede.
+- Verificación: consulta estática de `pg_policies`, `information_schema.role_table_grants` y `pg_class.relrowsecurity` en el proyecto `mixyhfdlzjarvszinytk` el 2026-09-22. Las cuatro políticas tienen condición `true`; no se ejecutó ninguna escritura de prueba. La tabla contiene 113 resultados importados.
+- Corrección propuesta: la migración `20260922170000_microbiologia_REVIEW.sql` reemplaza las políticas por alcance territorial, revoca DELETE, y agrega evidencia PDF privada. Debe aplicarse antes de integrar el PR de la pantalla. Los resultados importados se conservan sin modificar.
+
 ## Copiloto local: respuesta fuera de contexto (corregido en 2.9.10)
 
 - Severidad: ALTO, informe operativo incorrecto.

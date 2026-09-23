@@ -46,7 +46,7 @@ export default function Microbiologia({ onOpenTab }) {
   const siteNames = useMemo(() => new Map(sedes.map(site => [String(site.id), site.nombre])), [sedes])
   const visible = useMemo(() => rows.filter(row => {
     if (siteFilter && String(row.sede_id) !== siteFilter) return false
-    if (statusFilter && row.conclusion !== statusFilter) return false
+    if (statusFilter && row.estado !== statusFilter) return false
     const needle = query.trim().toLocaleLowerCase()
     return !needle || [row.protocolo, row.muestra, row.parametro, row.laboratorio, siteNames.get(String(row.sede_id))].some(value => String(value || '').toLocaleLowerCase().includes(needle))
   }), [rows, siteFilter, statusFilter, query, siteNames])
@@ -57,7 +57,14 @@ export default function Microbiologia({ onOpenTab }) {
     if (!canWrite) return
     setSaving(true)
     try {
-      const payload = { ...form, sede_id:Number(form.sede_id), creado_por:user.id }
+      const payload = {
+        sede_id:Number(form.sede_id), fecha:form.fecha,
+        protocolo:form.protocolo.trim(), laboratorio:form.laboratorio.trim() || null,
+        muestra:form.muestra.trim(), parametro:form.parametro.trim(),
+        valor:form.resultado.trim(), unidad:form.unidad.trim() || null,
+        estado:form.conclusion, criterio:form.criterio.trim() || null,
+        notas:form.observaciones.trim() || null, creado_por:user.id,
+      }
       const created = await createMicroResult(payload)
       let pdfFailed = false
       if (file) {
@@ -117,8 +124,8 @@ export default function Microbiologia({ onOpenTab }) {
       <select aria-label="Filtrar por estado" className="input-dark" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="">Todos los estados</option>{Object.entries(STATUS).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select>
     </div>
     <div className="glass overflow-x-auto"><table className="w-full text-sm" style={{ minWidth:900 }}><thead><tr>{['Fecha / protocolo','Sede','Muestra','Parámetro','Resultado','Conclusión','Evidencia','Acciones'].map(label => <th key={label} className="p-3 text-left">{label}</th>)}</tr></thead><tbody>{visible.map(row => <tr key={row.id} className="border-t border-white/10" style={{ opacity:row.anulado_en ? 0.55 : 1 }}>
-      <td className="p-3"><strong>{row.protocolo}</strong><div>{row.fecha}</div>{row.anulado_en && <span>Anulado: {row.motivo_anulacion}</span>}</td><td className="p-3">{siteNames.get(String(row.sede_id)) || row.sede_id}</td><td className="p-3">{row.muestra}</td><td className="p-3">{row.parametro}</td><td className="p-3">{row.resultado} {row.unidad}</td><td className="p-3">{STATUS[row.conclusion]}{row.criterio && <div className="text-xs" title={row.criterio}>{row.criterio}</div>}</td>
-      <td className="p-3">{row.pdf_path ? <button type="button" className="btn-ghost" onClick={() => openMicroPdf(row.pdf_path).catch(e => toast.error(mensajeError(e)))}><FileText size={14} /> {row.pdf_nombre}</button> : canWrite && !row.anulado_en ? <label className="btn-ghost cursor-pointer">Adjuntar PDF<input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={e => uploadLater(row, e.target.files?.[0])} /></label> : '—'}</td>
+      <td className="p-3"><strong>{row.protocolo}</strong><div>{row.fecha}</div>{row.anulado_en && <span>Anulado: {row.motivo_anulacion}</span>}</td><td className="p-3">{siteNames.get(String(row.sede_id)) || row.sede_id}</td><td className="p-3">{row.muestra}</td><td className="p-3">{row.parametro}</td><td className="p-3">{row.valor} {row.unidad}</td><td className="p-3">{STATUS[row.estado] || row.estado}{row.criterio && <div className="text-xs" title={row.criterio}>{row.criterio}</div>}</td>
+      <td className="p-3">{row.pdf_path ? <button type="button" className="btn-ghost" onClick={() => openMicroPdf(row.pdf_path).catch(e => toast.error(mensajeError(e)))}><FileText size={14} /> {row.pdf_nombre}</button> : <div>{row.evidencia && <p className="text-xs" title="El respaldo solo conservó el nombre; el PDF aún no está adjuntado">Referencia histórica: {row.evidencia} (sin archivo)</p>}{canWrite && !row.anulado_en ? <label className="btn-ghost cursor-pointer">Adjuntar PDF<input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={e => uploadLater(row, e.target.files?.[0])} /></label> : !row.evidencia ? '—' : null}</div>}</td>
       <td className="p-3">{canWrite && !row.anulado_en && <button type="button" className="btn-ghost" onClick={() => annul(row)}>Anular</button>}</td>
     </tr>)}</tbody></table>{!loading && !visible.length && <p className="p-8 text-center" style={{ color:'var(--text-dim)' }}>No hay resultados para estos filtros.</p>}{loading && <p className="p-4">Cargando…</p>}</div>
     {stats.noCumple > 0 && <div className="glass p-4 flex flex-wrap justify-between gap-2"><span><AlertTriangle size={15} className="inline" /> Hay {stats.noCumple} resultado(s) no conforme(s). Revisá el protocolo y registrá el tratamiento.</span><span className="flex gap-2"><button type="button" className="btn-ghost" onClick={() => onOpenTab?.('nc')}>No conformidades</button><button type="button" className="btn-primary" onClick={() => onOpenTab?.('capa')}>CAPA</button></span></div>}
