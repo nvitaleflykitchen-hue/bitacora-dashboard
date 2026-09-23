@@ -4,7 +4,7 @@ const BUCKET = 'microbiologia-protocolos'
 
 export async function listMicroResults(sedeIds = null) {
   if (Array.isArray(sedeIds) && sedeIds.length === 0) return []
-  let query = db().from('microbiologia_resultados').select('*').order('fecha', { ascending:false }).order('creado_en', { ascending:false }).limit(1000)
+  let query = db().from('microbiologia_resultados').select('*').order('fecha', { ascending:false }).order('created_at', { ascending:false }).limit(1000)
   if (sedeIds?.length) query = query.in('sede_id', sedeIds)
   const { data, error } = await query
   if (error) throw error
