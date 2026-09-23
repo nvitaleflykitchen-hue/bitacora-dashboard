@@ -11,6 +11,10 @@ alter table bitacora.microbiologia_resultados
   add column if not exists anulado_por uuid references auth.users(id),
   add column if not exists motivo_anulacion text;
 
+alter table bitacora.microbiologia_resultados
+  add constraint microbiologia_pdf_pair check ((pdf_path is null) = (pdf_nombre is null)),
+  add constraint microbiologia_annulment_pair check ((anulado_en is null) = (anulado_por is null));
+
 create unique index if not exists microbiologia_pdf_path_idx
   on bitacora.microbiologia_resultados(pdf_path) where pdf_path is not null;
 create index if not exists microbiologia_sede_fecha_idx
