@@ -22,6 +22,13 @@ function fullName(candidate = {}, entrevista = {}) {
   return value(entrevista.nombre_apellido || candidate.nombre_apellido).trim()
 }
 
+export function descripcionPostulacion(solicitud = {}) {
+  return [solicitud.puesto, solicitud.sede_nombre || solicitud.sede?.nombre]
+    .map(part => value(part).trim())
+    .filter(Boolean)
+    .join(' · ')
+}
+
 async function imageToDataUrl(url) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`No se pudo cargar la plantilla PDF (${url})`)
@@ -141,6 +148,9 @@ export async function generateFichaEntrevistaPdf({ candidate = {}, solicitud = {
   const pdf = createPdf(template)
   const study = normalizeStudy(entrevista.nivel_estudio)
   const mobility = normalizeMobility(entrevista.movilidad)
+
+  const postulacion = descripcionPostulacion(solicitud)
+  if (postulacion) draw(pdf, `Postulación: ${postulacion}`, 56, 91, { size: 8, maxWidth: 448, singleLine: true })
 
   draw(pdf, formatDate(entrevista.fecha_entrevista), 420, 127, { size: 8, maxWidth: 82, singleLine: true })
   draw(pdf, fullName(candidate, entrevista), 183, 149, { size: 8, maxWidth: 320, singleLine: true })
