@@ -3,13 +3,15 @@ import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
 import { getActivos, upsertActivo, getSedes } from '../../lib/queries'
-import { Plus, RefreshCw, Filter } from 'lucide-react'
+import { Plus, RefreshCw, Filter, FileDown } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
 import DocumentacionChecklist from '../../components/DocumentacionChecklist'
 import { getVehiculoDocumentacionTemplate } from '../../lib/documentacion'
 import { isQualityOnlyProfile } from '../../lib/access'
 import ActivoConcesionFields, { ActivoConcesionBadge } from '../../components/ActivoConcesionFields'
 import { concesionLabel } from '../../lib/activoConcesion'
+import { loadVehicleReport } from '../../lib/flotaReportData'
+import { downloadVehicleReportPdf } from '../../lib/flotaReportPdf'
 
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
 const INPUT_S = { width:'100%', padding:'0.4rem 0.75rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(107,114,128,0.3)', color:'var(--text)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', boxSizing:'border-box', outline:'none' }
@@ -28,7 +30,51 @@ const estaVencido   = f => !!f && f < hoy()
 const proximoVencer = f => { if (!f) return false; const d = (new Date(f)-new Date())/86400000; return d>=0 && d<=30 }
 const docColor = f => estaVencido(f) ? '#FF2A2A' : proximoVencer(f) ? '#F59E0B' : f ? '#39FF14' : 'var(--text-dim)'
 
-function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
+function ReportModal({ vehicles, sedes, initialSiteId, onClose }) {
+  const [siteId, setSiteId] = useState(String(initialSiteId || ''))
+  const [selected, setSelected] = useState([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const siteVehicles = vehicles.filter(v => String(v.sede_id) === siteId)
+  const chooseSite = id => { setSiteId(id); setSelected([]); setError('') }
+  const toggle = id => setSelected(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids,id])
+  const generate = async () => {
+    setBusy(true); setError('')
+    try {
+      const chosen = siteVehicles.filter(v => selected.includes(v.id))
+      const data = await loadVehicleReport(chosen)
+      downloadVehicleReportPdf(data, sedes.find(s => String(s.id) === siteId)?.nombre || chosen[0]?.sede_nombre)
+    } catch (e) { setError(`No se pudo generar el informe: ${e.message}`) }
+    finally { setBusy(false) }
+  }
+  return <div className="modal-overlay" onClick={onClose}>
+    <div onClick={e => e.stopPropagation()} style={{ background:'var(--surface)', color:'var(--text)', width:'min(650px,95vw)', maxHeight:'85vh', overflowY:'auto', padding:'1.5rem', border:'1px solid rgba(57,255,20,.25)' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}><h2 style={{ margin:0, fontSize:'1.2rem' }}>Informes de vehículos</h2><button type="button" className="btn-ghost" onClick={onClose}>Cerrar</button></div>
+      <p style={{ color:'var(--text-dim)', margin:'0.75rem 0' }}>Elegí una sede y uno o varios vehículos. Con uno obtenés su informe individual; con varios, un resumen de la sede y una ficha completa por vehículo.</p>
+      <label style={LABEL_S} htmlFor="report-site">Sede del informe</label>
+      <select id="report-site" value={siteId} onChange={e => chooseSite(e.target.value)} style={INPUT_S}>
+        <option value="">Seleccionar sede</option>
+        {sedes.filter(s => vehicles.some(v => String(v.sede_id) === String(s.id))).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+      </select>
+      {siteId && <>
+        <div style={{ display:'flex', gap:8, alignItems:'center', justifyContent:'space-between', margin:'1rem 0 .5rem' }}>
+          <span>{selected.length} de {siteVehicles.length} vehículos seleccionados</span>
+          <div style={{ display:'flex', gap:6 }}><button type="button" className="btn-ghost" onClick={() => setSelected(siteVehicles.map(v => v.id))}>Seleccionar todos</button><button type="button" className="btn-ghost" onClick={() => setSelected([])}>Quitar todos</button></div>
+        </div>
+        <div style={{ maxHeight:290, overflowY:'auto', border:'1px solid rgba(255,255,255,.12)' }}>
+          {siteVehicles.map(v => <label key={v.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'0.6rem', borderBottom:'1px solid rgba(255,255,255,.08)', cursor:'pointer' }}>
+            <input type="checkbox" checked={selected.includes(v.id)} onChange={() => toggle(v.id)} style={{ accentColor:'#39FF14' }} />
+            <span><strong>{v.nombre}</strong><small style={{ display:'block', color:'var(--text-dim)' }}>{v.estado?.replace('_',' ')} · {v.responsable || 'Sin responsable'}</small></span>
+          </label>)}
+        </div>
+      </>}
+      {error && <p role="alert" style={{ color:'#FF5050' }}>{error}</p>}
+      <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'1rem' }}><button type="button" className="btn-primary" disabled={!selected.length || busy} onClick={generate}>{busy ? 'Reuniendo información...' : `Descargar ${selected.length === 1 ? 'informe individual' : 'informe general'} PDF`}</button></div>
+    </div>
+  </div>
+}
+
+function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onReport }) {
   const isNew = !vehiculo?.id
   const { rol, perfil } = useAuth()
   const canEdit = ['admin','encargado','editor','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
@@ -212,6 +258,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
         {err && <p style={{ color:'#FF2A2A', fontSize:'0.8rem', marginBottom:'1rem' }}>{err}</p>}
 
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', marginTop:'1rem' }}>
+          {!isNew && !editing && <button onClick={() => onReport(vehiculo)} className='btn-ghost'>Informe PDF</button>}
           {!isNew && !editing && onCreateNovedad && vehiculo?.sede_id && (
             <button onClick={() => onCreateNovedad({ type:'vehiculo', id:vehiculo.id, label:vehiculo.nombre, sedeId:vehiculo.sede_id, sedeLabel:sedeName, returnView:'mntFlotaGestion' })} className='btn-primary'>+ Crear novedad</button>
           )}
@@ -236,31 +283,41 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad }) {
 export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
   const { mantenimientoSedeIds:allowedSedeIds, rol, perfil } = useAuth()
   const canWrite = ['admin','editor','encargado','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
-  const [vehiculos, setVehiculos] = useState([])
+  const [allVehicles, setAllVehicles] = useState([])
   const [sedes, setSedes] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
   const [sedeId, setSedeId] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [soloVenc, setSoloVenc] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportVehicle, setReportVehicle] = useState(null)
+  const [reportError, setReportError] = useState('')
 
-  useEffect(() => { getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
+  useEffect(() => { if (Array.isArray(allowedSedeIds) && !allowedSedeIds.length) { setSedes([]); return }; getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
 
   // Si el usuario tiene una sola sede asignada (ej: encargado), queda preseleccionada
   useEffect(() => { if (allowedSedeIds?.length === 1) setSedeId(String(allowedSedeIds[0])) }, [allowedSedeIds])
 
   const load = useCallback(() => {
     setLoading(true)
-    const filtros = { tipo: 'VEHICULO', sedeIds: allowedSedeIds || undefined }
-    if (sedeId) filtros.sede_id = Number(sedeId)
-    getActivos(filtros).then(setVehiculos).finally(() => setLoading(false))
-  }, [sedeId, allowedSedeIds])
+    if (Array.isArray(allowedSedeIds) && !allowedSedeIds.length) { setAllVehicles([]); setLoading(false); return }
+    getActivos({ tipo:'VEHICULO', sedeIds:allowedSedeIds || undefined }).then(setAllVehicles).finally(() => setLoading(false))
+  }, [allowedSedeIds])
   useEffect(() => { load() }, [load])
+  const vehiculos = sedeId ? allVehicles.filter(v => String(v.sede_id) === sedeId) : allVehicles
   useEffect(() => {
     if (!focusId || loading) return
-    const target = vehiculos.find(item => String(item.id) === String(focusId))
+    const target = allVehicles.find(item => String(item.id) === String(focusId))
     if (target) setModal(target)
-  }, [focusId, loading, vehiculos])
+  }, [focusId, loading, allVehicles])
+
+  const downloadSingle = async vehicle => {
+    setReportVehicle(vehicle.id); setReportError('')
+    try { downloadVehicleReportPdf(await loadVehicleReport([vehicle]), vehicle.sede_nombre) }
+    catch (e) { setModal(null); setReportError(`No se pudo generar el informe: ${e.message}`) }
+    finally { setReportVehicle(null) }
+  }
 
   const conVencido = v => DOCS.some(d => estaVencido(v[d.key]))
   const conProximo = v => DOCS.some(d => proximoVencer(v[d.key])) && !conVencido(v)
@@ -283,6 +340,7 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
             {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
           </select>
           <button onClick={load} style={{ ...SEL_S, display:'flex', alignItems:'center', gap:5 }}><RefreshCw size={11}/> Actualizar</button>
+          <button onClick={()=>setReportOpen(true)} disabled={loading || !allVehicles.length} style={{ ...SEL_S, display:'flex', alignItems:'center', gap:5 }}><FileDown size={13}/> Informes PDF</button>
           {canWrite && (
             <button onClick={()=>setModal({})} className='btn-primary' style={{ display:'flex', alignItems:'center', gap:6 }}>
               <Plus size={13}/> Nuevo Vehículo
@@ -290,6 +348,7 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
           )}
         </div>
       </PageHeader>
+      {reportError && <p role="alert" style={{ color:'#FF5050' }}>{reportError}</p>}
 
       {/* KPIs */}
       <div style={{ display:'flex', gap:'0.6rem', marginBottom:'1rem', flexWrap:'wrap' }}>
@@ -373,8 +432,11 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
           onClose={()=>setModal(null)}
           onSaved={()=>{ setModal(null); load() }}
           onCreateNovedad={onCreateNovedad}
+          onReport={downloadSingle}
         />
       )}
+      {reportVehicle && <span role="status" style={{ position:'fixed', bottom:20, right:20, background:'var(--surface)', padding:12, zIndex:200 }}>Generando informe...</span>}
+      {reportOpen && <ReportModal vehicles={allVehicles} sedes={sedes} initialSiteId={sedeId} onClose={()=>setReportOpen(false)} />}
     </div>
   )
 }
