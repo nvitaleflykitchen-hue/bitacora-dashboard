@@ -69,7 +69,7 @@ export function createVehicleReportPdf(items, siteName) {
 
   items.forEach((item,index) => {
     if (index || items.length > 1) { pdf.addPage(); y = 18 }
-    const {vehicle:v,documentation,fleetDocuments,plans,tickets,news,checks,extinguishers} = item
+    const {vehicle:v,documentation,fleetDocuments,plans,tickets,news,scaleReports = [],checks,extinguishers} = item
     line(`${index+1}. ${v.nombre}`,{bold:true,size:14})
     line(`Sede: ${value(v.sede_nombre)}  |  Estado: ${value(v.estado)}  |  Responsable: ${value(v.responsable)}`)
 
@@ -102,8 +102,20 @@ export function createVehicleReportPdf(items, siteName) {
     empty(tickets,'Sin tickets registrados.')
     tickets.forEach(t => entry(`Ticket ${value(t.numero || t.id)} · ${date(t.created_at)} · ${value(t.estado)}`,[`${value(t.tipo)} · ${value(t.descripcion)}`, t.diagnostico ? `Diagnóstico: ${t.diagnostico}` : null, `Prioridad: ${value(t.prioridad)}  |  Responsable: ${value(t.responsable)}  |  KM: ${value(t.lectura_km)}  |  Costo: ${money(t.costo_real)}`]))
 
+    section('Reportes de escala vinculados')
+    empty(scaleReports,'Sin reportes de escala vinculados a este vehículo.')
+    scaleReports.forEach(n => {
+      const source = n.sourceReport
+      entry(`Registro #${n.registro_id} · ${date(source?.fecha_reporte || n.fecha_reporte || n.created_at)}`,[
+        `Reportó: ${value(source?.reportante || n.reportante || source?.email_reportante)}  |  Turno: ${value(source?.turno)}  |  Sede: ${value(source?.sede_nombre || n.sede_nombre)}`,
+        `Tipo: ${value(n.tipo)}  |  Estado de la novedad: ${value(n.estado)}`,
+        `Texto reportado sobre el vehículo: ${value(n.descripcion)}`,
+        !source ? 'La ficha del registro de escala no está disponible; se muestran los datos guardados en la novedad.' : null,
+      ])
+    })
+
     section('Novedades operativas')
-    empty(news,'Sin novedades registradas.')
+    empty(news,'Sin otras novedades registradas fuera de reportes de escala.')
     news.forEach(n => entry(`${date(n.fecha_reporte || n.created_at)} · ${value(n.tipo)} · ${value(n.estado)}`,[n.descripcion,`Reportó: ${value(n.reportante)}`]))
 
     section('Checklists de vehículo')
