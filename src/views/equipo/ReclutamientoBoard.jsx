@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { deleteAdjunto, getAdjuntos, uploadAdjunto } from '../../lib/adjuntos'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
-import { generateFichaAltaPdf, generateFichaEntrevistaPdf } from '../../lib/reclutamientoPdf'
+import { descripcionPostulacion, generateFichaAltaPdf, generateFichaEntrevistaPdf } from '../../lib/reclutamientoPdf'
 import { confirmar, toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
 
@@ -581,10 +581,14 @@ function EntrevistaModal({ candidate, solicitud, initial, onClose, onSaved }) {
   }
 
   const pdfPayload = { candidate, solicitud, entrevista: form }
+  const postulacion = descripcionPostulacion(solicitud)
 
   return (
     <ModalShell title="Ficha de entrevista" subtitle={candidate?.nombre_apellido} onClose={onClose}>
       <div className="p-5 space-y-4">
+        <p className="text-sm" style={{ color:'var(--text-dim)' }}>
+          <strong style={{ color:'var(--text)' }}>Postulación principal:</strong> {postulacion || 'Sin búsqueda asociada'}
+        </p>
         <div className="grid grid-cols-4 gap-3">
           <Field label="Fecha entrevista"><input type="date" className="input-dark w-full" value={form.fecha_entrevista || ''} onChange={e=>set('fecha_entrevista', e.target.value)} /></Field>
           <Field label="Hora entrevista"><input type="time" className="input-dark w-full" value={formatTime(form.hora_entrevista)} onChange={e=>set('hora_entrevista', e.target.value)} /></Field>
