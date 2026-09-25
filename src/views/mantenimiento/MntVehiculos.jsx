@@ -4,8 +4,9 @@ import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
 import { notifyHighPriority } from '../../lib/pushNotifications'
 import { isQualityOnlyProfile } from '../../lib/access'
-import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, History, LayoutGrid, List, Download } from 'lucide-react'
+import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, History, LayoutGrid, List, Download, Share2 } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
+import ShareFleetTicketsModal from '../../components/ShareFleetTicketsModal'
 import { descargarHistorialVehiculoPdf } from '../../lib/vehiculoHistorialPdf'
 import { vehiculoEstadoFromDb, vehiculoEstadoToDb } from '../../lib/vehiculoTicketState'
 import usePersistedState from '../../hooks/usePersistedState'
@@ -243,7 +244,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
 }
 
 // ─── CARD ─────────────────────────────────────────────────────────────────────
-function VehCard({ ticket, onClick }) {
+function VehCard({ ticket, onClick, onShare }) {
   const [dragging, setDragging] = useState(false)
   const sla = slaStatus(ticket)
   const pc  = PC[ticket.prioridad] || '#aaa'
@@ -284,12 +285,15 @@ function VehCard({ ticket, onClick }) {
         </span>
         {ticket.tipo && <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', marginLeft:'auto' }}>{ticket.tipo}</span>}
       </div>
+      <button type="button" draggable={false} onClick={event => { event.stopPropagation(); onShare(ticket) }} style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:8, background:'rgba(57,255,20,0.07)', border:'1px solid rgba(57,255,20,0.2)', color:'#39ff14', borderRadius:4, padding:'4px 7px', cursor:'pointer', fontSize:'0.62rem' }}>
+        <Share2 size={11}/> Compartir
+      </button>
     </div>
   )
 }
 
 // ─── COLUMNA ──────────────────────────────────────────────────────────────────
-function Column({ col, tickets, onDrop, onCardClick }) {
+function Column({ col, tickets, onDrop, onCardClick, onShare }) {
   const [over, setOver] = useState(false)
   return (
     <div
@@ -304,7 +308,7 @@ function Column({ col, tickets, onDrop, onCardClick }) {
         <span style={{ marginLeft:'auto', fontSize:'0.62rem', background:`${col.color}22`, color:col.color, border:`1px solid ${col.color}33`, borderRadius:3, padding:'1px 8px', fontWeight:700 }}>{tickets.length}</span>
       </div>
       <div style={{ flex:1, overflowY:'auto', minHeight:80 }}>
-        {tickets.map(t=><VehCard key={t.id} ticket={t} onClick={onCardClick}/>)}
+        {tickets.map(t=><VehCard key={t.id} ticket={t} onClick={onCardClick} onShare={onShare}/>)}
         {!tickets.length && (
           <div style={{ textAlign:'center', padding:'24px 8px', color:'rgba(57,255,20,0.08)', fontSize:'0.62rem' }}>Arrastrá aquí</div>
         )}
@@ -500,6 +504,7 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
   const [filterTipo, setFilterTipo]   = usePersistedState('flotaVehiculos.tipo', '')
   const [filterSLA, setFilterSLA]     = usePersistedState('flotaVehiculos.sla', false)
   const [modalTicket, setModalTicket] = useState(null) // null | ticket obj | 'new'
+  const [shareInitialIds, setShareInitialIds] = useState(null)
   useEffect(() => {
     if (!focusId || loading) return
     const target = tickets.find(item => String(item.id) === String(focusId))
@@ -566,6 +571,13 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
           onSaved={() => { setModalTicket(null); load() }}
         />
       )}
+      {shareInitialIds && (
+        <ShareFleetTicketsModal
+          tickets={filtered.filter(ticket => ticket.estado !== 'resuelto' && ticket.estado !== 'rechazado')}
+          initialIds={shareInitialIds}
+          onClose={() => setShareInitialIds(null)}
+        />
+      )}
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <PageHeader title="Mantenimiento de Vehículos" subtitle={`Flota · ${patentes.length} vehículos · ${abiertos} tickets activos`}>
@@ -595,6 +607,11 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
               </button>
             ))}
           </div>
+          {viewMode === 'kanban' && (
+            <button type="button" className="btn-ghost" disabled={!filtered.some(ticket => ticket.estado !== 'resuelto' && ticket.estado !== 'rechazado')} onClick={() => setShareInitialIds(filtered.filter(ticket => ticket.estado !== 'resuelto' && ticket.estado !== 'rechazado').map(ticket => ticket.id))} title="Elegir tickets y compartirlos con un contacto de Flota">
+              <Share2 size={13}/> Compartir tickets
+            </button>
+          )}
           {canWrite && (
             <button onClick={() => setModalTicket('new')} className='btn-primary'>
               <Plus size={13}/> Nuevo ticket
@@ -649,6 +666,7 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
               tickets={filtered.filter(t => t.estado === col.id)}
               onDrop={moveTicket}
               onCardClick={canWrite ? setModalTicket : ()=>{}}
+              onShare={ticket => setShareInitialIds([ticket.id])}
             />
           ))}
         </div>
