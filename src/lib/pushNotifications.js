@@ -24,6 +24,28 @@ export async function getCurrentPushSubscription() {
   return registration.pushManager.getSubscription()
 }
 
+export async function getPushDeviceSettings(user) {
+  const subscription = await getCurrentPushSubscription()
+  if (!subscription || !user?.id) return null
+  const { data, error } = await db().from('push_subscriptions')
+    .select('active,event_types,site_ids,sound_enabled')
+    .eq('user_id', user.id).eq('endpoint', subscription.endpoint).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function savePushDeviceSettings(user, settings) {
+  const subscription = await getCurrentPushSubscription()
+  if (!subscription || !user?.id) throw new Error('Activá primero las notificaciones en este dispositivo.')
+  const { error } = await db().from('push_subscriptions').update({
+    event_types:settings.event_types,
+    site_ids:settings.site_ids,
+    sound_enabled:settings.sound_enabled,
+    updated_at:new Date().toISOString(),
+  }).eq('user_id', user.id).eq('endpoint', subscription.endpoint)
+  if (error) throw error
+}
+
 export async function activatePushNotifications(user, deviceLabel = '') {
   if (!user?.id) throw new Error('Iniciá sesión antes de activar notificaciones.')
   if (!pushSupported()) throw new Error('Este navegador no admite notificaciones Push.')
@@ -43,6 +65,7 @@ export async function activatePushNotifications(user, deviceLabel = '') {
   }
   const keyP256dh = subscription.getKey('p256dh')
   const keyAuth = subscription.getKey('auth')
+  const existing = await getPushDeviceSettings(user)
   const { error } = await db().from('push_subscriptions').upsert({
     user_id:user.id,
     endpoint:subscription.endpoint,
@@ -51,6 +74,11 @@ export async function activatePushNotifications(user, deviceLabel = '') {
     user_agent:navigator.userAgent,
     device_label:deviceLabel || navigator.platform || 'Dispositivo',
     active:true,
+    ...(existing ? {
+      event_types:existing.event_types,
+      site_ids:existing.site_ids,
+      sound_enabled:existing.sound_enabled,
+    } : {}),
     updated_at:new Date().toISOString(),
     last_seen_at:new Date().toISOString(),
   }, { onConflict:'endpoint' })
@@ -86,4 +114,12 @@ export async function notifyComentario(comentarioId, mencionadoUserIds = []) {
     body: { module:'comentario', entity_id:comentarioId, mentioned_user_ids:mentionIds },
   })
   if (error) console.warn('[push] No se pudo notificar el comentario:', error.message)
+}
+
+export async function notifyNoConformidad(id) {
+  if (!id) return
+  const { error } = await supabase.functions.invoke('send-priority-notification', {
+    body:{ module:'no_conformidades', entity_id:id },
+  })
+  if (error) console.warn('[push] No se pudo notificar la no conformidad:', error.message)
 }

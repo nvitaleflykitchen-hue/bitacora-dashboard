@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { subscriptionAcceptsEvent } from './routing.js'
 
 const cors = {
   'Access-Control-Allow-Origin':'*',
@@ -106,23 +107,40 @@ Deno.serve(async req => {
     try {
       const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY')
       const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')
-      const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@flykitchen.com.ar'
+      const configuredSubject = Deno.env.get('VAPID_SUBJECT')?.trim() || 'mailto:admin@flykitchen.com.ar'
+      const vapidSubject = configuredSubject.includes('@') && !configuredSubject.includes(':')
+        ? `mailto:${configuredSubject}`
+        : configuredSubject
       if (!vapidPublic || !vapidPrivate) throw new Error('Faltan secretos VAPID en la Edge Function')
       webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
 
       const { data:subscriptions } = await admin.schema('bitacora').from('push_subscriptions')
         .select('*').in('user_id', ids).eq('active', true)
-      const payload = JSON.stringify({
-        title:event.title, body:event.body, url:event.url,
-        tag:dedupeBase, dedupe_key:dedupeBase, requireInteraction:true,
-      })
+      const { data:recipientProfiles } = await admin.schema('bitacora').from('perfiles')
+        .select('id,rol,sede_ids,grupo_id').in('id', ids).eq('activo', true)
+      const profiles = new Map((recipientProfiles || []).map((profile:any) => [String(profile.id), profile]))
+      let eventGroupId:number | null = null
+      if (event.sedeId) {
+        const { data:site } = await admin.schema('bitacora').from('sedes')
+          .select('grupo_id').eq('id', event.sedeId).maybeSingle()
+        eventGroupId = site?.grupo_id ?? null
+      }
+      const sentUsers = new Set<string>()
       for (const sub of subscriptions || []) {
+        const profile:any = profiles.get(String(sub.user_id))
+        if (!profile || !subscriptionAcceptsEvent(sub, event, profile, eventGroupId)) continue
         try {
           await webpush.sendNotification({
             endpoint:sub.endpoint,
             keys:{ p256dh:sub.p256dh, auth:sub.auth_key },
-          }, payload)
+          }, JSON.stringify({
+            title:event.title, body:event.body, url:event.url,
+            tag:dedupeBase, dedupe_key:dedupeBase,
+            requireInteraction:event.priority === 'critica',
+            silent:sub.sound_enabled === false || ['baja','media'].includes(event.priority),
+          }))
           sent++
+          sentUsers.add(String(sub.user_id))
         } catch (error) {
           if ([404,410].includes(error?.statusCode)) {
             await admin.schema('bitacora').from('push_subscriptions')
@@ -130,8 +148,9 @@ Deno.serve(async req => {
           } else console.error('push-send', error)
         }
       }
-      await admin.schema('bitacora').from('notificaciones')
-        .update({ enviada_at:new Date().toISOString() }).in('dedupe_key', rows.map(r=>r.dedupe_key))
+      if (sentUsers.size) await admin.schema('bitacora').from('notificaciones')
+        .update({ enviada_at:new Date().toISOString() })
+        .in('dedupe_key', rows.filter(r => sentUsers.has(String(r.destinatario_id))).map(r=>r.dedupe_key))
     } catch (error) {
       pushError = error?.message || String(error)
       console.error('push-block', error)
@@ -171,14 +190,14 @@ async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:st
     if (!r || r.urgencia !== 'alta') return null
     return { module, entityType:'requerimiento', entityId:r.id, priority:'alta', sedeId:r.sede_id,
       responsableUserIds:[r.comprador_id, r.supervisor_compras_id].filter(Boolean),
-      title:`Compra urgente #${r.numero || r.id}`, body:r.descripcion, url:'/?view=requerimientos' }
+      title:`Compra urgente #${r.numero || r.id}`, body:r.descripcion, url:`/?view=requerimientos&targetId=${r.id}` }
   }
   if (module === 'tareas') {
     const { data:t } = await admin.schema('bitacora').from('tareas')
       .select('id,titulo,prioridad,sede_id,responsable_id').eq('id', id).single()
     if (!t || String(t.prioridad).toLowerCase() !== 'alta') return null
     return { module, entityType:'tarea', entityId:t.id, priority:'alta', sedeId:t.sede_id,
-      responsableUserId:t.responsable_id, title:'Nueva tarea de prioridad alta', body:t.titulo, url:'/?view=tareas' }
+      responsableUserId:t.responsable_id, title:'Nueva tarea de prioridad alta', body:t.titulo, url:`/?view=tareas&targetId=${t.id}` }
   }
   if (module === 'mantenimiento') {
     const { data:t } = await admin.from('mnt_tickets')
@@ -192,14 +211,22 @@ async function resolveVerifiedEvent(admin:any, input:EventInput, callerUserId:st
     }
     return { module, entityType:'ticket', entityId:t.id, priority:t.prioridad, sedeId:t.sede_id,
       responsableEmail, title:`Ticket ${String(t.prioridad).toUpperCase()} #${t.numero || t.id}`,
-      body:t.descripcion, url:'/?view=mntTickets' }
+      body:t.descripcion, url:`/?view=mntTickets&targetId=${t.id}` }
   }
   if (module === 'escalamientos') {
     const { data:e } = await admin.schema('bitacora').from('escalamientos')
-      .select('id,tipo,descripcion,sede_id,responsable_id').eq('id', id).single()
+      .select('id,tipo,descripcion,sede_id').eq('id', id).single()
     if (!e) return null
     return { module, entityType:'escalamiento', entityId:e.id, priority:'alta', sedeId:e.sede_id,
-      responsableUserId:e.responsable_id, title:'Nuevo escalamiento', body:`${e.tipo}: ${e.descripcion}`, url:'/?view=escalamientos' }
+      title:'Nuevo escalamiento', body:`${e.tipo}: ${e.descripcion}`, url:'/?view=escalamientos' }
+  }
+  if (module === 'no_conformidades') {
+    const { data:n } = await admin.schema('bitacora').from('no_conformidades')
+      .select('id,codigo,descripcion,sede_id,created_by').eq('id', id).maybeSingle()
+    if (!n || (String(n.created_by) !== callerUserId && !['admin','editor'].includes(caller.rol))) return null
+    return { module, entityType:'no_conformidad', entityId:n.id, priority:'alta', sedeId:n.sede_id,
+      excludeUserId:n.created_by, title:`Nueva no conformidad ${n.codigo}`,
+      body:n.descripcion, url:`/?view=noConformidades&targetId=${n.id}` }
   }
   if (module === 'comentario') {
     const { data:c } = await admin.schema('bitacora').from('comentarios')
