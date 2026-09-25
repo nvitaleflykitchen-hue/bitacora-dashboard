@@ -1,4 +1,4 @@
--- REVIEW ONLY. Do not run until the project owner reviews this complete SQL.
+-- Reviewed and authorized by the project owner; applied on 2026-09-25.
 -- Target project: mixyhfdlzjarvszinytk (cerdova-db).
 -- One row per PDF version; one row per month with a published TOTAL.
 

@@ -64,14 +64,15 @@ export async function extractCopaPdf(file) {
     import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
   ])
   GlobalWorkerOptions.workerSrc = worker.default
-  const doc = await getDocument({ data:new Uint8Array(await file.arrayBuffer()) }).promise
+  const task = getDocument({ data:new Uint8Array(await file.arrayBuffer()) })
+  const doc = await task.promise
   try {
     const page = await doc.getPage(1)
     const viewport = page.getViewport({ scale:1 })
     const content = await page.getTextContent()
     const items = content.items.filter(item => item.str).map(item => ({ text:item.str, x:item.transform[4], y:viewport.height - item.transform[5] }))
     return parseCopaScorecard(items, viewport.width, file.name)
-  } finally { await doc.destroy() }
+  } finally { await task.destroy() }
 }
 
 export function latestPublishedReports(reports) {
