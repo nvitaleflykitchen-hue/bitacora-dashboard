@@ -7,6 +7,25 @@ const cors = {
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
 }
 
+// Comprobar la configuración al arrancar evita depender de un evento real
+// para detectar secretos mal cargados. Nunca registrar los valores VAPID.
+const vapidConfigurationError = (() => {
+  try {
+    const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+    const rawPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+    if (!publicKey || !rawPrivateKey) throw new Error('Faltan secretos VAPID')
+    const configuredSubject = Deno.env.get('VAPID_SUBJECT')?.trim() || 'mailto:admin@flykitchen.com.ar'
+    const subject = configuredSubject.includes('@') && !configuredSubject.includes(':')
+      ? `mailto:${configuredSubject}` : configuredSubject
+    webpush.setVapidDetails(subject, publicKey, normalizeVapidPrivateKey(rawPrivateKey))
+    return null
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Configuración VAPID inválida'
+    console.error('push-config', message)
+    return message
+  }
+})()
+
 type EventInput = {
   module:string
   entity_id?:string | number
@@ -105,14 +124,7 @@ Deno.serve(async req => {
     let sent = 0
     let pushError:string | null = null
     try {
-      const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY')
-      const rawVapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')
-      const configuredSubject = Deno.env.get('VAPID_SUBJECT')?.trim() || 'mailto:admin@flykitchen.com.ar'
-      const vapidSubject = configuredSubject.includes('@') && !configuredSubject.includes(':')
-        ? `mailto:${configuredSubject}`
-        : configuredSubject
-      if (!vapidPublic || !rawVapidPrivate) throw new Error('Faltan secretos VAPID en la Edge Function')
-      webpush.setVapidDetails(vapidSubject, vapidPublic, normalizeVapidPrivateKey(rawVapidPrivate))
+      if (vapidConfigurationError) throw new Error(vapidConfigurationError)
 
       const { data:subscriptions } = await admin.schema('bitacora').from('push_subscriptions')
         .select('*').in('user_id', ids).eq('active', true)
