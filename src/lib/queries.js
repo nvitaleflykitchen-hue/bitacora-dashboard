@@ -1833,8 +1833,8 @@ export const TIPOS_NOVEDAD_VUELO = [
 // Se usa en "Nuevo Reporte" → Vuelos del día.
 // 1) Busca primero en el calendario real (vuelos_calendario), cargado mes a mes
 //    desde el Excel de Aduana — refleja exactamente qué vuela ese día.
-// 2) Si no hay datos de calendario para esa fecha (mes no cargado, o la tabla
-//    todavía no existe), cae a la plantilla semanal aproximada (vuelos_programados),
+// 2) Si no hay datos de calendario para ese mes (o la tabla todavía no existe),
+//    cae a la plantilla semanal aproximada (vuelos_programados),
 //    por dia_semana (0=domingo..6=sábado, igual a Date.getDay()).
 // 3) Excluye los vuelos que ya tienen una novedad cargada hoy para esta sede
 //    (incluye 'OK': si un reporte anterior del mismo día ya lo chequeó —sea
@@ -1843,6 +1843,7 @@ export async function getVuelosDelDia(sedeId, fecha) {
   if (!sedeId || !fecha) return [];
 
   let calendario = [];
+  let mesCargado = false;
   try {
     const { data, error } = await db()
       .from("vuelos_calendario")
@@ -1853,6 +1854,22 @@ export async function getVuelosDelDia(sedeId, fecha) {
       .order("orden");
     if (error) throw error;
     calendario = data || [];
+    mesCargado = calendario.length > 0;
+    if (!mesCargado) {
+      const inicio = `${fecha.slice(0, 7)}-01`;
+      const siguiente = new Date(`${inicio}T00:00:00Z`);
+      siguiente.setUTCMonth(siguiente.getUTCMonth() + 1);
+      const { data: muestraMes, error: errorMes } = await db()
+        .from("vuelos_calendario")
+        .select("id")
+        .eq("sede_id", sedeId)
+        .eq("activo", true)
+        .gte("fecha", inicio)
+        .lt("fecha", siguiente.toISOString().slice(0, 10))
+        .limit(1);
+      if (errorMes) throw errorMes;
+      mesCargado = (muestraMes || []).length > 0;
+    }
   } catch (e) {
     console.error(
       "vuelos_calendario no disponible, uso plantilla semanal como fallback:",
@@ -1861,7 +1878,7 @@ export async function getVuelosDelDia(sedeId, fecha) {
   }
 
   let lista;
-  if (calendario.length > 0) {
+  if (mesCargado) {
     lista = calendario.map((v) => ({ ...v, _origen: "calendario" }));
   } else {
     const diaSemana = new Date(fecha + "T00:00:00").getDay();
@@ -1902,6 +1919,37 @@ export async function getVuelosDelDia(sedeId, fecha) {
       ? !idsCalendario.has(v.id)
       : !idsProgramados.has(v.id),
   );
+}
+
+export async function getUltimoMesVuelosCalendario(sedeId) {
+  if (!sedeId) return null;
+  const { data, error } = await db()
+    .from("vuelos_calendario")
+    .select("fecha")
+    .eq("sede_id", sedeId)
+    .eq("activo", true)
+    .order("fecha", { ascending:false })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0]?.fecha?.slice(0, 7) || null;
+}
+
+export async function getVuelosCalendarioMes(sedeId, mes) {
+  if (!sedeId || !/^\d{4}-\d{2}$/.test(mes)) return [];
+  const inicio = `${mes}-01`;
+  const siguiente = new Date(`${inicio}T00:00:00Z`);
+  siguiente.setUTCMonth(siguiente.getUTCMonth() + 1);
+  const { data, error } = await db()
+    .from("vuelos_calendario")
+    .select("id,fecha,vuelo_codigo,destino,aerolinea,orden")
+    .eq("sede_id", sedeId)
+    .eq("activo", true)
+    .gte("fecha", inicio)
+    .lt("fecha", siguiente.toISOString().slice(0, 10))
+    .order("fecha")
+    .order("orden");
+  if (error) throw error;
+  return data || [];
 }
 
 // Plantilla completa (los 7 días) de una sede, para la vista de administración.

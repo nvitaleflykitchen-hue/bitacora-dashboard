@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { getSedes, getVuelosPlantilla, crearVueloPlantilla, actualizarVueloPlantilla, eliminarVueloPlantilla } from '../lib/queries'
-import { Plus, Trash2, RefreshCw } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { getSedes, getVuelosPlantilla, getVuelosCalendarioMes, getUltimoMesVuelosCalendario, crearVueloPlantilla, actualizarVueloPlantilla, eliminarVueloPlantilla } from '../lib/queries'
+import { Plus, Trash2, RefreshCw, CalendarDays } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { confirmar } from '../lib/feedback'
 
@@ -54,6 +54,13 @@ function VueloRow({ vuelo, onSave, onDelete }) {
 export default function VuelosPlantilla() {
   const [sedes, setSedes]       = useState([])
   const [sedeId, setSedeId]     = useState(null)
+  const [modo, setModo]         = useState('calendario')
+  const [mes, setMes]           = useState(() => new Date().toISOString().slice(0, 7))
+  const [diaMes, setDiaMes]     = useState(1)
+  const [calendario, setCalendario] = useState([])
+  const [calError, setCalError] = useState('')
+  const [calLoading, setCalLoading] = useState(false)
+  const calendarRequest = useRef(0)
   const [vuelos, setVuelos]     = useState([])
   const [diaSel, setDiaSel]     = useState(1)
   const [loading, setLoading]   = useState(true)
@@ -81,7 +88,47 @@ export default function VuelosPlantilla() {
 
   useEffect(() => { loadVuelos() }, [loadVuelos])
 
+  useEffect(() => {
+    if (!sedeId) return
+    let active = true
+    getUltimoMesVuelosCalendario(sedeId).then(ultimo => {
+      if (active && ultimo) setMes(ultimo)
+    }).catch(error => {
+      if (active) setCalError(error.message || 'No se pudo consultar el calendario.')
+    })
+    return () => { active = false }
+  }, [sedeId])
+
+  const loadCalendario = useCallback(async () => {
+    if (!sedeId || modo !== 'calendario') return
+    const request = ++calendarRequest.current
+    setCalLoading(true)
+    setCalError('')
+    try {
+      const data = await getVuelosCalendarioMes(sedeId, mes)
+      if (request !== calendarRequest.current) return
+      setCalendario(data)
+      setDiaMes(Number(data[0]?.fecha?.slice(-2) || 1))
+    } catch (error) {
+      if (request !== calendarRequest.current) return
+      setCalendario([])
+      setCalError(error.message || 'No se pudieron cargar los vuelos del mes.')
+    } finally {
+      if (request === calendarRequest.current) setCalLoading(false)
+    }
+  }, [sedeId, mes, modo])
+
+  useEffect(() => { loadCalendario() }, [loadCalendario])
+
   const vuelosDia = vuelos.filter(v => v.dia_semana === diaSel).sort((a,b)=>a.orden-b.orden)
+  const fechaSel = `${mes}-${String(diaMes).padStart(2, '0')}`
+  const vuelosFecha = calendario.filter(v => v.fecha === fechaSel)
+  const diasDelMes = /^\d{4}-\d{2}$/.test(mes) ? new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate() : 0
+  const counts = calendario.reduce((acc, vuelo) => {
+    const dia = Number(vuelo.fecha.slice(-2))
+    acc[dia] = (acc[dia] || 0) + 1
+    return acc
+  }, {})
 
   const handleSave = async (id, form) => {
     await actualizarVueloPlantilla(id, form)
@@ -104,8 +151,8 @@ export default function VuelosPlantilla() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 fade-in">
-      <PageHeader title="Plantilla de Vuelos" subtitle="Cronograma semanal por escala">
-        <button onClick={loadVuelos} className="btn-ghost" style={{ padding:'0.4rem' }}>
+      <PageHeader title="Plantilla de Vuelos" subtitle="Calendario real por fecha y cronograma semanal por escala">
+        <button onClick={modo === 'calendario' ? loadCalendario : loadVuelos} className="btn-ghost" style={{ padding:'0.4rem' }} title="Actualizar vuelos">
           <RefreshCw size={13}/>
         </button>
       </PageHeader>
@@ -114,6 +161,10 @@ export default function VuelosPlantilla() {
         <p style={{ color:'var(--text-dim)', fontSize:'0.8rem' }}>No hay sedes tipo Aeropuerto configuradas.</p>
       ) : (
         <>
+          <div style={{ display:'flex', gap:6, marginBottom:'0.85rem' }}>
+            <button type="button" onClick={() => setModo('calendario')} className={modo === 'calendario' ? 'btn-primary' : 'btn-ghost'}><CalendarDays size={13}/> Calendario mensual</button>
+            <button type="button" onClick={() => setModo('semanal')} className={modo === 'semanal' ? 'btn-primary' : 'btn-ghost'}>Plantilla semanal</button>
+          </div>
           {/* Selector de sede (escala) */}
           <div style={{ display:'flex', gap:6, marginBottom:'1rem', flexWrap:'wrap' }}>
             {sedes.map(s => (
@@ -129,7 +180,31 @@ export default function VuelosPlantilla() {
             ))}
           </div>
 
-          <div className="glass rounded" style={{ borderRadius:3, padding:'1rem 1.25rem' }}>
+          {modo === 'calendario' ? (
+            <div className="glass rounded" style={{ borderRadius:3, padding:'1rem 1.25rem' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:14 }}>
+                <div>
+                  <h2 style={{ color:'var(--text)', fontSize:'0.95rem', fontWeight:700, margin:0 }}>Vuelos por fecha</h2>
+                  <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', margin:'3px 0 0' }}>Estos vuelos aparecen en “Vuelos del día” al crear el reporte de cada fecha.</p>
+                </div>
+                <label style={{ color:'var(--text-dim)', fontSize:'0.7rem' }}>Mes <input type="month" value={mes} onChange={event => setMes(event.target.value)} style={{ ...INP, width:165, marginLeft:6 }}/></label>
+              </div>
+              {calError && <p role="alert" style={{ color:'#ff7070', fontSize:'0.75rem', marginBottom:10 }}>{calError}</p>}
+              {calLoading ? <p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>Cargando calendario…</p> : (
+                <>
+                  <p style={{ color:'var(--phosphor)', fontSize:'0.7rem', marginBottom:12 }}>{calendario.length} vuelos en {new Set(calendario.map(v => v.fecha)).size} días</p>
+                  {calendario.length === 0 && <p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>No hay vuelos diarios cargados para este mes. La plantilla semanal sigue disponible como referencia.</p>}
+                  {calendario.length > 0 && <>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(57px, 1fr))', gap:5, marginBottom:16 }}>
+                      {Array.from({ length:diasDelMes }, (_, index) => index + 1).map(day => <button type="button" key={day} onClick={() => setDiaMes(day)} style={{ padding:'6px 4px', borderRadius:4, cursor:'pointer', background:day === diaMes ? 'rgba(57,255,20,0.15)' : 'rgba(255,255,255,0.04)', color:day === diaMes ? 'var(--phosphor)' : 'var(--text-dim)', border:day === diaMes ? '1px solid rgba(57,255,20,0.35)' : '1px solid rgba(255,255,255,0.08)', fontSize:'0.68rem' }}>{day}<span style={{ display:'block', fontSize:'0.59rem' }}>{counts[day] || '—'}</span></button>)}
+                    </div>
+                    <h3 style={{ color:'var(--text)', fontSize:'0.82rem', fontWeight:700, marginBottom:8 }}>{new Date(`${fechaSel}T00:00:00Z`).toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', timeZone:'UTC' })} · {vuelosFecha.length} vuelos</h3>
+                    {vuelosFecha.length ? vuelosFecha.map(v => <div key={v.id} style={{ display:'grid', gridTemplateColumns:'120px 1fr 1fr', gap:10, padding:'9px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', color:'var(--text)', fontSize:'0.75rem' }}><strong>{v.vuelo_codigo}</strong><span>{v.destino || '—'}</span><span>{v.aerolinea || '—'}</span></div>) : <p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>No hay vuelos cargados para esta fecha.</p>}
+                  </>}
+                </>
+              )}
+            </div>
+          ) : <div className="glass rounded" style={{ borderRadius:3, padding:'1rem 1.25rem' }}>
             {/* Tabs de día de la semana */}
             <div style={{ display:'flex', gap:4, marginBottom:'1rem', borderBottom:'1px solid rgba(255,255,255,0.06)', paddingBottom:'0.75rem', flexWrap:'wrap' }}>
               {DIAS.map(d => {
@@ -168,7 +243,7 @@ export default function VuelosPlantilla() {
                 </button>
               </>
             )}
-          </div>
+          </div>}
         </>
       )}
     </div>
