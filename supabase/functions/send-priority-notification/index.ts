@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { subscriptionAcceptsEvent } from './routing.js'
+import { normalizeVapidPrivateKey, subscriptionAcceptsEvent } from './routing.js'
 
 const cors = {
   'Access-Control-Allow-Origin':'*',
@@ -106,13 +106,13 @@ Deno.serve(async req => {
     let pushError:string | null = null
     try {
       const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY')
-      const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')
+      const rawVapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')
       const configuredSubject = Deno.env.get('VAPID_SUBJECT')?.trim() || 'mailto:admin@flykitchen.com.ar'
       const vapidSubject = configuredSubject.includes('@') && !configuredSubject.includes(':')
         ? `mailto:${configuredSubject}`
         : configuredSubject
-      if (!vapidPublic || !vapidPrivate) throw new Error('Faltan secretos VAPID en la Edge Function')
-      webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
+      if (!vapidPublic || !rawVapidPrivate) throw new Error('Faltan secretos VAPID en la Edge Function')
+      webpush.setVapidDetails(vapidSubject, vapidPublic, normalizeVapidPrivateKey(rawVapidPrivate))
 
       const { data:subscriptions } = await admin.schema('bitacora').from('push_subscriptions')
         .select('*').in('user_id', ids).eq('active', true)

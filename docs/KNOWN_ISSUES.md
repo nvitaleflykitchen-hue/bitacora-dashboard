@@ -354,7 +354,7 @@ Ya documentado en BUSINESS_RULES.md §1.5. El flujo actual (`Usuarios.jsx`) siem
 
 **Verificación contra producción, 2026-09-25:** existen suscripciones push activas y miles de notificaciones in-app. Los logs de `send-priority-notification` revelaron `Vapid subject is not a valid URL. nvitale@flykitchen.com.ar`: el secreto `VAPID_SUBJECT` contenía un correo sin prefijo `mailto:`. La función publicada ahora normaliza ese valor y conserva el aviso in-app cuando Web Push falla.
 
-**Pendiente de verificar:** recepción y sonido en un dispositivo real luego del cambio de VAPID. El navegador y el sistema operativo pueden limitar sonido/vibración. Las preferencias por categoría y sede requieren la migración `20260925_push_device_preferences_REVIEW.sql` antes de publicar el frontend y la nueva versión de la función.
+**Actualización 2026-09-25:** la migración `20260925_push_device_preferences_REVIEW.sql` está aplicada y el frontend de preferencias está publicado. Un evento posterior reveló otro error: `Vapid private key must be a URL safe Base 64 (without "=")`. La función v20 normaliza comillas, prefijo y padding de una clave válida; aún falta confirmar un envío efectivo. Si la clave persistida es incorrecta o no corresponde a la pública, habrá que reemplazar el secreto por la pareja VAPID correcta y renovar las suscripciones de los dispositivos.
 
 La campanita in-app sigue funcionando independientemente del resultado de Web Push.
 
