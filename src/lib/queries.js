@@ -11,7 +11,7 @@ import {
   eachDayOfInterval,
   getDaysInMonth,
 } from "date-fns";
-import { notifyHighPriority, notifyComentario } from "./pushNotifications";
+import { notifyHighPriority, notifyComentario, notifyNoConformidad } from "./pushNotifications";
 import { buildComedoresMetricas } from "./comedoresMetricas";
 import { enrichAuditRowsWithReporters } from "./auditoriaAttribution";
 import { filterMaintenanceTickets } from "./maintenanceTickets";
@@ -306,6 +306,7 @@ export async function createNoConformidad(payload) {
     .select()
     .single();
   if (error) throw error;
+  notifyNoConformidad(data.id);
   return data;
 }
 

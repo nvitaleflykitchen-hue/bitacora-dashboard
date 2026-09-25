@@ -206,7 +206,7 @@ function NCRow({ nc, onSelect }) {
   )
 }
 
-export default function NoConformidades() {
+export default function NoConformidades({ focusId }) {
   const { rol, sedeIds, allowedSedeIds } = useAuth()
   const [items, setItems]     = useState([])
   const [sedes, setSedes]     = useState([])
@@ -245,6 +245,12 @@ export default function NoConformidades() {
   }, [filtroEstado, filtroSede, rol, sedeIds, allowedSedeIds])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!focusId) return
+    const target = items.find(nc => String(nc.id) === String(focusId))
+    if (target) setSelectedNcId(target.id)
+  }, [focusId, items])
 
   // Escucha deep-links en tiempo real (cuando el componente ya está montado y los datos cargados)
   useEffect(() => {

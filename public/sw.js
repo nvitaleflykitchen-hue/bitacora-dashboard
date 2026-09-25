@@ -50,7 +50,7 @@ self.addEventListener('push', event => {
   let payload = {}
   try { payload = event.data?.json() || {} } catch { payload = { body:event.data?.text() || '' } }
   const title = payload.title || 'Fly Gestión · Fly Kitchen'
-  event.waitUntil(self.registration.showNotification(title, {body:payload.body || 'Tenés una nueva alerta prioritaria.',tag:payload.tag || payload.dedupe_key || 'bitacora-alerta',data:{ url:payload.url || '/' },requireInteraction:payload.requireInteraction !== false,vibrate:[200,100,200]}))
+  event.waitUntil(self.registration.showNotification(title, {body:payload.body || 'Tenés una nueva alerta prioritaria.',tag:payload.tag || payload.dedupe_key || 'bitacora-alerta',data:{ url:payload.url || '/' },requireInteraction:payload.requireInteraction === true,silent:payload.silent === true,...(payload.silent ? {} : { vibrate:[200,100,200] })}))
 })
 
 self.addEventListener('notificationclick', event => {

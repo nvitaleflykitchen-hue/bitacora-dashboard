@@ -350,18 +350,13 @@ Ya documentado en BUSINESS_RULES.md §1.5. El flujo actual (`Usuarios.jsx`) siem
 
 ---
 
-### 3.10 Push preparado en código, función ya desplegada — falta configurar secretos VAPID (2026-06-21, actualizado 2026-06-22)
+### 3.10 Push configurado, pero VAPID_SUBJECT impedía el envío (actualizado 2026-09-25)
 
-**Estado a 2026-06-22:** la Edge Function `send-priority-notification` **ya está desplegada y ACTIVE** en `mixyhfdlzjarvszinytk` (junto con `invite-user`, `admin-user-actions`, `bitacora-ingest`). El código no cambió respecto al del repo — se subió tal cual, sin tocar esquema ni datos. Todos los llamadores (`notifyHighPriority()` en `src/lib/queries.js` y `MntVehiculos.jsx`) ya estaban conectados desde antes, así que no hace falta ningún cambio de código adicional.
+**Verificación contra producción, 2026-09-25:** existen suscripciones push activas y miles de notificaciones in-app. Los logs de `send-priority-notification` revelaron `Vapid subject is not a valid URL. nvitale@flykitchen.com.ar`: el secreto `VAPID_SUBJECT` contenía un correo sin prefijo `mailto:`. La función publicada ahora normaliza ese valor y conserva el aviso in-app cuando Web Push falla.
 
-**Lo único que falta para que funcione de punta a punta:**
-1. Generar par VAPID — ✅ hecho 2026-06-22 (`scripts/generate-vapid.mjs`). Las claves quedaron en `.env.vapid.local` (gitignored, no se pegaron en el chat) con instrucciones de dónde pegar cada una.
-2. Cargar `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` como secretos de Edge Functions en el dashboard de Supabase — **pendiente, requiere acción manual del usuario** (no hay herramienta para setear secretos vía API en esta sesión).
-3. Cargar `VITE_VAPID_PUBLIC_KEY` en Vercel (Production + Preview) — **pendiente, requiere acción manual del usuario** (mismo problema de scope de token ya documentado en §2.9/BACKLOG #24).
-4. Redeploy (`DEPLOY.bat`) para que el build tome la nueva env var.
-5. Probar "Activar notificaciones" en un dispositivo real y disparar una alerta de prioridad alta controlada.
+**Pendiente de verificar:** recepción y sonido en un dispositivo real luego del cambio de VAPID. El navegador y el sistema operativo pueden limitar sonido/vibración. Las preferencias por categoría y sede requieren la migración `20260925_push_device_preferences_REVIEW.sql` antes de publicar el frontend y la nueva versión de la función.
 
-**Hallazgo adicional (2026-06-22):** el "Centro de Notificaciones" in-app (campanita, `NotificationCenter.jsx`) depende de la misma tabla `bitacora.notificaciones` que escribe esta función — hasta ahora estaba vacía porque nada escribía ahí. Una vez configurados los secretos, la campanita también empieza a poblarse sola; no necesita cambio de código.
+La campanita in-app sigue funcionando independientemente del resultado de Web Push.
 
 **Impacto:** con los secretos sin configurar, el botón "Activar notificaciones" sigue sin completar el flujo (la función responde error "Faltan secretos VAPID"). Es la única pieza que falta — no hay más código pendiente.
 
