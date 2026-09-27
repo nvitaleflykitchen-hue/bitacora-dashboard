@@ -82,10 +82,16 @@ export async function searchProducts(termino, pagina = 0) {
 }
 
 export async function listProductMasterValues() {
-  const { data, error } = await db().from('product_master_values')
-    .select('id,kind,name,active,parent_id,unit,updated_at').order('name')
-  if (error) throw error
-  return data || []
+  const pageSize = 500
+  const values = []
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db().from('product_master_values')
+      .select('id,kind,name,active,parent_id,unit,updated_at')
+      .order('name').order('id').range(offset, offset + pageSize - 1)
+    if (error) throw error
+    values.push(...(data || []))
+    if (!data || data.length < pageSize) return values
+  }
 }
 
 export async function saveProductMasterValue(value) {
