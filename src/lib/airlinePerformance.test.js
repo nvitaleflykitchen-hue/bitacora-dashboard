@@ -15,6 +15,15 @@ describe('Copa scorecard extraction', () => {
     expect(result.months[0].metrics.complaints.awarded).toBe('16%')
   })
 
+  it('conserva un puntaje mensual de 108% tal como figura en el informe', () => {
+    const tokens = [
+      ['TOTAL', 1444, 228], ['95.4%', 1440, 263],
+      ['Mar-26', 87, 402], ['108%', 1451, 402],
+    ].map(([text, x, y]) => ({ text, x, y }))
+    const result = parseCopaScorecard(tokens, 1832.73, 'COR.pdf')
+    expect(result.months[0].total_score).toBe(108)
+  })
+
   it('uses only the latest published version for a site and year', () => {
     const reports = [
       { id:'old', site_id:1, airline:'Copa Airlines', report_year:2026, status:'published', published_at:'2026-09-01' },
