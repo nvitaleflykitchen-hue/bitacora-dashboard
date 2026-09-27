@@ -14,7 +14,7 @@ export async function listAirlineReports(siteIds) {
 export async function createAirlineReport({ siteId, airline, year, cumulativeScore, months, file, userId }) {
   if (!Number.isInteger(Number(siteId)) || !airline?.trim() || !Number.isInteger(Number(year)) || !months?.length) throw new Error('Completá sede, aerolínea, año y al menos un mes.')
   if (!file || (file.type !== 'application/pdf' && !file.name?.toLowerCase().endsWith('.pdf')) || file.size > 15 * 1024 * 1024) throw new Error('Adjuntá un PDF de hasta 15 MB.')
-  if (months.some(month => month.total_score === '' || !Number.isFinite(Number(month.total_score)) || Number(month.total_score) < 0 || Number(month.total_score) > 100)) throw new Error('Revisá los puntajes mensuales (0 a 100).')
+  if (months.some(month => month.total_score === '' || !Number.isFinite(Number(month.total_score)) || Number(month.total_score) < 0 || Number(month.total_score) > 200)) throw new Error('Revisá los puntajes mensuales (0 a 200).')
   const { data:report, error } = await db().from('airline_performance_reports').insert({
     site_id:Number(siteId), airline:airline.trim(), report_year:Number(year),
     cumulative_score:cumulativeScore === '' || cumulativeScore == null ? null : Number(cumulativeScore),
