@@ -10,8 +10,8 @@ import ProductBarcodeScanner from '../components/ProductBarcodeScanner'
 import ProductMasters from '../components/ProductMasters'
 import './Articulos.css'
 
-const empty = barcode => ({ product_id:crypto.randomUUID(), barcode, name:'', description:'', brand:'', manufacturer:'', category:'', subcategory:'', image_url:'', ingredients:'', allergens:'', nutrition_text:'', country_of_origin:'', presentation:'', net_quantity:'', net_unit:'', units_per_package:'', packaging_level:'unknown', rne:'', rnpa:'', storage_conditions:'', related_barcodes:[], source:null, stock_unit:'', stock_factor:'1', presentation_active:true, status:'verified' })
-const fields = [['category','Categoría'],['subcategory','Subcategoría'],['country_of_origin','País de origen'],['rne','RNE'],['rnpa','RNPA'],['presentation','Presentación / descripción del envase']]
+const empty = barcode => ({ product_id:crypto.randomUUID(), barcode, name:'', description:'', brand:'', manufacturer:'', category:'', subcategory:'', ingredient_master_id:'', image_url:'', ingredients:'', allergens:'', nutrition_text:'', country_of_origin:'', presentation:'', net_quantity:'', net_unit:'', units_per_package:'', packaging_level:'unknown', rne:'', rnpa:'', storage_conditions:'', related_barcodes:[], source:null, stock_unit:'', stock_factor:'1', presentation_active:true, status:'verified' })
+const fields = [['country_of_origin','País de origen'],['rne','RNE'],['rnpa','RNPA']]
 const packagingLabels = { unit:'Unidad', pack:'Pack', box:'Caja', case:'Caja / bulto', pallet:'Pallet', unknown:'Presentación por confirmar' }
 
 export function RelevamientoArticulos() { return <Articulos initialMode="scan" /> }
@@ -134,8 +134,9 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     await saveProductMasterValue(value)
     setMasterValues(await listProductMasterValues())
     if (previous && previous.name !== value.name) {
-      const key = value.kind === 'brand' ? 'brand' : value.kind === 'manufacturer' ? 'manufacturer' : 'stock_unit'
-      setForm(current => current?.[key] === previous.name ? { ...current, [key]:value.name } : current)
+      const keys = { brand:'brand', manufacturer:'manufacturer', stock_unit:'stock_unit', category:'category', subcategory:'subcategory', presentation:'presentation' }
+      const key = keys[value.kind]
+      if (key) setForm(current => current?.[key] === previous.name ? { ...current, [key]:value.name } : current)
     }
     setRefresh(current => current + 1)
   }
@@ -144,7 +145,17 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
     if (selected && !values.includes(selected)) values.push(selected)
     return values.sort((a,b) => a.localeCompare(b, 'es'))
   }
+  const selectedCategory = masterValues.find(item => item.kind === 'category' && item.name === form?.category)
+  const subcategories = masterValues.filter(item => item.kind === 'subcategory' && item.parent_id === selectedCategory?.id && item.active)
+  const ingredients = masterValues.filter(item => item.kind === 'ingredient' && (item.active || item.id === form?.ingredient_master_id))
+  const selectedIngredient = masterValues.find(item => item.id === form?.ingredient_master_id && item.kind === 'ingredient')
   const update = (key, value) => { setForm(f => ({ ...f, [key]:value })); setDirty(true) }
+  const chooseCategory = value => { setForm(current => ({ ...current, category:value, subcategory:'' })); setDirty(true) }
+  const chooseIngredient = id => {
+    const ingredient = masterValues.find(item => item.kind === 'ingredient' && item.id === id)
+    setForm(current => ({ ...current, ingredient_master_id:id, net_unit:ingredient?.unit || current.net_unit }))
+    setDirty(true)
+  }
   const addRelatedBarcode = () => {
     setForm(current => ({ ...current, related_barcodes:[...(current.related_barcodes || []), { barcode:'',presentation:'',packaging_level:'unit',stock_factor:'1',units_per_package:'' }] }))
     setDirty(true)
@@ -322,12 +333,16 @@ export default function Articulos({ initialMode = 'list', onNavigate, embedded =
           <label>Nombre del artículo *<input className="input-dark" value={form.name || ''} onChange={e => update('name',e.target.value)} maxLength={500} required /></label>
           <label>Marca *<select className="input-dark" value={form.brand || ''} onChange={e => update('brand',e.target.value)} required><option value="">Seleccionar marca</option>{masterOptions('brand', form.brand).map(name => <option key={name} value={name}>{name}</option>)}</select><span className="articulos-help">¿Falta una marca? Agregala en Maestros.</span></label>
           <label>Fabricante / proveedor<select className="input-dark" value={form.manufacturer || ''} onChange={e => update('manufacturer',e.target.value)}><option value="">Sin definir</option>{masterOptions('manufacturer', form.manufacturer).map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+          <label>Categoría<select className="input-dark" value={form.category || ''} onChange={e => chooseCategory(e.target.value)}><option value="">Sin definir</option>{masterOptions('category', form.category).map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+          <label>Subcategoría<select className="input-dark" value={form.subcategory || ''} onChange={e => update('subcategory', e.target.value)} disabled={!form.category}><option value="">Sin definir</option>{subcategories.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}{form.subcategory && !subcategories.some(item => item.name === form.subcategory) && <option value={form.subcategory}>{form.subcategory} (anterior)</option>}</select></label>
+          <label>Ingrediente asociado<select className="input-dark" value={form.ingredient_master_id || ''} onChange={e => chooseIngredient(e.target.value)}><option value="">Sin asociar</option>{ingredients.map(item => <option key={item.id} value={item.id}>{item.name} · {item.unit}</option>)}</select><span className="articulos-help">Relaciona esta marca y presentación con un ingrediente del maestro.</span></label>
           {fields.map(([key, label]) => <label key={key}>{label}<input className="input-dark" value={form[key] || ''} onChange={e => update(key, e.target.value)} maxLength={2000} /></label>)}
+          <label>Presentación / descripción del envase<select className="input-dark" value={form.presentation || ''} onChange={e => update('presentation', e.target.value)}><option value="">Sin definir</option>{masterOptions('presentation', form.presentation).map(name => <option key={name} value={name}>{name}</option>)}</select></label>
           <label>Unidad base de stock *<select className="input-dark" value={form.stock_unit || ''} onChange={e => update('stock_unit',e.target.value)} required><option value="">Seleccionar unidad</option>{masterOptions('stock_unit', form.stock_unit).map(name => <option key={name} value={name}>{name}</option>)}</select></label>
           <label>Factor de stock de esta presentación<input className="input-dark" type="number" min="0.001" step="any" value={form.stock_factor ?? ''} onChange={e => update('stock_factor',e.target.value)} /><span className="articulos-help">Cuántas unidades base representa este código. Ej.: una caja de 12 = 12.</span></label>
           <label>Nivel de empaque *<select className="input-dark" value={form.packaging_level} onChange={e => update('packaging_level', e.target.value)} required><option value="unknown" disabled>Seleccionar nivel</option><option value="unit">Unidad individual</option><option value="pack">Pack</option><option value="box">Caja</option><option value="case">Caja / bulto</option><option value="pallet">Pallet</option></select></label>
           <label>Contenido por unidad contenida *<input className="input-dark" type="number" min="0.001" step="any" value={form.net_quantity ?? ''} onChange={e => update('net_quantity', e.target.value)} placeholder="Ej.: 8" required /></label>
-          <label>Unidad de contenido *<select className="input-dark" value={form.net_unit || ''} onChange={e => update('net_unit', e.target.value)} required><option value="">Seleccionar unidad</option>{['g','kg','mg','ml','l','unidad','m','cm'].map(unit => <option key={unit}>{unit}</option>)}</select></label>
+          <label>Unidad de contenido *<select className="input-dark" value={selectedIngredient?.unit || form.net_unit || ''} onChange={e => update('net_unit', e.target.value)} disabled={Boolean(selectedIngredient)} required><option value="">Seleccionar unidad</option>{['g','kg','mg','ml','l','unidad','m','cm'].map(unit => <option key={unit}>{unit}</option>)}</select>{selectedIngredient && <span className="articulos-help">Se completa desde la unidad del ingrediente {selectedIngredient.name}.</span>}</label>
           <label>Unidades contenidas por caja / bulto<input className="input-dark" type="number" min="1" step="1" value={form.units_per_package ?? ''} onChange={e => update('units_per_package', e.target.value)} placeholder="Ej.: 192" /></label>
           <p className="articulos-wide">Una caja de 192 sobres de 8 g se registra como 192 unidades contenidas y 8 g por unidad. Verificá esos datos en el envase.</p>
           {form.barcode && <section className="articulos-wide articulos-barcodes-editor">

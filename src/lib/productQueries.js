@@ -83,7 +83,7 @@ export async function searchProducts(termino, pagina = 0) {
 
 export async function listProductMasterValues() {
   const { data, error } = await db().from('product_master_values')
-    .select('id,kind,name,active,updated_at').order('name')
+    .select('id,kind,name,active,parent_id,unit,updated_at').order('name')
   if (error) throw error
   return data || []
 }
@@ -197,10 +197,10 @@ export function validateProduct(form) {
 
 export async function saveProduct(form) {
   validateProduct(form)
-  const fields = ['product_id','presentation_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','supplier_id','rne','rnpa','storage_conditions','related_barcodes','source','stock_unit','stock_factor','presentation_active']
+  const fields = ['product_id','presentation_id','expected_updated_at','barcode','name','description','brand','manufacturer','category','subcategory','ingredient_master_id','image_url','ingredients','allergens','nutrition_text','country_of_origin','presentation','net_quantity','net_unit','units_per_package','packaging_level','supplier_id','rne','rnpa','storage_conditions','related_barcodes','source','stock_unit','stock_factor','presentation_active']
   const payload = Object.fromEntries(fields.map(key => [key, form[key] ?? null]))
   payload.status = ['pending','verified','inactive'].includes(form.status) ? form.status : 'verified'
-  const { data, error } = await db().rpc(form.barcode?.trim() ? 'guardar_articulo' : 'guardar_articulo_sin_codigo', { payload })
+  const { data, error } = await db().rpc('guardar_articulo_con_ingrediente', { payload })
   if (error) throw error
   const recorded = form.source || { provider:'Carga manual', retrieved_at:data.updated_at }
   return { ...form, ...data, status:payload.status, expected_updated_at:data.updated_at, source:null, sources:[recorded, ...(form.sources || [])].slice(0,20) }

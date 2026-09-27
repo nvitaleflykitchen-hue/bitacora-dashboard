@@ -13,10 +13,10 @@ const complete = {
 beforeEach(() => rpc.mockReset())
 
 describe('artículos sin código y campos obligatorios', () => {
-  it('permite guardar sin código y usa la operación manual', async () => {
+  it('permite guardar sin código y conserva la asociación de ingrediente en una sola operación', async () => {
     rpc.mockResolvedValue({ data:{ product_id:complete.product_id, presentation_id:'pr-1', barcode:'', updated_at:'2026-09-21T12:00:00Z' }, error:null })
-    await saveProduct(complete)
-    expect(rpc).toHaveBeenCalledWith('guardar_articulo_sin_codigo', expect.objectContaining({ payload:expect.objectContaining({ barcode:'' }) }))
+    await saveProduct({ ...complete, ingredient_master_id:'00000000-0000-0000-0000-000000000090' })
+    expect(rpc).toHaveBeenCalledWith('guardar_articulo_con_ingrediente', expect.objectContaining({ payload:expect.objectContaining({ barcode:'', ingredient_master_id:'00000000-0000-0000-0000-000000000090' }) }))
   })
 
   it.each([
