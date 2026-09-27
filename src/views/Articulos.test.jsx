@@ -2,7 +2,7 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import Articulos from './Articulos'
-import { productResolver, saveProduct, enrichProduct, recordBarcodeSearch, listKioskSites, loadProductSiteSettings, saveProductSiteSetting, listProductMasterValues } from '../lib/productQueries'
+import { productResolver, saveProduct, enrichProduct, recordBarcodeSearch, listKioskSites, loadProductSiteSettings, saveProductSiteSetting, listProductMasterValues, saveProductMasterValue } from '../lib/productQueries'
 
 const authState = vi.hoisted(() => ({ rol:null }))
 vi.mock('../lib/auth', () => ({ useAuth:() => ({ can:() => true, perfil:{ nombre:'Prueba', rol:authState.rol } }) }))
@@ -122,5 +122,45 @@ describe('flujo artículos', () => {
     fireEvent.change(screen.getByLabelText('Unidad de contenido *'), { target:{ value:'unidad' } })
     fireEvent.click(screen.getByRole('button', { name:'GUARDAR ARTÍCULO' }))
     await waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ barcode:'', name:'Vaso descartable', brand:'Marca prueba', net_quantity:'1', net_unit:'unidad' })))
+  })
+  it('asocia ingrediente del maestro y completa su unidad de contenido', async () => {
+    listProductMasterValues.mockResolvedValue([
+      { id:'b1',kind:'brand',name:'Marca prueba',active:true },
+      { id:'u1',kind:'stock_unit',name:'unidad',active:true },
+      { id:'c1',kind:'category',name:'Harinas',active:true },
+      { id:'s1',kind:'subcategory',name:'Trigo',parent_id:'c1',active:true },
+      { id:'i1',kind:'ingredient',name:'Harina 000',unit:'kg',active:true },
+      { id:'p1',kind:'presentation',name:'Bolsa 1 kg',active:true },
+    ])
+    saveProduct.mockImplementation(async form => ({ ...form, expected_updated_at:'2026-09-27T12:00:00Z' }))
+    render(<Articulos />)
+    fireEvent.click(screen.getByRole('button', { name:'Agregar artículo' }))
+    await screen.findByRole('option', { name:'Harina 000 · kg' })
+    fireEvent.change(screen.getByLabelText('Nombre del artículo *'), { target:{ value:'Harina Morixe 000' } })
+    fireEvent.change(screen.getByLabelText(/^Marca \*/), { target:{ value:'Marca prueba' } })
+    fireEvent.change(screen.getByLabelText('Categoría'), { target:{ value:'Harinas' } })
+    fireEvent.change(screen.getByLabelText('Subcategoría'), { target:{ value:'Trigo' } })
+    fireEvent.change(screen.getByLabelText(/^Ingrediente asociado/), { target:{ value:'i1' } })
+    expect(screen.getByLabelText(/^Unidad de contenido \*/)).toHaveValue('kg')
+    expect(screen.getByLabelText(/^Unidad de contenido \*/)).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Presentación / descripción del envase'), { target:{ value:'Bolsa 1 kg' } })
+    fireEvent.change(screen.getByLabelText(/^Unidad base de stock \*/), { target:{ value:'unidad' } })
+    fireEvent.change(screen.getByLabelText('Nivel de empaque *'), { target:{ value:'unit' } })
+    fireEvent.change(screen.getByLabelText('Contenido por unidad contenida *'), { target:{ value:'1' } })
+    fireEvent.click(screen.getByRole('button', { name:'GUARDAR ARTÍCULO' }))
+    await waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ category:'Harinas',subcategory:'Trigo',ingredient_master_id:'i1',presentation:'Bolsa 1 kg',net_unit:'kg' })))
+  })
+  it('requiere categoría para la subcategoría y unidad para el ingrediente del maestro', async () => {
+    render(<Articulos />)
+    fireEvent.click(screen.getByRole('button', { name:'Maestros' }))
+    fireEvent.change(screen.getByLabelText('Nueva opción de Subcategorías'), { target:{ value:'Trigo' } })
+    const subForm = screen.getByLabelText('Nueva opción de Subcategorías').closest('form')
+    expect(subForm.querySelector('button[type="submit"]')).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Nueva opción de Ingredientes'), { target:{ value:'Harina 000' } })
+    const ingredientForm = screen.getByLabelText('Nueva opción de Ingredientes').closest('form')
+    expect(ingredientForm.querySelector('button[type="submit"]')).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Unidad del nuevo ingrediente'), { target:{ value:'kg' } })
+    fireEvent.submit(ingredientForm)
+    await waitFor(() => expect(saveProductMasterValue).toHaveBeenCalledWith(expect.objectContaining({ kind:'ingredient',name:'Harina 000',unit:'kg' })))
   })
 })
