@@ -3,7 +3,8 @@ import { FileText, Plus, RefreshCw } from 'lucide-react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '../lib/auth'
 import { getSedes } from '../lib/queries'
-import { createAirlineReport, listAirlineReports, openAirlinePdf, publishAirlineReport } from '../lib/airlinePerformanceQueries'
+import { createAirlineReport, listAirlineAnalyses, listAirlineReports, openAirlinePdf, publishAirlineReport } from '../lib/airlinePerformanceQueries'
+import AirlineAnalysisAttachments from '../components/AirlineAnalysisAttachments'
 import { extractCopaPdf, latestPublishedReports, PERFORMANCE_CATEGORIES } from '../lib/airlinePerformance'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
@@ -17,6 +18,7 @@ export default function AirlinePerformance() {
   const canWrite = ['admin', 'editor'].includes(perfil?.rol)
   const [sites, setSites] = useState([])
   const [reports, setReports] = useState([])
+  const [analyses, setAnalyses] = useState([])
   const [siteId, setSiteId] = useState('')
   const [year, setYear] = useState('')
   const [airline, setAirline] = useState('')
@@ -31,12 +33,14 @@ export default function AirlinePerformance() {
   const load = useCallback(async () => {
     setLoading(true); setError('')
     try {
-      const [allSites, allReports] = await Promise.all([
+      const [allSites, allReports, allAnalyses] = await Promise.all([
         Array.isArray(allowedSedeIds) && !allowedSedeIds.length ? [] : getSedes(allowedSedeIds),
         listAirlineReports(allowedSedeIds),
+        listAirlineAnalyses(),
       ])
       setSites(allSites.filter(site => /aeropuerto/i.test(site.nombre) || /aeropuerto/i.test(site.tipo || '')))
       setReports(allReports)
+      setAnalyses(allAnalyses)
     } catch (e) { setError(mensajeError(e)) }
     finally { setLoading(false) }
   }, [allowedSedeIds])
@@ -54,6 +58,8 @@ export default function AirlinePerformance() {
   const airlines = [...new Set(published.map(report => report.airline))].sort()
   const comparisonYear = Number(year || years[0])
   const comparisonReports = filtered.filter(report => report.report_year === comparisonYear && report.airline === (airline || selected?.airline))
+  const selectedAnalyses = analyses.filter(item => item.scope === 'site' && item.report_id === selected?.id)
+  const comparisonAnalyses = analyses.filter(item => item.scope === 'comparison' && item.airline === selected?.airline && item.report_year === comparisonYear)
   const comparisonRows = MONTHS.map((name, index) => {
     const row = { name }
     comparisonReports.forEach(report => {
@@ -124,9 +130,11 @@ export default function AirlinePerformance() {
     <div className="glass p-3 flex flex-col md:flex-row gap-2"><div className="w-full md:w-72 md:shrink-0"><select aria-label="Filtrar por aeropuerto" className="input-dark" value={siteId} onChange={e => setSiteId(e.target.value)}><option value="">Todos los aeropuertos</option>{sites.map(site => <option key={site.id} value={site.id}>{site.nombre}</option>)}</select></div><div className="w-full md:w-36 md:shrink-0"><select aria-label="Filtrar por año" className="input-dark" value={year} onChange={e => setYear(e.target.value)}><option value="">Todos los años</option>{years.map(value => <option key={value} value={value}>{value}</option>)}</select></div><div className="w-full md:w-56 md:shrink-0"><select aria-label="Filtrar por aerolínea" className="input-dark" value={airline} onChange={e => setAirline(e.target.value)}><option value="">Todas las aerolíneas</option>{airlines.map(value => <option key={value} value={value}>{value}</option>)}</select></div></div>
     {selected ? <><div className="grid grid-cols-2 lg:grid-cols-4 gap-2">{[['Informes vigentes', filtered.length], ['Meses publicados', chartRows.length], ['Último mes', chartRows.length ? `${chartRows.at(-1).total_score}%` : '—'], ['Acumulado informado', selected.cumulative_score == null ? '—' : `${selected.cumulative_score}%`]].map(([label, value]) => <div key={label} className="kpi-card"><strong className="kpi-value">{value}</strong><span className="kpi-label">{label}</span></div>)}</div>
       <div className="glass p-4"><div className="flex flex-wrap justify-between gap-2"><div><h3 className="font-semibold">{selected.airline} · {siteNames.get(String(selected.site_id)) || selected.site_id} · {selected.report_year}</h3><p className="text-xs" style={{ color:'var(--text-dim)' }}>Puntaje mensual publicado en el informe; el acumulado se conserva por separado.</p></div>{selected.storage_path && <button type="button" className="btn-ghost" onClick={() => openAirlinePdf(selected.storage_path).catch(e => toast.error(mensajeError(e)))}><FileText size={14} /> Abrir PDF original</button>}</div><div style={{ width:'100%', height:260 }}><ResponsiveContainer><LineChart data={chartRows} margin={{ top:20, right:20, bottom:5, left:0 }}><CartesianGrid stroke="#444" strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={[0, chartMax]} tickFormatter={v => `${v}%`} /><Tooltip formatter={v => `${v}%`} /><Line type="monotone" dataKey="total_score" name="Resultado" stroke="#41e500" strokeWidth={3} connectNulls={false} /></LineChart></ResponsiveContainer></div></div>
+      <AirlineAnalysisAttachments title="Análisis de esta sede" items={selectedAnalyses} reportId={selected.id} canWrite={canWrite} userId={user?.id} onUploaded={load} />
       <div className="glass overflow-x-auto"><table className="w-full text-sm" style={{ minWidth:900 }}><thead><tr><th className="p-3 text-left">Mes</th><th className="p-3 text-left">Total</th><th className="p-3 text-left">Nivel</th>{PERFORMANCE_CATEGORIES.map(([key, label]) => <th key={key} className="p-3 text-left">{label}</th>)}</tr></thead><tbody>{chartRows.map(row => <tr key={row.id} className="border-t border-white/10"><td className="p-3">{MONTHS[row.month - 1]}</td><td className="p-3 font-bold" style={{ color:scoreColor(row.total_score) }}>{row.total_score}%</td><td className="p-3">{row.level || '—'}</td>{PERFORMANCE_CATEGORIES.map(([key]) => { const metric = row.metrics?.[key]; return <td key={key} className="p-3" title={metric && typeof metric === 'object' ? `Dato: ${metric.reported_value ?? '—'} · Puntaje: ${metric.awarded ?? '—'}` : ''}>{metric && typeof metric === 'object' ? <><div>{metric.reported_value ?? '—'}</div><small style={{ color:'var(--text-dim)' }}>{metric.awarded ?? '—'} pts</small></> : metric || '—'}</td> })}</tr>)}</tbody></table></div>
       {priorVersions.length > 0 && <details className="glass p-4"><summary className="cursor-pointer">Versiones anteriores ({priorVersions.length})</summary><div className="space-y-2 mt-3">{priorVersions.map(report => <div key={report.id} className="flex flex-wrap justify-between items-center gap-2 border-t border-white/10 pt-2"><span>{new Date(report.published_at).toLocaleDateString('es-AR')} · {report.airline_performance_months?.length || 0} meses · acumulado {report.cumulative_score == null ? '—' : `${report.cumulative_score}%`}</span>{report.storage_path && <button type="button" className="btn-ghost" onClick={() => openAirlinePdf(report.storage_path).catch(e => toast.error(mensajeError(e)))}>Abrir PDF</button>}</div>)}</div></details>}
       {filtered.length > 1 && <div className="glass p-4"><h3 className="font-semibold mb-2">Comparar sedes y períodos</h3>{comparisonReports.length > 1 && <><p className="text-xs mb-2" style={{ color:'var(--text-dim)' }}>{selected.airline} · {comparisonYear}. Cada línea conserva la sede; los meses sin resultado quedan vacíos.</p><div style={{ width:'100%', height:280 }}><ResponsiveContainer><LineChart data={comparisonRows} margin={{ top:10, right:20, bottom:5, left:0 }}><CartesianGrid stroke="#444" strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={[0, comparisonMax]} tickFormatter={v => `${v}%`} /><Tooltip formatter={v => `${v}%`} /><Legend />{comparisonReports.map((report, index) => <Line key={report.id} type="monotone" dataKey={siteNames.get(String(report.site_id)) || String(report.site_id)} stroke={['#41e500', '#38bdf8', '#f59e0b', '#f472b6', '#a78bfa'][index % 5]} strokeWidth={2} connectNulls={false} />)}</LineChart></ResponsiveContainer></div></>}<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr><th className="p-2 text-left">Sede</th><th className="p-2 text-left">Aerolínea</th><th className="p-2 text-left">Año</th><th className="p-2 text-left">Acumulado</th><th className="p-2 text-left">Meses</th><th className="p-2 text-left">Acción</th></tr></thead><tbody>{filtered.map(report => <tr key={report.id} className="border-t border-white/10"><td className="p-2">{siteNames.get(String(report.site_id))}</td><td className="p-2">{report.airline}</td><td className="p-2">{report.report_year}</td><td className="p-2">{report.cumulative_score == null ? '—' : `${report.cumulative_score}%`}</td><td className="p-2">{report.airline_performance_months?.length || 0}</td><td className="p-2"><button type="button" className="btn-ghost" aria-current={report.id === selected.id ? 'true' : undefined} onClick={() => setSelectedReportId(report.id)}>Ver evolución</button></td></tr>)}</tbody></table></div></div>}
+      {comparisonReports.length > 1 && <AirlineAnalysisAttachments title={`Análisis comparativo · ${selected.airline} ${comparisonYear}`} items={comparisonAnalyses} airline={selected.airline} year={comparisonYear} canWrite={canWrite} userId={user?.id} onUploaded={load} />}
     </> : !loading && <div className="glass p-8 text-center" style={{ color:'var(--text-dim)' }}>Todavía no hay informes publicados para estos filtros.</div>}
     {loading && <p>Cargando informes…</p>}
   </div>
