@@ -63,6 +63,8 @@ import { confirmar, pedirTexto, toast } from "../lib/feedback";
 import { confirmarAccionSensible } from "../lib/sensitiveActions";
 import { mensajeError } from "../lib/errores";
 import PersonalNovedadesReportModal from "../components/PersonalNovedadesReportModal";
+import PersonaVinculoPanel from "../components/PersonaVinculoPanel";
+import { esPersonalOperativo, esPersonaExterna, coincideVinculo } from "../lib/personaVinculo";
 import PersonaEncuadrePanel from "../components/PersonaEncuadrePanel";
 import HorariosDotacion from "../components/HorariosDotacion";
 import {
@@ -1032,7 +1034,8 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         {/* ── INFO ── */}
         {tab === "info" && (
           <div className="space-y-4">
-            <PersonaEncuadrePanel persona={persona} personas={personasEquipo} sedes={sedes} canManage={canManage} onChanged={load} />
+            <PersonaVinculoPanel persona={persona} canManage={canManage} onChanged={load} />
+            {!esPersonaExterna(persona) && <PersonaEncuadrePanel persona={persona} personas={personasEquipo} sedes={sedes} canManage={canManage} onChanged={load} />}
             <div className="grid grid-cols-2 gap-4">
               <div className="glass p-4 grid grid-cols-2 gap-x-6 gap-y-3 [&>p:first-child]:col-span-2">
                 <p
@@ -3145,6 +3148,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
   const hasLoadedOnce = useRef(false);
   const [search, setSearch] = useState("");
   const [sedeFilter, setSedeFilter] = useState("");
+  const [vinculoFilter, setVinculoFilter] = useState("staff");
   const [tab, setTab] = useState("lista");
   const [selectedId, setSelectedId] = useState(
     !focusType || focusType === "persona" ? focusId || null : null,
@@ -3318,7 +3322,9 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
     if (isQualityOnly && !["lista", "analisis", "recursos"].includes(tab)) setTab("lista");
   }, [isQualityOnly, tab]);
 
+  const personalStaff = personas.filter(esPersonalOperativo);
   const filtered = personas.filter((p) => {
+    if (!coincideVinculo(p, vinculoFilter)) return false;
     if (sedeFilter && (!p.sede_ids || !p.sede_ids.includes(Number(sedeFilter))))
       return false;
     if (!search) return true;
@@ -3339,17 +3345,17 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
   });
 
   const statsPersonas = sedeFilter
-    ? personas.filter((p) =>
+    ? personalStaff.filter((p) =>
         sedeFilter === "unassigned"
           ? !p.sede_ids || p.sede_ids.length === 0
           : p.sede_ids?.includes(Number(sedeFilter)),
       )
-    : personas;
+    : personalStaff;
   const statsPersonasEvaluadas = statsPersonas.filter(
     (p) => Number(p.puntaje_promedio || 0) > 0,
   );
 
-  const periodosPrueba = personas.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=0 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
+  const periodosPrueba = personalStaff.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=0 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
   const primaryTabs = [
     ["lista", "LISTA"], ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
     ["horarios", "HORARIOS"], ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
@@ -3410,7 +3416,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       {showSolicitud && (
         <SolicitudPersonalModal
           sedes={sedes}
-          personas={personas}
+          personas={personalStaff}
           onClose={() => setShowSolicitud(false)}
         />
       )}
@@ -3442,7 +3448,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
             className="font-metric"
             style={{ fontSize: "0.6rem", color: "var(--text-dim)" }}
           >
-            {statsPersonas.length} personas activas
+            {statsPersonas.length} personas del staff
           </p>
         </div>
         {!isQualityOnly && (
@@ -3480,7 +3486,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
         style={{ borderBottom: "1px solid rgba(57,255,20,0.06)" }}
       >
         {[
-          { label: "PERSONAS", value: statsPersonas.length },
+          { label: "STAFF", value: statsPersonas.length },
           {
             label: "PUNTAJE PROM.",
             value: statsPersonasEvaluadas.length
@@ -3584,6 +3590,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
         </div>
         {tab === "lista" && (
           <div className="flex-1 flex justify-end gap-3">
+            <select aria-label="Tipo de vínculo" className="input-dark" value={vinculoFilter} onChange={e => setVinculoFilter(e.target.value)}><option value="staff">Staff</option><option value="externo">Externos</option><option value="todos">Todos los vínculos</option></select>
             <select
               className="input-dark px-2"
               value={sedeFilter}
@@ -3638,7 +3645,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
         ) : tab === "organigrama" ? (
           <OrganigramaView onNavigate={onNavigate} />
         ) : tab === "vacaciones" ? (
-          <VacacionesPanel personas={personas} sedes={sedes} canManage={canManage} />
+          <VacacionesPanel personas={personalStaff} sedes={sedes} canManage={canManage} />
         ) : tab === "periodo-prueba" ? (
           <div className="max-w-5xl space-y-3">
             <div className="glass p-4 flex items-center justify-between gap-4"><div><p className="font-title font-bold" style={{color:"var(--phosphor)"}}>PERÍODOS DE PRUEBA · 180 DÍAS</p><p style={{color:"var(--text-dim)",fontSize:'.72rem',marginTop:4}}>Cuenta regresiva automática desde la fecha de ingreso. Planta Córdoba no se incluye.</p></div><div className="text-right"><p className="font-title font-bold text-xl" style={{color:"var(--phosphor)"}}>{periodosPrueba.filter(({periodo})=>periodo.diasRestantes>=0).length}</p><p className="font-metric" style={{color:"var(--text-dim)",fontSize:'.58rem'}}>VIGENTES</p></div></div>
@@ -4024,8 +4031,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
           </div>
         ) : tab === "analisis" ? (
           <EvaluacionesAnalysisPanel
-            evaluaciones={evaluacionesEquipo}
-            personas={personas}
+            evaluaciones={evaluacionesEquipo.filter(e => personalStaff.some(p => p.id === e.persona_id))}
+            personas={personalStaff}
             onOpenPersona={setSelectedId}
           />
         ) : tab === "recursos" ? (

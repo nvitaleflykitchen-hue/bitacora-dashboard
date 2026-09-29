@@ -7,6 +7,8 @@ import { fmtFechaLarga } from '../lib/dateUtils'
 import PersonaFormularios from '../components/PersonaFormularios'
 import { PersonaAvatar, PersonaFotoEditor } from '../components/PersonaAvatar'
 import VacacionesPanel from '../components/VacacionesPanel'
+import PersonaVinculoPanel from "../components/PersonaVinculoPanel";
+import { esPersonalOperativo, coincideVinculo } from "../lib/personaVinculo";
 import AdjuntosPanel from '../components/AdjuntosPanel'
 import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star, Trash2 } from 'lucide-react'
 import { confirmar, pedirTexto, toast } from '../lib/feedback'
@@ -513,6 +515,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 1rem 1rem', minHeight: 0 }}>
         {tab === 'info' && (
           <Card>
+            <PersonaVinculoPanel persona={persona} canManage={canManage} onChanged={load} />
             {[['N.º de legajo', persona.legajo], ['DNI', persona.dni], ['Teléfono', persona.telefono], ['Email', persona.email],
               ['Fecha de ingreso', persona.fecha_ingreso ? fmtFechaLarga(persona.fecha_ingreso) : null]]
               .filter(([, v]) => v).map(([l, v]) => (
@@ -645,6 +648,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
   const [bajas, setBajas] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [vinculoFilter, setVinculoFilter] = useState('staff')
   const [view, setView] = useState('lista')
   const [selectedId, setSelectedId] = useState(null)
   useBackHandler(() => setSelectedId(null), !!selectedId)
@@ -695,6 +699,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
   }
 
   const filtered = personas.filter(p => {
+    if (!coincideVinculo(p, vinculoFilter)) return false
     if (selectedSede?.id === 'central' && (p.sede_ids?.length || p.sede_id)) return false
     if (selectedSede && selectedSede.id !== 'central' && !p.sede_ids?.includes(selectedSede.id) && p.sede_id !== selectedSede.id) return false
     if (!search) return true
@@ -724,7 +729,8 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
               <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
               <input className="input-dark w-full" aria-label="Buscar personas" placeholder="Buscar por nombre, legajo o puesto..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 30 }} />
             </div>
-            {(sedes.length > 0 || personas.some(p => !p.sede_ids?.length && !p.sede_id)) && (
+            <select aria-label="Tipo de vínculo" className="input-dark w-full" value={vinculoFilter} onChange={e => setVinculoFilter(e.target.value)}><option value="staff">Staff</option><option value="externo">Externos</option><option value="todos">Todos los vínculos</option></select>
+              {(sedes.length > 0 || personas.some(p => !p.sede_ids?.length && !p.sede_id)) && (
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }} className="hide-scrollbar">
                 <SedePill label="Todas" active={!selectedSede} onClick={() => setSelectedSede(null)} />
                 {personas.some(p => !p.sede_ids?.length && !p.sede_id) && <SedePill label="Equipo central" active={selectedSede?.id === 'central'} onClick={() => setSelectedSede({ id: 'central', nombre: 'Equipo central' })} />}
@@ -762,7 +768,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
             )
           })
         ) : view === 'vacaciones' ? (
-          <VacacionesPanel personas={personas} sedes={sedes} canManage={canManage} compact />
+          <VacacionesPanel personas={personas.filter(esPersonalOperativo)} sedes={sedes} canManage={canManage} compact />
         ) : view === 'bajas' ? (
           bajas.length === 0 ? <EmptyState icono={Users} titulo="No hay bajas registradas" detalle="Las personas dadas de baja aparecerán en esta sección." accion="Volver a la lista" onAccion={() => setView('lista')} /> : bajas.map(p => (
             <div key={p.id} style={{ background:'var(--surface)', borderRadius:10, padding:'0.85rem', marginBottom:'0.75rem', display:'flex', gap:10, alignItems:'center' }}>
@@ -774,8 +780,8 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
         ) : view === 'analisis' ? (
           <EvaluacionesAnalysisPanel
             compact
-            evaluaciones={evaluacionesEquipo}
-            personas={personas}
+            evaluaciones={evaluacionesEquipo.filter(e => personas.some(p => p.id === e.persona_id && esPersonalOperativo(p)))}
+            personas={personas.filter(esPersonalOperativo)}
             onOpenPersona={setSelectedId}
           />
         ) : (
