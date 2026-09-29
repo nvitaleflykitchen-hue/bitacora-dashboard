@@ -1574,6 +1574,7 @@ export async function getPersonasBySede(sedeId) {
   const { data, error } = await supabase
     .from("v_personas")
     .select("id, nombre, apellido, puesto, sede_ids")
+    .eq("tipo_vinculo", "staff")
     .eq("activo", true);
   if (error) throw error;
   return (data || []).filter((p) => p.sede_ids && p.sede_ids.includes(sedeId));

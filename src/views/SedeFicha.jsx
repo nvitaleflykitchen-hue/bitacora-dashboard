@@ -319,7 +319,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
       supabase.schema('bitacora').from('no_conformidades').select('id,estado')
         .eq('sede_id', sedeId).not('estado','eq','Verificada'),
       supabase.from('v_personas').select('id,nombre,apellido,puesto,puntaje_promedio')
-        .contains('sede_ids', [sedeId]).eq('activo', true),
+        .contains('sede_ids', [sedeId]).eq('activo', true).eq('tipo_vinculo', 'staff'),
       supabase.schema('bitacora').from('registros')
         .select('*, sedes(nombre)')
         .eq('sede_id', sedeId).order('fecha_reporte', { ascending: false }).limit(6),

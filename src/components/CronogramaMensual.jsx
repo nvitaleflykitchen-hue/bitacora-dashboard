@@ -89,6 +89,8 @@ export default function CronogramaMensual({
         .schema("equipo")
         .from("personas")
         .select("id,nombre,apellido")
+        .eq("tipo_vinculo", "staff")
+        .eq("activo", true)
         .in("id", ids);
       if (q.error) {
         setLoading(false);
@@ -99,7 +101,7 @@ export default function CronogramaMensual({
     const nameById = new Map(
       names.map((x) => [x.id, `${x.nombre || ""} ${x.apellido || ""}`.trim()]),
     );
-    const available = (enc.data || []).map((x) => ({
+    const available = (enc.data || []).filter(x => nameById.has(x.persona_id)).map((x) => ({
       ...x,
       persona_nombre: nameById.get(x.persona_id) || "Persona sin nombre",
     }));
