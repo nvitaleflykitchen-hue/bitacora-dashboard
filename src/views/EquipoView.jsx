@@ -3325,10 +3325,10 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
   const personalStaff = personas.filter(esPersonalOperativo);
   const filtered = personas.filter((p) => {
     if (!coincideVinculo(p, vinculoFilter)) return false;
-    if (sedeFilter && (!p.sede_ids || !p.sede_ids.includes(Number(sedeFilter))))
+    if (sedeFilter && (sedeFilter === "unassigned" ? p.sede_ids?.length > 0 : !p.sede_ids?.includes(Number(sedeFilter))))
       return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
     return (
       p.nombre +
       " " +
@@ -3588,39 +3588,22 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
             </button>
           ))}
         </div>
-        {tab === "lista" && (
-          <div className="flex-1 flex justify-end gap-3">
-            <select aria-label="Tipo de vínculo" className="input-dark" value={vinculoFilter} onChange={e => setVinculoFilter(e.target.value)}><option value="staff">Staff</option><option value="externo">Externos</option><option value="todos">Todos los vínculos</option></select>
-            <select
-              className="input-dark px-2"
-              value={sedeFilter}
-              onChange={(e) => setSedeFilter(e.target.value)}
-              style={{ fontSize: "0.75rem", height: 30, width: 180 }}
-            >
-              <option value="">Todas las escalas</option>
-              {sedes.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
-            <div className="relative" style={{ width: 180 }}>
-              <Search
-                size={12}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2"
-                style={{ color: "var(--text-dim)" }}
-              />
-              <input
-                className="input-dark w-full pl-7"
-                placeholder="Buscar..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ fontSize: "0.75rem", height: 30 }}
-              />
-            </div>
-          </div>
-        )}
       </div>
+      {tab === "lista" && (
+        <div className="px-6 py-3 flex flex-wrap items-center gap-3" style={{ borderBottom: "1px solid rgba(57,255,20,0.08)" }}>
+          <div className="relative flex-1" style={{ minWidth: 240 }}>
+            <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--phosphor)" }} />
+            <input type="search" aria-label="Buscar colaboradores" className="input-dark w-full" placeholder="Buscar colaboradores por nombre, legajo o puesto…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 40, height: 42, fontSize: ".9rem" }} />
+          </div>
+          <select aria-label="Tipo de vínculo" className="input-dark" value={vinculoFilter} onChange={e => setVinculoFilter(e.target.value)} style={{ width: 190, height: 42 }}>
+            <option value="staff">Staff</option><option value="externo">Externos</option><option value="todos">Todos los vínculos</option>
+          </select>
+          <select aria-label="Filtrar por escala" className="input-dark" value={sedeFilter} onChange={e => setSedeFilter(e.target.value)} style={{ width: 220, height: 42 }}>
+            <option value="">Todas las escalas</option><option value="unassigned">Equipo central</option>
+            {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -3716,20 +3699,20 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
           </div>
         ) : tab === "lista" ? (
           <div
-            className="flex gap-4 h-full overflow-x-auto pb-4"
+            className={search.trim() ? "w-full min-w-0 pb-4" : "flex gap-4 h-full overflow-x-auto pb-4"}
             style={{ alignItems: "flex-start" }}
           >
             {/* Columnas por Sede */}
-            {[{ id: "unassigned", nombre: "Equipo central" }, ...sedes]
+            {(search.trim() ? [{ id: "resultados", nombre: "Resultados de búsqueda" }] : [{ id: "unassigned", nombre: "Equipo central" }, ...sedes])
               .filter((s) =>
-                sedeFilter
+                !search.trim() && sedeFilter
                   ? s.id === Number(sedeFilter) ||
                     (sedeFilter === "unassigned" && s.id === "unassigned")
                   : true,
               )
               .map((sede) => {
                 const isUnassigned = sede.id === "unassigned";
-                const personasSede = filtered.filter((p) =>
+                const personasSede = sede.id === "resultados" ? filtered : filtered.filter((p) =>
                   isUnassigned
                     ? !p.sede_ids || p.sede_ids.length === 0
                     : p.sede_ids?.includes(sede.id),
@@ -3737,7 +3720,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
                 if (personasSede.length === 0 && isUnassigned) return null; // Hide unassigned if empty
                 if (
-                  personasSede.length === 0 &&
+                  sede.id !== "resultados" && personasSede.length === 0 &&
                   sedeFilter !== String(sede.id) &&
                   sedeFilter !== ""
                 )
@@ -3760,7 +3743,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                     key={sede.id}
                     className="flex-shrink-0 flex flex-col gap-3"
                     style={{
-                      width: sedeFilter ? "100%" : 320,
+                      width: search.trim() || sedeFilter ? "100%" : 320,
+                      minWidth: 0,
                       background: "rgba(255,255,255,0.02)",
                       padding: "12px",
                       borderRadius: 8,
@@ -3792,7 +3776,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                       </span>
                     </div>
                     {/* KPIs Columna */}
-                    {!isUnassigned && personasSede.length > 0 && (
+                    {!search.trim() && !isUnassigned && personasSede.length > 0 && (
                       <div className="flex justify-between mb-2 px-1">
                         <div className="text-center">
                           <p
@@ -3838,10 +3822,10 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                     )}
                     {/* Tarjetas */}
                     <div
-                      className={sedeFilter
+                      className={search.trim() || sedeFilter
                         ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 overflow-y-auto"
                         : "flex flex-col gap-3 overflow-y-auto"}
-                      style={{ maxHeight: "calc(100vh - 280px)" }}
+                      style={{ maxHeight: search.trim() ? undefined : "calc(100vh - 280px)" }}
                     >
                       {personasSede.map((p) => {
                         const score = Math.min(5, p.puntaje_promedio || 0);
@@ -3883,6 +3867,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                                 >
                                   {p.nombre} {p.apellido}
                                 </h3>
+                                {search.trim() && <p style={{ color: "var(--phosphor)", fontSize: ".72rem", marginTop: 3 }}>{sedes.filter(s => p.sede_ids?.includes(s.id)).map(s => s.nombre).join(" · ") || "Equipo central"}</p>}
                                 <p
                                   style={{
                                     fontSize: "0.75rem",
@@ -4021,7 +4006,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                             color: "var(--text-dim)",
                           }}
                         >
-                          Sin personas
+                          {search.trim() ? "No encontramos colaboradores. Probá otro nombre o cambiá los filtros de vínculo y escala." : "Sin personas"}
                         </p>
                       )}
                     </div>
