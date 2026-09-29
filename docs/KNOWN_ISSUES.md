@@ -1,5 +1,12 @@
 # KNOWN_ISSUES — bitacora-dashboard
 
+## Recreación de v_personas: pérdida de opciones de vista (corregido el 2026-09-29)
+
+- Severidad: ALTO. La primera ejecución de la migración de vínculo externo recreó `public.v_personas` sin preservar `security_invoker=true`.
+- Verificación: consulta de `pg_class.reloptions` posterior a la migración en `mixyhfdlzjarvszinytk` devolvió NULL; antes tenía `security_invoker=true`.
+- Corrección: se restauró inmediatamente esa opción y se verificó su valor. La migración versionada conserva explícitamente todas las opciones previas al ejecutar CREATE OR REPLACE VIEW. Se probó la conservación con una vista temporal dentro de BEGIN/ROLLBACK.
+- Recomendación: al recrear vistas, comparar opciones y permisos antes y después; no asumir que CREATE OR REPLACE conserva `reloptions`. No se modificaron políticas ni GRANT.
+
 ## Microbiología: acceso amplio en la tabla histórica (corregido el 2026-09-23)
 
 - Severidad: ALTO. Cualquier usuario autenticado tiene actualmente SELECT, INSERT, UPDATE y DELETE sobre `bitacora.microbiologia_resultados` sin filtro de sede.
