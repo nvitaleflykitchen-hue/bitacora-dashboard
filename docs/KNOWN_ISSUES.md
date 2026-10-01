@@ -1,5 +1,12 @@
 # KNOWN_ISSUES — bitacora-dashboard
 
+## Solicitudes Browix: persona sugerida incorrecta (corrección preparada el 2026-10-01)
+
+- Severidad: MEDIO. Una sugerencia aprendida podía preseleccionar a otra persona para un correo de Solicitud Laboral de Browix.
+- Verificación: captura del usuario y prueba de componente con empleado Mirtha Clidia Zalazar y sugerencia Jose Luis Veron. La selección anterior tomaba sugerido_persona_id sin contrastar el empleado del cuerpo.
+- Corrección: al abrir una solicitud Browix, se busca una coincidencia única del nombre completo del campo Empleado entre las personas disponibles. Se descartan sugerencias genéricas para estos correos y se conservan asociaciones confirmadas. No hay escritura hasta Guardar vínculo.
+- Recomendación: resolver manualmente ausencias u homónimos; no usar coincidencias parciales ni nombres del personal de cobertura.
+
 ## Recreación de v_personas: pérdida de opciones de vista (corregido el 2026-09-29)
 
 - Severidad: ALTO. La primera ejecución de la migración de vínculo externo recreó `public.v_personas` sin preservar `security_invoker=true`.

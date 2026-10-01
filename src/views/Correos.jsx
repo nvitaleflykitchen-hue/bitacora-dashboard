@@ -1,9 +1,11 @@
 import { createPortal } from 'react-dom'
 import React from 'react'
+import { esSolicitudBrowix, seleccionInicialCorreo } from '../lib/correoBrowix'
 import { destinoCorreo, personasCorreo } from '../lib/correoDestinos'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CORREO_PAGE_SIZE, correoError, downloadCorreoFile, getCorreoContext, getCorreoDetail, getCorreos, reviewCorreo } from '../lib/correos'
 
+const EMPTY_PLANS = []
 const states = { pendiente: 'Por revisar', vinculado: 'Vinculados', ignorado: 'Archivados', todos: 'Todos' }
 const title = plan => plan?.titulo || plan?.objetivo || plan?.auditoria_codigo || 'Gestión'
 const dateText = value => value ? new Date(value).toLocaleString('es-AR') : 'Sin fecha en el original'
@@ -76,7 +78,7 @@ export function DestinationPicker({ destinations, selected, selectedPeople = [],
   </div>
 }
 
-export function CorreoDetail({ id, plans = [], destinations, canReview, onClose, onSaved }) {
+export function CorreoDetail({ id, plans = EMPTY_PLANS, destinations, canReview, onClose, onSaved }) {
   const dialogRef = useRef(null)
   useEffect(() => {
     const previous = document.activeElement
@@ -91,15 +93,16 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
   const [detail, setDetail] = useState(null)
   const [selected, setSelected] = useState('')
   const [selectedPeople, setSelectedPeople] = useState([])
+  const [selectionNotice, setSelectionNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const destinationGroups = destinations || {
+  const destinationGroups = useMemo(() => destinations || {
     planes: plans.filter(p => !String(p.id).includes(':')), proyectos: [],
     tareas: plans.filter(p => String(p.id).startsWith('tarea:')), compras: plans.filter(p => String(p.id).startsWith('compra:')),
     tickets: plans.filter(p => String(p.id).startsWith('ticket:')), personas: plans.filter(p => String(p.id).startsWith('persona:')),
     grupos: plans.filter(p => String(p.id).startsWith('grupo:')), sedes: plans.filter(p => String(p.id).startsWith('sede:')), vehiculos: plans.filter(p => String(p.id).startsWith('vehiculo:')),
     id: plans.filter(p => String(p.id).startsWith('idproyecto:')),
-  }
+  }, [destinations, plans])
   const allDestinations = Object.values(destinationGroups).flat()
   useEffect(() => {
     let active = true
@@ -108,13 +111,13 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
     getCorreoDetail(id).then(data => {
       if (!active) return
       setDetail(data)
-      const current = destinoCorreo(data.message)
-      const suggested = destinoCorreo(data.message, true)
-      setSelected(current?.startsWith('persona:') ? '' : (current || (suggested?.startsWith('persona:') ? '' : suggested) || ''))
-      setSelectedPeople(personasCorreo(data.message).length ? personasCorreo(data.message) : personasCorreo(data.message, true))
+      const initial = seleccionInicialCorreo(data.message, destinationGroups.personas)
+      setSelected(initial.selected)
+      setSelectedPeople(initial.people)
+      setSelectionNotice(initial.notice)
     }).catch(err => active && setError(correoError(err)))
     return () => { active = false }
-  }, [id])
+  }, [id, destinationGroups])
   async function save(state) {
     setBusy(true); setError('')
     try {
@@ -154,8 +157,8 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
       <div className="glass p-3 space-y-2">
         <p><strong>{message.tipo}</strong> · {states[message.estado]}</p>
         {message.resumen && <p>{message.resumen}</p>}
-        {message.motivo && <p style={{ color: 'var(--text-dim)' }}>Motivo de la sugerencia: {message.motivo}</p>}
-        {message.ai_fuente === 'aprendizaje' && <p className="text-sm" style={{ color: 'var(--green)' }}>
+        {!esSolicitudBrowix(message) && message.motivo && <p style={{ color: 'var(--text-dim)' }}>Motivo de la sugerencia: {message.motivo}</p>}
+        {!esSolicitudBrowix(message) && message.ai_fuente === 'aprendizaje' && <p className="text-sm" style={{ color: 'var(--green)' }}>
           Sugerencia aprendida de tus vínculos anteriores{message.ai_confianza != null ? ` · ${message.ai_confianza}% de confianza` : ''}
         </p>}
         {message.ai_estado === 'pendiente' && <p>Guardado como evidencia. Clasificación pendiente.</p>}
@@ -163,6 +166,7 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
         {message.nueva_gestion && <p>Posible gestión nueva: {message.nueva_gestion}</p>}
         {!canReview && !!personasCorreo(message).length && <p>Personas asociadas: {personasCorreo(message).map(key => title(allDestinations.find(item => item.id === key))).join(', ')}</p>}
         {canReview && <div className="space-y-2">
+          {selectionNotice && <p role="status">{selectionNotice}</p>}
           <DestinationPicker destinations={destinationGroups} selected={selected} selectedPeople={selectedPeople} onSelect={setSelected} onTogglePerson={togglePerson} disabled={busy} />
           <div className="flex gap-2 flex-wrap">
             <button type="button" className="btn-primary" disabled={busy || (!selected && !selectedPeople.length)} onClick={() => save('vinculado')}>Guardar vínculo</button>
@@ -244,9 +248,9 @@ export default function Correos({ planId = null, readOnly = false }) {
           {message.ai_estado === 'lista' && <span className="block text-sm mt-2">Analizado por Ollama · {message.tipo}{!destinoCorreo(message) && !destinoCorreo(message, true) ? ' · Sin gestión coincidente' : ''}</span>}
           {message.nueva_gestion && <span className="block text-sm mt-2">Propuesta para revisar: {message.nueva_gestion}</span>}
           <span className="block text-sm mt-2" style={{ color: 'var(--primary)' }}>Abrir análisis, vínculo y adjuntos</span>
-          {(destinoCorreo(message) || destinoCorreo(message, true)) && <span className="block text-sm mt-2">{destinoCorreo(message) ? 'Vinculado a: ' : 'Sugerencia: '}{title(context.plans.find(p => p.id === (destinoCorreo(message) || destinoCorreo(message, true))))}</span>}
+          {(destinoCorreo(message) || (!esSolicitudBrowix(message) && destinoCorreo(message, true))) && <span className="block text-sm mt-2">{destinoCorreo(message) ? 'Vinculado a: ' : 'Sugerencia: '}{title(context.plans.find(p => p.id === (destinoCorreo(message) || destinoCorreo(message, true))))}</span>}
           {!!personasCorreo(message).length && <span className="block text-sm mt-1">Personas: {personasCorreo(message).map(key => title(context.plans.find(item => item.id === key))).join(', ')}</span>}
-          {!destinoCorreo(message) && destinoCorreo(message, true) && message.ai_fuente === 'aprendizaje' && <span className="block text-xs mt-1" style={{ color: 'var(--green)' }}>Aprendido de tus decisiones anteriores{message.ai_confianza != null ? ` · ${message.ai_confianza}%` : ''}</span>}
+          {!esSolicitudBrowix(message) && !destinoCorreo(message) && destinoCorreo(message, true) && message.ai_fuente === 'aprendizaje' && <span className="block text-xs mt-1" style={{ color: 'var(--green)' }}>Aprendido de tus decisiones anteriores{message.ai_confianza != null ? ` · ${message.ai_confianza}%` : ''}</span>}
         </button>)}</div>
         {result.total > CORREO_PAGE_SIZE && <nav aria-label="Páginas de correos" className="flex gap-3 items-center"><button type="button" className="btn-ghost" disabled={page === 0} onClick={() => { setPage(page - 1); setOpened(null) }}>Anterior</button><span>{page + 1} / {Math.ceil(result.total / CORREO_PAGE_SIZE)}</span><button type="button" className="btn-ghost" disabled={(page + 1) * CORREO_PAGE_SIZE >= result.total} onClick={() => { setPage(page + 1); setOpened(null) }}>Siguiente</button></nav>}
       </>}
