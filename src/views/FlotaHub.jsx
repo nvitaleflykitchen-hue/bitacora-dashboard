@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import WorkspaceTabs from '../components/WorkspaceTabs'
 import FlotaResumen from './flota/FlotaResumen'
@@ -11,7 +11,10 @@ import FlotaChecklist from './flota/FlotaChecklist'
 import ContactosTab from '../components/ContactosTab'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
 
+const EstacionesEdenred = lazy(() => import('./flota/EstacionesEdenred'))
+
 const VIEWS = {
+  edenred: EstacionesEdenred,
   resumen: FlotaResumen,
   vehiculos: MntFlotaGestion,
   tickets: MntVehiculos,
@@ -24,6 +27,7 @@ const VIEWS = {
 
 const TABS = [
   { id:'resumen', label:'Resumen' },
+  { id:'edenred', label:'Estaciones Edenred' },
   { id:'vehiculos', label:'Vehículos' },
   { id:'tickets', label:'Tickets' },
   { id:'checklist', label:'Checklist' },
@@ -46,7 +50,9 @@ export default function FlotaHub({ onNavigate, focusId, focusType }) {
 
   return (
     <WorkspaceTabs title="Flota" subtitle="Vehículos, matafuegos, documentación y mantenimiento preventivo" tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} rightSlot={<ContactosQuickBtn modulo="flota" />}>
-      <ActiveView onNavigate={onNavigate} onGoTab={setActiveTab} focusId={focusId} />
+      <Suspense fallback={<p role="status" className="p-4">Cargando…</p>}>
+        <ActiveView onNavigate={onNavigate} onGoTab={setActiveTab} focusId={focusId} />
+      </Suspense>
     </WorkspaceTabs>
   )
 }
