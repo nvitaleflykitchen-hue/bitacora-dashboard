@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { getActivos, getPoes } from '../lib/queries'
 import { ACTIVO_ESTADO_COLOR, DOC_ESTADO_COLOR } from '../lib/estados'
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import SkeletonTable from '../components/SkeletonTable'
 import EmptyState from '../components/EmptyState'
-import { Car, FileText, ChevronLeft, AlertTriangle } from 'lucide-react'
+import { Car, FileText, ChevronLeft, AlertTriangle, MapPin } from 'lucide-react'
 import { useBackHandler } from '../lib/backStack'
+
+const EstacionesEdenred = lazy(() => import('../views/flota/EstacionesEdenred'))
 
 // Flota mobile: vehículos con estado y vencimientos, y documentos/POEs.
 // Lectura + alerta de vencimientos; la gestión completa vive en escritorio.
@@ -52,8 +54,6 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
       .catch(e => toast.error(mensajeError(e)))
       .finally(() => setLoading(false))
   }, [focusType, focusId])
-
-  if (loading) return <SkeletonTable filas={6} columnas={2} />
 
   if (sel) {
     const docsVehiculo = docs.filter(d => d.activo_id === sel.id)
@@ -107,8 +107,8 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ padding: '0.75rem 1rem 0', flexShrink: 0 }}>
         <h1 style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700, marginBottom: 10 }}>Flota</h1>
-        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: '0.2rem', borderRadius: 20 }}>
-          {[['vehiculos', 'Vehículos', Car], ['docs', 'Documentos', FileText]].map(([id, label, Icon]) => (
+        <div style={{ display: 'flex', gap: 6, background: 'var(--surface)', padding: '0.2rem', borderRadius: 20, flexWrap:'wrap' }}>
+          {[['vehiculos', 'Vehículos', Car], ['edenred', 'Estaciones Edenred', MapPin], ['docs', 'Documentos', FileText]].map(([id, label, Icon]) => (
             <button key={id} onClick={() => setTab(id)} style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
               padding: '0.4rem', borderRadius: 16, fontSize: '0.65rem', fontWeight: 700, border: 'none',
@@ -119,8 +119,8 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
           ))}
         </div>
       </div>
-      <div className="mobile-scroll" style={{ flex: 1, padding: '0.75rem 1rem' }}>
-        {tab === 'vehiculos' ? (
+      <div className={tab === 'edenred' ? 'flex flex-col min-h-0 overflow-hidden' : 'mobile-scroll'} style={{ flex: 1, padding:tab === 'edenred' ? 0 : '0.75rem 1rem' }}>
+        {tab === 'edenred' ? <Suspense fallback={<p role="status">Cargando estaciones…</p>}><EstacionesEdenred /></Suspense> : loading ? <SkeletonTable filas={6} columnas={2} /> : tab === 'vehiculos' ? (
           !vehiculos.length ? <EmptyState icono={Car} titulo="Sin vehículos" detalle="El alta se hace desde escritorio." /> :
           vehiculos.map(v => {
             const peor = estadoVencimientos(v)

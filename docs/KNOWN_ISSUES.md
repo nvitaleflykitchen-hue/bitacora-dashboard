@@ -477,6 +477,13 @@ Ya documentado en SETUP.md §2 y REPOSITORY_AUDIT.md.
 | 3.14 | Fechas `date` de Equipo se mostraban un día antes por conversión UTC→local | 🟡 Medio | Empírica (capturas) + prueba automatizada | ✅ Corregido localmente en desktop/mobile; falta deploy |
 | 4.1–4.5 | Higiene de repo/infraestructura | ⚪ Bajo | Estática | Bajo |
 
+## Edenred — calidad de coordenadas de origen (2026-10-03)
+
+- **Severidad:** media; una coordenada errónea puede sugerir una estación de otra localidad.
+- **Verificación:** cruce del Excel del 30/09/2026 con el endpoint público `https://edenred.com.ar/wp-json/edenred/v1/estaciones/map`. El Excel no contiene latitud/longitud y tiene localidad/provincia invertidas. El mapa público repite puntos en distintas localidades (por ejemplo, YPF MANZI de Córdoba y BLANCA CONTIGAS de Marcos Juárez comparten `-32.686645,-62.105383`) y presenta coincidencias ambiguas.
+- **Mitigación implementada:** importación conservadora por localidad, provincia y dirección; exclusión de puntos compartidos entre localidades y candidatos separados más de 250 m. De 1.792 estaciones, 1.138 tienen coordenadas utilizables; 654 siguen disponibles por búsqueda y navegación por dirección, sin distancia inventada.
+- **Recomendación:** solicitar a Edenred un catálogo georreferenciado validado para completar la cobertura. No afirmar que estas comprobaciones validan físicamente cada estación. Ver `docs/EDENRED.md`.
+
 ## 6. Lo que este documento no cubre
 
 No se auditó línea por línea cada vista de escritorio/mobile para confirmar que respeta `allowedSedeIds` en sus queries (§3.1) — es el ítem de mayor incertidumbre restante y queda como acción de seguimiento en BACKLOG.md. Tampoco se verificó si existen otros consumidores de la `anon key` además del frontend (por ejemplo, si algún script externo ya depende del comportamiento abierto de alguna de las tablas de §2.3/§2.4 — corregir esas políticas sin coordinar podría romper algo que hoy "funciona" apoyado en el agujero).
