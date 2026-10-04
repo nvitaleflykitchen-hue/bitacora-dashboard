@@ -1,16 +1,19 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useFormAccess } from '../lib/useFormAccess'
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getSedes } from '../lib/queries'
 import { useAuth } from '../lib/auth'
 import { canDeletePerson, isQualityOnlyProfile, isQualityTeamPerson, isSafetyOnlyProfile } from '../lib/access'
 import { fmtFechaLarga } from '../lib/dateUtils'
 import PersonaFormularios from '../components/PersonaFormularios'
+const UniformesEppPanel = lazy(() => import('../views/equipo/UniformesEppPanel'))
+const FormulariosPermisos = lazy(() => import('../components/FormulariosPermisos'))
 import { PersonaAvatar, PersonaFotoEditor } from '../components/PersonaAvatar'
 import VacacionesPanel from '../components/VacacionesPanel'
 import PersonaVinculoPanel from "../components/PersonaVinculoPanel";
 import { esPersonalOperativo, coincideVinculo } from "../lib/personaVinculo";
 import AdjuntosPanel from '../components/AdjuntosPanel'
-import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, Star, Trash2 } from 'lucide-react'
+import { Users, Search, Plus, X, ChevronRight, ChevronLeft, Phone, Mail, FileText, Star, Trash2 } from 'lucide-react'
 import { confirmar, pedirTexto, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import { useBackHandler } from '../lib/backStack'
@@ -366,7 +369,8 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
   )
 }
 
-function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad }) {
+function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad, onOpenSection }) {
+  const formsAllowed = useFormAccess(personaId)
   const [persona, setPersona] = useState(null)
   const [evaluaciones, setEvaluaciones] = useState([])
   const [historial, setHistorial] = useState([])
@@ -478,6 +482,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
         {canManage && <PersonaFotoEditor persona={persona} compact showAvatar={false} onChanged={load} />}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && <button className="btn-primary" style={{ minHeight:44 }} onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnModule:'personal' })}>+ Novedad</button>}
+          {formsAllowed && <button className="btn-ghost" onClick={()=>setTab('permisos')}><FileText size={14}/> Generar formulario</button>}
           {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--phosphor)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
           {mailLink && <a href={mailLink} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text)', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Mail size={11} /> Email</a>}
           {canDelete && <button onClick={deletePersona} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,42,42,0.12)', color:'#ff5c5c', border:'1px solid rgba(255,42,42,0.3)', padding:'0.35rem 0.7rem', borderRadius:6, fontSize:'0.75rem', fontWeight:700 }}><Trash2 size={11} /> Eliminar</button>}
@@ -500,6 +505,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
       <div style={{ display: 'flex', gap: '0.3rem', padding: '0.75rem 1rem 0', flexShrink: 0, overflowX: 'auto' }}>
         {[
           ['info', 'Info'],
+          ...(formsAllowed ? [['permisos', 'Formularios y permisos']] : []),
           ['evaluaciones', 'Evaluaciones'],
           ['historial', 'Historial'],
           ['logros', 'Logros'],
@@ -513,6 +519,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 1rem 1rem', minHeight: 0 }}>
+        {tab === 'permisos' && <Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos personaId={personaId} onOpenSection={onOpenSection}/></Suspense>}
         {tab === 'info' && (
           <Card>
             <PersonaVinculoPanel persona={persona} canManage={canManage} onChanged={load} />
@@ -639,6 +646,7 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
 }
 
 export default function MobilePersonal({ focusContext, onCreateNovedad }) {
+  const formsAllowed = useFormAccess()
   const { can, perfil, allowedSedeIds, user } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
   const isSafetyOnly = isSafetyOnlyProfile(perfil)
@@ -678,7 +686,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
   useEffect(() => { getSedes(allowedSedeIds || undefined).then(setSedes).catch(() => {}) }, [allowedSedeIds])
 
   if (selectedId) {
-    return <PersonaFicha personaId={selectedId} canManage={canManage} canDelete={canDeletePerson(user?.id)} onBack={() => { setSelectedId(null); load() }} onCreateNovedad={onCreateNovedad} />
+    return <PersonaFicha onOpenSection={section=>{setSelectedId(null);setView(section)}} personaId={selectedId} canManage={canManage} canDelete={canDeletePerson(user?.id)} onBack={() => { setSelectedId(null); load() }} onCreateNovedad={onCreateNovedad} />
   }
 
   const reactivar = async (persona) => {
@@ -723,6 +731,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
           </button>}
           {!isQualityOnly && <button onClick={() => setView('vacaciones')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'vacaciones' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'vacaciones' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Vacaciones</button>}
         </div>
+        {formsAllowed && !isQualityOnly && <button className="btn-ghost" onClick={()=>setView('permisos')}><FileText size={14}/> Formularios y permisos</button>}
         {view === 'lista' && (
           <>
             <div style={{ position: 'relative', marginBottom: sedes.length > 1 ? '0.5rem' : 0 }}>
@@ -742,7 +751,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
       </div>
 
       <div className="mobile-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 1rem 1rem', minHeight: 0 }}>
-        {loading ? (
+        {view === 'permisos' ? (<Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos onOpenSection={setView}/></Suspense>) : loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
             <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
           </div>
@@ -767,6 +776,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
               </button>
             )
           })
+        ) : view === 'uniformes-epp' ? (<Suspense fallback={<p>Cargando…</p>}><UniformesEppPanel sedes={sedes}/></Suspense>
         ) : view === 'vacaciones' ? (
           <VacacionesPanel personas={personas.filter(esPersonalOperativo)} sedes={sedes} canManage={canManage} compact />
         ) : view === 'bajas' ? (

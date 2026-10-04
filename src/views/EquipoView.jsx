@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useFormAccess } from '../lib/useFormAccess'
+import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import {
@@ -21,6 +22,7 @@ import {
   MessageCircle,
   Copy,
   FileDown,
+  FileText,
   Share2,
   ShieldCheck,
   HelpCircle,
@@ -37,6 +39,7 @@ import CapacitacionesRelacionadas from "../components/CapacitacionesRelacionadas
 import ContactosTab from "../components/ContactosTab";
 import DocumentacionChecklist from "../components/DocumentacionChecklist";
 import PersonaFormularios from "../components/PersonaFormularios";
+const FormulariosPermisos = lazy(() => import("../components/FormulariosPermisos"));
 import { PersonaAvatar, PersonaFotoEditor } from "../components/PersonaAvatar";
 import CredencialPersonalModal from "../components/CredencialPersonalModal";
 import CredencialesMasivasA4 from "../components/CredencialesMasivasA4";
@@ -116,7 +119,8 @@ function antiguedadEnAnios(fechaIngreso, hoy = new Date()) {
 // ──────────────────────────────────────────────
 // PersonaFicha — vista interna de ficha individual
 // ──────────────────────────────────────────────
-function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNovedad }) {
+function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNovedad, onOpenSection }) {
+  const formsAllowed = useFormAccess(personaId)
   const { can, perfil, user } = useAuth();
   const canManage = can("equipo", "manage");
   const canDelete = canDeletePerson(user?.id);
@@ -756,7 +760,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
   const puntaje = Math.min(5, persona.puntaje_promedio || 0);
   const resultadoLabel = puntaje > 0 ? getResultado(puntaje) : "—";
   const fichaPrimaryTabs = [
-    ["info", "INFO & PUESTO"], ["documentacion", "DOCUMENTACIÓN"],
+    ["info", "INFO & PUESTO"], ["documentacion", "DOCUMENTACIÓN"], ...(formsAllowed ? [["permisos", "FORMULARIOS Y PERMISOS"]] : []),
     ["evaluaciones", "EVALUACIONES"], ["historial", "HISTORIAL"],
     ...(perfil?.rol === "admin" ? [["rrhh", "RR. HH."]] : []),
   ].map(([id, label]) => ({ id, label }));
@@ -874,6 +878,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
           )}
           {waLink ? <a href={waLink} target="_blank" rel="noreferrer" className="btn-primary flex items-center gap-1.5" style={{fontSize:'.7rem',textDecoration:'none'}}><MessageCircle size={12}/> Mensaje</a>
             : <span className="btn-ghost flex items-center gap-1.5 opacity-40" title="Cargá un teléfono para habilitar WhatsApp"><MessageCircle size={12}/> Mensaje</span>}
+          {formsAllowed && <button className="btn-ghost flex items-center gap-1.5" onClick={() => setTab("permisos")}><FileText size={12}/> GENERAR FORMULARIO</button>}
           <ActionOverflowMenu items={actionItems} />
         </div>
         <div className="hidden">
@@ -1181,6 +1186,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         )}
 
         {/* ── DOCUMENTACIÓN ── */}
+        {formsAllowed && tab === "permisos" && <Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos personaId={personaId} onOpenSection={onOpenSection}/></Suspense>}
         {tab === "documentacion" && (
           <DocumentacionChecklist
             entityType="persona"
@@ -3133,6 +3139,7 @@ ${form.observaciones || "[Completar]"}`;
 }
 
 export default function EquipoView({ onNavigate, focusId, focusType, onCreateNovedad }) {
+  const formsAllowed = useFormAccess()
   const { can, allowedSedeIds, perfil, user } = useAuth();
   const isQualityOnly = isQualityOnlyProfile(perfil);
   const isSafetyOnly = isSafetyOnlyProfile(perfil);
@@ -3357,7 +3364,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
   const periodosPrueba = personalStaff.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=0 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
   const primaryTabs = [
-    ["lista", "LISTA"], ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
+    ["lista", "LISTA"], ...(formsAllowed ? [["permisos", "FORMULARIOS Y PERMISOS"]] : []), ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
     ["horarios", "HORARIOS"], ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
     ["uniformes-epp", "UNIFORMES Y EPP"],
   ].filter(([id]) => !isQualityOnly || ["lista", "analisis", "recursos"].includes(id))
@@ -3387,6 +3394,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       <div className="h-full flex flex-col overflow-hidden">
         <PersonaFicha
           personaId={selectedId}
+          onOpenSection={section => {setSelectedId(null);setTab(section)}}
           sedes={sedes}
           grupos={grupos}
           onBack={() => {
@@ -3607,7 +3615,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        {tab === "contactos" ? (
+        {tab === "permisos" ? (<Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos onOpenSection={setTab}/></Suspense>
+        ) : tab === "contactos" ? (
           <ContactosTab modulo="rrhh" />
         ) : tab === "uniformes-epp" ? (
           <UniformesEppPanel sedes={sedes} />
