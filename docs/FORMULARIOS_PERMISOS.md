@@ -1,6 +1,6 @@
 # Formularios y permisos aeroportuarios
 
-Implementación preparada el 2026-10-04. **Pendiente de aprobación y aplicación de SQL; no habilitada en producción.**
+Implementación del 2026-10-04. SQL aprobado explícitamente por el usuario y aplicado el 2026-10-04 en `mixyhfdlzjarvszinytk`.
 
 ## Acceso
 
@@ -29,3 +29,7 @@ Se advierte por DNI/cargo ausentes, falta/vencimiento/estado de PPA, sectores no
 ## Verificación
 
 Pruebas con Postgres aislado (PGlite): roles/sedes, acceso anónimo/directo, concurrencia, almacenamiento privado, estados, auditoría y versiones. Pruebas de validaciones, PDF multipágina y UI de advertencias/error de almacenamiento. Revisión visual de PDF y navegador con datos ficticios y red externa bloqueada. No se insertaron registros de prueba en producción.
+
+## Habilitación de base verificada
+
+Se verificaron las seis tablas con RLS, dos plantillas iniciales, bucket privado de 3 MB y ausencia de permisos anónimos de ejecución o de escritura directa autenticada. No se designaron supervisores automáticamente. El aviso informativo de Supabase «RLS enabled, no policies» es esperado en estas tablas: se revocó acceso directo y las operaciones pasan exclusivamente por RPC con validación de usuario y sede. No agregar políticas permisivas para silenciarlo.
