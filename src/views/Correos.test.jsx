@@ -156,3 +156,20 @@ describe('Bandeja de correos', () => {
     expect(api.getCorreos).not.toHaveBeenCalled()
   })
 })
+
+it('preselecciona al empleado de Browix, permite corregirlo y guarda solo al confirmar', async () => {
+  const current = { ...message, asunto: 'Solicitud Laboral 44837 | Browix', cuerpo: 'Empleado: ZALAZAR, MIRTHA CLIDIA\nLegajo: 400026', sugerido_persona_id: 'wrong', sugerido_plan_id: 'p1' }
+  api.getCorreoDetail.mockResolvedValue({ message: current, history: [] })
+  const people = [{ id: 'persona:m1', nombre: 'Mirtha Clidia', apellido: 'Zalazar', titulo: 'Mirtha Clidia Zalazar' }, { id: 'persona:wrong', titulo: 'Jose Luis Veron' }]
+  render(<CorreoDetail id="m1" destinations={{ personas: people, planes: plans }} canReview onClose={() => {}} onSaved={() => {}} />)
+  const employee = await screen.findByRole('checkbox', { name: 'Asociar a Mirtha Clidia Zalazar' })
+  expect(employee.checked).toBe(true)
+  expect(screen.getByRole('checkbox', { name: 'Asociar a Jose Luis Veron' }).checked).toBe(false)
+  expect(screen.getByRole('tab', { name: /Personas/ }).getAttribute('aria-selected')).toBe('true')
+  expect(api.reviewCorreo).not.toHaveBeenCalled()
+  fireEvent.click(employee)
+  expect(employee.checked).toBe(false)
+  fireEvent.click(employee)
+  fireEvent.click(screen.getByText('Guardar vínculo'))
+  await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(current, '', 'vinculado', ['persona:m1']))
+})
