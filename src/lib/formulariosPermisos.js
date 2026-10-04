@@ -39,6 +39,12 @@ export const newVariables = () => ({ fecha:todayLocal(), dias:'', desde:'', hast
 async function rpc(name, params = {}) {
   const { data, error } = await db().rpc(name, params)
   if (error) throw new Error(['PGRST202','42P01'].includes(error.code) ? 'Formularios y permisos está pendiente de habilitación en la base de datos.' : error.message)
+  // Composite PostgreSQL rows may arrive as a one-element PostgREST array.
+  if (name === 'fp_save' || name === 'fp_transition') {
+    const form = Array.isArray(data) ? data[0] : data
+    if (!form?.id) throw new Error('No se recibió el formulario guardado. Actualizá el historial antes de reintentar.')
+    return form
+  }
   return data
 }
 export const loadFormContext = () => rpc('fp_context')
