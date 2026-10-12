@@ -42,8 +42,8 @@ export default function ProductMasters({ values, onSave, canEdit, canEditExistin
     {kinds.map(([kind, title]) => {
       const term = (search[kind] || '').trim().toLocaleLowerCase('es-AR')
       const matching = values.filter(item => item.kind === kind && item.name.toLocaleLowerCase('es-AR').includes(term))
-      return <section key={kind} className="articulos-master-group">
-      <h3>{title}</h3>
+      return <details key={kind} className="articulos-master-group">
+      <summary>{title}</summary>
       {kind === 'ingredient' && <p>La unidad de cada ingrediente completa automáticamente la unidad de contenido de sus artículos.</p>}
       {values.filter(item => item.kind === kind).length > 50 && <label className="articulos-master-search">Buscar en {title.toLocaleLowerCase('es-AR')}<input className="input-dark" type="search" value={search[kind] || ''} onChange={event => setSearch(current => ({ ...current, [kind]:event.target.value }))} placeholder={`Buscar entre ${values.filter(item => item.kind === kind).length} opciones`} /></label>}
       {matching.length > 50 && <p className="articulos-master-hint">Mostrando 50 de {matching.length} opciones. Escribí para encontrar las restantes.</p>}
@@ -63,6 +63,6 @@ export default function ProductMasters({ values, onSave, canEdit, canEditExistin
         {kind === 'ingredient' && <select className="input-dark" aria-label="Unidad del nuevo ingrediente" value={newValues[kind]?.unit || ''} disabled={Boolean(saving)} onChange={event => setNewValues(current => ({ ...current, [kind]:{ ...current[kind], unit:event.target.value } }))}><option value="">Elegir unidad</option>{contentUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select>}
         <button type="submit" className="btn-primary" disabled={Boolean(saving) || !(newValues[kind]?.name || '').trim() || (kind === 'subcategory' && !newValues[kind]?.parent_id) || (kind === 'ingredient' && !newValues[kind]?.unit)}>+ Agregar</button>
       </form>}
-    </section>})}
+    </details>})}
   </section>
 }
