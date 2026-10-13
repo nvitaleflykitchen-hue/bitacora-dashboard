@@ -803,21 +803,21 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
 
       {/* Header */}
       <div
-        className="px-6 pt-5 pb-4 flex items-start gap-4"
+        className="px-6 pt-5 pb-4 flex flex-wrap items-start gap-4 shrink-0"
         style={{ borderBottom: "1px solid rgba(57,255,20,0.1)" }}
       >
         <button
           onClick={onBack}
-          className="btn-ghost mt-0.5"
+          className="btn-ghost mt-0.5 shrink-0"
           style={{ fontSize: "0.7rem" }}
         >
           ← Volver
         </button>
         <PersonaAvatar persona={persona} size={76} />
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0" style={{ flexBasis: "260px", overflowWrap: "anywhere" }}>
           <div className="flex items-center gap-3 flex-wrap">
             <h1
-              className="font-title font-bold text-xl flex items-center gap-2"
+              className="font-title font-bold text-xl flex flex-wrap items-center gap-2"
               style={{ color: "var(--phosphor)" }}
             >
               {persona.nombre} {persona.apellido || ""}
@@ -849,14 +849,14 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
           >
             {persona.puesto || "—"} {persona.area ? `· ${persona.area}` : ""}
           </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap font-metric" style={{fontSize:'.62rem',color:'var(--text-dim)'}}>
+        <div className="mt-2 flex items-center gap-3 flex-wrap font-metric" style={{fontSize:'.62rem',color:'var(--text-dim)'}}>
           <span>Puntaje <strong style={{color:puntaje > 0 ? 'var(--phosphor)' : 'var(--text-dim)'}}>{puntaje > 0 ? puntaje.toFixed(1) : '—'}</strong></span>
           <span>Resultado <strong style={{color:puntaje > 0 ? RESULTADO_COLOR[resultadoLabel] : 'var(--text-dim)'}}>{resultadoLabel}</strong></span>
           <span><strong style={{color:'var(--phosphor)'}}>{persona.logros_count || 0}</strong> logros</span>
           <span><strong style={{color:persona.incidentes > 0 ? 'var(--warn)' : 'var(--phosphor)'}}>{persona.incidentes || 0}</strong> incidentes</span>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2">
           {perfil?.rol === "admin" && !persona.perfil_id && (
             <button
               type="button"
