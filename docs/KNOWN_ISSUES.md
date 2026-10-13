@@ -513,3 +513,8 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Anulación de documentos de personal — preparada, pendiente de aprobación SQL.** El borrado directo se reemplaza por una solicitud con motivo y autorización de un administrador distinto. Es una baja lógica: conserva documento, adjuntos y trazabilidad. La migración exacta está en `supabase/migrations/20260714194500_historial_personal_anulacion_doble_control.sql` y no se aplicó porque incluye RLS y grants.
 - **§3.1 parcial — tickets sin dueño:** regla de dueño único implementada. `sugerirResponsable()` usa `reglas_escalacion` (categoría+prioridad → responsable) con fallback al nivel 1 activo; los tickets nuevos sin responsable se auto-asignan (con aviso) o exigen elección.
 - **22 warnings de exhaustive-deps → 0.** Los loads pasaron a useCallback con deps reales (allowedSedeIds incluido donde faltaba: datos de sede desactualizados al cambiar permisos sin recargar). Dos casos intencionales quedaron documentados con eslint-disable justificado.
+
+## 2026-10-13 — Encabezado de ficha personal superpuesto (corregido)
+- **Severidad:** baja, presentación visual.
+- **Verificación:** captura del usuario y revisión de EquipoView: acciones sin salto de línea comprimían el bloque del nombre y los indicadores quedaban como columnas competidoras. El encabezado móvil usa otra estructura.
+- **Corrección:** indicadores debajo de la identidad, acciones en una fila propia adaptable y encabezado sin contracción vertical. No cambia datos ni consultas.
