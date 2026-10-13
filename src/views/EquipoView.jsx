@@ -3437,9 +3437,10 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
       {/* Header */}
       <div
-        className="px-6 pt-5 pb-3 flex items-center gap-4"
+        className="px-6 pt-5 pb-3 flex flex-wrap items-center gap-4 shrink-0"
         style={{ borderBottom: "1px solid rgba(57,255,20,0.1)" }}
       >
+        {(tab !== "lista" || onNavigate) && <button type="button" className="btn-ghost shrink-0" onClick={() => tab !== "lista" ? setTab("lista") : onNavigate("inicio")} aria-label={tab !== "lista" ? "Volver a la lista de Equipo" : "Volver al inicio"}>← Volver</button>}
         <Users size={16} style={{ color: "var(--phosphor)", flexShrink: 0 }} />
         <div className="flex-1">
           <h1

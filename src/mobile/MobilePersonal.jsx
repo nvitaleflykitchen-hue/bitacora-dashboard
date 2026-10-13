@@ -717,6 +717,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
       <div style={{ padding: '1.25rem 1rem 0.75rem', flexShrink: 0 }}>
+        {view !== 'lista' && <button type="button" className="btn-ghost" style={{ minHeight:44, marginBottom:12 }} onClick={() => setView('lista')}><ChevronLeft size={17} aria-hidden="true" /> Volver a Equipo</button>}
         <h1 style={{ color: 'var(--text)', fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.75rem' }}>{isQualityOnly ? 'Equipo Calidad' : isSafetyOnly ? 'Personal · Seguridad e Higiene' : 'Equipo'}</h1>
         <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--surface)', padding: '0.2rem', borderRadius: 20, marginBottom: '0.75rem' }}>
           <button onClick={() => setView('lista')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'lista' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'lista' ? 'var(--phosphor)' : 'var(--text-dim)' }}>
