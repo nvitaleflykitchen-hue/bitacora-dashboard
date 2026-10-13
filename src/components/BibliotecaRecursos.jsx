@@ -1,3 +1,4 @@
+import RecursosCompartidos from "./RecursosCompartidos";
 import { BookOpen, Bot, Download, ExternalLink, FileText } from "lucide-react";
 import { RECURSOS_BIBLIOTECA } from "../data/recursosBiblioteca";
 
@@ -42,6 +43,7 @@ export default function BibliotecaRecursos({
           </div>
         </div>
       )}
+      <RecursosCompartidos categoria={categoria} compact={compact} />
       <div
         className={compact ? "grid grid-cols-1 md:grid-cols-3 gap-2" : "grid grid-cols-1 lg:grid-cols-3 gap-4"}
       >
