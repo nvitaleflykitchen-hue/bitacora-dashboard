@@ -48,6 +48,29 @@ export async function getPersonaFotoUrl(storagePath) {
   return signedUrl(storagePath)
 }
 
+// La credencial necesita los bytes originales, sin depender de una URL firmada
+// almacenada en caché. La descarga conserva las políticas del usuario conectado.
+export async function getPersonaFotoDataUrl(storagePath) {
+  if (!storagePath) return null
+  let blob
+  if (/^https?:\/\//i.test(storagePath)) {
+    const response = await fetch(storagePath, { cache:'no-store' })
+    if (!response.ok) throw new Error('No se pudo descargar la fotografía.')
+    blob = await response.blob()
+  } else {
+    const { data, error } = await supabase.storage.from(PERSONA_FOTOS_BUCKET).download(storagePath)
+    if (error) throw error
+    blob = data
+  }
+  if (!blob?.type.startsWith('image/')) throw new Error('La fotografía no contiene una imagen válida.')
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader()
+    reader.onload=()=>resolve(reader.result)
+    reader.onerror=()=>reject(new Error('No se pudo leer la fotografía.'))
+    reader.readAsDataURL(blob)
+  })
+}
+
 export async function getPersonaFotoUrls(storagePath) {
   if (!storagePath) return { thumbnail:null, original:null }
   if (/^https?:\/\//i.test(storagePath)) return { thumbnail:null, original:storagePath }

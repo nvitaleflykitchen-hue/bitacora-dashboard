@@ -535,3 +535,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Severidad:** baja. Tras descargar, la pantalla llamaba a `toast.success`, que no existe, y mostraba un error.
 - **Verificación:** revisión de `CredencialesMasivasA4.jsx` y API de `feedback.js`.
 - **Corrección:** usar `toast.ok`, conservando el manejo de errores de generación.
+
+## 2026-10-14 — Foto rota en credencial (2.9.16)
+- **Severidad:** media; imagen de identificación ausente en vista previa.
+- **Verificación:** captura del usuario y consulta de sólo lectura: el objeto PNG original sigue en Storage. La vista usaba una URL firmada en caché sin gestionar errores del elemento img; no se confirmó la causa HTTP de la captura.
+- **Corrección:** descargar los bytes mediante la sesión del usuario y usar una data URL, también para PDF; aviso persistente y reintento ante fallos. No cambia RLS ni publica el bucket.
+- **Recomendación:** si la descarga autenticada falla, revisar permisos/conectividad desde la sesión afectada; no volver a cargar la foto antes de comprobar el error.

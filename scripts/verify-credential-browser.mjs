@@ -19,7 +19,7 @@ import Verify from '../../src/views/CredencialVerificacion.jsx';
 import {descargarCredencialesA4} from '../../src/lib/credencialesA4';
 import {getCredencialPersona} from '../../src/lib/credenciales';
 import FeedbackHost from '../../src/components/FeedbackHost.jsx';import '../../src/index.css';
-const persona={id:'00000000-0000-0000-0000-000000000003',nombre:'PERSONA',apellido:'DE PRUEBA',dni:'00000000',puesto:'OPERARIO DE ARMADO AEROPORTUARIO',functional_area:'operations',sede_ids:[24],foto_url:'http://127.0.0.1:4179/tmp/credential-qa/photo.svg'};
+const persona={id:'00000000-0000-0000-0000-000000000003',nombre:'PERSONA',apellido:'DE PRUEBA',dni:'00000000',puesto:'OPERARIO DE ARMADO AEROPORTUARIO',functional_area:'operations',sede_ids:[24],foto_url:'personas/fixture/photo.svg'};
 window.downloadA4=async()=>descargarCredencialesA4([{persona,credencial:await getCredencialPersona(persona.id)}]);
 const sedes=[{id:24,nombre:'Planta de Producción Córdoba',activa:true},{id:25,nombre:'Rosario',activa:true}];
 createRoot(document.getElementById('root')).render(<><FeedbackHost/>{location.search.includes('verify')?<Verify token="00000000-0000-0000-0000-000000000099"/>:<Modal persona={persona} sedes={sedes} onClose={()=>{}}/>}</>);
@@ -44,13 +44,18 @@ try {
   browser=await chromium.launch({headless:true,channel:'msedge'})
   const context=await browser.newContext({viewport:{width:1440,height:1100},acceptDownloads:true})
   const errors=[]
-  let emitted=null, calls=0
+  let emitted=null, calls=0, photoCalls=0
   const names=['Administración y oficinas','Cocina y producción primaria','Depósitos de materias primas','Armado de catering aeroportuario','Cámaras de producto terminado y trolleys','Despacho aeroportuario y dársena','Lavado, retornos y residuos','Área técnica y mantenimiento']
   const catalog=names.map((nombre,i)=>({id:`00000000-0000-0000-0000-${String(i+10).padStart(12,'0')}`,sede_id:24,sede_nombre:'Planta de Producción Córdoba',codigo:String(i+1).padStart(2,'0'),nombre,clasificacion:i>=3&&i<=5?'Restringido':'Operativo',zra:i>=3&&i<=5}))
   catalog.push({id:'00000000-0000-0000-0000-000000000030',sede_id:25,sede_nombre:'Rosario',codigo:'04',nombre:'Depósito Rosario',clasificacion:'Operativo',zra:false})
   await context.route('**/*',async route=>{
     const url=new URL(route.request().url())
     if(url.origin!=='http://127.0.0.1:4179')return route.abort()
+    if(url.pathname.startsWith('/storage/v1/object/')){
+      photoCalls++
+      if(photoCalls===1)return route.fulfill({status:403,contentType:'application/json',body:JSON.stringify({message:'Photo temporarily unavailable'})})
+      return route.fulfill({status:200,contentType:'image/svg+xml',body:await readFile(path.join(dir,'photo.svg'))})
+    }
     if(!url.pathname.startsWith('/rest/v1/'))return route.continue()
     calls++
     let data
@@ -71,6 +76,9 @@ try {
   page.on('pageerror',e=>{errors.push(e.message);console.error('Error de página:',e.message)})
   await page.goto('http://127.0.0.1:4179/tmp/credential-qa/index.html')
   await page.getByLabel('Departamento',{exact:true}).selectOption('airports')
+  await page.getByRole('button',{name:'Reintentar foto'}).click()
+  await page.waitForFunction(()=>{const img=document.querySelector('img[alt="Fotografía del titular"]');return img?.complete&&img.naturalWidth>0})
+  assert.equal(photoCalls,2,'La foto vuelve a descargarse después del fallo')
   console.log('Formulario cargado; verificando emisión.')
   assert.equal(await page.getByRole('checkbox',{checked:true}).count(),0)
   assert.equal(await page.getByRole('button',{name:'Emitir credencial',exact:true}).isEnabled(),false)
@@ -79,6 +87,7 @@ try {
   await page.getByRole('button',{name:'Emitir credencial',exact:true}).click()
   await page.getByRole('button',{name:'Confirmar emisión',exact:true}).click()
   await page.getByText('Credencial emitida por dos años.',{exact:true}).waitFor()
+  assert.equal(await page.getByText('04',{exact:true}).first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(23, 32, 51)')
   console.log('Emisión simulada verificada; exportando PDF.')
   assert.equal(emitted.sectores_autorizados.length,4)
   await page.getByAltText('QR de validación de la credencial emitida').waitFor()
