@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import MntInstructivos from '../views/mantenimiento/MntInstructivos'
 import { supabase } from '../lib/supabase'
 import ActivoConcesionFields, { ActivoConcesionBadge } from '../components/ActivoConcesionFields'
 import { useAuth } from '../lib/auth'
@@ -589,6 +590,7 @@ export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
 
   const allTabs = [
     { id: 'activos', label: 'Activos', icon: Wrench },
+    { id: 'instructivos', label: 'Instructivos', icon: Wrench },
     { id: 'insumos', label: 'Insumos', icon: Package },
     { id: 'matafuegos', label: 'Matafuegos', icon: Flame },
     { id: 'tablero', label: 'Tablero', icon: Wrench },
@@ -597,7 +599,7 @@ export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
     { id: 'responsables', label: 'Responsables', icon: Wrench },
   ]
   const TABS = rol === 'mnt_editor'
-    ? allTabs.filter(item => ['activos', 'insumos', 'matafuegos', 'planes', 'proveedores'].includes(item.id))
+    ? allTabs.filter(item => ['activos', 'instructivos', 'insumos', 'matafuegos', 'planes', 'proveedores'].includes(item.id))
     : allTabs
 
   return (
@@ -622,6 +624,7 @@ export default function MobileMantenimiento({ focusContext, onCreateNovedad }) {
       <div style={{ flex: 1, minHeight: 0 }}>
         {tab === 'activos' && <TabActivos allowedSedeIds={allowedSedeIds} canEdit={canEditActivos} canDelete={rol === 'admin'} canCreateTicket={canCreateTicket} focusContext={focusContext} onCreateNovedad={onCreateNovedad} onCreateTicket={setTicketOrigin} />}
         {tab === 'insumos' && <TabInsumos />}
+        {tab === 'instructivos' && <MntInstructivos />}
         {tab === 'matafuegos' && <TabMatafuegos allowedSedeIds={allowedSedeIds} />}
         {tab === 'tablero' && <TabTablero allowedSedeIds={allowedSedeIds} canManage={canEditActivos} />}
         {tab === 'planes' && <TabPlanes />}
