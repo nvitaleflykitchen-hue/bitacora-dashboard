@@ -2,7 +2,13 @@
 
 > Verificado contra `vercel.json`, `DEPLOY.bat`, `.vercel/project.json`, `scripts/postinstall.cjs` y el listado en vivo de Edge Functions del proyecto Supabase `mixyhfdlzjarvszinytk`. Fecha de verificación: 2026-06-17.
 
-## 1. Resumen del proceso
+## Flujo vigente — 2026-10-14
+
+La publicación del frontend se realiza **por GitHub**: rama `codex/*` desde `origin/main`, `npm run check`, PR, checks y merge a `main`. La integración del repositorio publica automáticamente en https://flykitchen.com.ar. Verificar el commit y la versión visible después de la publicación. No ejecutar Vercel CLI ni publicar desde ramas de respaldo o carpetas con cambios mezclados.
+
+Las migraciones de Supabase se aprueban y aplican por separado, exclusivamente en `mixyhfdlzjarvszinytk`. Las secciones siguientes conservan el relevamiento histórico de junio; no usar sus instrucciones de despliegue manual para el flujo actual.
+
+## 1. Resumen histórico del proceso
 
 Hay **dos componentes de deploy completamente independientes y desacoplados entre sí**: el frontend (Vercel) y las Edge Functions (Supabase). No existe un pipeline único que despliegue ambos; cada uno se gestiona por separado, manualmente, sin CI/CD en ningún caso.
 

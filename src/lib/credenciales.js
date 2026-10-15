@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
 import { supabase } from './supabase'
 import { getPersonaFotoUrl } from './personaFotos'
+import { credentialIsValid, groupCredentialSectors } from './credentialAccess'
 import { credentialPresentation, resolveCredentialArea, hexToRgb } from './credentialAreas'
 
 export const fechaVencimientoCredencial = (fecha = new Date()) => format(addYears(fecha, 2), 'yyyy-MM-dd')
@@ -14,7 +15,7 @@ export function categoriaCredencial(persona) {
 
 export async function getCredencialPersona(personaId) {
   const { data, error } = await supabase.schema('equipo').from('credenciales_personal')
-    .select('*').eq('persona_id', personaId).order('created_at', { ascending:false }).limit(1).maybeSingle()
+    .select('*').eq('persona_id', personaId).order('created_at', { ascending:false }).order('id', { ascending:false }).limit(1).maybeSingle()
   if (error) throw error
   return data
 }
@@ -34,20 +35,21 @@ export async function registerCredentialHistoryObservation(token, description) {
   return data
 }
 
-export async function emitirCredencial({ persona, sedeNombre, userId, anterior = null, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
-  if (anterior?.estado === 'activa') {
-    const { error } = await supabase.schema('equipo').from('credenciales_personal').update({
-      estado:'anulada', motivo_anulacion:'Reemplazada por una nueva emisión', anulada_at:new Date().toISOString(), updated_at:new Date().toISOString(),
-    }).eq('id', anterior.id)
-    if (error) throw error
-  }
-  const { data, error } = await supabase.schema('equipo').from('credenciales_personal').insert({
-    persona_id:persona.id, estado:'activa', fecha_emision:format(new Date(), 'yyyy-MM-dd'),
-    fecha_vencimiento:fechaVencimientoCredencial(), sede_nombre:sedeNombre || 'Administración Central',
-    puesto_impreso:persona.puesto || null, area_impresa:resolveCredentialArea(persona).key, emitida_por:userId,
-    compartir_telefono:compartirTelefono, compartir_email:compartirEmail, grupo_sanguineo:grupoSanguineo || null,
-    foto_pos_x:fotoX, foto_pos_y:fotoY, foto_zoom:fotoZoom,
-  }).select().single()
+export async function getSectoresCredencial() {
+  const { data, error } = await supabase.schema('equipo').from('credencial_sectores')
+    .select('id,sede_id,codigo,nombre,clasificacion,zra').eq('activo',true).order('codigo')
+  if (error) throw error
+  return data || []
+}
+
+export async function emitirCredencial({ persona, sedeNombre, anterior = null, area, sectorIds = [], autorizacionConfirmada = false, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
+  if (!autorizacionConfirmada) throw new Error('Confirmá la autorización individual antes de emitir.')
+  const { data, error } = await supabase.rpc('emitir_credencial_multisede', {
+    p_persona_id:persona.id, p_anterior_id:anterior?.id || null, p_sector_ids:sectorIds,
+    p_datos:{ area:area || resolveCredentialArea(persona).key, sede_nombre:sedeNombre,
+      autorizacion_confirmada:autorizacionConfirmada, compartir_telefono:compartirTelefono, compartir_email:compartirEmail,
+      grupo_sanguineo:grupoSanguineo || null, foto_pos_x:fotoX, foto_pos_y:fotoY, foto_zoom:fotoZoom },
+  }).single()
   if (error) throw error
   return data
 }
@@ -97,29 +99,46 @@ export const my = px => px * CARD_H / PREVIEW_H   // píxeles -> mm (vertical)
 // La vista previa define los tamaños en px de CSS; jsPDF los espera en puntos.
 export const ptFromPx = px => my(px) * 72 / 25.4
 
-export async function descargarCredencialPdf(persona, credencial) {
-  const [logo, foto, qr] = await Promise.all([
-    imageData('/fly-kitchen-credencial.png'),
-    persona.foto_url ? getPersonaFotoUrl(persona.foto_url).then(imageData) : Promise.resolve(null),
-    QRCode.toDataURL(urlValidacionCredencial(credencial.token), { width:700, margin:1, errorCorrectionLevel:'H' }),
-  ])
-  // El recorte se rasteriza con la MISMA relación de aspecto que la vista previa
-  // (231 x 218 px), para que el encuadre elegido por el administrador se vea igual.
-  const fotoRecortada = foto ? await coverImageData(foto, 231 * 2, 218 * 2, credencial.foto_pos_x, credencial.foto_pos_y, credencial.foto_zoom) : null
-  const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:[CARD_W, CARD_H] })
-  const orange = [235,102,0], name = [persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
-  const sede = credencial.sede_nombre || 'Administración Central', presentation = credentialPresentation(persona, credencial)
-  const areaColor = hexToRgb(presentation.area.color)
-  const base = () => { pdf.setFillColor(250,250,250);pdf.rect(0,0,CARD_W,CARD_H,'F');pdf.setDrawColor(215);pdf.roundedRect(.5,.5,CARD_W-1,CARD_H-1,2.5,2.5) }
+export function credentialPrintGroups(credencial) {
+  const groups = groupCredentialSectors(credencial.sectores_autorizados)
+  return groups.length ? groups : [{ nombre:credencial.sede_nombre || 'Administración Central', sectores:[] }]
+}
 
+export async function prepareCredentialPrint(persona, credencial, logo) {
+  const vigente = await getCredencialPersona(persona.id)
+  if (!vigente || vigente.id !== credencial?.id) throw new Error('La credencial cambió. Cerrá y volvé a abrir la ficha antes de descargar.')
+  if (!credentialIsValid(vigente)) throw new Error('Sólo se pueden descargar credenciales vigentes.')
+  const [foto, qr] = await Promise.all([
+    persona.foto_url ? getPersonaFotoUrl(persona.foto_url).then(imageData) : Promise.resolve(null),
+    QRCode.toDataURL(urlValidacionCredencial(vigente.token), { width:700, margin:1, errorCorrectionLevel:'H' }),
+  ])
+  const fotoRecortada = foto ? await coverImageData(foto,450,360,vigente.foto_pos_x,vigente.foto_pos_y,vigente.foto_zoom) : null
+  return { persona, credencial:vigente, logo, fotoRecortada, qr }
+}
+
+function credentialBase(pdf) {
+  pdf.setFillColor(250,250,250);pdf.rect(0,0,CARD_W,CARD_H,'F')
+  pdf.setDrawColor(215);pdf.roundedRect(.5,.5,CARD_W-1,CARD_H-1,2.5,2.5)
+}
+
+function fitCredentialText(pdf,text,x,y,width,maxLines,size) {
+  pdf.setFontSize(size)
+  while(pdf.splitTextToSize(text,width).length>maxLines && size>3)pdf.setFontSize(size-=.25)
+  pdf.text(pdf.splitTextToSize(text,width),x,y)
+}
+
+export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecortada, group }) {
+  const orange=[235,102,0],name=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
+  const sede=group.nombre,presentation=credentialPresentation(persona,credencial)
+  const areaColor=hexToRgb(presentation.area.color)
   // ── FRENTE ──────────────────────────────────────────────────────────────────
-  base()
+  credentialBase(pdf)
   // Banda del logo: 46 px de alto, padding 3 px arriba y 12 px a los lados.
   addContainImage(pdf, logo, mx(12), my(3), mx(PREVIEW_W - 24), my(40))
 
-  // Foto (231 px) + franja naranja de categoría (39 px), ambas de 218 px de alto.
-  const fotoW = mx(231), stripX = fotoW, stripW = CARD_W - fotoW
-  const fotoY = my(46), fotoH = my(218)
+  // Foto y franja del departamento: misma geometría que la vista previa (225 × 180 px).
+  const fotoW = mx(225), stripX = fotoW, stripW = CARD_W - fotoW
+  const fotoY = my(46), fotoH = my(180)
   pdf.setFillColor(...areaColor);pdf.rect(stripX, fotoY, stripW, fotoH, 'F')
   if (fotoRecortada) pdf.addImage(fotoRecortada,'JPEG',0,fotoY,fotoW,fotoH,undefined,'FAST')
   else { pdf.setFillColor(223,227,232);pdf.rect(0,fotoY,fotoW,fotoH,'F') }
@@ -131,13 +150,14 @@ export async function descargarCredencialPdf(persona, credencial) {
   letters.forEach((letter,i) => pdf.text(letter, stripX + stripW/2, lettersTop + letterLine*i + letterLine/2, { align:'center', baseline:'middle' }))
 
   // Bloque de datos: 121 px de alto, padding 7 px arriba, 12 px a los lados, 4 px abajo.
-  const infoTop = my(264), infoH = my(121), infoX = mx(12), infoW = mx(PREVIEW_W - 24)
+  const infoTop = my(226), infoH = my(121), infoX = mx(12), infoW = mx(PREVIEW_W - 24)
   const infoBottom = infoTop + infoH - my(4)
   pdf.setFillColor(250,250,250);pdf.rect(0,infoTop,CARD_W,infoH,'F')
   let cursor = infoTop + my(7)
   const gap = my(2)
 
   pdf.setTextColor(15);pdf.setFont('helvetica','bold');pdf.setFontSize(ptFromPx(18))
+  while(pdf.splitTextToSize(name,infoW).length>2 && pdf.getFontSize()>ptFromPx(8))pdf.setFontSize(pdf.getFontSize()-.25)
   const nameLines = pdf.splitTextToSize(name, infoW), nameLine = my(18 * 1.05)
   nameLines.forEach((line,i) => pdf.text(line, infoX, cursor + nameLine*i, { baseline:'top' }))
   cursor += nameLines.length * nameLine + gap
@@ -152,7 +172,7 @@ export async function descargarCredencialPdf(persona, credencial) {
   pdf.setTextColor(215,91,0);pdf.setFontSize(ptFromPx(9.5))
   const puesto = presentation.jobTitle
   const puestoLine = my(9.5 * 1.1)
-  pdf.splitTextToSize(puesto, infoW).forEach((line,i) => pdf.text(line, infoX, cursor + puestoLine*i, { baseline:'top' }))
+  fitCredentialText(pdf, puesto, infoX, cursor + puestoLine, infoW, 2, ptFromPx(9.5))
 
   // Última fila (sede y grupo sanguíneo): pegada al pie del bloque.
   pdf.setTextColor(35);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(8))
@@ -162,14 +182,23 @@ export async function descargarCredencialPdf(persona, credencial) {
     pdf.text(credencial.grupo_sanguineo, CARD_W - infoX, infoBottom, { align:'right', baseline:'bottom' })
   }
 
+  pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(7))
+  pdf.text('SECTORES AUTORIZADOS · VALIDAR QR', mx(12), my(358))
+  pdf.setTextColor(15);pdf.setFont('helvetica','bold')
+  fitCredentialText(pdf, group.sectores.map(sector=>sector.codigo).join('  ') || 'SIN SECTORES AUTORIZADOS', mx(12), my(376), mx(246), 1, ptFromPx(12))
+
   // Banda de vencimiento: 43 px de alto al pie de la tarjeta.
   const expiryTop = my(385), expiryH = my(43)
   pdf.setFillColor(...orange);pdf.rect(0,expiryTop,CARD_W,expiryH,'F')
   pdf.setTextColor(255);pdf.setFont('helvetica','bold');pdf.setFontSize(ptFromPx(18))
   pdf.text(`VENCE  ${format(new Date(`${credencial.fecha_vencimiento}T12:00:00`),'dd·MM·yyyy')}`, CARD_W/2, expiryTop + expiryH/2, { align:'center', baseline:'middle' })
 
+}
+
+export function drawCredentialBack(pdf, { logo, qr }) {
+  const orange=[235,102,0]
   // ── DORSO ───────────────────────────────────────────────────────────────────
-  pdf.addPage([CARD_W, CARD_H],'portrait');base()
+  credentialBase(pdf)
   // Banda del logo: 66 px de alto, padding 8 px arriba y 16 px a los lados.
   addContainImage(pdf, logo, mx(16), my(8), mx(PREVIEW_W - 32), my(50))
 
@@ -199,12 +228,24 @@ export async function descargarCredencialPdf(persona, credencial) {
   pdf.text('En caso de extravío,', CARD_W/2, backY + bodyLine*3, { align:'center', baseline:'top' })
   pdf.text('remitir a Recursos Humanos.', CARD_W/2, backY + bodyLine*4, { align:'center', baseline:'top' })
 
+  const expiryTop = my(385), expiryH = my(43)
   // Banda inferior con el lema: mismo alto que la de vencimiento del frente.
   pdf.setFillColor(...orange);pdf.rect(0,expiryTop,CARD_W,expiryH,'F')
   pdf.setTextColor(255);pdf.setFont('helvetica','bold');pdf.setFontSize(ptFromPx(8))
   pdf.text('ALIMENTAMOS LO QUE NOS MUEVE', CARD_W/2, expiryTop + expiryH/2, { align:'center', baseline:'middle' })
 
-  pdf.save(`Credencial-${name.replace(/\s+/g,'-')}.pdf`)
+}
+
+export async function descargarCredencialPdf(persona, credencial) {
+  const logo=await imageData('/fly-kitchen-credencial.png')
+  const item=await prepareCredentialPrint(persona,credencial,logo)
+  const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:[CARD_W,CARD_H]})
+  credentialPrintGroups(item.credencial).forEach((group,index)=>{
+    if(index)pdf.addPage([CARD_W,CARD_H],'portrait')
+    drawCredentialFront(pdf,{...item,group})
+    pdf.addPage([CARD_W,CARD_H],'portrait');drawCredentialBack(pdf,item)
+  })
+  pdf.save('Credencial-'+[persona.nombre,persona.apellido].filter(Boolean).join('-').replace(/\s+/g,'-')+'.pdf')
 }
 
 export function coverImageData(dataUrl,width,height,posX=50,posY=50,zoom=1){

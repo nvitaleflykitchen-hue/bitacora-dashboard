@@ -770,7 +770,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
   const actionItems = [
     { id:"call", label:"Llamar", icon:Phone, href:persona.telefono ? `tel:${phoneDigits}` : null, disabled:!persona.telefono, hint:!persona.telefono ? "Sin teléfono" : null },
     { id:"email", label:"Email", icon:Mail, href:mailLink, disabled:!mailLink, hint:!mailLink ? "Sin email" : null },
-    ...(canManageCredentials ? [{ id:"credential", label:"Credencial", icon:CreditCard, onClick:() => setShowCredential(true) }] : []),
+    ...(canManageCredentials ? [{ id:"credential", label:"Accesos y credencial", icon:CreditCard, onClick:() => setShowCredential(true) }] : []),
     ...(canManage ? [{ id:"obsolete", label:"Enviar a obsoletos", icon:Archive, onClick:sendPersonaToObsolete, disabled:saving, tone:"warning", separated:true }] : []),
     ...(canDelete ? [{ id:"delete", label:"Eliminar ficha", icon:Trash2, onClick:deletePersona, tone:"danger", separated:!canManage }] : []),
   ];
@@ -899,7 +899,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
           )}
           {canManageCredentials && (
             <button onClick={() => setShowCredential(true)} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:"0.7rem" }}>
-              <CreditCard size={13} /> Credencial
+              <CreditCard size={13} /> Accesos y credencial
             </button>
           )}
           {persona.telefono && (

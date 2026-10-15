@@ -1,57 +1,143 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { BadgeCheck, Download, RefreshCw, ShieldX, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '../lib/auth'
 import { getPersonaFotoUrl } from '../lib/personaFotos'
-import { actualizarPrivacidadCredencial, cambiarEstadoCredencial, descargarCredencialPdf, emitirCredencial, fechaVencimientoCredencial, getCredencialPersona, urlValidacionCredencial } from '../lib/credenciales'
-import { credentialPresentation } from '../lib/credentialAreas'
+import { actualizarPrivacidadCredencial, cambiarEstadoCredencial, descargarCredencialPdf, emitirCredencial, fechaVencimientoCredencial, getCredencialPersona, getSectoresCredencial, urlValidacionCredencial } from '../lib/credenciales'
+import { CREDENTIAL_AREA_OPTIONS, credentialPresentation, resolveCredentialArea } from '../lib/credentialAreas'
+import { credentialIsValid, groupCredentialSectors, selectedCredentialSectors } from '../lib/credentialAccess'
 import { mensajeError } from '../lib/errores'
 import { confirmar, toast } from '../lib/feedback'
 
 const GRUPOS=['','A+','A-','B+','B-','AB+','AB-','O+','O-']
+const dateLabel = value => format(new Date(`${value}T12:00:00`),'dd/MM/yyyy')
+const defaults = { compartirTelefono:false, compartirEmail:false, grupo:'', fotoX:50, fotoY:50, fotoZoom:1 }
 
-export default function CredencialPersonalModal({ persona, sedes, onClose }) {
-  const { user }=useAuth()
-  const [credencial,setCredencial]=useState(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false)
-  const [foto,setFoto]=useState(null),[qr,setQr]=useState(null),[grupo,setGrupo]=useState('')
-  const [fotoX,setFotoX]=useState(50),[fotoY,setFotoY]=useState(50),[fotoZoom,setFotoZoom]=useState(1)
-  const [compartirTelefono,setCompartirTelefono]=useState(false),[compartirEmail,setCompartirEmail]=useState(false)
-  const sedeNombre=useMemo(()=>{const values=(persona.sede_ids||[]).map(id=>sedes.find(s=>String(s.id)===String(id))?.nombre).filter(Boolean);return values.length?values.join(' / '):'Administración Central'},[persona.sede_ids,sedes])
-  const nombre=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase(),presentation=credentialPresentation(persona,credencial)
-  const vencimiento=credencial?.fecha_vencimiento||fechaVencimientoCredencial()
-  const load=async()=>{setLoading(true);try{const value=await getCredencialPersona(persona.id);setCredencial(value);setCompartirTelefono(Boolean(value?.compartir_telefono));setCompartirEmail(Boolean(value?.compartir_email));setGrupo(value?.grupo_sanguineo||'');setFotoX(Number(value?.foto_pos_x??50));setFotoY(Number(value?.foto_pos_y??50));setFotoZoom(Number(value?.foto_zoom??1))}catch(e){toast.error(mensajeError(e))}finally{setLoading(false)}}
-  useEffect(()=>{load()},[persona.id])
-  useEffect(()=>{if(persona.foto_url)getPersonaFotoUrl(persona.foto_url).then(setFoto).catch(()=>{});if(credencial?.token)QRCode.toDataURL(urlValidacionCredencial(credencial.token),{width:500,margin:1}).then(setQr)},[persona.foto_url,credencial?.token])
-  const emitir=async()=>{if(!persona.foto_url)return toast.warn('La persona necesita una fotografía antes de emitir la credencial.');if(credencial?.estado==='activa'&&!(await confirmar({titulo:'Reemitir credencial',mensaje:'La credencial actual quedará anulada y su QR dejará de ser válido.',confirmText:'Reemitir'})))return;setBusy(true);try{setCredencial(await emitirCredencial({persona,sedeNombre,userId:user.id,anterior:credencial,compartirTelefono,compartirEmail,grupoSanguineo:grupo,fotoX,fotoY,fotoZoom}));toast.ok('Credencial emitida por dos años.')}catch(e){toast.error(mensajeError(e))}finally{setBusy(false)}}
-  const guardarDatos=async()=>{setBusy(true);try{setCredencial(await actualizarPrivacidadCredencial(credencial.id,compartirTelefono,compartirEmail,grupo,fotoX,fotoY,fotoZoom));toast.ok('Datos y encuadre actualizados.')}catch(e){toast.error(mensajeError(e))}finally{setBusy(false)}}
-  const invalidar=async estado=>{if(!(await confirmar({titulo:estado==='extraviada'?'Registrar extravío':'Anular credencial',mensaje:'El QR dejará de validar esta credencial inmediatamente.',peligro:true,confirmText:estado==='extraviada'?'Marcar extraviada':'Anular'})))return;setBusy(true);try{setCredencial(await cambiarEstadoCredencial(credencial.id,estado,estado==='extraviada'?'Extravío informado':'Anulada por administración'));toast.ok('Credencial invalidada.')}catch(e){toast.error(mensajeError(e))}finally{setBusy(false)}}
-  const activa=credencial?.estado==='activa'
-  const fotoStyle={width:'100%',height:'100%',objectFit:'cover',objectPosition:`${fotoX}% ${fotoY}%`,transform:`scale(${fotoZoom})`,transformOrigin:`${fotoX}% ${fotoY}%`}
+export default function CredencialPersonalModal({ persona, sedes = [], onClose }) {
+  const { perfil } = useAuth()
+  const [credencial,setCredencial] = useState(null)
+  const [catalog,setCatalog] = useState([])
+  const [loading,setLoading] = useState(true)
+  const [error,setError] = useState('')
+  const [busy,setBusy] = useState(false)
+  const [foto,setFoto] = useState(null)
+  const [qr,setQr] = useState(null)
+  const [area,setArea] = useState(resolveCredentialArea(persona).key)
+  const [sectorIds,setSectorIds] = useState([])
+  const [autorizacion,setAutorizacion] = useState(false)
+  const [previewSede,setPreviewSede] = useState('')
+  const [draft,setDraft] = useState(defaults)
+  const admin = perfil?.rol === 'admin' && perfil?.activo !== false
+  const set = (key,value) => setDraft(previous => ({...previous,[key]:value}))
 
-  return <div className="modal-overlay"><div className="glass hud-corner fade-in" style={{width:'min(1180px,97vw)',maxHeight:'95vh',overflowY:'auto',padding:22}}>
-    <header className="flex items-center justify-between mb-5"><div><h2 className="font-title font-bold" style={{color:'var(--text)'}}>Credencial aeroportuaria</h2><p style={{color:'var(--text-dim)',fontSize:'.7rem'}}>CR80 · emisión exclusiva para administradores · vigencia de 2 años</p></div><button className="btn-ghost" onClick={onClose}><X size={16}/></button></header>
-    {loading?<p>Cargando…</p>:<div style={{display:'grid',gridTemplateColumns:'minmax(520px,1.35fr) minmax(300px,.65fr)',gap:24}}>
-      <div style={{display:'flex',gap:18,alignItems:'flex-start',justifyContent:'center',flexWrap:'wrap'}}>
-        <div style={card}>
-          <div style={{height:46,padding:'3px 12px',display:'flex',justifyContent:'center'}}><img src="/fly-kitchen-credencial.png" style={{maxWidth:'100%',height:40,objectFit:'contain'}}/></div>
-          <div style={{height:218,display:'grid',gridTemplateColumns:'1fr 39px'}}><div style={{overflow:'hidden',background:'#dfe3e8',position:'relative'}}>{foto&&<img src={foto} style={fotoStyle}/>}</div><div style={{background:presentation.area.color,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,lineHeight:1.05}}>{presentation.area.code.split('').map((x,index)=><span key={`${x}-${index}`}>{x}</span>)}</div></div>
-          <div style={{padding:'7px 12px 4px',height:121,display:'flex',flexDirection:'column',gap:2,boxSizing:'border-box'}}><strong style={{fontSize:18,lineHeight:1.05}}>{nombre}</strong>{persona.dni&&<strong style={{fontSize:10.5}}>DNI {persona.dni}</strong>}<strong style={{fontSize:11.5}}>FLY KITCHEN S.A.</strong><b style={{fontSize:9.5,color:'#d75b00',lineHeight:1.1}}>{presentation.jobTitle}</b><div style={{display:'flex',alignItems:'end',justifyContent:'space-between',marginTop:'auto'}}><span style={{fontSize:8}}>{sedeNombre.toUpperCase()}</span>{grupo&&<b style={{fontSize:11,color:'#d75b00'}}>{grupo}</b>}</div></div>
-          <div style={expiry}>VENCE&nbsp; {format(new Date(`${vencimiento}T12:00:00`),'dd·MM·yyyy')}</div>
-        </div>
-        <div style={card}><div style={{height:66,padding:'8px 16px',display:'flex',justifyContent:'center'}}><img src="/fly-kitchen-credencial.png" style={{maxWidth:'100%',height:50,objectFit:'contain'}}/></div>{qr?<img src={qr} style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174}}/>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:'9px 5px',fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:'15px 12px',fontSize:9,lineHeight:1.55}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>
+  useEffect(() => {
+    if (!admin) { setLoading(false); return }
+    let cancelled = false
+    Promise.all([getCredencialPersona(persona.id),getSectoresCredencial()]).then(([value,sectors]) => {
+      if (cancelled) return
+      setCredencial(value); setCatalog(sectors)
+      setArea(resolveCredentialArea(persona,value).key)
+      setSectorIds((value?.sectores_autorizados || []).map(s=>s.id))
+      setDraft({ compartirTelefono:!!value?.compartir_telefono, compartirEmail:!!value?.compartir_email,
+        grupo:value?.grupo_sanguineo || '', fotoX:Number(value?.foto_pos_x ?? 50),
+        fotoY:Number(value?.foto_pos_y ?? 50), fotoZoom:Number(value?.foto_zoom ?? 1) })
+    }).catch(e => { if (!cancelled) setError(`No se pudo cargar la configuración de accesos. ${mensajeError(e)}`) })
+      .finally(()=> { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  },[persona,admin])
+  useEffect(()=> {
+    let cancelled = false
+    setFoto(null)
+    if (admin && persona.foto_url) getPersonaFotoUrl(persona.foto_url).then(value=>{if(!cancelled)setFoto(value)}).catch(()=>{if(!cancelled)toast.error('No se pudo cargar la fotografía.')})
+    return ()=> { cancelled=true }
+  },[persona.foto_url,admin])
+  useEffect(()=> {
+    let cancelled=false
+    setQr(null)
+    if(credencial?.token) QRCode.toDataURL(urlValidacionCredencial(credencial.token),{width:500,margin:1})
+      .then(value=>{if(!cancelled)setQr(value)}).catch(()=>{if(!cancelled)toast.error('No se pudo generar el QR.')})
+    return ()=> { cancelled=true }
+  },[credencial?.token])
+
+  const available = catalog.filter(s=>sedes.some(d=>String(d.id)===String(s.sede_id)&&d.activa!==false))
+    .map(s=>({...s,sede_nombre:sedes.find(d=>String(d.id)===String(s.sede_id)).nombre}))
+  const selected = selectedCredentialSectors(available,sectorIds)
+  const unavailable = sectorIds.filter(id=>!available.some(s=>s.id===id))
+  const groups = groupCredentialSectors(selected)
+  const fallbackSede = (persona.sede_ids || []).map(id=>sedes.find(s=>String(s.id)===String(id))?.nombre).filter(Boolean).join(' / ') || 'Administración Central'
+  const preview = groups.find(g=>g.sedeId===previewSede) || groups[0] || {nombre:fallbackSede,sectores:[]}
+  const presentation = credentialPresentation(persona,{...credencial,area_impresa:area})
+  const originalIds = (credencial?.sectores_autorizados || []).map(s=>s.id).sort().join(',')
+  const accessDirty = area!==resolveCredentialArea(persona,credencial).key || [...sectorIds].sort().join(',')!==originalIds
+  const settingsDirty = !!credencial && (draft.grupo!==(credencial.grupo_sanguineo || '') || draft.compartirTelefono!==!!credencial.compartir_telefono || draft.compartirEmail!==!!credencial.compartir_email || draft.fotoX!==Number(credencial.foto_pos_x??50) || draft.fotoY!==Number(credencial.foto_pos_y??50) || draft.fotoZoom!==Number(credencial.foto_zoom??1))
+  const valid = credentialIsValid(credencial)
+  const estado = credencial ? (credencial.estado==='activa'&&!valid?'vencida':credencial.estado) : 'sin emitir'
+  const run = async action => { setBusy(true); try { await action() } catch(e) { toast.error(mensajeError(e)) } finally { setBusy(false) } }
+  const toggle = id => { setSectorIds(ids=>ids.includes(id)?ids.filter(value=>value!==id):[...ids,id]);setAutorizacion(false) }
+  const emitir = async () => {
+    if (!(await confirmar({titulo:'Emitir credencial',mensaje:`Se emitirán ${selected.length} sectores en ${groups.length} sedes para esta persona.${credencial?' La credencial anterior quedará invalidada.':''}`,confirmText:'Confirmar emisión'}))) return
+    await run(async()=>{
+      const value=await emitirCredencial({persona,sedeNombre:fallbackSede,anterior:credencial,area,sectorIds,autorizacionConfirmada:autorizacion,...draft,grupoSanguineo:draft.grupo})
+      setCredencial(value);setAutorizacion(false);toast.ok('Credencial emitida por dos años.')
+    })
+  }
+  const invalidar = async estado => {
+    if (!(await confirmar({titulo:estado==='extraviada'?'Informar extravío':'Anular credencial',mensaje:'El QR dejará de validar esta credencial inmediatamente.',peligro:true,confirmText:'Confirmar'}))) return
+    await run(async()=>{setCredencial(await cambiarEstadoCredencial(credencial.id,estado,'Registrado por administración'));toast.ok('Credencial invalidada.')})
+  }
+
+  return <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="credential-title"><div className="glass hud-corner" style={{width:'min(1180px,97vw)',maxHeight:'95dvh',overflowY:'auto',padding:20}}>
+    <header className="flex items-center justify-between mb-5" style={{gap:12}}><div><h2 id="credential-title" className="font-title font-bold">Control de accesos y credenciales</h2><p style={hint}>CR80 · asignación individual por sede · vigencia de 2 años</p></div><button className="btn-ghost" aria-label="Cerrar credencial" disabled={busy} onClick={onClose}><X size={16}/></button></header>
+    {!admin?<p>Disponible únicamente para administradores.</p>:loading?<p>Cargando…</p>:error?<p role="alert">{error}</p>:<div style={{display:'flex',flexWrap:'wrap',gap:24,alignItems:'flex-start'}}>
+      <div style={{flex:'1 1 560px',minWidth:0}}>
+        <p style={{...hint,marginBottom:10}}>{!credencial||accessDirty||settingsDirty?'Vista previa · cambios pendientes':'Credencial emitida'} · El PDF incluye frente y dorso por cada sede autorizada.</p>
+        {groups.length>1&&<label style={{display:'block',marginBottom:12}}>Vista previa por sede<select className="input-dark w-full" value={preview.sedeId} onChange={e=>setPreviewSede(e.target.value)}>{groups.map(g=><option key={g.sedeId} value={g.sedeId}>{g.nombre}</option>)}</select></label>}
+        <CredentialPreview persona={persona} presentation={presentation} preview={preview} draft={draft} foto={foto} qr={accessDirty?null:qr} vencimiento={credencial?.fecha_vencimiento||fechaVencimientoCredencial()}/>
       </div>
-      <section><div className="glass rounded p-4 mb-3"><p className="font-metric text-xs" style={{color:'var(--text-dim)'}}>ESTADO</p><div className="flex items-center gap-2 mt-2">{activa?<BadgeCheck color="var(--phosphor)"/>:<ShieldX color="var(--alert)"/>}<strong style={{color:activa?'var(--phosphor)':'var(--alert)'}}>{credencial?credencial.estado.toUpperCase():'SIN EMITIR'}</strong></div>{credencial&&<p style={{fontSize:'.68rem',color:'var(--text-dim)',marginTop:10}}>Emitida {format(new Date(`${credencial.fecha_emision}T12:00:00`),'dd/MM/yyyy')} · vence {format(new Date(`${credencial.fecha_vencimiento}T12:00:00`),'dd/MM/yyyy')}</p>}</div>
-        <div className="glass rounded p-4 mb-3"><p className="font-metric text-xs mb-3" style={{color:'var(--text-dim)'}}>ENCUADRE DE LA FOTO</p><CropControl label="Horizontal" value={fotoX} min={0} max={100} onChange={setFotoX}/><CropControl label="Vertical" value={fotoY} min={0} max={100} onChange={setFotoY}/><CropControl label="Zoom" value={fotoZoom} min={1} max={1.8} step={.05} onChange={setFotoZoom}/><button className="btn-ghost w-full mt-2" onClick={()=>{setFotoX(50);setFotoY(50);setFotoZoom(1)}}>Centrar automáticamente</button><p style={{fontSize:'.6rem',color:'var(--text-dim)',marginTop:6}}>El encuadre se conserva en la credencial y en el PDF.</p></div>
-        <div className="glass rounded p-4 mb-3"><label className="font-metric text-xs block mb-2" style={{color:'var(--text-dim)'}}>GRUPO SANGUÍNEO (OPCIONAL)</label><select className="input-dark" value={grupo} onChange={e=>setGrupo(e.target.value)}>{GRUPOS.map(value=><option key={value} value={value}>{value||'— No imprimir —'}</option>)}</select><p style={{fontSize:'.6rem',color:'var(--text-dim)',marginTop:6}}>En la credencial se imprime solamente el valor, por ejemplo A+.</p></div>
-        <div className="glass rounded p-4 mb-3"><p className="font-metric text-xs mb-3" style={{color:'var(--text-dim)'}}>CONTACTO DISPONIBLE EN EL QR</p><label className="flex items-center gap-2 mb-2" style={{fontSize:'.72rem'}}><input type="checkbox" checked={compartirTelefono} onChange={e=>setCompartirTelefono(e.target.checked)}/> Compartir teléfono laboral</label><label className="flex items-center gap-2" style={{fontSize:'.72rem'}}><input type="checkbox" checked={compartirEmail} onChange={e=>setCompartirEmail(e.target.checked)}/> Compartir correo laboral</label>{credencial&&<button className="btn-ghost mt-3 w-full" disabled={busy} onClick={guardarDatos}>Guardar datos y encuadre</button>}</div>
-        <div className="flex flex-col gap-2"><button className="btn-primary flex items-center justify-center gap-2" disabled={busy} onClick={emitir}><RefreshCw size={14}/>{credencial?'Reemitir por 2 años':'Emitir credencial'}</button>{activa&&<button className="btn-ghost flex items-center justify-center gap-2" disabled={busy} onClick={()=>descargarCredencialPdf(persona,credencial).catch(e=>toast.error(mensajeError(e)))}><Download size={14}/>Descargar PDF CR80</button>}{activa&&<><button className="btn-ghost" disabled={busy} onClick={()=>invalidar('extraviada')}>Informar extravío</button><button className="btn-ghost" style={{color:'var(--alert)'}} disabled={busy} onClick={()=>invalidar('anulada')}>Anular credencial</button></>}</div>
-      </section>
+      <fieldset disabled={busy} style={{flex:'1 1 310px',minWidth:0,border:0,padding:0}}>
+        <Panel title="ESTADO"><strong style={{color:valid?'var(--phosphor)':'var(--alert)'}}>{estado.toUpperCase()}</strong>{credencial&&<p style={hint}>Emitida {dateLabel(credencial.fecha_emision)} · vence {dateLabel(credencial.fecha_vencimiento)}</p>}</Panel>
+        <Panel title="DEPARTAMENTO"><select aria-label="Departamento" className="input-dark w-full" value={area} onChange={e=>{setArea(e.target.value);setAutorizacion(false)}}>{CREDENTIAL_AREA_OPTIONS.map(a=><option key={a.value} value={a.value}>{a.code} — {a.label}</option>)}</select><p style={hint}>Identifica la función laboral. No otorga accesos automáticamente.</p></Panel>
+        <Panel title="SECTORES AUTORIZADOS POR SEDE">
+          <p style={hint}>Numeración interna. ZRA agrupa las zonas restringidas aeroportuarias.</p>
+          {groupCredentialSectors(available).map(g=><div key={g.sedeId} style={{marginTop:14}}><strong style={{fontSize:12}}>{g.nombre}</strong>{g.sectores.map(s=><label key={s.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:8,fontSize:12}}><input type="checkbox" checked={sectorIds.includes(s.id)} onChange={()=>toggle(s.id)}/><span><b>{s.codigo}</b> · {s.nombre}{s.zra&&<b style={{color:'#fb923c'}}> · ZRA</b>}</span></label>)}</div>)}
+          {!available.length&&<p>No hay sectores configurados para las sedes disponibles.</p>}
+          {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores que ya no están disponibles. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
+          <p style={{...hint,marginTop:12}}>{selected.length} sectores en {groups.length} sedes. Cambiar accesos requiere reemitir.</p>
+        </Panel>
+        <Panel title="ENCUADRE DE LA FOTO">{[['Horizontal','fotoX',0,100,1],['Vertical','fotoY',0,100,1],['Zoom','fotoZoom',1,1.8,.05]].map(([label,key,min,max,step])=><label key={key} style={{display:'grid',gridTemplateColumns:'65px 1fr 40px',gap:8,fontSize:12,marginBottom:8}}>{label}<input type="range" min={min} max={max} step={step} value={draft[key]} onChange={e=>set(key,Number(e.target.value))}/><span>{key==='fotoZoom'?`${Math.round(draft[key]*100)}%`:draft[key]}</span></label>)}<button className="btn-ghost w-full" onClick={()=>setDraft(d=>({...d,fotoX:50,fotoY:50,fotoZoom:1}))}>Centrar automáticamente</button></Panel>
+        <Panel title="DATOS OPCIONALES"><label style={{fontSize:12}}>Grupo sanguíneo<select className="input-dark w-full" value={draft.grupo} onChange={e=>set('grupo',e.target.value)}>{GRUPOS.map(g=><option key={g} value={g}>{g||'— No imprimir —'}</option>)}</select></label>{[['Compartir teléfono laboral','compartirTelefono'],['Compartir correo laboral','compartirEmail']].map(([label,key])=><label key={key} style={{display:'flex',gap:8,marginTop:10,fontSize:12}}><input type="checkbox" checked={draft[key]} onChange={e=>set(key,e.target.checked)}/>{label}</label>)}
+          {credencial&&<button className="btn-ghost w-full mt-3" disabled={!settingsDirty||accessDirty} onClick={()=>run(async()=>{setCredencial(await actualizarPrivacidadCredencial(credencial.id,draft.compartirTelefono,draft.compartirEmail,draft.grupo,draft.fotoX,draft.fotoY,draft.fotoZoom));toast.ok('Datos y encuadre guardados.')})}>Guardar datos y encuadre</button>}
+        </Panel>
+        <label style={{display:'flex',gap:8,fontSize:12,marginBottom:12}}><input type="checkbox" checked={autorizacion} onChange={e=>setAutorizacion(e.target.checked)}/>Confirmo que esta persona cuenta con autorización para los sectores seleccionados.</label>
+        {!persona.foto_url&&<p style={hint}>Cargá una fotografía en la ficha del personal antes de emitir.</p>}
+        <div className="flex flex-col gap-2"><button className="btn-primary" disabled={!autorizacion||!foto||!!unavailable.length} onClick={emitir}>{credencial?'Reemitir por 2 años':'Emitir credencial'}</button><button className="btn-ghost" disabled={!valid||accessDirty||settingsDirty||!!unavailable.length} onClick={()=>run(()=>descargarCredencialPdf(persona,credencial))}>Descargar PDF CR80</button>{credencial?.estado==='activa'&&<><button className="btn-ghost" onClick={()=>invalidar('extraviada')}>Informar extravío</button><button className="btn-ghost" onClick={()=>invalidar('anulada')}>Anular credencial</button></>}</div>
+        <p style={{...hint,marginTop:12}}>Credencial interna Fly Kitchen. No reemplaza habilitaciones PSA ni habilita puertas por sí sola. Validar el QR antes de permitir el acceso.</p>
+      </fieldset>
     </div>}
   </div></div>
 }
 
-function CropControl({label,value,onChange,min,max,step=1}){return <label style={{display:'grid',gridTemplateColumns:'68px 1fr 42px',gap:8,alignItems:'center',fontSize:'.65rem',marginBottom:8}}><span>{label}</span><input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))}/><span style={{textAlign:'right',color:'var(--text-dim)'}}>{label==='Zoom'?`${Math.round(value*100)}%`:Math.round(value)}</span></label>}
+export function CredentialPreview({persona,presentation,preview,draft,foto,qr,vencimiento}) {
+  const name=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
+  return <div style={{display:'flex',gap:18,justifyContent:'center',flexWrap:'wrap'}}>
+    <div style={card}>
+      <div style={{height:46,flexShrink:0,display:'flex',justifyContent:'center',padding:3}}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:40,objectFit:'contain'}}/></div>
+      <div style={{height:180,flexShrink:0,display:'grid',gridTemplateColumns:'1fr 45px'}}><div style={{overflow:'hidden',background:'#dfe3e8'}}>{foto&&<img src={foto} alt="Fotografía del titular" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${draft.fotoX}% ${draft.fotoY}%`,transform:`scale(${draft.fotoZoom})`,transformOrigin:`${draft.fotoX}% ${draft.fotoY}%`}}/>}</div><div style={{background:presentation.area.color,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:27,fontWeight:900,lineHeight:1.05}}>{presentation.area.code.split('').map((letter,i)=><span key={i}>{letter}</span>)}</div></div>
+      <div style={{padding:'7px 12px 4px',height:121,flexShrink:0,display:'flex',flexDirection:'column',gap:2,boxSizing:'border-box'}}>
+        <strong style={{fontSize:name.length>40?11:15,lineHeight:1.1,overflowWrap:'anywhere'}}>{name}</strong>
+        <strong style={{fontSize:10}}>DNI {persona.dni || '—'}</strong><strong style={{fontSize:11}}>FLY KITCHEN S.A.</strong>
+        <b style={{fontSize:presentation.jobTitle.length>75?7:9,color:'#d75b00',lineHeight:1.1}}>{presentation.jobTitle}</b>
+        <div style={{display:'flex',gap:5,justifyContent:'space-between',marginTop:'auto',fontSize:8}}><span>{preview.nombre.toUpperCase()}</span><b>{draft.grupo}</b></div>
+      </div>
+      <div style={{height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6.5,color:'#555'}}>SECTORES AUTORIZADOS · VALIDAR QR</div><strong style={{fontSize:preview.sectores.length?(preview.sectores.length>8?10:16):9,letterSpacing:1}}>{preview.sectores.map(s=>s.codigo).join(' ')||'SIN SECTORES AUTORIZADOS'}</strong></div>
+      <div style={expiry}>VENCE {dateLabel(vencimiento)}</div>
+    </div>
+    <div style={card}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:50,objectFit:'contain',margin:'12px auto 8px'}}/>{qr?<img src={qr} alt="QR de validación de la credencial emitida" style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174,display:'grid',placeItems:'center',fontSize:12,textAlign:'center',padding:20}}>El QR estará disponible<br/>al emitir la credencial.</div>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:9,fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:12,fontSize:9,lineHeight:1.6}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>
+  </div>
+}
 
+function Panel({title,children}) { return <section className="glass rounded p-4 mb-3"><h3 className="font-metric text-xs mb-3" style={{color:'var(--text-dim)'}}>{title}</h3>{children}</section> }
+const hint={fontSize:11,color:'var(--text-dim)',lineHeight:1.5}
 const card={width:270,height:428,background:'#fafafa',color:'#151515',borderRadius:18,border:'1px solid #d8d8d8',overflow:'hidden',display:'flex',flexDirection:'column',textAlign:'left',boxShadow:'0 14px 38px rgba(0,0,0,.25)',flexShrink:0}
-const expiry={height:43,marginTop:'auto',background:'#eb6600',color:'#fff',fontSize:18,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',letterSpacing:'.02em'}
+const expiry={height:43,flexShrink:0,marginTop:'auto',background:'#eb6600',color:'#fff',fontSize:17,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',gap:5}

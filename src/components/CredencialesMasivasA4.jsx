@@ -1,8 +1,9 @@
+import { credentialIsValid } from '../lib/credentialAccess'
 import { useEffect,useMemo,useState } from 'react'
 import { CheckSquare,FileDown,Loader2,Search,Square } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { descargarCredencialesA4,hojasCredencialesA4 } from '../lib/credencialesA4'
+import { descargarCredencialesA4,hojasCredencialesA4,expandCredentialCards } from '../lib/credencialesA4'
 import { mensajeError } from '../lib/errores'
 import { toast } from '../lib/feedback'
 import { PersonaAvatar } from './PersonaAvatar'
@@ -19,7 +20,7 @@ export default function CredencialesMasivasA4({personas,sedes}){
       .then(({data,error})=>{
         if(!mounted)return
         if(error)toast.error(`No se pudieron cargar las credenciales: ${mensajeError(error)}`)
-        setCredenciales(data||[]);setLoading(false)
+        setCredenciales((data||[]).filter(credential=>credentialIsValid(credential)));setLoading(false)
       })
     return()=>{mounted=false}
   },[])
@@ -45,7 +46,7 @@ export default function CredencialesMasivasA4({personas,sedes}){
   const toggle=id=>setSelected(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next})
   const descargar=async()=>{
     setGenerating(true)
-    try{await descargarCredencialesA4(seleccionadas);toast.success('PDF A4 generado.')}
+    try{await descargarCredencialesA4(seleccionadas);toast.ok('PDF A4 generado.')}
     catch(error){toast.error(mensajeError(error))}
     finally{setGenerating(false)}
   }
@@ -53,14 +54,14 @@ export default function CredencialesMasivasA4({personas,sedes}){
   return <div className="max-w-6xl space-y-4">
     <div className="glass p-4 flex items-start justify-between gap-5">
       <div><p className="font-title font-bold" style={{color:'var(--phosphor)'}}>CREDENCIALES EMITIDAS · IMPRESIÓN A4</p>
-        <p style={{color:'var(--text-dim)',fontSize:'.72rem',marginTop:4}}>9 credenciales CR80 por hoja. Primero se generan los frentes y luego los dorsos alineados para impresión doble faz por borde largo.</p></div>
+        <p style={{color:'var(--text-dim)',fontSize:'.72rem',marginTop:4}}>9 tarjetas CR80 por hoja; una tarjeta por sede autorizada. Primero se generan los frentes y luego los dorsos alineados para impresión doble faz por borde largo.</p></div>
       <button className="btn-primary flex items-center gap-2" disabled={!seleccionadas.length||generating} onClick={descargar}>
         {generating?<Loader2 size={14} className="animate-spin"/>:<FileDown size={14}/>}
         {generating?'Generando…':'Imprimir en A4'}
       </button>
     </div>
     <div className="grid grid-cols-3 gap-3">
-      {[['EMITIDAS ACTIVAS',credenciales.length],['SELECCIONADAS',seleccionadas.length],['HOJAS A4 DOBLE FAZ',hojasCredencialesA4(seleccionadas.length)]].map(([label,value])=>
+      {[['EMITIDAS ACTIVAS',credenciales.length],['SELECCIONADAS',seleccionadas.length],['HOJAS A4 DOBLE FAZ',hojasCredencialesA4(expandCredentialCards(seleccionadas).length)]].map(([label,value])=>
         <div key={label} className="glass p-3 text-center"><p className="font-title font-bold text-xl" style={{color:'var(--phosphor)'}}>{value}</p><p className="font-metric" style={{color:'var(--text-dim)',fontSize:'.58rem'}}>{label}</p></div>)}
     </div>
     <div className="glass p-3 flex items-center gap-3">
