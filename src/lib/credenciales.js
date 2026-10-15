@@ -182,15 +182,15 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
     pdf.text(credencial.grupo_sanguineo, CARD_W - infoX, infoBottom, { align:'right', baseline:'bottom' })
   }
 
-  pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(7))
-  pdf.text('SECTORES AUTORIZADOS · VALIDAR QR', mx(12), my(358))
+  pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(6))
+  pdf.text('SECTORES AUTORIZADOS · ROJO: ZRA · VALIDAR QR', mx(12), my(358))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')
   if (!group.sectores.length) fitCredentialText(pdf,'SIN SECTORES AUTORIZADOS',mx(12),my(376),mx(246),1,ptFromPx(12))
   else {
     const gap=3,width=Math.min(28,(246-gap*(group.sectores.length-1))/group.sectores.length)
     group.sectores.forEach((sector,index)=>{
       const x=mx(12+index*(width+gap))
-      pdf.setFillColor(23,32,51);pdf.roundedRect(x,my(360),mx(width),my(23),.6,.6,'F')
+      pdf.setFillColor(...(sector.zra?[185,28,28]:[23,32,51]));pdf.roundedRect(x,my(360),mx(width),my(23),.6,.6,'F')
       pdf.setTextColor(255);pdf.setFontSize(ptFromPx(Math.min(16,width*.6)))
       pdf.text(sector.codigo,x+mx(width)/2,my(371.5),{align:'center',baseline:'middle'})
     })
