@@ -1,6 +1,6 @@
 # Credenciales multisede — primera etapa
 
-Implementación del 2026-10-14. **Migración autorizada explícitamente y aplicada en producción; frontend preparado para publicación 2.9.15 por GitHub.** Proyecto único permitido: `mixyhfdlzjarvszinytk`.
+Implementación del 2026-10-14. **Migración autorizada explícitamente y aplicada en producción; frontend 2.9.15 publicado por GitHub mediante PR #152.** Proyecto único permitido: `mixyhfdlzjarvszinytk`.
 
 ## Uso
 
@@ -28,7 +28,7 @@ En Personal, abrir una ficha y elegir **Accesos y credencial**. Disponible para 
 6. Crea `emitir_credencial_multisede` como SECURITY INVOKER, con comprobación explícita de admin y RLS existentes. Sólo `authenticated` tiene EXECUTE; el rol por sí solo no permite emitir.
 7. Crea `verificar_credencial_multisede` como SECURITY DEFINER para la consulta pública acotada al token. EXECUTE para `anon` y `authenticated`; sin permisos de lectura directa sobre las tablas. Actualiza la función anterior conservando su firma y permisos.
 
-Aplicado el 2026-10-14 mediante `apply_migration`, nombre `credenciales_multisede`, tras autorización explícita del usuario conforme AGENTS.md §0.3. No volver a ejecutar este archivo: crea objetos que ya existen. Queda pendiente desplegar el frontend. No hace falta reemitir las credenciales antiguas para que sigan validando; permanecerán sin sectores hasta su asignación individual.
+Aplicado el 2026-10-14 mediante `apply_migration`, nombre `credenciales_multisede`, tras autorización explícita del usuario conforme AGENTS.md §0.3. No volver a ejecutar este archivo: crea objetos que ya existen. Frontend publicado desde main, commit 569638c, con checks aprobados. No hace falta reemitir las credenciales antiguas para que sigan validando; permanecerán sin sectores hasta su asignación individual.
 
 Verificación posterior en producción (sólo lectura): 8 sectores en sede 24, ZRA 04–06; 178 credenciales conservadas y 0 con sectores asignados; ambas funciones QR devuelven las 178 filas existentes. RLS habilitado, sin SELECT del catálogo ni emisión para anon, sin escritura del catálogo para authenticated. Simulación de admin en transacción de sólo lectura: 8 sectores visibles; consulta anon con token inexistente: 0 filas.
 
@@ -43,4 +43,5 @@ Para incorporar otra sede, preparar un INSERT al catálogo con su ID verificado 
 - `node scripts/verify-credential-browser.mjs <ruta-a-playwright/index.mjs>` compila un fixture con datos ficticios y bloquea las conexiones externas. Usa Edge headless. Prueba selección, emisión simulada, PDF, consulta QR, desktop/mobile, cambios pendientes y consultor. Artefactos en `tmp/credential-qa/`; no se incluyen en el build normal.
 - `npm run build` para el build normal. Las advertencias existentes del módulo `docx`/`buffer` no bloquean la compilación.
 
-Backup previo en `backups/credenciales-multisede-20261014/`. Los scripts de pruebas no prueban el frontend desplegado con Supabase: esa comprobación queda pendiente del despliegue. La base ya fue verificada por consultas de sólo lectura. No hay integración de puertas, lectores, biometría ni capacitación AVSEC en esta etapa.
+Backup previo en `backups/credenciales-multisede-20261014/`. Verificación pública posterior: https://bitacora-dashboard.vercel.app sirve 2.9.15; el QR consulta el proyecto correcto, rechaza un token inexistente y no genera errores JavaScript. Prueba de sólo lectura, sin emitir credenciales reales. La base ya fue verificada por consultas de sólo lectura. No hay integración de puertas, lectores, biometría ni capacitación AVSEC en esta etapa.
+

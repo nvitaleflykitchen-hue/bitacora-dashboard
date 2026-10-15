@@ -4,7 +4,7 @@
 
 ## Flujo vigente — 2026-10-14
 
-La publicación del frontend se realiza **por GitHub**: rama `codex/*` desde `origin/main`, `npm run check`, PR, checks y merge a `main`. La integración del repositorio publica automáticamente en https://flykitchen.com.ar. Verificar el commit y la versión visible después de la publicación. No ejecutar Vercel CLI ni publicar desde ramas de respaldo o carpetas con cambios mezclados.
+La publicación del frontend se realiza **por GitHub**: rama `codex/*` desde `origin/main`, `npm run check`, PR, checks y merge a `main`. La integración del repositorio publica automáticamente en https://bitacora-dashboard.vercel.app. Verificar el commit y la versión visible después de la publicación. No ejecutar Vercel CLI ni publicar desde ramas de respaldo o carpetas con cambios mezclados.
 
 Las migraciones de Supabase se aprueban y aplican por separado, exclusivamente en `mixyhfdlzjarvszinytk`. Las secciones siguientes conservan el relevamiento histórico de junio; no usar sus instrucciones de despliegue manual para el flujo actual.
 
@@ -84,3 +84,4 @@ No hay carpeta de migraciones versionada en el repo (`supabase/migrations/` no e
 3. Si el cambio afecta a una Edge Function: respaldar el código actual de la función antes de sobrescribirla.
 4. Si el cambio afecta al esquema de la base: documentar la migración aplicada (este paquete de traspaso es el primer punto de partida para llevar ese registro — ver DECISIONS.md).
 5. Después del deploy, verificar manualmente las vistas/flujos críticos (login, carga de novedades, vista de escalamientos) — no hay smoke tests automatizados.
+
