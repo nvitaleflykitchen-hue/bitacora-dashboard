@@ -1,4 +1,8 @@
 // Los códigos sólo tienen significado dentro de su sede. Nunca inferir accesos del área.
+export const CREDENTIAL_SECTOR_SITE_IDS = [21,24]
+export const credentialSectorSites = persona => (persona.sede_ids || []).map(Number).filter(id=>CREDENTIAL_SECTOR_SITE_IDS.includes(id))
+export const hasIncompatibleCredentialSectors = (persona,credential) => (credential?.sectores_autorizados || []).some(sector=>!credentialSectorSites(persona).includes(Number(sector.sede_id)))
+
 export function groupCredentialSectors(sectors = []) {
   const groups = new Map()
   for (const sector of sectors) {

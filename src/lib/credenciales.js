@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
 import { supabase } from './supabase'
 import { getPersonaFotoDataUrl } from './personaFotos'
-import { credentialIsValid, groupCredentialSectors } from './credentialAccess'
+import { credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors } from './credentialAccess'
 import { credentialPresentation, resolveCredentialArea, hexToRgb } from './credentialAreas'
 
 export const fechaVencimientoCredencial = (fecha = new Date()) => format(addYears(fecha, 2), 'yyyy-MM-dd')
@@ -107,6 +107,7 @@ export function credentialPrintGroups(credencial) {
 export async function prepareCredentialPrint(persona, credencial, logo) {
   const vigente = await getCredencialPersona(persona.id)
   if (!vigente || vigente.id !== credencial?.id) throw new Error('La credencial cambió. Cerrá y volvé a abrir la ficha antes de descargar.')
+  if (hasIncompatibleCredentialSectors(persona,vigente)) throw new Error('La credencial contiene sectores de otra sede. Abrí la ficha y reemití antes de imprimir.')
   if (!credentialIsValid(vigente)) throw new Error('Sólo se pueden descargar credenciales vigentes.')
   const [foto, qr] = await Promise.all([
     persona.foto_url ? getPersonaFotoDataUrl(persona.foto_url) : Promise.resolve(null),
@@ -182,6 +183,7 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
     pdf.text(credencial.grupo_sanguineo, CARD_W - infoX, infoBottom, { align:'right', baseline:'bottom' })
   }
 
+  if (credentialSectorSites(persona).length) {
   pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(6))
   pdf.text('SECTORES AUTORIZADOS · ROJO: ZRA · VALIDAR QR', mx(12), my(358))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')
@@ -196,6 +198,7 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
     })
   }
 
+  }
   // Banda de vencimiento: 43 px de alto al pie de la tarjeta.
   const expiryTop = my(385), expiryH = my(43)
   pdf.setFillColor(...orange);pdf.rect(0,expiryTop,CARD_W,expiryH,'F')

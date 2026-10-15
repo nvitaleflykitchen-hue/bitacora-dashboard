@@ -541,3 +541,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** captura del usuario y consulta de sólo lectura: el objeto PNG original sigue en Storage. La vista usaba una URL firmada en caché sin gestionar errores del elemento img; no se confirmó la causa HTTP de la captura.
 - **Corrección:** descargar los bytes mediante la sesión del usuario y usar una data URL, también para PDF; aviso persistente y reintento ante fallos. No cambia RLS ni publica el bucket.
 - **Recomendación:** si la descarga autenticada falla, revisar permisos/conectividad desde la sesión afectada; no volver a cargar la foto antes de comprobar el error.
+
+## 2026-10-15 — Sectores de otra sede en credenciales
+- **Severidad:** media. La interfaz ofrecía el catálogo de Córdoba a personas de otras sedes.
+- **Verificación:** consulta de sólo lectura confirmó ficha Mendoza con snapshot de sectores Córdoba.
+- **Corrección frontend 2.9.18:** catálogo limitado a las sedes asignadas 21/24, sin sectores impresos en otras sedes y bloqueo de descarga de snapshots incompatibles. La reemisión retira los sectores incompatibles e invalida el QR anterior de forma atómica.
+- **Limitación:** las emisiones existentes conservan su snapshot y QR hasta reemitirlas; la restricción de sedes está en el cliente. No se cambian políticas ni permisos SQL en este ajuste.
