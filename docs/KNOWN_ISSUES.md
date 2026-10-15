@@ -518,3 +518,20 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Severidad:** baja, presentación visual.
 - **Verificación:** captura del usuario y revisión de EquipoView: acciones sin salto de línea comprimían el bloque del nombre y los indicadores quedaban como columnas competidoras. El encabezado móvil usa otra estructura.
 - **Corrección:** indicadores debajo de la identidad, acciones en una fila propia adaptable y encabezado sin contracción vertical. No cambia datos ni consultas.
+
+
+## 2026-10-14 — Emisión de credenciales y permisos de sectores (corregido)
+- **Severidad:** media. La emisión anterior anulaba la credencial antes de insertar la nueva; un fallo podía dejar a la persona sin emisión activa. La actualización directa permitía reactivar estados invalidados.
+- **Verificación:** revisión de la implementación previa y pruebas aisladas PGlite de rollback, versión obsoleta, roles y transiciones. Sin inserciones de prueba en producción.
+- **Corrección:** RPC transaccional con bloqueo por persona y comprobación de versión; trigger que conserva la autorización e impide reactivar credenciales invalidadas. Migración aprobada y aplicada el 2026-10-14. Ver docs/CREDENCIALES_MULTISEDE.md.
+- **Recomendación:** verificar siempre el QR; las tarjetas impresas conservan una instantánea. No repetir la migración ya aplicada.
+
+## 2026-10-14 — Dependencias con avisos de seguridad
+- **Severidad:** pendiente de evaluación por alcance. npm ci sobre el lockfile de main informa 19 vulnerabilidades (6 moderadas, 11 altas, 2 críticas); contradice la observación de cero avisos del 2026-07-14.
+- **Verificación:** npm ci en rama limpia basada en main 62b0f04, sin cambios de versiones de dependencias.
+- **Recomendación:** revisar npm audit y actualizar en un cambio dedicado con pruebas de compatibilidad; no ejecutar audit fix --force durante la publicación de credenciales.
+
+## 2026-10-14 — Aviso erróneo al descargar credenciales A4 (corregido)
+- **Severidad:** baja. Tras descargar, la pantalla llamaba a `toast.success`, que no existe, y mostraba un error.
+- **Verificación:** revisión de `CredencialesMasivasA4.jsx` y API de `feedback.js`.
+- **Corrección:** usar `toast.ok`, conservando el manejo de errores de generación.

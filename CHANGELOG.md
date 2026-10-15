@@ -1,3 +1,9 @@
+## 2.9.15 - 2026-10-14
+- Credenciales multisede con autorización individual, departamentos PRO/AER y sectores identificados por sede.
+- Emisión transaccional que invalida el QR anterior; consulta pública con sectores vigentes.
+- Escritorio y celular; PDF CR80 y A4 comparten diseño y generan una tarjeta por sede.
+- Migración autorizada y aplicada en producción; conserva las credenciales existentes sin asignarles sectores automáticamente.
+
 ## 2.9.14 - 2026-09-07
 - Completar datos faltantes presenta propuestas con fuente y requiere aplicarlas antes de guardar; conserva los campos completos.
 - Normaliza contenidos simples y cantidades explícitas de multipacks, categorías conocidas en español y prefijos de idioma.

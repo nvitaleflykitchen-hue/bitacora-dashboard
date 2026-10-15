@@ -1,3 +1,4 @@
+import CredencialPersonalModal from '../components/CredencialPersonalModal'
 import { useFormAccess } from '../lib/useFormAccess'
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
@@ -369,7 +370,9 @@ function QuickPersonaModal({ sedes = [], requireSede = false, onClose, onSaved }
   )
 }
 
-function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad, onOpenSection }) {
+function PersonaFicha({ sedes, personaId, canManage, canDelete, onBack, onCreateNovedad, onOpenSection }) {
+  const { perfil } = useAuth()
+  const [showCredential,setShowCredential] = useState(false)
   const formsAllowed = useFormAccess(personaId)
   const [persona, setPersona] = useState(null)
   const [evaluaciones, setEvaluaciones] = useState([])
@@ -480,6 +483,8 @@ function PersonaFicha({ personaId, canManage, canDelete, onBack, onCreateNovedad
           </div>
         </div>
         {canManage && <PersonaFotoEditor persona={persona} compact showAvatar={false} onChanged={load} />}
+        {perfil?.rol==='admin' && <button className="btn-ghost" style={{minHeight:44,marginTop:8}} onClick={()=>setShowCredential(true)}>Accesos y credencial</button>}
+        {showCredential && perfil?.rol==='admin' && <CredencialPersonalModal persona={persona} sedes={sedes} onClose={()=>setShowCredential(false)}/>}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && <button className="btn-primary" style={{ minHeight:44 }} onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnModule:'personal' })}>+ Novedad</button>}
           {formsAllowed && <button className="btn-ghost" onClick={()=>setTab('permisos')}><FileText size={14}/> Generar formulario</button>}
@@ -686,7 +691,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
   useEffect(() => { getSedes(allowedSedeIds || undefined).then(setSedes).catch(() => {}) }, [allowedSedeIds])
 
   if (selectedId) {
-    return <PersonaFicha onOpenSection={section=>{setSelectedId(null);setView(section)}} personaId={selectedId} canManage={canManage} canDelete={canDeletePerson(user?.id)} onBack={() => { setSelectedId(null); load() }} onCreateNovedad={onCreateNovedad} />
+    return <PersonaFicha sedes={sedes} onOpenSection={section=>{setSelectedId(null);setView(section)}} personaId={selectedId} canManage={canManage} canDelete={canDeletePerson(user?.id)} onBack={() => { setSelectedId(null); load() }} onCreateNovedad={onCreateNovedad} />
   }
 
   const reactivar = async (persona) => {

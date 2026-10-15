@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { CREDENTIAL_AREAS, credentialPresentation, inferCredentialArea, resolveCredentialArea } from './credentialAreas'
 
 describe('áreas funcionales de credenciales', () => {
-  it('mantiene los seis códigos y colores corporativos', () => {
+  it('mantiene los códigos históricos y los nuevos departamentos y colores corporativos', () => {
     expect(CREDENTIAL_AREAS).toEqual({
+      production:{ code:'PRO', label:'Producción', color:'#9D174D' },
+      airports:{ code:'AER', label:'Aeropuertos', color:'#4338CA' },
       operations:{ code:'OPS', label:'Operaciones', color:'#F36C00' },
       logistics:{ code:'LOG', label:'Logística', color:'#1565C0' },
       quality:{ code:'CAL', label:'Calidad', color:'#2E7D32' },

@@ -1,8 +1,17 @@
 import { describe,expect,it } from 'vitest'
 import { CARD_H,CARD_W } from './credenciales'
-import { hojasCredencialesA4,posicionCredencialA4 } from './credencialesA4'
+import { expandCredentialCards,hojasCredencialesA4,posicionCredencialA4 } from './credencialesA4'
 
 describe('credenciales A4',()=>{
+  it('separa los mismos códigos de sedes distintas y conserva la tarjeta histórica sin sectores',()=>{
+    const cards=expandCredentialCards([{credencial:{sectores_autorizados:[
+      {id:'a',sede_id:24,sede_nombre:'Córdoba',codigo:'04'},
+      {id:'b',sede_id:25,sede_nombre:'Rosario',codigo:'04'},
+    ]}},{credencial:{sede_nombre:'Central'}}])
+    expect(cards.map(card=>card.group.nombre)).toEqual(['Córdoba','Rosario','Central'])
+    expect(cards.map(card=>card.group.sectores.length)).toEqual([1,1,0])
+    expect(hojasCredencialesA4(expandCredentialCards(Array(5).fill(cards[0])).length)).toBe(2)
+  })
   it('distribuye hasta nueve credenciales por hoja',()=>{
     expect(hojasCredencialesA4(0)).toBe(0)
     expect(hojasCredencialesA4(9)).toBe(1)
