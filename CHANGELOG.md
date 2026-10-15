@@ -1,3 +1,7 @@
+## 2.9.17 - 2026-10-15
+- Sectores ZRA en rojo con números blancos y leyenda; demás sectores en azul oscuro.
+- Vista previa, CR80 y A4 consistentes. Sin cambios de permisos ni datos.
+
 ## 2.9.16 - 2026-10-14
 - Carga autenticada de fotografías originales en credenciales y PDF; aviso y reintento ante fallos.
 - Sectores en recuadros de alto contraste en vista previa, CR80 y A4.

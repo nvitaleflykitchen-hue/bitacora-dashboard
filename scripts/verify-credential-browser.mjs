@@ -87,7 +87,7 @@ try {
   await page.getByRole('button',{name:'Emitir credencial',exact:true}).click()
   await page.getByRole('button',{name:'Confirmar emisión',exact:true}).click()
   await page.getByText('Credencial emitida por dos años.',{exact:true}).waitFor()
-  assert.equal(await page.getByText('04',{exact:true}).first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(23, 32, 51)')
+  assert.equal(await page.getByText('04',{exact:true}).first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(185, 28, 28)')
   console.log('Emisión simulada verificada; exportando PDF.')
   assert.equal(emitted.sectores_autorizados.length,4)
   await page.getByAltText('QR de validación de la credencial emitida').waitFor()
