@@ -3,7 +3,7 @@ import QRCode from 'qrcode'
 import { X } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '../lib/auth'
-import { getPersonaFotoUrl } from '../lib/personaFotos'
+import { getPersonaFotoDataUrl } from '../lib/personaFotos'
 import { actualizarPrivacidadCredencial, cambiarEstadoCredencial, descargarCredencialPdf, emitirCredencial, fechaVencimientoCredencial, getCredencialPersona, getSectoresCredencial, urlValidacionCredencial } from '../lib/credenciales'
 import { CREDENTIAL_AREA_OPTIONS, credentialPresentation, resolveCredentialArea } from '../lib/credentialAreas'
 import { credentialIsValid, groupCredentialSectors, selectedCredentialSectors } from '../lib/credentialAccess'
@@ -22,6 +22,8 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   const [error,setError] = useState('')
   const [busy,setBusy] = useState(false)
   const [foto,setFoto] = useState(null)
+  const [fotoError,setFotoError] = useState(false)
+  const [fotoRetry,setFotoRetry] = useState(0)
   const [qr,setQr] = useState(null)
   const [area,setArea] = useState(resolveCredentialArea(persona).key)
   const [sectorIds,setSectorIds] = useState([])
@@ -48,10 +50,10 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   },[persona,admin])
   useEffect(()=> {
     let cancelled = false
-    setFoto(null)
-    if (admin && persona.foto_url) getPersonaFotoUrl(persona.foto_url).then(value=>{if(!cancelled)setFoto(value)}).catch(()=>{if(!cancelled)toast.error('No se pudo cargar la fotografía.')})
+    setFoto(null);setFotoError(false)
+    if (admin && persona.foto_url) getPersonaFotoDataUrl(persona.foto_url).then(value=>{if(!cancelled)setFoto(value)}).catch(()=>{if(!cancelled)setFotoError(true)})
     return ()=> { cancelled=true }
-  },[persona.foto_url,admin])
+  },[persona.foto_url,admin,fotoRetry])
   useEffect(()=> {
     let cancelled=false
     setQr(null)
@@ -93,7 +95,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
       <div style={{flex:'1 1 560px',minWidth:0}}>
         <p style={{...hint,marginBottom:10}}>{!credencial||accessDirty||settingsDirty?'Vista previa · cambios pendientes':'Credencial emitida'} · El PDF incluye frente y dorso por cada sede autorizada.</p>
         {groups.length>1&&<label style={{display:'block',marginBottom:12}}>Vista previa por sede<select className="input-dark w-full" value={preview.sedeId} onChange={e=>setPreviewSede(e.target.value)}>{groups.map(g=><option key={g.sedeId} value={g.sedeId}>{g.nombre}</option>)}</select></label>}
-        <CredentialPreview persona={persona} presentation={presentation} preview={preview} draft={draft} foto={foto} qr={accessDirty?null:qr} vencimiento={credencial?.fecha_vencimiento||fechaVencimientoCredencial()}/>
+        <CredentialPreview onPhotoError={()=>{setFoto(null);setFotoError(true)}} persona={persona} presentation={presentation} preview={preview} draft={draft} foto={foto} qr={accessDirty?null:qr} vencimiento={credencial?.fecha_vencimiento||fechaVencimientoCredencial()}/>
       </div>
       <fieldset disabled={busy} style={{flex:'1 1 310px',minWidth:0,border:0,padding:0}}>
         <Panel title="ESTADO"><strong style={{color:valid?'var(--phosphor)':'var(--alert)'}}>{estado.toUpperCase()}</strong>{credencial&&<p style={hint}>Emitida {dateLabel(credencial.fecha_emision)} · vence {dateLabel(credencial.fecha_vencimiento)}</p>}</Panel>
@@ -105,7 +107,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
           {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores que ya no están disponibles. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
           <p style={{...hint,marginTop:12}}>{selected.length} sectores en {groups.length} sedes. Cambiar accesos requiere reemitir.</p>
         </Panel>
-        <Panel title="ENCUADRE DE LA FOTO">{[['Horizontal','fotoX',0,100,1],['Vertical','fotoY',0,100,1],['Zoom','fotoZoom',1,1.8,.05]].map(([label,key,min,max,step])=><label key={key} style={{display:'grid',gridTemplateColumns:'65px 1fr 40px',gap:8,fontSize:12,marginBottom:8}}>{label}<input type="range" min={min} max={max} step={step} value={draft[key]} onChange={e=>set(key,Number(e.target.value))}/><span>{key==='fotoZoom'?`${Math.round(draft[key]*100)}%`:draft[key]}</span></label>)}<button className="btn-ghost w-full" onClick={()=>setDraft(d=>({...d,fotoX:50,fotoY:50,fotoZoom:1}))}>Centrar automáticamente</button></Panel>
+        <Panel title="ENCUADRE DE LA FOTO">{fotoError&&<div role="alert"><p>No se pudo cargar la fotografía.</p><button className="btn-ghost" onClick={()=>setFotoRetry(value=>value+1)}>Reintentar foto</button></div>}{[['Horizontal','fotoX',0,100,1],['Vertical','fotoY',0,100,1],['Zoom','fotoZoom',1,1.8,.05]].map(([label,key,min,max,step])=><label key={key} style={{display:'grid',gridTemplateColumns:'65px 1fr 40px',gap:8,fontSize:12,marginBottom:8}}>{label}<input type="range" min={min} max={max} step={step} value={draft[key]} onChange={e=>set(key,Number(e.target.value))}/><span>{key==='fotoZoom'?`${Math.round(draft[key]*100)}%`:draft[key]}</span></label>)}<button className="btn-ghost w-full" onClick={()=>setDraft(d=>({...d,fotoX:50,fotoY:50,fotoZoom:1}))}>Centrar automáticamente</button></Panel>
         <Panel title="DATOS OPCIONALES"><label style={{fontSize:12}}>Grupo sanguíneo<select className="input-dark w-full" value={draft.grupo} onChange={e=>set('grupo',e.target.value)}>{GRUPOS.map(g=><option key={g} value={g}>{g||'— No imprimir —'}</option>)}</select></label>{[['Compartir teléfono laboral','compartirTelefono'],['Compartir correo laboral','compartirEmail']].map(([label,key])=><label key={key} style={{display:'flex',gap:8,marginTop:10,fontSize:12}}><input type="checkbox" checked={draft[key]} onChange={e=>set(key,e.target.checked)}/>{label}</label>)}
           {credencial&&<button className="btn-ghost w-full mt-3" disabled={!settingsDirty||accessDirty} onClick={()=>run(async()=>{setCredencial(await actualizarPrivacidadCredencial(credencial.id,draft.compartirTelefono,draft.compartirEmail,draft.grupo,draft.fotoX,draft.fotoY,draft.fotoZoom));toast.ok('Datos y encuadre guardados.')})}>Guardar datos y encuadre</button>}
         </Panel>
@@ -118,19 +120,19 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   </div></div>
 }
 
-export function CredentialPreview({persona,presentation,preview,draft,foto,qr,vencimiento}) {
+export function CredentialPreview({persona,presentation,preview,draft,foto,qr,vencimiento,onPhotoError}) {
   const name=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
   return <div style={{display:'flex',gap:18,justifyContent:'center',flexWrap:'wrap'}}>
     <div style={card}>
       <div style={{height:46,flexShrink:0,display:'flex',justifyContent:'center',padding:3}}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:40,objectFit:'contain'}}/></div>
-      <div style={{height:180,flexShrink:0,display:'grid',gridTemplateColumns:'1fr 45px'}}><div style={{overflow:'hidden',background:'#dfe3e8'}}>{foto&&<img src={foto} alt="Fotografía del titular" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${draft.fotoX}% ${draft.fotoY}%`,transform:`scale(${draft.fotoZoom})`,transformOrigin:`${draft.fotoX}% ${draft.fotoY}%`}}/>}</div><div style={{background:presentation.area.color,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:27,fontWeight:900,lineHeight:1.05}}>{presentation.area.code.split('').map((letter,i)=><span key={i}>{letter}</span>)}</div></div>
+      <div style={{height:180,flexShrink:0,display:'grid',gridTemplateColumns:'1fr 45px'}}><div style={{overflow:'hidden',background:'#dfe3e8'}}>{foto&&<img src={foto} alt="Fotografía del titular" onError={onPhotoError} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${draft.fotoX}% ${draft.fotoY}%`,transform:`scale(${draft.fotoZoom})`,transformOrigin:`${draft.fotoX}% ${draft.fotoY}%`}}/>}</div><div style={{background:presentation.area.color,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:27,fontWeight:900,lineHeight:1.05}}>{presentation.area.code.split('').map((letter,i)=><span key={i}>{letter}</span>)}</div></div>
       <div style={{padding:'7px 12px 4px',height:121,flexShrink:0,display:'flex',flexDirection:'column',gap:2,boxSizing:'border-box'}}>
         <strong style={{fontSize:name.length>40?11:15,lineHeight:1.1,overflowWrap:'anywhere'}}>{name}</strong>
         <strong style={{fontSize:10}}>DNI {persona.dni || '—'}</strong><strong style={{fontSize:11}}>FLY KITCHEN S.A.</strong>
         <b style={{fontSize:presentation.jobTitle.length>75?7:9,color:'#d75b00',lineHeight:1.1}}>{presentation.jobTitle}</b>
         <div style={{display:'flex',gap:5,justifyContent:'space-between',marginTop:'auto',fontSize:8}}><span>{preview.nombre.toUpperCase()}</span><b>{draft.grupo}</b></div>
       </div>
-      <div style={{height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6.5,color:'#555'}}>SECTORES AUTORIZADOS · VALIDAR QR</div><strong style={{fontSize:preview.sectores.length?(preview.sectores.length>8?10:16):9,letterSpacing:1}}>{preview.sectores.map(s=>s.codigo).join(' ')||'SIN SECTORES AUTORIZADOS'}</strong></div>
+      <div style={{height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6.5,color:'#555'}}>SECTORES AUTORIZADOS · VALIDAR QR</div><div style={{display:'flex',gap:3,marginTop:2}}>{preview.sectores.length?preview.sectores.map(sector=><span key={sector.id} style={{background:'#172033',color:'#fff',borderRadius:3,minWidth:0,flex:'0 1 28px',height:23,display:'grid',placeItems:'center',fontWeight:900,fontSize:16,lineHeight:1}}>{sector.codigo}</span>):<strong style={{fontSize:9}}>SIN SECTORES AUTORIZADOS</strong>}</div></div>
       <div style={expiry}>VENCE {dateLabel(vencimiento)}</div>
     </div>
     <div style={card}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:50,objectFit:'contain',margin:'12px auto 8px'}}/>{qr?<img src={qr} alt="QR de validación de la credencial emitida" style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174,display:'grid',placeItems:'center',fontSize:12,textAlign:'center',padding:20}}>El QR estará disponible<br/>al emitir la credencial.</div>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:9,fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:12,fontSize:9,lineHeight:1.6}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>

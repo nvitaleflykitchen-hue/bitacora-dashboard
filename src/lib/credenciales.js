@@ -2,7 +2,7 @@ import QRCode from 'qrcode'
 import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
 import { supabase } from './supabase'
-import { getPersonaFotoUrl } from './personaFotos'
+import { getPersonaFotoDataUrl } from './personaFotos'
 import { credentialIsValid, groupCredentialSectors } from './credentialAccess'
 import { credentialPresentation, resolveCredentialArea, hexToRgb } from './credentialAreas'
 
@@ -109,7 +109,7 @@ export async function prepareCredentialPrint(persona, credencial, logo) {
   if (!vigente || vigente.id !== credencial?.id) throw new Error('La credencial cambió. Cerrá y volvé a abrir la ficha antes de descargar.')
   if (!credentialIsValid(vigente)) throw new Error('Sólo se pueden descargar credenciales vigentes.')
   const [foto, qr] = await Promise.all([
-    persona.foto_url ? getPersonaFotoUrl(persona.foto_url).then(imageData) : Promise.resolve(null),
+    persona.foto_url ? getPersonaFotoDataUrl(persona.foto_url) : Promise.resolve(null),
     QRCode.toDataURL(urlValidacionCredencial(vigente.token), { width:700, margin:1, errorCorrectionLevel:'H' }),
   ])
   const fotoRecortada = foto ? await coverImageData(foto,450,360,vigente.foto_pos_x,vigente.foto_pos_y,vigente.foto_zoom) : null
@@ -185,7 +185,16 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
   pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(7))
   pdf.text('SECTORES AUTORIZADOS · VALIDAR QR', mx(12), my(358))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')
-  fitCredentialText(pdf, group.sectores.map(sector=>sector.codigo).join('  ') || 'SIN SECTORES AUTORIZADOS', mx(12), my(376), mx(246), 1, ptFromPx(12))
+  if (!group.sectores.length) fitCredentialText(pdf,'SIN SECTORES AUTORIZADOS',mx(12),my(376),mx(246),1,ptFromPx(12))
+  else {
+    const gap=3,width=Math.min(28,(246-gap*(group.sectores.length-1))/group.sectores.length)
+    group.sectores.forEach((sector,index)=>{
+      const x=mx(12+index*(width+gap))
+      pdf.setFillColor(23,32,51);pdf.roundedRect(x,my(360),mx(width),my(23),.6,.6,'F')
+      pdf.setTextColor(255);pdf.setFontSize(ptFromPx(Math.min(16,width*.6)))
+      pdf.text(sector.codigo,x+mx(width)/2,my(371.5),{align:'center',baseline:'middle'})
+    })
+  }
 
   // Banda de vencimiento: 43 px de alto al pie de la tarjeta.
   const expiryTop = my(385), expiryH = my(43)

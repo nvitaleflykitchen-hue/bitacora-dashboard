@@ -1,3 +1,8 @@
+## 2.9.16 - 2026-10-14
+- Carga autenticada de fotografías originales en credenciales y PDF; aviso y reintento ante fallos.
+- Sectores en recuadros de alto contraste en vista previa, CR80 y A4.
+- Sin cambios de base de datos ni permisos.
+
 ## 2.9.15 - 2026-10-14
 - Credenciales multisede con autorización individual, departamentos PRO/AER y sectores identificados por sede.
 - Emisión transaccional que invalida el QR anterior; consulta pública con sectores vigentes.
