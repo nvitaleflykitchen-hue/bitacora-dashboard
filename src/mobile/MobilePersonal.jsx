@@ -1,3 +1,4 @@
+import Correos from '../views/Correos'
 import CredencialPersonalModal from '../components/CredencialPersonalModal'
 import { useFormAccess } from '../lib/useFormAccess'
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react'
@@ -586,6 +587,7 @@ function PersonaFicha({ sedes, personaId, canManage, canDelete, onBack, onCreate
 
         {tab === 'historial' && (
           <>
+            <section className="glass rounded mb-4"><Correos key={personaId} planId={`persona:${personaId}`} readOnly /></section>
             <CapacitacionesRelacionadas personaId={personaId} title="Capacitaciones realizadas" />
             {canManage && (
               <button onClick={() => setShowHist(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', padding: '0.5rem 0.8rem', marginBottom: 12 }}>

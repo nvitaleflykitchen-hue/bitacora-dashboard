@@ -21,6 +21,24 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('Bandeja de correos', () => {
+  it('consulta el historial de una persona en todos los buzones y abre el detalle sin editar vínculos', async () => {
+    render(<Correos planId="persona:11111111-1111-1111-1111-111111111111" readOnly />)
+    await screen.findByText('Presupuesto')
+    expect(api.getCorreos).toHaveBeenLastCalledWith(expect.objectContaining({ mailboxId: '', state: 'vinculado', planId: 'persona:11111111-1111-1111-1111-111111111111' }))
+    expect(screen.getByText('Todos mis buzones')).toBeTruthy()
+    fireEvent.click(screen.getByText('Presupuesto'))
+    await screen.findByText('Descargar correo original')
+    expect(screen.queryByText('Guardar vínculo')).toBeNull()
+    fireEvent.click(screen.getByText('Cerrar detalle'))
+    fireEvent.change(screen.getByLabelText('Buzón'), { target: { value: 'b1' } })
+    await waitFor(() => expect(api.getCorreos).toHaveBeenLastCalledWith(expect.objectContaining({ mailboxId: 'b1' })))
+  })
+  it('no consulta el historial de correos sin buzones habilitados', async () => {
+    api.getCorreoContext.mockResolvedValue({ mailboxes: [], plans: [], memberships: [] })
+    render(<Correos planId="persona:11111111-1111-1111-1111-111111111111" readOnly />)
+    await screen.findByText(/No tenés buzones habilitados/)
+    expect(api.getCorreos).not.toHaveBeenCalled()
+  })
   it('permite aceptar una sugerencia y conserva el cuerpo como texto', async () => {
     const saved = vi.fn()
     render(<CorreoDetail id="m1" plans={plans} canReview onClose={() => {}} onSaved={saved} />)

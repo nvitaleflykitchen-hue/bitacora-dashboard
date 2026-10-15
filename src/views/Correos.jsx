@@ -186,6 +186,7 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
 }
 
 export default function Correos({ planId = null, readOnly = false }) {
+  const personal = planId?.startsWith('persona:')
   const [context, setContext] = useState(null)
   const [mailboxId, setMailboxId] = useState('')
   const [state, setState] = useState(planId ? 'vinculado' : 'pendiente')
@@ -203,27 +204,27 @@ export default function Correos({ planId = null, readOnly = false }) {
     getCorreoContext().then(data => {
       if (!active) return
       setContext(data)
-      setMailboxId(current => current || data.mailboxes[0]?.id || '')
+      setMailboxId(current => personal ? current : (current || data.mailboxes[0]?.id || ''))
       if (!data.mailboxes.length) setLoading(false)
     }).catch(err => { if (active) { setError(correoError(err)); setLoading(false) } })
     return () => { active = false }
-  }, [revision])
+  }, [revision, personal])
   useEffect(() => {
     const sequence = ++request.current
-    if (!mailboxId) return
+    if (!mailboxId && (!personal || !context?.mailboxes.length)) return
     setLoading(true); setError(''); setResult({ items: [], total: 0 })
     getCorreos({ mailboxId, state, planId, analysis, page }).then(data => {
       if (request.current === sequence) setResult(data)
     }).catch(err => { if (request.current === sequence) setError(correoError(err)) })
       .finally(() => { if (request.current === sequence) setLoading(false) })
     return () => { request.current += 1 }
-  }, [mailboxId, state, planId, page, analysis, revision])
+  }, [mailboxId, state, planId, page, analysis, revision, personal, context])
   const reviewer = !readOnly && context?.memberships.some(m => m.buzon_id === mailboxId && m.puede_revisar)
   function filter(setter, value) { setter(value); setPage(0); setOpened(null) }
   return <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4" style={{ color: 'var(--text)' }}>
     <header className="flex items-center justify-between gap-3 flex-wrap">
-      <div><h1 className="font-title text-xl font-bold">{planId ? 'Correos y evidencias' : 'Correos'}</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>Ollama resume y clasifica cada correo. Abrilo para vincularlo a una gestión, proyecto, sede, vehículo, iniciativa de I+D o persona.</p></div>
+      <div><h1 className="font-title text-xl font-bold">{personal ? 'Correos vinculados a esta persona' : planId ? 'Correos y evidencias' : 'Correos'}</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>{personal ? 'Mensajes asociados desde Bandeja → Correos, del más reciente al más antiguo. Se muestran únicamente los buzones a los que tenés acceso.' : 'Ollama resume y clasifica cada correo. Abrilo para vincularlo a una gestión, proyecto, sede, vehículo, iniciativa de I+D o persona.'}</p></div>
       <button type="button" className="btn-ghost" onClick={refresh} disabled={loading}>Actualizar</button>
     </header>
     {error && <p role="alert" className="glass p-4">{error}</p>}
@@ -231,12 +232,12 @@ export default function Correos({ planId = null, readOnly = false }) {
     {!!context?.mailboxes.length && <>
       <div className="flex gap-3 flex-wrap">
         <label>Análisis<select className="input-dark block" value={analysis} onChange={e => filter(setAnalysis, e.target.value)}><option value="todos">Todos</option><option value="lista">Analizados por Ollama</option><option value="sugerencia">Con gestión sugerida</option><option value="pendiente">Pendientes de análisis</option></select></label>
-        <label>Buzón<select className="input-dark block" value={mailboxId} onChange={e => filter(setMailboxId, e.target.value)}>{context.mailboxes.map(box => <option key={box.id} value={box.id}>{box.nombre}</option>)}</select></label>
+        <label>Buzón<select className="input-dark block" value={mailboxId} onChange={e => filter(setMailboxId, e.target.value)}>{personal && <option value="">Todos mis buzones</option>}{context.mailboxes.map(box => <option key={box.id} value={box.id}>{box.nombre}</option>)}</select></label>
         {!planId && <label>Estado<select className="input-dark block" value={state} onChange={e => filter(setState, e.target.value)}>{Object.entries(states).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>}
       </div>
       {opened && <CorreoDetail key={opened} id={opened} plans={context.plans} destinations={context.destinations} canReview={reviewer} onClose={() => setOpened(null)} onSaved={refresh} />}
       {loading ? <p role="status">Cargando correos…</p> : <>
-        {!result.items.length && !error && <p className="glass p-6">No hay correos en esta selección. Los mensajes aparecerán cuando el agente complete la importación.</p>}
+        {!result.items.length && !error && <p className="glass p-6">{personal ? 'No hay correos vinculados a esta persona en los buzones seleccionados. Para asociarlos, abrí un mensaje en Bandeja → Correos y seleccioná a la persona.' : 'No hay correos en esta selección. Los mensajes aparecerán cuando el agente complete la importación.'}</p>}
         <div className="grid gap-3">{result.items.map(message => <button type="button" key={message.id} className="glass rounded p-4 text-left" onClick={() => setOpened(message.id)} aria-pressed={opened === message.id}>
           <span className="block font-bold" style={{ overflowWrap: 'anywhere' }}>{message.asunto}</span>
           <span className="block text-sm" style={{ color: 'var(--text-dim)', overflowWrap: 'anywhere' }}>{message.remitente} · {dateText(message.fecha_correo)}</span>

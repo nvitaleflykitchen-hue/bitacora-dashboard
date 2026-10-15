@@ -1,3 +1,4 @@
+import Correos from '../views/Correos'
 import { useFormAccess } from '../lib/useFormAccess'
 import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
@@ -1862,6 +1863,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
         {/* ── HISTORIAL ── */}
         {tab === "historial" && (
           <div>
+            <section className="glass rounded mb-4"><Correos key={personaId} planId={`persona:${personaId}`} readOnly /></section>
             <EppPersonaPanel personaId={personaId} />
             <CapacitacionesRelacionadas personaId={personaId} title="Capacitaciones realizadas" />
             <div className="glass p-4 mb-4" style={{ border: "1px solid rgba(245,158,11,.24)" }}>
