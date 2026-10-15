@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import WorkspaceTabs from '../components/WorkspaceTabs'
 import MntDashboard from './mantenimiento/MntDashboard'
+import MntInstructivos from './mantenimiento/MntInstructivos'
 import MntTickets from './mantenimiento/MntTickets'
 import MntActivos from './mantenimiento/MntActivos'
 import MntPlanes from './mantenimiento/MntPlanes'
@@ -14,6 +15,7 @@ import ContactosTab from '../components/ContactosTab'
 import ContactosQuickBtn from '../components/ContactosQuickBtn'
 
 const VIEWS = {
+  instructivos:MntInstructivos,
   resumen:MntDashboard,
   tickets:MntTickets,
   tablero:MntKanban,
@@ -29,6 +31,7 @@ const VIEWS = {
 const TABS = [
   { id:'resumen', label:'Resumen' },
   { id:'tickets', label:'Tickets' },
+  { id:'instructivos', label:'Instructivos' },
   { id:'tablero', label:'Tablero', hideFor:['sede','consultor'] },
   { id:'activos', label:'Activos' },
   { id:'preventivo', label:'Preventivo', hideFor:['sede','consultor'] },
