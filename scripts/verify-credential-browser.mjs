@@ -19,9 +19,9 @@ import Verify from '../../src/views/CredencialVerificacion.jsx';
 import {descargarCredencialesA4} from '../../src/lib/credencialesA4';
 import {getCredencialPersona} from '../../src/lib/credenciales';
 import FeedbackHost from '../../src/components/FeedbackHost.jsx';import '../../src/index.css';
-const persona={id:'00000000-0000-0000-0000-000000000003',nombre:'PERSONA',apellido:'DE PRUEBA',dni:'00000000',puesto:'OPERARIO DE ARMADO AEROPORTUARIO',functional_area:'operations',sede_ids:[24],foto_url:'personas/fixture/photo.svg'};
+const persona={id:'00000000-0000-0000-0000-000000000003',nombre:'PERSONA',apellido:'DE PRUEBA',dni:'00000000',puesto:'OPERARIO DE ARMADO AEROPORTUARIO',functional_area:'operations',sede_ids:location.search.includes('mendoza')?[19]:[24,21],foto_url:'personas/fixture/photo.svg'};
 window.downloadA4=async()=>descargarCredencialesA4([{persona,credencial:await getCredencialPersona(persona.id)}]);
-const sedes=[{id:24,nombre:'Planta de Producción Córdoba',activa:true},{id:25,nombre:'Rosario',activa:true}];
+const sedes=[{id:19,nombre:'Aeropuerto Mendoza',activa:true},{id:24,nombre:'Planta de Producción Córdoba',activa:true},{id:21,nombre:'Aeropuerto de Córdoba',activa:true}];
 createRoot(document.getElementById('root')).render(<><FeedbackHost/>{location.search.includes('verify')?<Verify token="00000000-0000-0000-0000-000000000099"/>:<Modal persona={persona} sedes={sedes} onClose={()=>{}}/>}</>);
 `)
 await build({configFile:false,envDir:false,root,logLevel:'warn',
@@ -47,7 +47,7 @@ try {
   let emitted=null, calls=0, photoCalls=0
   const names=['Administración y oficinas','Cocina y producción primaria','Depósitos de materias primas','Armado de catering aeroportuario','Cámaras de producto terminado y trolleys','Despacho aeroportuario y dársena','Lavado, retornos y residuos','Área técnica y mantenimiento']
   const catalog=names.map((nombre,i)=>({id:`00000000-0000-0000-0000-${String(i+10).padStart(12,'0')}`,sede_id:24,sede_nombre:'Planta de Producción Córdoba',codigo:String(i+1).padStart(2,'0'),nombre,clasificacion:i>=3&&i<=5?'Restringido':'Operativo',zra:i>=3&&i<=5}))
-  catalog.push({id:'00000000-0000-0000-0000-000000000030',sede_id:25,sede_nombre:'Rosario',codigo:'04',nombre:'Depósito Rosario',clasificacion:'Operativo',zra:false})
+  catalog.push({id:'00000000-0000-0000-0000-000000000030',sede_id:21,sede_nombre:'Aeropuerto de Córdoba',codigo:'04',nombre:'Depósito Aeropuerto de Córdoba',clasificacion:'Operativo',zra:false})
   await context.route('**/*',async route=>{
     const url=new URL(route.request().url())
     if(url.origin!=='http://127.0.0.1:4179')return route.abort()
@@ -82,11 +82,12 @@ try {
   console.log('Formulario cargado; verificando emisión.')
   assert.equal(await page.getByRole('checkbox',{checked:true}).count(),0)
   assert.equal(await page.getByRole('button',{name:'Emitir credencial',exact:true}).isEnabled(),false)
-  for(const name of ['04 · Armado de catering aeroportuario · ZRA','05 · Cámaras de producto terminado y trolleys · ZRA','06 · Despacho aeroportuario y dársena · ZRA','04 · Depósito Rosario'])await page.getByRole('checkbox',{name,exact:true}).check()
+  for(const name of ['04 · Armado de catering aeroportuario · ZRA','05 · Cámaras de producto terminado y trolleys · ZRA','06 · Despacho aeroportuario y dársena · ZRA','04 · Depósito Aeropuerto de Córdoba'])await page.getByRole('checkbox',{name,exact:true}).check()
   await page.getByRole('checkbox',{name:/Confirmo que/}).check()
   await page.getByRole('button',{name:'Emitir credencial',exact:true}).click()
   await page.getByRole('button',{name:'Confirmar emisión',exact:true}).click()
   await page.getByText('Credencial emitida por dos años.',{exact:true}).waitFor()
+  await page.getByLabel('Vista previa por sede').selectOption('24')
   assert.equal(await page.getByText('04',{exact:true}).first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(185, 28, 28)')
   console.log('Emisión simulada verificada; exportando PDF.')
   assert.equal(emitted.sectores_autorizados.length,4)
@@ -103,13 +104,25 @@ try {
   await page.getByRole('heading',{name:'Control de accesos y credenciales'}).scrollIntoViewIfNeeded()
   await page.screenshot({path:path.join(dir,'mobile.png'),fullPage:true})
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Sin overflow horizontal en mobile')
-  await page.getByRole('checkbox',{name:'04 · Depósito Rosario',exact:true}).uncheck()
+  await page.getByRole('checkbox',{name:'04 · Depósito Aeropuerto de Córdoba',exact:true}).uncheck()
   assert.equal(await page.getByRole('checkbox',{name:/Confirmo que/}).isChecked(),false)
   assert.equal(await page.getByRole('button',{name:'Descargar PDF CR80'}).isEnabled(),false)
   await page.goto('http://127.0.0.1:4179/tmp/credential-qa/index.html?verify')
   await page.getByText('CREDENCIAL VÁLIDA',{exact:true}).waitFor()
-  assert.equal(await page.getByText('Rosario',{exact:true}).count(),1)
+  assert.equal(await page.getByText('Aeropuerto de Córdoba',{exact:true}).count(),1)
   await page.screenshot({path:path.join(dir,'qr.png'),fullPage:true})
+  await page.goto('http://127.0.0.1:4179/tmp/credential-qa/index.html?mendoza')
+  await page.getByText('Esta emisión contiene sectores de otra sede.',{exact:false}).waitFor()
+  assert.equal(await page.getByText('SECTORES AUTORIZADOS POR SEDE',{exact:true}).count(),0)
+  assert.equal(await page.getByRole('button',{name:'Descargar PDF CR80'}).isEnabled(),false)
+  await page.getByRole('checkbox',{name:'Confirmo la emisión de la credencial para la sede de esta persona.'}).check()
+  await page.getByRole('button',{name:'Reemitir por 2 años'}).click()
+  await page.getByRole('button',{name:'Confirmar emisión',exact:true}).click()
+  await page.getByText('Credencial emitida por dos años.',{exact:true}).waitFor()
+  assert.deepEqual(emitted.sectores_autorizados,[])
+  assert.equal(emitted.sede_nombre,'Aeropuerto Mendoza')
+  assert.equal(await page.getByRole('button',{name:'Descargar PDF CR80'}).isEnabled(),true)
+  await page.goto('http://127.0.0.1:4179/tmp/credential-qa/index.html?verify')
   emitted.estado='extraviada'
   await page.reload();await page.getByText('CREDENCIAL EXTRAVIADA',{exact:true}).waitFor()
   assert.equal(await page.getByText('Sectores autorizados',{exact:true}).count(),0)

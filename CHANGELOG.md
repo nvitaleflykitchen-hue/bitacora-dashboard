@@ -1,3 +1,7 @@
+## 2.9.18 - 2026-10-15
+- Sectores sólo para Planta de Producción Córdoba y Aeropuerto de Córdoba, según las sedes asignadas a la persona.
+- Otras sedes sin sección de sectores. Impresión bloqueada si la emisión existente incluye sectores incompatibles; requiere reemisión.
+
 ## 2.9.17 - 2026-10-15
 - Sectores ZRA en rojo con números blancos y leyenda; demás sectores en azul oscuro.
 - Vista previa, CR80 y A4 consistentes. Sin cambios de permisos ni datos.
