@@ -5,7 +5,7 @@ const requisitos = [
 ]
 
 export default function MntInstructivos() {
-  return <article className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto w-full" style={{ color: 'var(--text)', overflowWrap: 'anywhere' }}>
+  return <article tabIndex={0} aria-label="Instructivo de presupuestos" className="h-full min-h-0 overflow-y-auto overscroll-contain p-4 md:p-6 space-y-5 max-w-5xl mx-auto w-full" style={{ color: 'var(--text)', overflowWrap: 'anywhere' }}>
     <header>
       <p className="font-metric text-sm mb-2" style={{ color: 'var(--primary)' }}>INSTRUCTIVOS DE MANTENIMIENTO</p>
       <h2 className="font-title text-xl font-bold">Solicitud y aprobación de presupuestos de proveedores</h2>
