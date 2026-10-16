@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
 import { supabase } from './supabase'
 import { getPersonaFotoDataUrl } from './personaFotos'
-import { credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors } from './credentialAccess'
+import { CREDENTIAL_SECTOR_CODES, credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors } from './credentialAccess'
 import { credentialPresentation, resolveCredentialArea, hexToRgb } from './credentialAreas'
 
 export const fechaVencimientoCredencial = (fecha = new Date()) => format(addYears(fecha, 2), 'yyyy-MM-dd')
@@ -37,7 +37,7 @@ export async function registerCredentialHistoryObservation(token, description) {
 
 export async function getSectoresCredencial() {
   const { data, error } = await supabase.schema('equipo').from('credencial_sectores')
-    .select('id,sede_id,codigo,nombre,clasificacion,zra').eq('activo',true).order('codigo')
+    .select('id,sede_id,codigo,nombre,clasificacion,zra').eq('activo',true).in('codigo',CREDENTIAL_SECTOR_CODES).order('codigo')
   if (error) throw error
   return data || []
 }
@@ -185,7 +185,7 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
 
   if (credentialSectorSites(persona).length) {
   pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(6))
-  pdf.text('SECTORES AUTORIZADOS · ROJO: ZRA · VALIDAR QR', mx(12), my(358))
+  pdf.text('ACCESOS INTERNOS · ROJO: ZRA · Z: TOTAL', mx(12), my(358))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')
   if (!group.sectores.length) fitCredentialText(pdf,'SIN SECTORES AUTORIZADOS',mx(12),my(376),mx(246),1,ptFromPx(12))
   else {

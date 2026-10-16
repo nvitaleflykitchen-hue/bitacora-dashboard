@@ -1,7 +1,14 @@
 import { describe,it,expect } from 'vitest'
-import { credentialSectorSites,hasIncompatibleCredentialSectors,credentialIsValid,groupCredentialSectors,selectedCredentialSectors } from './credentialAccess'
+import { toggleCredentialSector,credentialSectorSites,hasIncompatibleCredentialSectors,credentialIsValid,groupCredentialSectors,selectedCredentialSectors } from './credentialAccess'
 
 describe('autorización individual multisede',()=>{
+  const letters=[{id:'a',sede_id:21,codigo:'A'},{id:'d',sede_id:21,codigo:'D'},{id:'z',sede_id:21,codigo:'Z'},{id:'planta',sede_id:24,codigo:'Z'}]
+  it('Z reemplaza sólo los sectores de su sede y no se asigna automáticamente',()=>{
+    expect(toggleCredentialSector(letters,['a','d','planta'],'z')).toEqual(['planta','z'])
+    expect(toggleCredentialSector(letters,['z','planta'],'a')).toEqual(['planta','a'])
+    expect(toggleCredentialSector(letters,['z','planta'],'z')).toEqual(['planta'])
+    expect(toggleCredentialSector(letters,[],'a')).toEqual(['a'])
+  })
   it('limita sectores a las sedes Córdoba asignadas y detecta el caso Mendoza',()=>{
     expect(credentialSectorSites({sede_ids:[19]})).toEqual([])
     expect(credentialSectorSites({sede_ids:[19,21,24]})).toEqual([21,24])
