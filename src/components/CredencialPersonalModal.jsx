@@ -6,7 +6,7 @@ import { useAuth } from '../lib/auth'
 import { getPersonaFotoDataUrl } from '../lib/personaFotos'
 import { actualizarPrivacidadCredencial, cambiarEstadoCredencial, descargarCredencialPdf, emitirCredencial, fechaVencimientoCredencial, getCredencialPersona, getSectoresCredencial, urlValidacionCredencial } from '../lib/credenciales'
 import { CREDENTIAL_AREA_OPTIONS, credentialPresentation, resolveCredentialArea } from '../lib/credentialAreas'
-import { credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors, selectedCredentialSectors } from '../lib/credentialAccess'
+import { toggleCredentialSector, credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors, selectedCredentialSectors } from '../lib/credentialAccess'
 import { mensajeError } from '../lib/errores'
 import { confirmar, toast } from '../lib/feedback'
 
@@ -79,7 +79,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   const valid = credentialIsValid(credencial)
   const estado = credencial ? (credencial.estado==='activa'&&!valid?'vencida':credencial.estado) : 'sin emitir'
   const run = async action => { setBusy(true); try { await action() } catch(e) { toast.error(mensajeError(e)) } finally { setBusy(false) } }
-  const toggle = id => { setSectorIds(ids=>ids.includes(id)?ids.filter(value=>value!==id):[...ids,id]);setAutorizacion(false) }
+  const toggle = id => { setSectorIds(ids=>toggleCredentialSector(available,ids,id));setAutorizacion(false) }
   const emitir = async () => {
     if (!(await confirmar({titulo:'Emitir credencial',mensaje:`Se emitirán ${selected.length} sectores en ${groups.length} sedes para esta persona.${credencial?' La credencial anterior quedará invalidada.':''}`,confirmText:'Confirmar emisión'}))) return
     await run(async()=>{
@@ -104,10 +104,10 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
         <Panel title="ESTADO"><strong style={{color:valid?'var(--phosphor)':'var(--alert)'}}>{estado.toUpperCase()}</strong>{credencial&&<p style={hint}>Emitida {dateLabel(credencial.fecha_emision)} · vence {dateLabel(credencial.fecha_vencimiento)}</p>}</Panel>
         <Panel title="DEPARTAMENTO"><select aria-label="Departamento" className="input-dark w-full" value={area} onChange={e=>{setArea(e.target.value);setAutorizacion(false)}}>{CREDENTIAL_AREA_OPTIONS.map(a=><option key={a.value} value={a.value}>{a.code} — {a.label}</option>)}</select><p style={hint}>Identifica la función laboral. No otorga accesos automáticamente.</p></Panel>
         {usesSectors&&<Panel title="SECTORES AUTORIZADOS POR SEDE">
-          <p style={hint}>Numeración interna. ZRA agrupa las zonas restringidas aeroportuarias.</p>
-          {groupCredentialSectors(available).map(g=><div key={g.sedeId} style={{marginTop:14}}><strong style={{fontSize:12}}>{g.nombre}</strong>{g.sectores.map(s=><label key={s.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:8,fontSize:12}}><input type="checkbox" checked={sectorIds.includes(s.id)} onChange={()=>toggle(s.id)}/><span><b>{s.codigo}</b> · {s.nombre}{s.zra&&<b style={{color:'#fb923c'}}> · ZRA</b>}</span></label>)}</div>)}
+          <p style={hint}>Accesos internos Fly Kitchen. Z incluye todos los sectores de esta sede, también ZRA. D incluye cámaras y trolleys.</p>
+          {groupCredentialSectors(available).map(g=><div key={g.sedeId} style={{marginTop:14}}><strong style={{fontSize:12}}>{g.nombre}</strong>{g.sectores.map(s=><label key={s.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:8,fontSize:12}}><input type="checkbox" checked={sectorIds.includes(s.id)} onChange={()=>toggle(s.id)}/><span><b>{s.codigo}</b> · {s.nombre}{s.zra&&<b style={{color:'#ef4444'}}> · ZRA</b>}</span></label>)}</div>)}
           {!available.length&&<p>No hay sectores configurados para las sedes disponibles.</p>}
-          {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores que ya no están disponibles. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
+          {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores del catálogo anterior o no disponibles. Para usar las letras, retiralos y seleccioná los accesos antes de reemitir. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
           <p style={{...hint,marginTop:12}}>{selected.length} sectores en {groups.length} sedes. Cambiar accesos requiere reemitir.</p>
         </Panel>}
         {incompatible&&<p role="alert" style={hint}>Esta emisión contiene sectores de otra sede. Reemití para corregirla; la nueva credencial usará la sede de la ficha y únicamente sus sectores disponibles.</p>}
@@ -136,7 +136,7 @@ export function CredentialPreview({persona,presentation,preview,draft,foto,qr,ve
         <b style={{fontSize:presentation.jobTitle.length>75?7:9,color:'#d75b00',lineHeight:1.1}}>{presentation.jobTitle}</b>
         <div style={{display:'flex',gap:5,justifyContent:'space-between',marginTop:'auto',fontSize:8}}><span>{preview.nombre.toUpperCase()}</span><b>{draft.grupo}</b></div>
       </div>
-      <div style={{visibility:preview.showSectors===false?'hidden':'visible',height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6.5,color:'#555'}}>SECTORES AUTORIZADOS · ROJO: ZRA · VALIDAR QR</div><div style={{display:'flex',gap:3,marginTop:2}}>{preview.sectores.length?preview.sectores.map(sector=><span key={sector.id} title={sector.zra?'Zona restringida aeroportuaria':'Sector autorizado'} style={{background:sector.zra?'#B91C1C':'#172033',color:'#fff',borderRadius:3,minWidth:0,flex:'0 1 28px',height:23,display:'grid',placeItems:'center',fontWeight:900,fontSize:16,lineHeight:1}}>{sector.codigo}</span>):<strong style={{fontSize:9}}>SIN SECTORES AUTORIZADOS</strong>}</div></div>
+      <div style={{visibility:preview.showSectors===false?'hidden':'visible',height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6.5,color:'#555'}}>ACCESOS INTERNOS · ROJO: ZRA · Z: TOTAL</div><div style={{display:'flex',gap:3,marginTop:2}}>{preview.sectores.length?preview.sectores.map(sector=><span key={sector.id} title={sector.zra?'Zona restringida aeroportuaria':'Sector autorizado'} style={{background:sector.zra?'#B91C1C':'#172033',color:'#fff',borderRadius:3,minWidth:0,flex:'0 1 28px',height:23,display:'grid',placeItems:'center',fontWeight:900,fontSize:16,lineHeight:1}}>{sector.codigo}</span>):<strong style={{fontSize:9}}>SIN SECTORES AUTORIZADOS</strong>}</div></div>
       <div style={expiry}>VENCE {dateLabel(vencimiento)}</div>
     </div>
     <div style={card}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:50,objectFit:'contain',margin:'12px auto 8px'}}/>{qr?<img src={qr} alt="QR de validación de la credencial emitida" style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174,display:'grid',placeItems:'center',fontSize:12,textAlign:'center',padding:20}}>El QR estará disponible<br/>al emitir la credencial.</div>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:9,fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:12,fontSize:9,lineHeight:1.6}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>
