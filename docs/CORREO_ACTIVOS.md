@@ -18,4 +18,8 @@ El esquema de producción se consultó de forma solo lectura el 2026-10-19 en mi
 3. Aplicar el SQL aprobado y publicar el frontend mediante el PR. No publicar este frontend antes del SQL: requiere la nueva columna.
 4. Revisar en la interfaz un vínculo autorizado, recargar, consultar la ficha del activo y verificar el historial. No usar datos de prueba persistentes en producción.
 
-El SQL no fue ejecutado y no se modificaron datos de negocio.
+El SQL fue aplicado con autorización. No se conservaron modificaciones de datos de negocio durante las pruebas.
+
+## Verificación posterior (2026-10-19)
+
+SQL autorizado y aplicado en mixyhfdlzjarvszinytk. Prueba real con rol authenticated dentro de BEGIN/ROLLBACK: revisor admin vincula un activo y genera historial con actor; vehículo en activo_id rechazado por RLS; dos destinos rechazados por CHECK; no miembro actualiza cero filas. Todos los cambios de prueba revertidos. Pendiente integrar/publicar el frontend del PR #161.

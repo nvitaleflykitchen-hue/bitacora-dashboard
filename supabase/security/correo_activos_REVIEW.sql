@@ -1,4 +1,4 @@
--- PROPUESTA NO APLICADA. Requiere aprobación explícita según AGENTS.md §0.3.
+-- AUTORIZADO («SI AUTORIZO») y aplicado 2026-10-19. No volver a ejecutar.
 -- Exclusivamente mixyhfdlzjarvszinytk (cerdova-db).
 -- Basada en columnas, constraint, política y auditoría inspeccionados el 2026-10-19.
 -- Aplicar antes de publicar el frontend. No modifica vínculos existentes.
