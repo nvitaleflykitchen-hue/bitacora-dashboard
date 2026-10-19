@@ -187,3 +187,8 @@ select option:hover {
     transition-duration:0.01ms !important;
   }
 }
+
+/* Keep the credential visible while adjusting its photo or expanding sectors. */
+@media (min-width: 1024px) and (min-height: 700px) {
+  .credential-preview-column { position: sticky; top: 0; }
+}
