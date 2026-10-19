@@ -8,11 +8,12 @@ const states = { pendiente: 'Por revisar', vinculado: 'Vinculados', ignorado: 'A
 const title = plan => plan?.titulo || plan?.objetivo || plan?.auditoria_codigo || 'Gestión'
 const dateText = value => value ? new Date(value).toLocaleString('es-AR') : 'Sin fecha en el original'
 const destinationTabs = [
-  ['tickets', 'Mantenimiento'], ['compras', 'Compras'], ['tareas', 'Tareas'],
+  ['tickets', 'Mantenimiento'], ['activos', 'Activos'], ['compras', 'Compras'], ['tareas', 'Tareas'],
   ['planes', 'Planes de acción'], ['proyectos', 'Proyectos'], ['grupos', 'Grupos'], ['sedes', 'Sedes'],
   ['vehiculos', 'Vehículos'], ['id', 'I+D'], ['personas', 'Personas'],
 ]
 const destinationHelp = {
+  activos: 'Presupuestos, reparaciones, manuales y documentación de equipos e instalaciones.',
   planes: 'Hallazgos, inspecciones, auditorías, incumplimientos y sus acciones correctivas.',
   proyectos: 'Iniciativas con un objetivo, alcance, responsables y entregables.',
   grupos: 'Información transversal que corresponde a todas las sedes de un grupo.',
@@ -21,6 +22,7 @@ const destinationHelp = {
   id: 'Desarrollos de producto, pruebas e iniciativas de innovación.',
 }
 const categoryFor = (value, destinations = {}) => value?.startsWith('ticket:') ? 'tickets'
+  : value?.startsWith('activo:') ? 'activos'
   : value?.startsWith('compra:') ? 'compras'
     : value?.startsWith('tarea:') ? 'tareas'
       : value?.startsWith('persona:') ? 'personas'
@@ -56,11 +58,11 @@ export function DestinationPicker({ destinations, selected, selectedPeople = [],
     </div>}
     <label className="block">Buscar en {destinationTabs.find(([key]) => key === category)?.[1]}
       <input className="input-dark w-full mt-1" type="search" value={search} onChange={e => setSearch(e.target.value)} disabled={disabled}
-        placeholder={category === 'personas' ? 'Nombre, apellido o puesto…' : 'Asunto, número, sede, responsable o estado…'} />
+        placeholder={category === 'activos' ? 'Nombre, código, marca, modelo, serie o sede…' : category === 'personas' ? 'Nombre, apellido o puesto…' : 'Asunto, número, sede, responsable o estado…'} />
     </label>
     {destinationHelp[category] && <p className="text-sm" style={{ color: 'var(--text-dim)' }}>{destinationHelp[category]}</p>}
     <div role="listbox" aria-label={`Resultados de ${category}`} style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #ffffff20', borderRadius: 6 }}>
-      {!visible.length && <p className="p-4" style={{ color: 'var(--text-dim)' }}>{search ? 'No hay coincidencias.' : 'No hay elementos abiertos en esta categoría.'}</p>}
+      {!visible.length && <p className="p-4" style={{ color: 'var(--text-dim)' }}>{search ? 'No hay coincidencias.' : category === 'activos' ? 'No hay activos disponibles.' : 'No hay elementos abiertos en esta categoría.'}</p>}
       {visible.map(item => { const isPerson = category === 'personas'; const isSelected = isPerson ? selectedPeople.includes(String(item.id)) : String(selected) === String(item.id); const style = { display: 'block', borderBottom: '1px solid #ffffff18', background: isSelected ? 'rgba(52,255,28,.12)' : 'transparent', color: 'inherit' }; return isPerson
         ? <label key={item.id} className="w-full p-3 flex items-start gap-3 cursor-pointer" style={style}>
           <input type="checkbox" checked={isSelected} disabled={disabled} onChange={() => onTogglePerson(String(item.id))} aria-label={`Asociar a ${title(item)}`} />
@@ -98,6 +100,7 @@ export function CorreoDetail({ id, plans = [], destinations, canReview, onClose,
     tareas: plans.filter(p => String(p.id).startsWith('tarea:')), compras: plans.filter(p => String(p.id).startsWith('compra:')),
     tickets: plans.filter(p => String(p.id).startsWith('ticket:')), personas: plans.filter(p => String(p.id).startsWith('persona:')),
     grupos: plans.filter(p => String(p.id).startsWith('grupo:')), sedes: plans.filter(p => String(p.id).startsWith('sede:')), vehiculos: plans.filter(p => String(p.id).startsWith('vehiculo:')),
+    activos: plans.filter(p => String(p.id).startsWith('activo:')),
     id: plans.filter(p => String(p.id).startsWith('idproyecto:')),
   }
   const allDestinations = Object.values(destinationGroups).flat()

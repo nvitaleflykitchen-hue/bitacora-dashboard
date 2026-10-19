@@ -18,7 +18,7 @@ async function allRows(makeQuery) {
   }
 }
 export async function getCorreoContext() {
-  const [mailboxes, plans, memberships, capas, tareas, compras, tickets, personas, grupos, sedes, vehiculos, idProyectos] = await Promise.all([
+  const [mailboxes, plans, memberships, capas, tareas, compras, tickets, personas, grupos, sedes, vehiculos, idProyectos, activos] = await Promise.all([
     db().from('correo_buzones').select('id,nombre').eq('activo', true),
     db().from('capa_planes').select('id,titulo,objetivo,auditoria_codigo,sede_nombre,estado').neq('estado', 'obsoleto').order('created_at', { ascending: false }),
     db().from('correo_buzon_miembros').select('buzon_id,puede_revisar'),
@@ -31,6 +31,7 @@ export async function getCorreoContext() {
     allRows(() => db().from('sedes').select('id,nombre,tipo,activa,en_pausa').eq('activa', true).eq('en_pausa', false)),
     allRows(() => supabase.from('mnt_activos').select('id,nombre,marca,modelo,sede,sede_id,estado').eq('tipo', 'VEHICULO')),
     allRows(() => db().from('id_proyectos').select('id,codigo,titulo,categoria,etapa,situacion,sede_id').not('situacion', 'in', '(Completado,Cancelado)')),
+    allRows(() => supabase.from('mnt_activos').select('id,codigo_interno,tipo,nombre,marca,modelo,numero_serie,sede,sede_id,estado,responsable').or('tipo.neq.VEHICULO,tipo.is.null')),
   ])
   const openPlanCodes = new Set(capas.map(c => c.auditoria_codigo))
   const openPlans = checked(plans).filter(p => openPlanCodes.has(p.auditoria_codigo))
@@ -44,6 +45,7 @@ export async function getCorreoContext() {
     personas: personas.map(p => ({ ...p, id: `persona:${p.id}`, kind: 'persona', titulo: `${p.nombre || ''} ${p.apellido || ''}`.trim(), meta: p.puesto || 'Persona', search: [p.nombre, p.apellido, p.puesto].join(' ') })),
     grupos: grupos.map(g => ({ ...g, id: `grupo:${g.id}`, kind: 'grupo', titulo: g.nombre, meta: 'Grupo de sedes', search: [g.nombre, g.slug].join(' ') })),
     sedes: sedes.map(s => ({ ...s, id: `sede:${s.id}`, kind: 'sede', titulo: s.nombre, meta: s.tipo || 'Sede', search: [s.nombre, s.tipo].join(' ') })),
+    activos: activos.map(a => ({ ...a, id: `activo:${a.id}`, kind: 'activo', titulo: [a.codigo_interno, a.nombre || 'Activo'].filter(Boolean).join(' · '), meta: [a.sede, a.estado, a.marca, a.modelo].filter(Boolean).join(' · '), search: [a.codigo_interno, a.nombre, a.marca, a.modelo, a.numero_serie, a.sede, a.estado, a.responsable].join(' ') })),
     vehiculos: vehiculos.map(v => ({ ...v, id: `vehiculo:${v.id}`, kind: 'vehiculo', titulo: v.nombre || [v.marca, v.modelo].filter(Boolean).join(' ') || 'Vehículo', meta: [v.sede, v.estado, v.marca, v.modelo].filter(Boolean).join(' · '), search: [v.nombre, v.marca, v.modelo, v.sede, v.estado].join(' ') })),
     id: idProyectos.map(p => ({ ...p, id: `idproyecto:${p.id}`, kind: 'idproyecto', titulo: `${p.codigo} · ${p.titulo}`, meta: [p.categoria, p.etapa, p.situacion].filter(Boolean).join(' · '), search: [p.codigo, p.titulo, p.categoria, p.etapa, p.situacion].join(' ') })),
   }
@@ -51,7 +53,7 @@ export async function getCorreoContext() {
 }
 
 export async function getCorreos({ mailboxId, state, planId, analysis, page = 0 }) {
-  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,persona_ids,grupo_id,sede_id,vehiculo_id,id_proyecto_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,sugerido_persona_id,sugerido_grupo_id,sugerido_sede_id,sugerido_vehiculo_id,sugerido_id_proyecto_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_confianza,ai_fuente,ai_error,updated_at', { count: 'exact' })
+  let query = db().from('correos').select('id,buzon_id,asunto,remitente,fecha_correo,created_at,estado,plan_id,tarea_id,compra_id,ticket_id,persona_id,persona_ids,grupo_id,sede_id,vehiculo_id,activo_id,id_proyecto_id,sugerido_plan_id,sugerido_tarea_id,sugerido_compra_id,sugerido_ticket_id,sugerido_persona_id,sugerido_grupo_id,sugerido_sede_id,sugerido_vehiculo_id,sugerido_id_proyecto_id,tipo,resumen,motivo,nueva_gestion,ai_estado,ai_confianza,ai_fuente,ai_error,updated_at', { count: 'exact' })
   if (mailboxId) query = query.eq('buzon_id', mailboxId)
   if (state && state !== 'todos') query = query.eq('estado', state)
   if (planId?.startsWith('persona:')) {

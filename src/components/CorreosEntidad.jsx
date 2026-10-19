@@ -8,6 +8,7 @@ const kinds = {
   sede: 'sede',
   persona: 'persona',
   vehiculo: 'vehiculo',
+  activo: 'activo',
   id_proyecto: 'idproyecto',
 }
 

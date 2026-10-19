@@ -6,6 +6,7 @@ export const DESTINOS = {
   grupo: 'grupo_id',
   sede: 'sede_id',
   vehiculo: 'vehiculo_id',
+  activo: 'activo_id',
   idproyecto: 'id_proyecto_id',
 }
 export function destinoCorreo(message, suggested = false) {
@@ -32,6 +33,7 @@ export function camposDestino(key) {
     grupo_id: null,
     sede_id: null,
     vehiculo_id: null,
+    activo_id: null,
     id_proyecto_id: null,
   }
   if (!key) return fields

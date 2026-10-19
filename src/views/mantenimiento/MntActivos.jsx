@@ -1,3 +1,4 @@
+import CorreosEntidad from '../../components/CorreosEntidad'
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fmtFecha } from '../../lib/dateUtils'
@@ -393,6 +394,7 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
               </a>
             )}
             <AdjuntosPanel entityType="activo" entityId={activo.id} readOnly={!canEdit} />
+            <CorreosEntidad entityType={activo.tipo === 'VEHICULO' ? 'vehiculo' : 'activo'} entityId={activo.id} />
           </div>
         )}
 

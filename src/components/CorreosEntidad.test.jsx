@@ -8,6 +8,7 @@ describe('CorreosEntidad', () => {
     ['ticket', 'ticket-1', 'ticket:ticket-1'],
     ['sede', 4, 'sede:4'],
     ['persona', 'persona-1', 'persona:persona-1'],
+    ['activo', 'activo-1', 'activo:activo-1'],
     ['vehiculo', 'vehiculo-1', 'vehiculo:vehiculo-1'],
     ['id_proyecto', 'proyecto-1', 'idproyecto:proyecto-1'],
   ])('construye el filtro de %s', (entityType, entityId, expected) => {

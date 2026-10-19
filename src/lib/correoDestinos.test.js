@@ -6,12 +6,13 @@ describe('destinos de correo', () => {
     expect(camposDestino('persona:8fa6af41-bb3d-4fd0-a22f-fdd486f57848')).toEqual({
       plan_id: null, tarea_id: null, compra_id: null, ticket_id: null,
       persona_id: '8fa6af41-bb3d-4fd0-a22f-fdd486f57848',
-      grupo_id: null, sede_id: null, vehiculo_id: null, id_proyecto_id: null,
+      activo_id: null, grupo_id: null, sede_id: null, vehiculo_id: null, id_proyecto_id: null,
     })
     expect(destinoCorreo({ persona_id: '8fa6af41-bb3d-4fd0-a22f-fdd486f57848' })).toBe('persona:8fa6af41-bb3d-4fd0-a22f-fdd486f57848')
   })
 
   it.each([
+    ['activo:8fa6af41-bb3d-4fd0-a22f-fdd486f57848', 'activo_id', '8fa6af41-bb3d-4fd0-a22f-fdd486f57848'],
     ['grupo:3', 'grupo_id', 3],
     ['sede:17', 'sede_id', 17],
     ['vehiculo:8fa6af41-bb3d-4fd0-a22f-fdd486f57848', 'vehiculo_id', '8fa6af41-bb3d-4fd0-a22f-fdd486f57848'],
