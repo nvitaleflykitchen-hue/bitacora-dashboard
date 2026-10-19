@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 const STATES = {
   borrador: ['Borrador', '#94a3b8', 'Completar y difundir la búsqueda'],
