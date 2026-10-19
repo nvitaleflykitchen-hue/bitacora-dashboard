@@ -547,3 +547,11 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** consulta de sólo lectura confirmó ficha Mendoza con snapshot de sectores Córdoba.
 - **Corrección frontend 2.9.18:** catálogo limitado a las sedes asignadas 21/24, sin sectores impresos en otras sedes y bloqueo de descarga de snapshots incompatibles. La reemisión retira los sectores incompatibles e invalida el QR anterior de forma atómica.
 - **Limitación:** las emisiones existentes conservan su snapshot y QR hasta reemitirlas; la restricción de sedes está en el cliente. No se cambian políticas ni permisos SQL en este ajuste.
+
+
+## Confirmaciones detrás del formulario de Flota (corrección preparada 2026-10-19)
+
+- Severidad: ALTO, bloqueo de guardado/cierre con cambios pendientes.
+- Verificación: lectura de TicketModal en MntVehiculos.jsx: capa 1000; guardar Resuelto y descartar invocan FeedbackHost, cuya confirmación tenía capa 210. Coincide con la captura del usuario.
+- Corrección: renderizar el feedback global mediante portal en document.body, con confirmaciones y avisos por encima de los formularios existentes (incluido Correos con capa 10000). No se modifican datos ni se omiten las confirmaciones.
+- Recomendación: mantener formularios debajo de las capas globales de feedback y probar los flujos de confirmar/cancelar al introducir modales.

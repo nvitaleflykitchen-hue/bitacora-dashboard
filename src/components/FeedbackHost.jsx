@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { CheckCircle2, AlertTriangle, XCircle, Info, X as XIcon } from 'lucide-react'
 import { useBackHandler } from '../lib/backStack'
 
@@ -63,13 +64,13 @@ export default function FeedbackHost() {
   // Atrás del celular sobre un modal de confirmación = cancelar
   useBackHandler(() => responder(false), !!confirmData)
 
-  return (
+  return createPortal(
     <>
       {/* Toasts */}
       {toasts.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)', right: 16,
-          display: 'flex', flexDirection: 'column', gap: 8, zIndex: 200, maxWidth: 'min(92vw, 380px)',
+          display: 'flex', flexDirection: 'column', gap: 8, zIndex: 20010, maxWidth: 'min(92vw, 380px)',
         }}>
           {toasts.map(t => (
             <div key={t.id} className="fade-in" role="status" style={{
@@ -93,7 +94,7 @@ export default function FeedbackHost() {
 
       {/* Confirmación */}
       {confirmData && (
-        <div className="modal-overlay" style={{ zIndex: 210 }} onClick={() => responder(false)}>
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={confirmData.titulo || "Confirmación"} style={{ zIndex: 20020 }} onClick={() => responder(false)}>
           <div className="glass rounded p-5 w-full fade-in" onClick={e => e.stopPropagation()} style={{
             maxWidth: 400, background: 'var(--surface)',
             border: `1px solid ${confirmData.peligro ? 'rgba(255,90,90,0.35)' : 'rgba(57,255,20,0.15)'}`,
@@ -134,6 +135,6 @@ export default function FeedbackHost() {
           </div>
         </div>
       )}
-    </>
+    </>, document.body
   )
 }
