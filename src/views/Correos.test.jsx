@@ -21,6 +21,23 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('Bandeja de correos', () => {
+  it('reabre el activo vinculado y busca equipos por serie sin distinguir acentos', async () => {
+    const current = { ...message, estado: 'vinculado', sugerido_plan_id: null, activo_id: 'a1' }
+    api.getCorreoDetail.mockResolvedValue({ message: current, history: [] })
+    const destinations = { activos: [
+      { id: 'activo:a1', titulo: 'CAM-001 · Cámara fría', search: 'Cámara Córdoba SER-88' },
+      { id: 'activo:a2', titulo: 'Horno', search: 'Horno SER-99' },
+    ] }
+    render(<CorreoDetail id="m1" destinations={destinations} canReview onClose={() => {}} onSaved={() => {}} />)
+    await screen.findByText('Presupuesto')
+    expect(screen.getByRole('tab', { name: /Activos/ }).getAttribute('aria-selected')).toBe('true')
+    fireEvent.change(screen.getByPlaceholderText('Nombre, código, marca, modelo, serie o sede…'), { target: { value: 'cordoba ser-88' } })
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    expect(screen.getByRole('option').getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(screen.getByText('Guardar vínculo'))
+    await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(current, 'activo:a1', 'vinculado', []))
+  })
+
   it('consulta el historial de una persona en todos los buzones y abre el detalle sin editar vínculos', async () => {
     render(<Correos planId="persona:11111111-1111-1111-1111-111111111111" readOnly />)
     await screen.findByText('Presupuesto')
@@ -104,6 +121,7 @@ describe('Bandeja de correos', () => {
     await waitFor(() => expect(api.reviewCorreo).toHaveBeenCalledWith(expect.anything(), 'compra:8', 'vinculado', ['persona:p1','persona:p2']))
   })
   it.each([
+    ['Activos', 'activo:a1', 'CAM-001 · Cámara de frío'],
     ['Grupos', 'grupo:3', 'Comedores Centro'],
     ['Sedes', 'sede:4', 'Hospital Villa Dolores'],
     ['Vehículos', 'vehiculo:v1', 'Camión AA123BB'],
@@ -111,6 +129,7 @@ describe('Bandeja de correos', () => {
   ])('busca y asocia desde %s', async (tab, key, label) => {
     const destinations = {
       tickets: [], compras: [], tareas: [], planes: [], proyectos: [], personas: [],
+      activos: tab === 'Activos' ? [{ id:key, titulo:label, search:label }] : [],
       grupos: tab === 'Grupos' ? [{ id:key, titulo:label, search:label }] : [],
       sedes: tab === 'Sedes' ? [{ id:key, titulo:label, search:label }] : [],
       vehiculos: tab === 'Vehículos' ? [{ id:key, titulo:label, search:label }] : [],
