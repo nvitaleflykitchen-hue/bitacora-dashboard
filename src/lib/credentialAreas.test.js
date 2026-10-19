@@ -8,6 +8,7 @@ describe('áreas funcionales de credenciales', () => {
       airports:{ code:'AER', label:'Aeropuertos', color:'#4338CA' },
       operations:{ code:'OPS', label:'Operaciones', color:'#F36C00' },
       logistics:{ code:'LOG', label:'Logística', color:'#1565C0' },
+      warehouse:{ code:'DEP', label:'Depósito', color:'#0F766E' },
       quality:{ code:'CAL', label:'Calidad', color:'#2E7D32' },
       maintenance:{ code:'MNT', label:'Mantenimiento', color:'#D97706' },
       administration:{ code:'ADM', label:'Administración', color:'#546E7A' },

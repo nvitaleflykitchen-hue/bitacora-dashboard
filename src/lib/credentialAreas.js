@@ -3,6 +3,7 @@ export const CREDENTIAL_AREAS = Object.freeze({
   airports: Object.freeze({ code:'AER', label:'Aeropuertos', color:'#4338CA' }),
   operations: Object.freeze({ code:'OPS', label:'Operaciones', color:'#F36C00' }),
   logistics: Object.freeze({ code:'LOG', label:'Logística', color:'#1565C0' }),
+  warehouse: Object.freeze({ code:'DEP', label:'Depósito', color:'#0F766E' }),
   quality: Object.freeze({ code:'CAL', label:'Calidad', color:'#2E7D32' }),
   maintenance: Object.freeze({ code:'MNT', label:'Mantenimiento', color:'#D97706' }),
   administration: Object.freeze({ code:'ADM', label:'Administración', color:'#546E7A' }),
