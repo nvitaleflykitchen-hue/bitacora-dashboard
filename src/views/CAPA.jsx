@@ -10,7 +10,7 @@ import { useAuth } from '../lib/auth'
 import OperationalStateChip from '../components/OperationalStateChip'
 import { generarInformeCapaPDF } from '../lib/capaReportPdf'
 import { gestionActionPayload, gestionHealth, gestionProjectLifecycle, isGestionProjectAction } from '../lib/gestionProjects'
-import { toast } from '../lib/feedback'
+import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import useFormDraft from '../hooks/useFormDraft'
 import FormDraftNotice from '../components/FormDraftNotice'
@@ -289,6 +289,8 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
   const [subtareas, setSubtareas]     = useState(Array.isArray(c.subtareas) ? c.subtareas : [])
   const [nuevaSubtarea, setNuevaSubtarea] = useState('')
   const [savingSubtareas, setSavingSubtareas] = useState(false)
+  const [editingSubtarea, setEditingSubtarea] = useState(null)
+  const [subtareaTexto, setSubtareaTexto] = useState('')
   const [gestion, setGestion] = useState({
     estado:c.gestion_estado || 'Sin aceptar', delegado_a_id:c.delegado_a_id || '',
     fecha_compromiso:c.fecha_compromiso || c.fecha_limite || '', proximo_paso:c.proximo_paso || '',
@@ -393,6 +395,18 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     if (!texto || savingSubtareas) return
     const saved = await saveSubtareas([...subtareas,{ id:crypto.randomUUID(), texto, completada:false }])
     if (saved) setNuevaSubtarea('')
+  }
+
+  const editSubtarea = async () => {
+    const texto = subtareaTexto.trim()
+    if (!canWrite || savingSubtareas || !texto) return
+    if (await saveSubtareas(subtareas.map(s => s.id === editingSubtarea ? { ...s, texto } : s))) setEditingSubtarea(null)
+  }
+
+  const deleteSubtarea = async subtarea => {
+    if (!canWrite || savingSubtareas) return
+    if (!await confirmar({ titulo:'Borrar subtarea', mensaje:`Se eliminará “${subtarea.texto}”.`, confirmText:'Borrar subtarea', peligro:true })) return
+    await saveSubtareas(subtareas.filter(s => s.id !== subtarea.id))
   }
 
   const saveGestion = async () => {
@@ -539,10 +553,22 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
               {savingSubtareas && <span style={{ color:'var(--text-dim)', fontSize:'.62rem' }}>Guardando…</span>}
             </div>
             <div className="space-y-1">
-              {subtareas.map(s=><label key={s.id} className="flex items-start gap-2" style={{ color:s.completada?'var(--text-dim)':'var(--text)', fontSize:'.72rem' }}>
-                <input type="checkbox" disabled={!canWrite || savingSubtareas} checked={Boolean(s.completada)} onChange={()=>saveSubtareas(subtareas.map(x=>x.id===s.id?{...x,completada:!x.completada}:x))}/>
-                <span style={{ textDecoration:s.completada?'line-through':'none' }}>{s.texto}</span>
-              </label>)}
+              {subtareas.map(s=><div key={s.id} className="flex flex-wrap items-start gap-2" style={{fontSize:'.72rem'}}>
+                {editingSubtarea === s.id ? <>
+                  <input aria-label="Texto de subtarea" className="input-dark flex-1" disabled={savingSubtareas} value={subtareaTexto} onChange={e=>setSubtareaTexto(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();editSubtarea()}if(e.key==='Escape'&&!savingSubtareas)setEditingSubtarea(null)}} autoFocus />
+                  <button type="button" className="btn-primary" disabled={savingSubtareas||!subtareaTexto.trim()} onClick={editSubtarea}>Guardar subtarea</button>
+                  <button type="button" className="btn-ghost" disabled={savingSubtareas} onClick={()=>setEditingSubtarea(null)}>Cancelar edición</button>
+                </> : <>
+                  <label className="flex items-start gap-2 flex-1" style={{color:s.completada?'var(--text-dim)':'var(--text)',minWidth:120}}>
+                    <input type="checkbox" disabled={!canWrite || savingSubtareas || editingSubtarea !== null} checked={Boolean(s.completada)} onChange={()=>saveSubtareas(subtareas.map(x=>x.id===s.id?{...x,completada:!x.completada}:x))}/>
+                    <span style={{textDecoration:s.completada?'line-through':'none',overflowWrap:'anywhere'}}>{s.texto}</span>
+                  </label>
+                  {canWrite&&<>
+                    <button type="button" className="btn-ghost" aria-label={`Editar subtarea: ${s.texto}`} disabled={savingSubtareas||editingSubtarea!==null} onClick={()=>{setEditingSubtarea(s.id);setSubtareaTexto(s.texto)}}>Editar</button>
+                    <button type="button" className="btn-ghost" aria-label={`Borrar subtarea: ${s.texto}`} disabled={savingSubtareas||editingSubtarea!==null} onClick={()=>deleteSubtarea(s)}>Borrar</button>
+                  </>}
+                </>}
+              </div>)}
               {!subtareas.length && <p style={{ color:'var(--text-dim)', fontSize:'.68rem' }}>Sin pasos operativos cargados.</p>}
             </div>
             {canWrite && <div className="flex gap-2 mt-2">
