@@ -555,3 +555,11 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: lectura de TicketModal en MntVehiculos.jsx: capa 1000; guardar Resuelto y descartar invocan FeedbackHost, cuya confirmación tenía capa 210. Coincide con la captura del usuario.
 - Corrección: renderizar el feedback global mediante portal en document.body, con confirmaciones y avisos por encima de los formularios existentes (incluido Correos con capa 10000). No se modifican datos ni se omiten las confirmaciones.
 - Recomendación: mantener formularios debajo de las capas globales de feedback y probar los flujos de confirmar/cancelar al introducir modales.
+
+
+## CAPA: detalle se cierra al guardar subtareas (corrección preparada 2026-10-20)
+
+- Severidad: MEDIA, interrupción de la carga operativa.
+- Verificación: saveSubtareas invoca onReload y load activaba loading; el render reemplazaba CapaAuditoria/CapaKanban por un indicador, perdiendo su estado detail.
+- Corrección: las actualizaciones desde el detalle recargan en segundo plano sin desmontar la vista. Una subtarea fallida conserva el texto para reintentar.
+- Recomendación: mantener montados los detalles durante actualizaciones internas; reservar la carga bloqueante para cambios de contexto.
