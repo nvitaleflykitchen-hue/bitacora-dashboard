@@ -1,0 +1,44 @@
+import React from 'react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import CAPA from './CAPA'
+const mocks = vi.hoisted(() => ({ get:vi.fn(), update:vi.fn() }))
+vi.mock('../lib/auth', () => ({ useAuth: () => ({ perfil:{ id:'admin', rol:'admin' }, allowedSedeIds:null, can:()=>true }) }))
+vi.mock('../lib/queries', () => ({ getCapa:mocks.get, updateCapa:mocks.update, getNoConformidades:async()=>[], getSedes:async()=>[], getPerfiles:async()=>[], getColaboradoresProyecto:async()=>[], getCapaPlan:async()=>null, createCapa:vi.fn(), upsertCapaPlan:vi.fn(), updateCapaPlanEstado:vi.fn() }))
+vi.mock('../components/AdjuntosPanel', () => ({ default:()=>null }))
+vi.mock('../components/CorreosGestion', () => ({ default:()=>null }))
+vi.mock('../lib/capaReportPdf', () => ({ generarInformeCapaPDF:vi.fn() }))
+vi.mock('../lib/feedback', () => ({ toast:{ error:vi.fn(), ok:vi.fn() } }))
+beforeEach(() => {
+  vi.stubGlobal('React', React)
+  mocks.get.mockReset().mockImplementation(async()=>[{id:1,codigo:'CA-TEST',tipo:'Correctiva',estado:'Pendiente',descripcion:'Reparar rejilla',auditoria_codigo:'AUD-TEST',subtareas:[]}])
+  mocks.update.mockReset().mockResolvedValue({})
+})
+afterEach(() => {cleanup();vi.unstubAllGlobals()})
+it('mantiene el mismo detalle abierto durante la recarga y permite agregar dos pasos', async () => {
+  render(<CAPA focusId={1}/> )
+  const input=await screen.findByPlaceholderText('Agregar paso concreto…')
+  let finish
+  mocks.get.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}))
+  fireEvent.change(input,{target:{value:'Comprar materiales'}})
+  fireEvent.click(screen.getByRole('button',{name:'Agregar',exact:true}))
+  await waitFor(()=>expect(mocks.get).toHaveBeenCalledTimes(2))
+  expect(screen.getByPlaceholderText('Agregar paso concreto…')).toBe(input)
+  expect(screen.getByText('Comprar materiales')).toBeTruthy()
+  await act(async()=>finish([{id:1,codigo:'CA-TEST',tipo:'Correctiva',estado:'Pendiente',descripcion:'Reparar rejilla',auditoria_codigo:'AUD-TEST',subtareas:mocks.update.mock.calls[0][1].subtareas}]))
+  fireEvent.change(input,{target:{value:'Reparar soporte'}})
+  fireEvent.click(screen.getByRole('button',{name:'Agregar',exact:true}))
+  await waitFor(()=>expect(mocks.update).toHaveBeenCalledTimes(2))
+  expect(mocks.update.mock.calls[1][1].subtareas.map(s=>s.texto)).toEqual(['Comprar materiales','Reparar soporte'])
+  expect(screen.getByRole('button',{name:'Cerrar detalle'})).toBeTruthy()
+})
+it('conserva el texto de la subtarea si el guardado falla', async () => {
+  mocks.update.mockRejectedValueOnce(new Error('Sin conexión'))
+  render(<CAPA focusId={1}/> )
+  const input=await screen.findByPlaceholderText('Agregar paso concreto…')
+  fireEvent.change(input,{target:{value:'Reparar soporte'}})
+  fireEvent.click(screen.getByRole('button',{name:'Agregar',exact:true}))
+  await waitFor(()=>expect(mocks.update).toHaveBeenCalledOnce())
+  expect(input.value).toBe('Reparar soporte')
+  expect(mocks.get).toHaveBeenCalledOnce()
+})

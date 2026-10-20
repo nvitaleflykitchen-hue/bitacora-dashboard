@@ -383,15 +383,16 @@ function CAPACardDetail({ c, canWrite, onEstadoChange, onClose, onReload, perfil
     try {
       await updateCapa(c.id, { subtareas:next })
       setSubtareas(next); c.subtareas=next; onReload?.()
-    } catch (e) { toast.error(mensajeError(e)) }
+      return true
+    } catch (e) { toast.error(mensajeError(e)); return false }
     finally { setSavingSubtareas(false) }
   }
 
   const addSubtarea = async () => {
     const texto=nuevaSubtarea.trim()
-    if (!texto) return
-    await saveSubtareas([...subtareas,{ id:crypto.randomUUID(), texto, completada:false }])
-    setNuevaSubtarea('')
+    if (!texto || savingSubtareas) return
+    const saved = await saveSubtareas([...subtareas,{ id:crypto.randomUUID(), texto, completada:false }])
+    if (saved) setNuevaSubtarea('')
   }
 
   const saveGestion = async () => {
@@ -1188,8 +1189,8 @@ export default function CAPA({ focusId, mode = 'quality' }) {
   const [editEstado, setEditEstado]             = useState('')
   const [vista, setVista]                       = useState('auditoria')
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async ({ background = false } = {}) => {
+    if (!background) setLoading(true)
     try {
       const [data, ncData, sedesData, perfilesData, colaboradoresData] = await Promise.all([
         getCapa({
@@ -1219,6 +1220,8 @@ export default function CAPA({ focusId, mode = 'quality' }) {
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [filtroTipo, filtroEstado, filtroResp, filtroSede, filtroAuditoria, allowedSedeIds, mode])
+
+  const reloadDetail = useCallback(() => load({ background: true }), [load])
 
   useEffect(() => { load() }, [load])
 
@@ -1340,9 +1343,9 @@ export default function CAPA({ focusId, mode = 'quality' }) {
           <div className="w-7 h-7 rounded-full border-2 animate-spin" style={{ borderColor:'var(--phosphor)', borderTopColor:'transparent' }} />
         </div>
       ) : vista === 'auditoria' ? (
-        <CapaAuditoria items={items} perfiles={perfiles} colaboradores={colaboradores} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
+        <CapaAuditoria items={items} perfiles={perfiles} colaboradores={colaboradores} canWrite={canWrite} onEstadoChange={saveEstado} onReload={reloadDetail} focusId={focusId} mode={mode} />
       ) : vista === 'kanban' ? (
-        <CapaKanban items={items} perfiles={perfiles} canWrite={canWrite} onEstadoChange={saveEstado} onReload={load} focusId={focusId} mode={mode} />
+        <CapaKanban items={items} perfiles={perfiles} canWrite={canWrite} onEstadoChange={saveEstado} onReload={reloadDetail} focusId={focusId} mode={mode} />
       ) : (
         <div className="glass rounded overflow-hidden" style={{ borderRadius:'3px' }}>
           <div className="overflow-x-auto">
