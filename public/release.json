@@ -1,0 +1,5 @@
+{
+  "release": "2026-10-21-novedades-vehiculos",
+  "sourceCommit": "8a36132043f48ba971cfa65d752899b573400276",
+  "changes": ["Biblioteca de documentos por sede", "Documentacion, proveedores y avance de tickets de flota", "Novedades vehiculares en reportes, turno anterior y sedes"]
+}
