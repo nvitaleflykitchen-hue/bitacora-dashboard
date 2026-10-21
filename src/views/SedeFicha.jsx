@@ -1,3 +1,4 @@
+import RegistroVehiculos from '../components/RegistroVehiculos'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
 import { getGrupos, createGrupo, getHistorialSemanal, setSedePausa } from '../lib/queries'
@@ -555,8 +556,8 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                     <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.8rem', textAlign:'center', padding:'1rem' }}>Sin registros recientes</p>
                   ) : novedades.map(n => {
                     const color = ESTADO_COLOR[n.estado_general] || '#9ca3af'
-                    const detalles = [n.detalle_a, n.detalle_b, n.detalle_c, n.detalle_d, n.detalle_e].filter(Boolean)
-                    const resumen = detalles[0]?.slice(0,80) || 'Sin detalle'
+                    const detalles = [n.detalle_a, n.detalle_b, n.detalle_c, n.detalle_d, n.detalle_e, n.detalle_f, n.detalle_g, n.detalle_h].filter(Boolean)
+                    const resumen = detalles[0]?.slice(0,80) || ''
                     return (
                       <div key={n.id} onClick={() => setSelRegistro(n)} style={{ cursor: 'pointer', display:'grid', gridTemplateColumns:'40px 1fr', gap:8, marginBottom:9, paddingBottom:9, borderBottom:'1px solid rgba(57,255,20,0.06)' }}>
                         <div style={{ textAlign:'center' }}>
@@ -573,6 +574,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                             {n.turno && <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.25)' }}>{n.turno}</span>}
                           </div>
                           <div style={{ fontSize:'0.82rem', color:'#e2e8f0', lineHeight:1.35 }}>{resumen}</div>
+                          <RegistroVehiculos key={n.id} registroId={n.id} compact />
                           {n.reportante && <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.3)', marginTop:2 }}>por {n.reportante}</div>}
                         </div>
                       </div>

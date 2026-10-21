@@ -1,3 +1,4 @@
+import RegistroVehiculos from './RegistroVehiculos'
 import { useState, useEffect } from 'react'
 import { X, ExternalLink, AlertTriangle, Plus, Zap, MessageCircle, Mail, Users } from 'lucide-react'
 import AdjuntosPanel from './AdjuntosPanel'
@@ -201,6 +202,8 @@ export default function RegistroModal({ registro, onClose, onCreateTarea, onCrea
               <span className="chip chip-blue">{registro.nivel_actividad}</span>
             )}
           </div>
+
+          <RegistroVehiculos key={registro.id} registroId={registro.id} />
 
           {/* Contexto del reporte */}
           <div className="rounded p-4"

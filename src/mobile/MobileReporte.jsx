@@ -1,3 +1,4 @@
+import RegistroVehiculos from '../components/RegistroVehiculos'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   getSedes, createRegistro, createRequerimiento,
@@ -845,20 +846,23 @@ export default function MobileReporte({ onBack, onSuccess, context: rawContext =
     }).catch(console.error)
   }, [allowedSedeIds, context])
 
-  // Cargar novedades del turno anterior (módulos + vuelos del último reporte de la sede)
+  // El resumen siempre corresponde al último reporte de la sede seleccionada.
   useEffect(() => {
-    if (!sedeId) { setVuelosAnteriores([]); return }
-    db().from('registros').select('*').eq('sede_id', sedeId).order('fecha_reporte', { ascending: false }).limit(1).maybeSingle().then(({ data }) => {
-      if (data) {
-        setNovedadesAnteriores(data)
-        db().from('vuelo_novedades').select('*').eq('registro_id', data.id).order('id').then(({ data: vuelos }) => {
-          setVuelosAnteriores(vuelos || [])
-        })
-      } else {
-        setNovedadesAnteriores(null)
-        setVuelosAnteriores([])
-      }
-    })
+    let active = true
+    setNovedadesAnteriores(null)
+    setVuelosAnteriores([])
+    if (!sedeId) return
+    db().from('registros').select('*').eq('sede_id', sedeId).order('fecha_reporte', { ascending: false }).limit(1).maybeSingle().then(async ({ data, error }) => {
+      if (!active) return
+      if (error) { console.error(error); return }
+      setNovedadesAnteriores(data)
+      if (!data) return
+      const { data: vuelos, error: vuelosError } = await db().from('vuelo_novedades').select('*').eq('registro_id', data.id).order('id')
+      if (!active) return
+      if (vuelosError) console.error(vuelosError)
+      setVuelosAnteriores(vuelos || [])
+    }).catch(console.error)
+    return () => { active = false }
   }, [sedeId])
 
   // Cargar vehículos y personal asignados a la sede elegida
@@ -1520,6 +1524,7 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
             <p style={{ fontSize:'0.7rem', color:'var(--text-dim)', marginBottom:'0.8rem' }}>
               Reportado el {format(new Date(novedadesAnteriores.fecha_reporte), 'dd/MM/yyyy HH:mm')}
             </p>
+            <RegistroVehiculos key={novedadesAnteriores.id} registroId={novedadesAnteriores.id} />
             <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
               {(() => {
                 const puedeVerPrivadas = ['admin', 'editor', 'encargado'].includes(perfil?.rol)
@@ -1550,7 +1555,7 @@ ${personaNovedades.map((p, i) => `<div class="esc"><strong>${i+1}. [${p.categori
                 }
 
                 if (bloques.length === 0) {
-                  return <p style={{ fontSize:'0.75rem', color:'var(--text-dim)', margin:0 }}>No hubo novedades registradas en el turno anterior.</p>
+                  return <p style={{ fontSize:'0.75rem', color:'var(--text-dim)', margin:0 }}>Estado informado: {novedadesAnteriores.estado_general || 'Sin estado informado'}.</p>
                 }
                 return bloques.map(({ key, label, segmentos }) => (
                   <div key={key} style={{ background:'rgba(0,0,0,0.2)', padding:'0.6rem', borderRadius:6 }}>

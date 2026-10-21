@@ -3449,3 +3449,13 @@ export async function removeDirectorioContacto(id) {
     .eq("id", id);
   if (error) throw error;
 }
+
+// Las novedades de flota se guardan aparte de las categorías A–H del reporte.
+export async function getVehiculoNovedadesByRegistro(registroId) {
+  if (!registroId) return [];
+  const { data, error } = await db().from("vehiculo_novedades")
+    .select("id,registro_id,activo_nombre,tipo,descripcion,estado,fecha_reporte")
+    .eq("registro_id", registroId).order("id");
+  if (error) throw error;
+  return data || [];
+}
