@@ -101,9 +101,9 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
     finally { setSaving(false) }
   }
 
-  const INP = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'7px 10px', fontSize:'0.72rem', fontFamily:'monospace', width:'100%', boxSizing:'border-box', outline:'none' }
-  const LBL = { fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
-  const TAB = (active) => ({ padding:'5px 14px', borderRadius:4, fontSize:'0.65rem', cursor:'pointer', fontFamily:'monospace', fontWeight:active?700:400, background: active ? 'rgba(57,255,20,0.1)' : 'transparent', border: active ? '1px solid rgba(57,255,20,0.3)' : '1px solid transparent', color: active ? '#39FF14' : 'rgba(255,255,255,0.35)' })
+  const INP = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'9px 10px', lineHeight:1.45, fontSize:'0.875rem', fontFamily:'Inter,sans-serif', width:'100%', boxSizing:'border-box', outline:'none' }
+  const LBL = { fontSize:'0.75rem', color:'rgba(255,255,255,0.65)', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
+  const TAB = (active) => ({ padding:'5px 14px', borderRadius:4, fontSize:'0.8rem', cursor:'pointer', fontFamily:'Inter,sans-serif', fontWeight:active?700:400, background: active ? 'rgba(57,255,20,0.1)' : 'transparent', border: active ? '1px solid rgba(57,255,20,0.3)' : '1px solid transparent', color: active ? '#39FF14' : 'rgba(255,255,255,0.65)' })
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(4px)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
@@ -114,14 +114,14 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
         <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(57,255,20,0.06)', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
           <Car size={14} style={{ color:'rgba(57,255,20,0.5)' }}/>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.1em', textTransform:'uppercase' }}>{isNew ? 'Nuevo ticket · Flota' : 'Editar ticket · Flota'}</div>
-            <div style={{ fontSize:'0.85rem', fontWeight:700, color:'var(--text)', marginTop:1 }}>{isNew ? 'Nuevo incidente vehicular' : form.activo_nombre}</div>
+            <div style={{ fontSize:'0.75rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.1em', textTransform:'uppercase' }}>{isNew ? 'Nuevo ticket · Flota' : 'Editar ticket · Flota'}</div>
+            <div style={{ fontSize:'1rem', fontWeight:700, color:'var(--text)', marginTop:1 }}>{isNew ? 'Nuevo incidente vehicular' : form.activo_nombre}</div>
           </div>
-          <button onClick={requestClose} aria-label="Cerrar ticket" style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={16}/></button>
+          <button onClick={requestClose} aria-label="Cerrar ticket" style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.65)', cursor:'pointer', padding:4 }}><X size={16}/></button>
         </div>
 
         {/* Tabs */}
-        <div style={{ padding:'8px 20px 0', borderBottom:'1px solid rgba(57,255,20,0.05)', display:'flex', gap:6, flexShrink:0 }}>
+        <div style={{ padding:'8px 20px 0', borderBottom:'1px solid rgba(57,255,20,0.05)', display:'flex', flexWrap:'wrap', gap:6, flexShrink:0 }}>
           <button style={TAB(tab==='detalle')} onClick={()=>setTab('detalle')}>Detalle</button>
           <button style={TAB(tab==='documentos')} onClick={()=>setTab('documentos')}>Documentos / presupuestos</button>
           {!isNew && <button style={TAB(tab==='historial')} onClick={()=>setTab('historial')}><History size={10} style={{display:'inline',marginRight:4}}/>Historial del vehículo</button>}
@@ -209,7 +209,7 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
                 </div>
               </div>
 
-              <div style={{ marginBottom:12 }}><TicketProveedor value={form.proveedor_id} onChange={value => set('proveedor_id', value)} disabled={saving} /></div>
+              <div style={{ marginBottom:12 }}><TicketProveedor labelStyle={LBL} inputStyle={INP} value={form.proveedor_id} onChange={value => set('proveedor_id', value)} disabled={saving} /></div>
               <div style={{ marginBottom:4 }}>
                 <label style={LBL}>Notas / OC / Presupuesto</label>
                 <textarea style={{ ...INP, minHeight:36, resize:'vertical' }} value={form.notas_costos} onChange={e=>set('notas_costos',e.target.value)} placeholder="Notas adicionales..."/>
@@ -220,13 +220,13 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
           {tab === 'documentos' && (savedTicket?.id ? <AdjuntosPanel entityType="ticket" entityId={savedTicket.id} label="Presupuestos, notas y comprobantes" /> : <p>Creá el ticket desde Detalle para adjuntar documentación.</p>)}
           {tab === 'historial' && (
             <div>
-              <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.3)', marginBottom:10 }}>Todos los tickets registrados para <strong style={{ color:'#39FF14' }}>{savedTicket?.activo_nombre}</strong></div>
+              <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.65)', marginBottom:10 }}>Todos los tickets registrados para <strong style={{ color:'#39FF14' }}>{savedTicket?.activo_nombre}</strong></div>
               {historial.length === 0 ? (
-                <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.7rem', textAlign:'center', padding:'2rem 0' }}>Sin historial</p>
+                <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.875rem', textAlign:'center', padding:'2rem 0' }}>Sin historial</p>
               ) : historial.map(h => (
                 <div key={h.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8, marginBottom:8 }}>
-                  <div style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.25)', marginBottom:3 }}>{h.created_at ? fmtFecha(h.created_at) : ''} · #{h.id}</div>
-                  <div style={{ fontSize:'0.72rem', color:'var(--text)' }}>{h.descripcion}</div>
+                  <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.25)', marginBottom:3 }}>{h.created_at ? fmtFecha(h.created_at) : ''} · #{h.id}</div>
+                  <div style={{ fontSize:'0.875rem', color:'var(--text)' }}>{h.descripcion}</div>
                 </div>
               ))}
             </div>
@@ -234,10 +234,10 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
         </div>
 
         <div style={{ padding:'12px 20px', borderTop:'1px solid rgba(57,255,20,0.06)', display:'flex', gap:8, justifyContent:'flex-end', flexShrink:0 }}>
-          {err && <span style={{ fontSize:'0.65rem', color:'#ff5050', flex:1, alignSelf:'center' }}>{err}</span>}
-          <button onClick={requestClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.08)', color:'rgba(255,255,255,0.4)', fontFamily:'monospace', fontSize:'0.65rem', padding:'6px 16px', borderRadius:5, cursor:'pointer' }}>Cancelar</button>
+          {err && <span style={{ fontSize:'0.8rem', color:'#ff5050', flex:1, alignSelf:'center' }}>{err}</span>}
+          <button onClick={requestClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.08)', color:'rgba(255,255,255,0.4)', fontFamily:'Inter,sans-serif', fontSize:'0.8rem', padding:'6px 16px', borderRadius:5, cursor:'pointer' }}>Cancelar</button>
           {tab === 'detalle' && (
-            <button onClick={save} disabled={saving} style={{ background:'rgba(57,255,20,0.15)', border:'1px solid rgba(57,255,20,0.4)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.65rem', padding:'6px 18px', borderRadius:5, cursor:'pointer', fontWeight:700 }}>
+            <button onClick={save} disabled={saving} style={{ background:'rgba(57,255,20,0.15)', border:'1px solid rgba(57,255,20,0.4)', color:'#39FF14', fontFamily:'Inter,sans-serif', fontSize:'0.8rem', padding:'6px 18px', borderRadius:5, cursor:'pointer', fontWeight:700 }}>
               {saving ? 'Guardando...' : isNew ? 'Crear ticket' : 'Guardar'}
             </button>
           )}
