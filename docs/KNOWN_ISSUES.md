@@ -563,3 +563,13 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: saveSubtareas invoca onReload y load activaba loading; el render reemplazaba CapaAuditoria/CapaKanban por un indicador, perdiendo su estado detail.
 - Corrección: las actualizaciones desde el detalle recargan en segundo plano sin desmontar la vista. Una subtarea fallida conserva el texto para reintentar.
 - Recomendación: mantener montados los detalles durante actualizaciones internas; reservar la carga bloqueante para cambios de contexto.
+
+
+### Flota: avance de tickets y biblioteca documental (2026-10-21)
+
+- **Severidad:** Alta operativa para el avance de tickets.
+- **Verificación:** el CHECK real de mantenimiento.tickets en mixyhfdlzjarvszinytk acepta en_progreso; el adaptador de Flota enviaba en progreso. El arrastre convertía IDs UUID mediante parseInt, impidiendo actualizar la tarjeta correcta.
+- **Corrección:** normalización bidireccional de en_progreso, IDs conservados como texto, actualización visual solo después del guardado confirmado y errores visibles. Se conserva la equivalencia histórica aprobado/Bloqueado del tablero actual. Proveedor y documentos comparten proveedor_id y entity_type=ticket con mantenimiento/mobile.
+- **Validación:** pruebas del estado, guardado de proveedor/UUID, manejo de error y adjuntos; sin escrituras de prueba en producción.
+- **Limitación de privacidad:** consulta de storage.buckets confirma bitacora-adjuntos.public=true; pg_policies confirma que adjuntos permite SELECT/INSERT a authenticated sin ámbito de sede salvo id_proyecto. La biblioteca de sedes usa esta infraestructura existente y advierte que no se cargue documentación confidencial. La visibilidad por sede en UI no sustituye aislamiento de servidor.
+- **Recomendación:** para documentación confidencial, revisar almacenamiento privado, URLs firmadas y RLS por entidad/sede. Requiere mostrar SQL y autorización explícita antes de aplicar. No se modificaron políticas ni buckets.

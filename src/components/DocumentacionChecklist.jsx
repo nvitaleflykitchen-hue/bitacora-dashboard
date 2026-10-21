@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CalendarPlus, FileCheck2, Save } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, CalendarPlus, FileCheck2, Save, Upload } from 'lucide-react'
+import { useAuth } from '../lib/auth'
+import { uploadAdjunto } from '../lib/adjuntos'
 import AdjuntosPanel from './AdjuntosPanel'
 import CorreosEntidad from './CorreosEntidad'
 import {
@@ -42,7 +44,9 @@ function groupBySeccion(items) {
   }, {})
 }
 
-export default function DocumentacionChecklist({ entityType, entityId, template = [], canEdit = false, title = 'Documentación' }) {
+export default function DocumentacionChecklist({ entityType, entityId, template = [], canEdit = false, title = 'Documentación', wide = false }) {
+  const { perfil } = useAuth()
+  const [attachmentVersion, setAttachmentVersion] = useState(0)
   const [rows, setRows] = useState([])
   const [drafts, setDrafts] = useState({})
   const [loading, setLoading] = useState(true)
@@ -107,7 +111,11 @@ export default function DocumentacionChecklist({ entityType, entityId, template 
     }))
   }
 
-  const saveItem = async (item) => {
+  const saveItem = async (item, files = []) => {
+    if (!canEdit || savingKey) return
+    if (files.some(file => file.size > 50 * 1024 * 1024)) {
+      setError('Cada archivo puede pesar hasta 50 MB.'); return
+    }
     setSavingKey(item.codigo)
     setError(null)
     try {
@@ -126,9 +134,13 @@ export default function DocumentacionChecklist({ entityType, entityId, template 
         const rest = prev.filter(r => r.codigo !== saved.codigo)
         return [...rest, saved]
       })
+      for (const file of files) {
+        await uploadAdjunto('documentacion_item', saved.id, file, perfil?.nombre || 'usuario')
+      }
     } catch (e) {
       setError(e.message)
     } finally {
+      setAttachmentVersion(value => value + 1)
       setSavingKey(null)
     }
   }
@@ -178,10 +190,10 @@ export default function DocumentacionChecklist({ entityType, entityId, template 
               <FileCheck2 size={14} /> {title.toUpperCase()}
             </p>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>
-              Guardá cada ítem una vez y luego subí la evidencia desde "Adjuntos". El aviso define cuántos días antes debe considerarse próximo a renovar.
+              Subí la documentación desde cada tarjeta. Los datos del ítem se guardan junto con el archivo. El aviso define cuántos días antes debe considerarse próximo a renovar.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <span className="chip" style={{ color: '#39FF14', borderColor: 'rgba(57,255,20,0.25)' }}>{completos} vigentes</span>
             <span className="chip" style={{ color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}>{proximos} próximos</span>
             <span className="chip" style={{ color: '#FF2A2A', borderColor: 'rgba(255,42,42,0.3)' }}>{vencidos} vencidos</span>
@@ -194,7 +206,7 @@ export default function DocumentacionChecklist({ entityType, entityId, template 
       {!loading && Object.entries(grouped).map(([seccion, items]) => (
         <div key={seccion}>
           <p className="font-metric text-xs mb-2" style={{ color: 'var(--phosphor)', letterSpacing: '0.08em' }}>{seccion.toUpperCase()}</p>
-          <div className="grid grid-cols-1 gap-3">
+          <div className={wide ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'grid grid-cols-1 gap-3'}>
             {items.map(item => {
               const meta = docEstadoMeta(item.estado)
               const venc = docVencimientoInfo(item.fecha_vencimiento, item.aviso_dias)
@@ -229,7 +241,7 @@ export default function DocumentacionChecklist({ entityType, entityId, template 
                     </div>
                     <div>
                       <label style={labelStyle}>Acciones</label>
-                      <button disabled={!canEdit || savingKey === item.codigo} onClick={() => saveItem(item)} className="btn-primary flex items-center justify-center gap-1.5" style={{ width: '100%', fontSize: '0.68rem', opacity: !canEdit ? 0.45 : 1 }}>
+                      <button disabled={!canEdit || Boolean(savingKey)} onClick={() => saveItem(item)} className="btn-primary flex items-center justify-center gap-1.5" style={{ width: '100%', fontSize: '0.68rem', opacity: !canEdit ? 0.45 : 1 }}>
                         <Save size={12} /> {savingKey === item.codigo ? 'Guardando...' : 'Guardar'}
                       </button>
                       {item.fecha_vencimiento && (
@@ -246,13 +258,17 @@ export default function DocumentacionChecklist({ entityType, entityId, template 
                   </div>
 
                   <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(57,255,20,0.08)' }}>
+                    {canEdit && <label className="btn-primary inline-flex items-center gap-2 mb-3" style={{ cursor: savingKey ? 'wait' : 'pointer', fontSize: '0.75rem' }}>
+                      <Upload size={15} /> {savingKey === item.codigo ? 'Guardando y subiendo…' : 'Subir documentación'}
+                      <input type="file" className="sr-only" aria-label={`Subir documentación: ${item.titulo}`} multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" disabled={Boolean(savingKey)} onChange={e => { const files = Array.from(e.target.files || []); e.target.value = ''; if (files.length) saveItem(item, files) }} />
+                    </label>}
                     {persistedId ? (
                       <>
                         <p className="font-metric mb-2" style={{ color:'var(--phosphor)', fontSize:'0.62rem', letterSpacing:'0.08em' }}>ADJUNTOS / EVIDENCIA</p>
-                        <AdjuntosPanel entityType="documentacion_item" entityId={persistedId} readOnly={!canEdit} />
+                        <AdjuntosPanel key={`${persistedId}-${attachmentVersion}`} entityType="documentacion_item" entityId={persistedId} readOnly={!canEdit || Boolean(savingKey)} />
                       </>
                     ) : (
-                      <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>Primero guardá el ítem. Después se habilita la carga de archivos, fotos, PDF o links como evidencia.</p>
+                      <p style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>Sin documentos adjuntos. PDF, Word, Excel o imágenes · Hasta 50 MB por archivo.</p>
                     )}
                   </div>
                 </div>

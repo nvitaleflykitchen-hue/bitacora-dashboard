@@ -18,6 +18,7 @@ import { generarReporteEficienciaMnt } from '../lib/mntEficienciaPdf'
 import { useBackHandler } from '../lib/backStack'
 import { operationalStateLabel } from '../lib/operationalStates'
 import AdjuntosPanel from '../components/AdjuntosPanel'
+import TicketProveedor from '../components/TicketProveedor'
 import {
   enrichMobileTickets,
   findOwnMaintenanceResponsible,
@@ -249,6 +250,9 @@ function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, 
           )}
         </Section>
 
+        <Section label="Proveedor del trabajo">
+          <TicketProveedor value={ticket.proveedor_id} disabled={!canManage || updating} onChange={value => handleUpdate({ proveedor_id: value })} />
+        </Section>
         {/* Diagnóstico */}
         <Section label="Diagnóstico / Trabajo realizado">
           {canManage ? (
@@ -282,7 +286,7 @@ function TicketDetalle({ ticket: initialTicket, canManage, isMaintenanceEditor, 
             compact
             camera
             readOnly={!canManage || isClosedMaintenanceTicket(ticket)}
-            label="Fotos y archivos"
+            label="Fotos, presupuestos, notas y comprobantes"
           />
         </Section>
 
