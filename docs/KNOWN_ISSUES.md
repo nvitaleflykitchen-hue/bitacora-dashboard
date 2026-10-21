@@ -573,3 +573,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Validación:** pruebas del estado, guardado de proveedor/UUID, manejo de error y adjuntos; sin escrituras de prueba en producción.
 - **Limitación de privacidad:** consulta de storage.buckets confirma bitacora-adjuntos.public=true; pg_policies confirma que adjuntos permite SELECT/INSERT a authenticated sin ámbito de sede salvo id_proyecto. La biblioteca de sedes usa esta infraestructura existente y advierte que no se cargue documentación confidencial. La visibilidad por sede en UI no sustituye aislamiento de servidor.
 - **Recomendación:** para documentación confidencial, revisar almacenamiento privado, URLs firmadas y RLS por entidad/sede. Requiere mostrar SQL y autorización explícita antes de aplicar. No se modificaron políticas ni buckets.
+
+### Novedades de vehículos omitidas en reportes (corregido 2026-10-21)
+- Severidad: alta funcional. El resumen del turno anterior decía que no había novedades cuando solo existían novedades vehiculares.
+- Verificación: consulta de solo lectura del registro 4323 y vehiculo_novedades en el proyecto autorizado; categorías A–H vacías, novedad vinculada existente.
+- Corrección: consulta por registro_id y componente compartido en detalle desktop/mobile, turno anterior y ficha de sede; estados de carga, error y reintento, descartando respuestas de reportes anteriores.
+- Recomendación: mantener las novedades vinculadas visibles independientemente de las categorías generales. Pruebas de regresión sin escrituras en producción.
