@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { toast, confirmar } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import RegistroModal from '../components/RegistroModal'
+import SedeBiblioteca from '../components/SedeBiblioteca'
 import { format } from 'date-fns'
 import { ChevronRight, ChevronLeft, AlertTriangle, RefreshCw, Pause, Play } from 'lucide-react'
 import SkeletonTable from '../components/SkeletonTable'
@@ -39,6 +40,7 @@ export default function MobileSedes({ focusContext, onCreateNovedad }) {
 
   // Vista detalle de sede
   const [selectedSede, setSelectedSede] = useState(null)
+  const [showLibrary, setShowLibrary] = useState(false)
   useBackHandler(() => { setSelectedSede(null); setSedeRegistros([]) }, !!selectedSede)
   const [sedeRegistros, setSedeRegistros] = useState([])
   const [loadingRegistros, setLoadingRegistros] = useState(false)
@@ -75,6 +77,9 @@ export default function MobileSedes({ focusContext, onCreateNovedad }) {
   // Abrir detalle de sede y cargar sus registros
   const openSede = async (sede, dias = diasFiltro) => {
     setSelectedSede(sede)
+    setShowLibrary(false)
+    setShowLibrary(false)
+    setSelRegistro(null)
     setSedeRegistros([])
     setLoadingRegistros(true)
     try {
@@ -171,6 +176,7 @@ export default function MobileSedes({ focusContext, onCreateNovedad }) {
               </button>
             </div>
           </div>
+          <button type="button" className="btn-ghost mt-2" aria-pressed={showLibrary} onClick={() => setShowLibrary(value => !value)}>{showLibrary ? 'Volver a novedades' : 'Biblioteca de documentos'}</button>
           {/* Filtro de días */}
           <div style={{ display: 'flex', gap: 6, marginTop: '0.65rem' }}>
             {onCreateNovedad && <button className="btn-primary" style={{ minHeight:44 }} onClick={() => onCreateNovedad({ type:'sede', id:selectedSede.id, label:selectedSede.nombre, sedeId:selectedSede.id, sedeLabel:selectedSede.nombre })}>+ Crear novedad</button>}
@@ -198,7 +204,7 @@ export default function MobileSedes({ focusContext, onCreateNovedad }) {
 
         {/* Lista de registros */}
         <div className="mobile-scroll" style={{ flex: 1, padding: '0.75rem 1rem' }}>
-          {loadingRegistros ? (
+          {showLibrary ? <SedeBiblioteca key={selectedSede.id} sedeId={selectedSede.id} sedeNombre={selectedSede.nombre} /> : loadingRegistros ? (
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
               <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
             </div>

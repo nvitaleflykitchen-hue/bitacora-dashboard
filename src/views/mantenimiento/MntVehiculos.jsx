@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase, db } from '../../lib/supabase'
 import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
@@ -6,6 +6,9 @@ import { notifyHighPriority } from '../../lib/pushNotifications'
 import { isQualityOnlyProfile } from '../../lib/access'
 import { AlertTriangle, User, Filter, RefreshCw, Plus, X, Car, Gauge, Clock, History, LayoutGrid, List, Download, Share2 } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
+import AdjuntosPanel from '../../components/AdjuntosPanel'
+import TicketProveedor from '../../components/TicketProveedor'
+import { createTicket, updateTicket } from '../../lib/queries'
 import ShareFleetTicketsModal from '../../components/ShareFleetTicketsModal'
 import { descargarHistorialVehiculoPdf } from '../../lib/vehiculoHistorialPdf'
 import { vehiculoEstadoFromDb, vehiculoEstadoToDb } from '../../lib/vehiculoTicketState'
@@ -39,15 +42,17 @@ const ticketFormFrom = ticket => ({
     tipo:          ticket?.tipo          || 'correctivo',
     lectura_km:    ticket?.lectura_km    ?? '',
     responsable:   ticket?.responsable   || '',
+    proveedor_id: ticket?.proveedor_id || null,
     sede:          ticket?.sede          || '',
     costo_real:    ticket?.costo_real    ?? '',
     fecha_limite:  ticket?.fecha_limite ? ticket.fecha_limite.split('T')[0] : '',
     notas_costos:  ticket?.notas_costos  || '',
 })
 
-function TicketModal({ ticket, patentes, onClose, onSaved }) {
-  const isNew = !ticket?.id
-  const [initialForm] = useState(() => ticketFormFrom(ticket))
+export function TicketModal({ ticket, patentes, onClose, onSaved }) {
+  const [savedTicket, setSavedTicket] = useState(ticket)
+  const isNew = !savedTicket?.id
+  const [initialForm, setInitialForm] = useState(() => ticketFormFrom(ticket))
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState(null)
@@ -57,25 +62,25 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm)
   const requestClose = async () => {
-    if (!isDirty || await confirmarAccionSensible({ action:'descartar', subject:'los cambios del ticket', consequence:'Se perderán las modificaciones que todavía no guardaste.', recovery:'El ticket conservará la última versión guardada.', confirmText:'Descartar cambios' })) onClose()
+    if (!isDirty || await confirmarAccionSensible({ action:'descartar', subject:'los cambios del ticket', consequence:'Se perderán las modificaciones que todavía no guardaste.', recovery:'El ticket conservará la última versión guardada.', confirmText:'Descartar cambios' })) { if (savedTicket?.id && !ticket?.id) onSaved(); else onClose() }
   }
 
   useEffect(() => {
-    if (tab === 'historial' && ticket?.id) {
-      supabase.schema('mantenimiento').from('tickets')
+    if (tab === 'historial' && savedTicket?.id) {
+      supabase.from('mnt_tickets')
         .select('id,created_at,descripcion')
-        .eq('activo_nombre', ticket.activo_nombre)
+        .eq('activo_nombre', savedTicket.activo_nombre)
         .order('created_at', { ascending: false })
         .limit(20)
         .then(({ data }) => setHistorial(data || []))
     }
-  }, [tab, ticket])
+  }, [tab, savedTicket])
 
   async function save() {
     if (!form.activo_nombre.trim()) { setErr('La patente es obligatoria'); return }
     if (!form.descripcion.trim())   { setErr('La descripción es obligatoria'); return }
-    if (!isNew && ticket.estado !== form.estado && ['resuelto','rechazado'].includes(form.estado)) {
-      if (!await confirmarAccionSensible({ action:form.estado === 'rechazado' ? 'rechazar' : 'cerrar', subject:`el ticket de ${ticket.activo_nombre}`, consequence:'Saldrá del tablero activo y el cambio quedará registrado en el historial del vehículo.', recovery:'Puede reabrirse editando nuevamente su estado; el historial anterior se conserva.' })) return
+    if (!isNew && savedTicket.estado !== form.estado && ['resuelto','rechazado'].includes(form.estado)) {
+      if (!await confirmarAccionSensible({ action:form.estado === 'rechazado' ? 'rechazar' : 'cerrar', subject:`el ticket de ${savedTicket.activo_nombre}`, consequence:'Saldrá del tablero activo y el cambio quedará registrado en el historial del vehículo.', recovery:'Puede reabrirse editando nuevamente su estado; el historial anterior se conserva.' })) return
     }
     setSaving(true); setErr(null)
     const payload = {
@@ -86,18 +91,14 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
       costo_real: form.costo_real !== '' ? parseFloat(form.costo_real) : null,
       fecha_limite: form.fecha_limite || null,
     }
-    let error, saved
-    if (isNew) {
-      ;({ data:saved, error } = await supabase.schema('mantenimiento').from('tickets').insert(payload).select().single())
-    } else {
-      ;({ data:saved, error } = await supabase.schema('mantenimiento').from('tickets').update(payload).eq('id', ticket.id).select().single())
-    }
-    setSaving(false)
-    if (error) { setErr(error.message); return }
-    if (saved?.id && ['alta','critica'].includes(String(saved.prioridad).toLowerCase())) {
-      notifyHighPriority({ module:'mantenimiento', entity_id:saved.id, priority:saved.prioridad })
-    }
-    onSaved()
+    try {
+      const saved = isNew ? await createTicket(payload) : await updateTicket(savedTicket.id, payload)
+      setSavedTicket(saved)
+      setInitialForm({ ...form })
+      if (isNew) setTab('documentos')
+      else onSaved()
+    } catch (error) { setErr(error.message || 'No se pudo guardar el ticket.') }
+    finally { setSaving(false) }
   }
 
   const INP = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'7px 10px', fontSize:'0.72rem', fontFamily:'monospace', width:'100%', boxSizing:'border-box', outline:'none' }
@@ -107,7 +108,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(4px)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
       >
-      <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.1)', borderRadius:3, width:'100%', maxWidth:620, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
+      <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.1)', borderRadius:3, width:'100%', maxWidth:1000, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
 
         {/* Header modal */}
         <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(57,255,20,0.06)', display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
@@ -122,6 +123,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
         {/* Tabs */}
         <div style={{ padding:'8px 20px 0', borderBottom:'1px solid rgba(57,255,20,0.05)', display:'flex', gap:6, flexShrink:0 }}>
           <button style={TAB(tab==='detalle')} onClick={()=>setTab('detalle')}>Detalle</button>
+          <button style={TAB(tab==='documentos')} onClick={()=>setTab('documentos')}>Documentos / presupuestos</button>
           {!isNew && <button style={TAB(tab==='historial')} onClick={()=>setTab('historial')}><History size={10} style={{display:'inline',marginRight:4}}/>Historial del vehículo</button>}
         </div>
 
@@ -159,7 +161,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:10 }}>
                 <div>
                   <label style={LBL}>Estado</label>
-                  <select style={INP} value={form.estado} onChange={e=>set('estado',e.target.value)}>
+                  <select aria-label="Estado del ticket" style={INP} value={form.estado} onChange={e=>set('estado',e.target.value)}>
                     <option value="abierto">Nuevo</option>
                     <option value="en progreso">En Progreso</option>
                     <option value="bloqueado">Bloqueado</option>
@@ -207,6 +209,7 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
                 </div>
               </div>
 
+              <div style={{ marginBottom:12 }}><TicketProveedor value={form.proveedor_id} onChange={value => set('proveedor_id', value)} disabled={saving} /></div>
               <div style={{ marginBottom:4 }}>
                 <label style={LBL}>Notas / OC / Presupuesto</label>
                 <textarea style={{ ...INP, minHeight:36, resize:'vertical' }} value={form.notas_costos} onChange={e=>set('notas_costos',e.target.value)} placeholder="Notas adicionales..."/>
@@ -214,9 +217,10 @@ function TicketModal({ ticket, patentes, onClose, onSaved }) {
             </>
           )}
 
+          {tab === 'documentos' && (savedTicket?.id ? <AdjuntosPanel entityType="ticket" entityId={savedTicket.id} label="Presupuestos, notas y comprobantes" /> : <p>Creá el ticket desde Detalle para adjuntar documentación.</p>)}
           {tab === 'historial' && (
             <div>
-              <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.3)', marginBottom:10 }}>Todos los tickets registrados para <strong style={{ color:'#39FF14' }}>{ticket.activo_nombre}</strong></div>
+              <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.3)', marginBottom:10 }}>Todos los tickets registrados para <strong style={{ color:'#39FF14' }}>{savedTicket?.activo_nombre}</strong></div>
               {historial.length === 0 ? (
                 <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.7rem', textAlign:'center', padding:'2rem 0' }}>Sin historial</p>
               ) : historial.map(h => (
@@ -516,8 +520,8 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
     setLoading(true)
     setLoadError('')
     const [ticketsResult, novedadesResult] = await Promise.all([
-      supabase.schema('mantenimiento').from('tickets')
-        .select('id,numero,activo_id,activo_nombre,descripcion,diagnostico,estado,prioridad,tipo,lectura_km,responsable,sede,costo_real,fecha_limite,created_at,notas_costos')
+      supabase.from('mnt_tickets')
+        .select('id,numero,activo_id,activo_nombre,descripcion,diagnostico,estado,prioridad,tipo,lectura_km,responsable,sede,costo_real,fecha_limite,created_at,notas_costos,proveedor_id')
         .eq('categoria', 'Vehiculos')
         .order('created_at', { ascending: false }),
       db().from('vehiculo_novedades')
@@ -537,13 +541,12 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
   const patentes = [...new Set(tickets.map(t=>t.activo_nombre).filter(Boolean))].sort()
 
   const moveTicket = async (ticketId, newEstado) => {
-    setTickets(prev => prev.map(t => t.id === parseInt(ticketId) ? { ...t, estado: newEstado } : t))
-    const previous = tickets.find(t => t.id === parseInt(ticketId))?.estado
-    const { error } = await supabase.schema('mantenimiento').from('tickets').update({ estado: vehiculoEstadoToDb(newEstado) }).eq('id', ticketId)
-    if (error) {
-      setTickets(prev => prev.map(t => t.id === parseInt(ticketId) ? { ...t, estado: previous } : t))
-      setLoadError('No se pudo cambiar el estado del ticket. El movimiento fue revertido.')
-    }
+    if (!canWrite) return
+    try {
+      const saved = await updateTicket(ticketId, { estado: vehiculoEstadoToDb(newEstado) })
+      setTickets(prev => prev.map(t => String(t.id) === String(ticketId) ? { ...t, ...saved, estado: vehiculoEstadoFromDb(saved.estado) } : t))
+      setLoadError('')
+    } catch (error) { setLoadError('No se pudo cambiar el estado: ' + error.message) }
   }
 
   let filtered = tickets

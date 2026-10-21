@@ -12,6 +12,7 @@ describe('estado de tickets vehiculares', () => {
 
   it('no altera otros estados', () => {
     expect(vehiculoEstadoFromDb('resuelto')).toBe('resuelto')
-    expect(vehiculoEstadoToDb('en progreso')).toBe('en progreso')
+    expect(vehiculoEstadoToDb('en progreso')).toBe('en_progreso')
+    expect(vehiculoEstadoFromDb('en_progreso')).toBe('en progreso')
   })
 })

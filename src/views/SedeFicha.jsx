@@ -9,6 +9,7 @@ import RegistroModal from '../components/RegistroModal'
 import TelefonosUtilesSede from '../components/TelefonosUtilesSede'
 import SedeReportModal from '../components/SedeReportModal'
 import DocumentacionChecklist from '../components/DocumentacionChecklist'
+import SedeBiblioteca from '../components/SedeBiblioteca'
 import { SEDE_DOCUMENTACION_TEMPLATE } from '../lib/documentacion'
 import { toast, confirmar } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
@@ -478,6 +479,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                 <Pencil size={11}/> Editar
               </button>}
               <button onClick={()=>setFichaTab('resumen')} style={{ background:fichaTab==='resumen'?'rgba(57,255,20,0.12)':'transparent', border:'1px solid rgba(57,255,20,0.16)', color:fichaTab==='resumen'?'#39FF14':'rgba(255,255,255,0.42)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>RESUMEN</button>
+              <button type="button" className="btn-ghost" aria-pressed={fichaTab === 'biblioteca'} onClick={() => setFichaTab('biblioteca')}>BIBLIOTECA</button>
               <button onClick={()=>setFichaTab('documentacion')} style={{ background:fichaTab==='documentacion'?'rgba(57,255,20,0.12)':'transparent', border:'1px solid rgba(57,255,20,0.24)', color:fichaTab==='documentacion'?'#39FF14':'rgba(57,255,20,0.65)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>DOCUMENTACIÓN</button>
               <button onClick={()=>setFichaTab('auditorias')} style={{ background:fichaTab==='auditorias'?'rgba(167,139,250,0.14)':'transparent', border:'1px solid rgba(167,139,250,0.3)', color:fichaTab==='auditorias'?'#c4b5fd':'#a78bfa', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>AUDITORÍAS</button>
               <button onClick={()=>setFichaTab('capacitaciones')} style={{ background:fichaTab==='capacitaciones'?'rgba(57,255,20,0.12)':'transparent', border:'1px solid rgba(57,255,20,0.24)', color:fichaTab==='capacitaciones'?'#39FF14':'rgba(57,255,20,0.65)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>CAPACITACIONES</button>
@@ -492,7 +494,9 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
             </div>
           </div>
 
-          {fichaTab === 'auditorias' ? (
+          {fichaTab === 'biblioteca' ? (
+            <SedeBiblioteca key={sede.id} sedeId={sede.id} sedeNombre={sede.nombre} />
+          ) : fichaTab === 'auditorias' ? (
             <AuditoriasInternas sedeId={sede.id} />
           ) : fichaTab === 'capacitaciones' ? (
             <CapacitacionesRelacionadas sedeId={sede.id} title={`Capacitaciones · ${sede.nombre}`} />
@@ -712,7 +716,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
       )}
 
       {/* ── Historial semanal de estado ── */}
-      {fichaTab !== 'documentacion' && histSemanal.length > 0 && (
+      {fichaTab === 'resumen' && histSemanal.length > 0 && (
         <div className="glass rounded mt-5" style={{ borderRadius:'3px', padding:'1rem' }}>
           <p className="font-metric text-xs tracking-widest uppercase mb-3" style={{ color:'var(--text-dim)' }}>
             Estado general · últimas 8 semanas

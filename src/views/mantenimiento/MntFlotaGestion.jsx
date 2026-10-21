@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
@@ -84,6 +84,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
   const [err, setErr] = useState(null)
   const [planes, setPlanes] = useState([])
   const [loadingPlanes, setLoadingPlanes] = useState(false)
+  const documentsRef = useRef(null)
   const set = (k,v) => setForm(f=>({...f,[k]:v}))
 
   useEffect(() => {
@@ -133,9 +134,9 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
 
   return (
     <div className='modal-overlay'>
-      <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:'1.75rem', width:'100%', maxWidth:580, maxHeight:'90vh', overflowY:'auto' }}>
+      <div role="dialog" aria-modal="true" aria-label={isNew ? 'Nuevo vehículo' : `Ficha de ${vehiculo.nombre}`} style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:6, padding:'0 1.25rem 1rem', width:'100%', maxWidth:1180, maxHeight:'94vh', overflowY:'auto' }}>
 
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1rem' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, padding:'1rem 0', position:'sticky', top:0, zIndex:2, background:'var(--surface)', borderBottom:'1px solid rgba(57,255,20,0.15)', marginBottom:'1rem' }}>
           <div>
             <h2 style={{ color:'var(--text)', fontWeight:700, fontSize:'1.1rem', margin:0 }}>
               {isNew ? 'Nuevo Vehículo' : vehiculo.nombre}
@@ -147,7 +148,11 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
               </div>
             )}
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:'1.2rem', marginLeft:8 }}>✕</button>
+          <div className="flex flex-wrap gap-2 justify-end">
+            {!isNew && !editing && <button type="button" className="btn-primary" onClick={() => documentsRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })}>Documentación</button>}
+            {!isNew && !editing && canEdit && <button type="button" className="btn-ghost" onClick={() => setEditing(true)}>Editar datos</button>}
+            <button aria-label="Cerrar ficha" onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:'1.2rem', marginLeft:8 }}>✕</button>
+          </div>
         </div>
 
         {!isNew && !editing ? (
@@ -167,12 +172,13 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
               {DOCS.map(d => <VencChip key={d.key} label={`Venc. ${d.label}`} fecha={vehiculo[d.key]} />)}
             </div>
 
-            <div style={{ marginTop:'1rem' }}>
+            <div ref={documentsRef} style={{ marginTop:'1rem', scrollMarginTop:110 }}>
               <DocumentacionChecklist
                 entityType="vehiculo"
                 entityId={vehiculo.id}
                 template={getVehiculoDocumentacionTemplate(sedeName)}
                 canEdit={canEdit}
+                wide
                 title="Documentación auditoría / flota"
               />
             </div>
