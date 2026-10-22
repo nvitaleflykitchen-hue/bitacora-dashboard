@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { createMcpServer } from './tools.js'
+import { createOAuthProvider, oauthConfig } from './oauth.js'
 
 const projectUrl = 'https://mixyhfdlzjarvszinytk.supabase.co'
 export function readConfig(env) {
@@ -21,14 +22,25 @@ export function readOnlyFetch(fetchImpl = globalThis.fetch) {
   }
 }
 const respond = (res, status, message) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: message })) }
-export function createHandler({ env = process.env, clientFactory = config => createClient(projectUrl, config.secret, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch: readOnlyFetch() } }) } = {}) {
+export function createHandler({ env = process.env, oauthProviderFactory = config => createOAuthProvider(oauthConfig(env, config)), clientFactory = config => createClient(projectUrl, config.secret, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch: readOnlyFetch() } }) } = {}) {
   return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store')
     let config
     try { config = readConfig(env) } catch { return respond(res, 503, 'MCP backend not configured') }
     if (req.headers.host !== config.url.host || (req.headers.origin && req.headers.origin !== config.url.origin)) return respond(res, 403, 'Invalid host or origin')
     const provided = Buffer.from(req.headers.authorization ?? ''), expected = Buffer.from(`Bearer ${config.token}`)
-    if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) { res.setHeader('WWW-Authenticate', 'Bearer'); return respond(res, 401, 'Unauthorized') }
+    let sedes = config.sedes
+    let authorized = provided.length === expected.length && timingSafeEqual(provided, expected)
+    if (!authorized && env.MCP_OAUTH_ENABLED === 'true') {
+      try {
+        const token = /^Bearer (\S+)$/.exec(req.headers.authorization ?? '')?.[1]
+        if (token) { const auth = await oauthProviderFactory(config).verifyAccessToken(token); sedes = auth.extra.sedes; authorized = sedes.length > 0 }
+      } catch { /* Invalid, expired or revoked tokens must never expose data. */ }
+    }
+    if (!authorized) {
+      const challenge = env.MCP_OAUTH_ENABLED === 'true' ? `Bearer resource_metadata="${config.url.origin}/.well-known/oauth-protected-resource/api/mcp", scope="mcp:read"` : 'Bearer'
+      res.setHeader('WWW-Authenticate', challenge); return respond(res, 401, 'Unauthorized')
+    }
     if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return respond(res, 405, 'Use Streamable HTTP POST; standalone SSE is not supported') }
     if (!(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return respond(res, 415, 'Expected application/json')
     let body
@@ -45,7 +57,7 @@ export function createHandler({ env = process.env, clientFactory = config => cre
     } catch { return respond(res, 400, 'Invalid JSON') }
     let server
     try {
-      server = createMcpServer(clientFactory(config), config.sedes)
+      server = createMcpServer(clientFactory(config), sedes)
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true })
       res.on('close', () => { void server.close().catch(() => {}) })
       await server.connect(transport)

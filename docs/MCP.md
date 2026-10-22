@@ -12,7 +12,7 @@ Variables exclusivamente del servidor (ver `.env.example`):
 - `MCP_ALLOWED_SEDE_IDS`: IDs de sedes permitidas separados por coma. Obligatorio; no existe acceso implícito a todas las sedes.
 - `MCP_PUBLIC_URL`: URL canónica completa, local `http://127.0.0.1:3001/api/mcp`, remota HTTPS. Host y Origin deben coincidir; clientes sin Origin son admitidos.
 
-El token representa una integración de servicio, no la sesión de un usuario de Fly Gestión. Todos sus consumidores comparten el alcance configurado. La clave de backend omite RLS, por eso cada consulta filtra sedes en el servidor. No se exponen SQL libre, escrituras, URLs firmadas, emails ni claves. Las descripciones/observaciones pueden contener información interna: compartir el token solo con conectores autorizados. Rotar `MCP_AUTH_TOKEN` revoca el acceso anterior. No se implementa OAuth/discovery: un cliente que exija OAuth en lugar de headers Bearer necesita otra integración.
+El token estático representa una integración de servicio, no la sesión de un usuario de Fly Gestión. Sus consumidores comparten el alcance configurado. La clave de backend omite RLS, por eso cada consulta filtra sedes en el servidor. No se exponen SQL libre, escrituras, URLs firmadas, emails ni claves. Las descripciones/observaciones pueden contener información interna: compartir el token solo con conectores autorizados. Rotar `MCP_AUTH_TOKEN` revoca ese acceso estático. Gemini web usa el flujo OAuth descrito abajo, no este token ni la clave Supabase.
 
 ## Herramientas y fuentes verificadas
 
@@ -53,7 +53,27 @@ npm run mcp:smoke
 
 El smoke realiza initialize, tools/list y una consulta limitada a un registro por herramienta. Esperado: `initialize OK`, cuatro nombres de herramientas y cuatro `OK`. Usa datos reales **solo lectura**, sin imprimirlos. Las pruebas `test:mcp` usan HTTP local + SDK real + respuestas Supabase simuladas, sin acceder a producción. `npm run dev` inicia la SPA, no la función MCP; usar el runner anterior para este endpoint.
 
-## Gemini
+## Gemini web: OAuth con consentimiento
+
+El servidor implementa OAuth Authorization Code + PKCE S256 usando los handlers del SDK MCP, discovery, registro dinámico de clientes, renovación y revocación. La pantalla `/mcp/connect` requiere iniciar sesión en Fly Gestión y autorizar explícitamente. El callback se obtiene del registro del cliente: no se inventa ni se codifica una URL de retorno de Google. La pantalla muestra el dominio de retorno y las sedes; el nombre del cliente no constituye identidad verificada.
+
+Los tokens entregados a Gemini son opacos y exclusivos de este MCP, **no** JWTs de Supabase ni sesiones reutilizables contra otras APIs. Se guardan únicamente hashes SHA-256 de códigos y tokens; metadatos/secretos de clientes se cifran con AES-256-GCM. Códigos: 2 minutos, un solo uso; acceso: 15 minutos; autorización: máximo absoluto de 30 días con refresh rotativo. Una renovación invalida el token de acceso anterior. La revocación invalida toda la autorización asociada. Las operaciones condicionales de Postgres evitan reutilización concurrente entre instancias serverless.
+
+Configuración pendiente de producción:
+
+1. Revisar y autorizar explícitamente [mcp-oauth-setup.sql](./mcp-oauth-setup.sql) conforme a AGENTS.md §0.3; luego aplicarlo solo en `mixyhfdlzjarvszinytk`. Crea dos tablas de estado, habilita RLS, bloquea anon/authenticated y da acceso únicamente a service_role. No toca políticas ni filas de negocio. No está aplicado automáticamente.
+2. Configurar las cinco variables base y `MCP_OAUTH_ENABLED=true`, `MCP_OAUTH_OWNER_IDS` (UUID Auth del usuario administrador que vinculará Gemini) y `MCP_OAUTH_ENCRYPTION_KEY` (32 bytes aleatorios en base64). El listado de propietarios es independiente de perfiles editables o user_metadata. Todos los propietarios configurados pueden autorizar las sedes de `MCP_ALLOWED_SEDE_IDS`; inicialmente configurar solo al administrador solicitante.
+3. Generar la clave de cifrado con `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"` y guardarla como secreto del servidor. Rotarla invalida los registros de clientes anteriores. No colocar secretos en GitHub, parámetros URL ni formularios Gemini.
+4. Integrar el PR mediante GitHub y verificar discovery en `https://<dominio>/.well-known/oauth-authorization-server` y `https://<dominio>/.well-known/oauth-protected-resource/api/mcp`. El endpoint sin token responde 401 con `WWW-Authenticate` apuntando al discovery.
+5. En Gemini → Conectores → Personalizada, ingresar `https://<dominio>/api/mcp`, dejar vacíos ID/secreto manuales (se usa registro dinámico), continuar, iniciar sesión en Fly Gestión y aceptar el consentimiento. Comprobar una consulta real desde Gemini.
+
+No necesita activar Supabase OAuth Server: la identidad existente solo verifica quién aprueba la conexión; nunca se entrega su sesión a Gemini. Las tablas OAuth almacenan el mínimo necesario para funcionar en varias instancias. El límite de registro dinámico es 100 clientes por día más el rate limit por instancia del SDK; para un endpoint público de alto tráfico se recomienda añadir límite global de plataforma. Limpiar periódicamente autorizaciones vencidas y clientes sin uso mediante mantenimiento autorizado.
+
+`npm run test:mcp` incluye un flujo OAuth HTTP completo con Supabase simulado y una prueba SQL en Postgres embebido (PGlite), sin escrituras en producción. La pantalla de consentimiento tiene pruebas de aprobación explícita y manejo de errores. El runner local permite probar discovery y tokens; para la pantalla React completa, usar un proxy local del mismo origen o el preview de GitHub con las variables correspondientes.
+
+Referencia de la interfaz web: [conectar apps personalizadas en Gemini](https://support.google.com/gemini/answer/17209137).
+
+## Gemini CLI
 
 Gemini CLI admite conectores Streamable HTTP con `httpUrl` y headers. En su configuración `settings.json`:
 
