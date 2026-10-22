@@ -12,12 +12,14 @@ import Capacitaciones from './Capacitaciones'
 import BibliotecaRecursos from '../components/BibliotecaRecursos'
 import Microbiologia from './Microbiologia'
 import AirlinePerformance from './AirlinePerformance'
+import FoodAudits from './FoodAudits'
 
 const TABS = [
   { id:'iso9001', label:'ISO 9001' },
   { id:'nc', label:'No conformidades' },
   { id:'capa', label:'CAPA' },
   { id:'auditorias', label:'Auditorías' },
+  { id:'inocuidad', label:'Evolución inocuidad' },
   { id:'capacitaciones', label:'Capacitaciones' },
   { id:'microbiologia', label:'Microbiología' },
   { id:'aerolineas', label:'Aerolíneas' },
@@ -34,6 +36,7 @@ export default function CalidadHub({ onNavigate }) {
     : activeTab === 'auditorias' ? AuditoriasInternas
     : activeTab === 'capacitaciones' ? Capacitaciones
     : activeTab === 'microbiologia' ? Microbiologia
+    : activeTab === 'inocuidad' ? FoodAudits
     : activeTab === 'aerolineas' ? AirlinePerformance
     : activeTab === 'recursos' ? () => <BibliotecaRecursos categoria="Calidad e inocuidad" />
     : activeTab === 'indicadores' ? Indicadores
@@ -42,7 +45,7 @@ export default function CalidadHub({ onNavigate }) {
     : NoConformidades
 
   return (
-    <WorkspaceTabs title="Calidad" subtitle="Auditorías, no conformidades, acciones e indicadores" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} maxPrimaryTabs={7} rightSlot={<ContactosQuickBtn modulo="calidad" />}>
+    <WorkspaceTabs title="Calidad" subtitle="Auditorías, no conformidades, acciones e indicadores" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} maxPrimaryTabs={8} rightSlot={<ContactosQuickBtn modulo="calidad" />}>
       <ActiveView onNavigate={onNavigate} onOpenTab={setActiveTab} />
     </WorkspaceTabs>
   )

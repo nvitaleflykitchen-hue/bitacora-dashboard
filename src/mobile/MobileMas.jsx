@@ -17,6 +17,7 @@ const MobileEscalamientos = lazy(() => import('./MobileEscalamientos'))
 const MobileChecklist = lazy(() => import('./MobileChecklist'))
 const MobileRequerimientos = lazy(() => import('./MobileRequerimientos'))
 const MobileFlota = lazy(() => import('./MobileFlota'))
+const FoodAudits = lazy(() => import('../views/FoodAudits'))
 const AuditoriasInternas = lazy(() => import('../views/AuditoriasInternas'))
 const Capacitaciones = lazy(() => import('../views/Capacitaciones'))
 
@@ -26,6 +27,7 @@ const MODULES = [
   { key:'checklist', label:'Checklist', sub:'Controles operativos de la sede', icon:ClipboardList, view:'inicio' },
   { key:'compras', label:'Compras', sub:'Requerimientos y seguimiento', icon:ClipboardList, view:'requerimientos' },
   { key:'calidad', label:'Calidad', sub:'CAPA y no conformidades', icon:ClipboardList, view:'calidadHub' },
+  { key:'inocuidad', label:'Evolución inocuidad', sub:'Auditorías externas, informes y evolución', icon:BarChart3, view:'calidadHub' },
   { key:'auditorias', label:'Auditorías internas', sub:'Relevamiento, fotos y hallazgos', icon:ClipboardCheck, view:'calidadHub' },
   { key:'capacitaciones', label:'Capacitaciones', sub:'Asistencia, material y planillas firmadas', icon:Users, view:'calidadHub' },
   { key:'personal', label:'Personal', sub:'Equipo y Recursos Humanos', icon:Users, view:'equipo' },
@@ -129,6 +131,7 @@ export default function MobileMas({ initialModule = null, userId = null, focusCo
           <Suspense fallback={<div style={{ minHeight:160, display:'grid', placeItems:'center', color:'var(--text-dim)', fontSize:'.8rem' }}>Cargando módulo…</div>}>
           {mod.key === 'kiosco' && <Kiosco />}
           {mod.key === 'calidad' && <MobileCapa />}
+          {mod.key === 'inocuidad' && <FoodAudits onOpenTab={() => openModule('auditorias')} />}
           {mod.key === 'auditorias' && <AuditoriasInternas mobile />}
           {mod.key === 'capacitaciones' && <Capacitaciones mobile />}
           {mod.key === 'personal' && <MobilePersonal focusContext={focusContext} onCreateNovedad={onCreateNovedad} />}
