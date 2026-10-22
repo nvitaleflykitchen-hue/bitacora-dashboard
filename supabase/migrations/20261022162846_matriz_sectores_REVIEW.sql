@@ -98,7 +98,7 @@ begin
  cantidad:=jsonb_array_length(new.sectores_autorizados);
  if cantidad=0 then return new; end if;
  if not new.autorizacion_confirmada then raise exception 'Debe confirmar la autorización individual.'; end if;
- if exists(select 1 from jsonb_array_elements(new.sectores_autorizados) v where nullif(v->>'vigente_hasta','')::date < current_date or nullif(v->>'vigente_hasta','')::date > new.fecha_vencimiento) then raise exception 'El vencimiento del permiso debe estar entre hoy y el de la credencial.'; end if;
+ if exists(select 1 from jsonb_array_elements(new.sectores_autorizados) v where nullif(v->>'vigente_hasta','')::date < (now() at time zone 'America/Argentina/Buenos_Aires')::date or nullif(v->>'vigente_hasta','')::date > new.fecha_vencimiento) then raise exception 'El vencimiento del permiso debe estar entre hoy y el de la credencial.'; end if;
  select coalesce(jsonb_agg(jsonb_build_object('id',s.id,'sede_id',s.sede_id,'sede_nombre',d.nombre,'codigo',s.codigo,'nombre',s.nombre,'zra',s.zra,'numero',s.numero,'simbolo',s.simbolo,'grupo',s.grupo,'color',s.color,'tipo',s.tipo,'vigente_hasta',nullif(v->>'vigente_hasta','')) order by s.sede_id,s.numero nulls last,s.codigo),'[]'::jsonb)
  into esperado from jsonb_array_elements(new.sectores_autorizados) v join equipo.credencial_sectores s on s.id=(v->>'id')::uuid join bitacora.sedes d on d.id=s.sede_id
  where s.activo and d.activa and (s.version_matriz=2 or s.codigo ~ '^[ABCDGHIJKLMZ]$')
@@ -175,7 +175,7 @@ AS $function$
     case when p.activo and c.estado='activa' and c.fecha_emision<=current_date and c.fecha_vencimiento>=current_date then
       coalesce((select jsonb_agg(v || jsonb_build_object('nombre',s.nombre,'zra',s.zra,'color',s.color) order by v->>'sede_nombre',v->>'codigo') from jsonb_array_elements(c.sectores_autorizados) v
         join equipo.credencial_sectores s on s.id=(v->>'id')::uuid and s.activo
-        join bitacora.sedes d on d.id=s.sede_id and d.activa where nullif(v->>'vigente_hasta','') is null or (v->>'vigente_hasta')::date>=current_date),'[]'::jsonb)
+        join bitacora.sedes d on d.id=s.sede_id and d.activa where nullif(v->>'vigente_hasta','') is null or (v->>'vigente_hasta')::date>=(now() at time zone 'America/Argentina/Buenos_Aires')::date),'[]'::jsonb)
     else '[]'::jsonb end
   from equipo.credenciales_personal c join equipo.personas p on p.id=c.persona_id where c.token=p_token limit 1;
 $function$;

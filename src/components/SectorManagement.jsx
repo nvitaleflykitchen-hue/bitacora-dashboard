@@ -1,3 +1,4 @@
+import { groupCredentialSectors } from '../lib/credentialAccess'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
@@ -62,7 +63,7 @@ export default function SectorManagement({ sedes = [], personas = [] }) {
       setEdit(null); setReload(v => v+1)
     } catch (e) { setError(mensajeError(e)) } finally { setBusy(false) }
   }
-  if (!manager) return <section className="space-y-4"><h2 className="text-xl font-bold">Mis sectores autorizados</h2>{error && <p role="alert">{error}</p>}{busy && <p>Cargando…</p>}{own && <><p>Credencial: {own.estado || 'Sin emitir'} · Vence: {own.fecha_vencimiento || '—'}</p><SectorMatrix sectors={own.sectores_autorizados || []}/>{!own.sectores_autorizados?.length && <p>No hay accesos vigentes.</p>}{own.sectores_autorizados?.filter(s=>s.tipo==='condicion'||s.codigo==='Z').map(s=><p key={s.id}>{s.sede_nombre}: acceso total {s.vigente_hasta?`hasta ${s.vigente_hasta}`:''}</p>)}</>}</section>
+  if (!manager) return <section className="space-y-4"><h2 className="text-xl font-bold">Mis sectores autorizados</h2>{error && <p role="alert">{error}</p>}{busy && <p>Cargando…</p>}{own && <><p>Credencial: {own.estado || 'Sin emitir'} · Vence: {own.fecha_vencimiento || '—'}</p>{groupCredentialSectors(own.sectores_autorizados || []).map(g=><section key={g.sedeId}><h3 className="font-bold">{g.nombre}</h3><SectorMatrix sectors={g.sectores}/></section>)}{!own.sectores_autorizados?.length && <p>No hay accesos vigentes.</p>}{own.sectores_autorizados?.filter(s=>s.tipo==='condicion'||s.codigo==='Z').map(s=><p key={s.id}>{s.sede_nombre}: acceso total {s.vigente_hasta?`hasta ${s.vigente_hasta}`:''}</p>)}</>}</section>
   return <section className="space-y-4">
     <h2 className="text-xl font-bold">Sectores y accesos</h2>
     <p>El color identifica el grupo funcional. Cada sector requiere autorización individual.</p>
