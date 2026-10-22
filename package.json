@@ -7,15 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:mcp",
     "test:watch": "vitest",
     "check": "npm run lint && npm run test && npm run build",
     "predeploy:check": "node scripts/predeploy-check.mjs",
     "deploy:prod": "npm run predeploy:check && npm run check && npx vercel --prod --yes",
     "preview": "vite preview",
-    "postinstall": "node scripts/postinstall.cjs"
+    "postinstall": "node scripts/postinstall.cjs",
+    "mcp:dev": "node --env-file=.env.mcp.local scripts/mcp-local.mjs",
+    "mcp:smoke": "node --env-file=.env.mcp.local scripts/mcp-smoke.mjs",
+    "test:mcp": "node --test tests/mcp.test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@supabase/supabase-js": "^2.45.0",
     "@xyflow/react": "12.11.2",
     "@zxing/browser": "0.2.1",
@@ -33,7 +37,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^3.8.1",
-    "xlsx": "0.18.5"
+    "xlsx": "0.18.5",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

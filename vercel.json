@@ -3,9 +3,19 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "functions": { "api/product-resolver.js": { "maxDuration": 60 } },
+  "functions": {
+    "api/product-resolver.js": {
+      "maxDuration": 60
+    },
+    "api/mcp.js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
