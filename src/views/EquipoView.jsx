@@ -1,3 +1,5 @@
+import SectorManagement from '../components/SectorManagement'
+import { canManageSectorAccess } from '../lib/sectorMatrix'
 import Correos from '../views/Correos'
 import { useFormAccess } from '../lib/useFormAccess'
 import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
@@ -125,7 +127,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
   const { can, perfil, user } = useAuth();
   const canManage = can("equipo", "manage");
   const canDelete = canDeletePerson(user?.id);
-  const canManageCredentials = perfil?.rol === "admin";
+  const canManageCredentials = canManageSectorAccess(perfil);
   const [showCredential, setShowCredential] = useState(false);
   const canRequestAnulacion = ["admin", "editor", "grupo", "encargado"].includes(
     perfil?.rol,
@@ -3366,7 +3368,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
   const periodosPrueba = personalStaff.map(persona=>({persona,periodo:estadoPeriodoPrueba(persona)})).filter(({periodo})=>periodo && periodo.diasRestantes>=0 && periodo.diasRestantes<=PERIODO_PRUEBA_DIAS).sort((a,b)=>a.periodo.diasRestantes-b.periodo.diasRestantes);
   const primaryTabs = [
-    ["lista", "LISTA"], ...(formsAllowed ? [["permisos", "FORMULARIOS Y PERMISOS"]] : []), ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
+    ["sectores", "SECTORES Y ACCESOS"], ["lista", "LISTA"], ...(formsAllowed ? [["permisos", "FORMULARIOS Y PERMISOS"]] : []), ["analisis", "ANÁLISIS"], ["recursos", "RECURSOS"],
     ["horarios", "HORARIOS"], ["organigrama", "ORGANIGRAMA"], ["vacaciones", "VACACIONES"],
     ["uniformes-epp", "UNIFORMES Y EPP"],
   ].filter(([id]) => !isQualityOnly || ["lista", "analisis", "recursos"].includes(id))
@@ -3618,7 +3620,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        {tab === "permisos" ? (<Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos onOpenSection={setTab}/></Suspense>
+        {tab === "sectores" ? (<SectorManagement sedes={sedes} personas={personas}/>) : tab === "permisos" ? (<Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos onOpenSection={setTab}/></Suspense>
         ) : tab === "contactos" ? (
           <ContactosTab modulo="rrhh" />
         ) : tab === "uniformes-epp" ? (

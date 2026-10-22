@@ -1,3 +1,4 @@
+import { sectorCode } from '../lib/sectorMatrix'
 import { useEffect, useState } from 'react'
 import { ShieldCheck, ShieldX, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -34,7 +35,7 @@ export default function CredencialVerificacion({ token }) {
         <h2 style={{ margin:'24px 0 6px', fontSize:22, color:'#111' }}>{data.nombre}</h2><p style={{ margin:4, color:'#333' }}>{data.puesto}</p><p style={{ fontWeight:700, color:'#111' }}>{data.empresa}</p>
         <p style={{ marginTop:24, color:'#666' }}>Vigente hasta {format(new Date(`${data.fecha_vencimiento}T12:00:00`),'dd/MM/yyyy')}</p>
         <p style={{fontWeight:700,color:resolveCredentialArea({},data).color}}>{resolveCredentialArea({},data).code} · {resolveCredentialArea({},data).label}</p>
-        {valida&&<section style={{textAlign:'left',marginTop:20}}><h3>Sectores autorizados</h3>{groupCredentialSectors(data.sectores_autorizados).map(g=><div key={g.sedeId} style={{borderTop:'1px solid #ddd',paddingTop:12,marginTop:12}}><strong>{g.nombre}</strong><ul style={{paddingLeft:18}}>{g.sectores.map(s=><li key={s.id} style={{marginTop:8}}><b style={{color:s.zra?'#B91C1C':undefined}}>{s.codigo}</b> · {s.nombre}{s.zra&&<b style={{color:'#B91C1C'}}> · ZRA</b>}</li>)}</ul></div>)}{!data.sectores_autorizados?.length&&<p>Sin sectores autorizados.</p>}<p style={{fontSize:12,color:'#666'}}>Z: acceso total a los sectores de la sede, incluido ZRA. ZRA: clasificación interna Fly Kitchen. No reemplaza habilitaciones PSA ni acciona accesos físicos.</p></section>}
+        {valida&&<section style={{textAlign:'left',marginTop:20}}><h3>Sectores autorizados</h3>{groupCredentialSectors(data.sectores_autorizados).map(g=><div key={g.sedeId} style={{borderTop:'1px solid #ddd',paddingTop:12,marginTop:12}}><strong>{g.nombre}</strong><ul style={{paddingLeft:18}}>{g.sectores.map(s=><li key={s.id} style={{marginTop:8}}><b style={{color:s.zra?'#B91C1C':undefined}}>{sectorCode(s)}</b> · {s.nombre}{s.vigente_hasta && <span> · Hasta {s.vigente_hasta}</span>}{s.zra&&<b style={{color:'#B91C1C'}}> · Acceso restringido</b>}</li>)}</ul></div>)}{!data.sectores_autorizados?.length&&<p>Sin sectores autorizados.</p>}<p style={{fontSize:12,color:'#666'}}>Acceso total es una condición especial por sede. Los grupos no otorgan autorizaciones. No reemplaza habilitaciones PSA ni acciona accesos físicos.</p></section>}
         {valida && (data.telefono || data.email) && <button onClick={descargarContacto} style={{marginTop:12,border:0,borderRadius:10,padding:'12px 18px',background:'#eb6600',color:'#fff',fontWeight:700,cursor:'pointer'}}>Guardar contacto</button>}
       </>}
     </main>

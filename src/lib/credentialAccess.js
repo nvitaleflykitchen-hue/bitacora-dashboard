@@ -1,3 +1,4 @@
+import { isTotalAccess } from './sectorMatrix'
 // Los códigos sólo tienen significado dentro de su sede. Nunca inferir accesos del área.
 export const CREDENTIAL_SECTOR_SITE_IDS = [21,24]
 export const CREDENTIAL_SECTOR_CODES = ['A','B','C','D','G','H','I','J','K','L','M','Z']
@@ -9,7 +10,7 @@ export function toggleCredentialSector(catalog, ids, id) {
   if (!sector) return ids
   return [...ids.filter(value=>{
     const current = catalog.find(item=>item.id===value)
-    return !current || Number(current.sede_id)!==Number(sector.sede_id) || (sector.codigo!=='Z' && current.codigo!=='Z')
+    return !current || Number(current.sede_id)!==Number(sector.sede_id) || (!isTotalAccess(sector) && !isTotalAccess(current))
   }),id]
 }
 export const credentialSectorSites = persona => (persona.sede_ids || []).map(Number).filter(id=>CREDENTIAL_SECTOR_SITE_IDS.includes(id))

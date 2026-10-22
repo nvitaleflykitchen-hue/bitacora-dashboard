@@ -1,9 +1,10 @@
+import { credentialTileLayout, sectorCode, sectorPermissionValid, isTotalAccess } from './sectorMatrix'
 import QRCode from 'qrcode'
 import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
 import { supabase } from './supabase'
 import { getPersonaFotoDataUrl } from './personaFotos'
-import { CREDENTIAL_SECTOR_CODES, credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors } from './credentialAccess'
+import { credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors } from './credentialAccess'
 import { credentialPresentation, resolveCredentialArea, hexToRgb } from './credentialAreas'
 
 export const fechaVencimientoCredencial = (fecha = new Date()) => format(addYears(fecha, 2), 'yyyy-MM-dd')
@@ -37,17 +38,17 @@ export async function registerCredentialHistoryObservation(token, description) {
 
 export async function getSectoresCredencial() {
   const { data, error } = await supabase.schema('equipo').from('credencial_sectores')
-    .select('id,sede_id,codigo,nombre,clasificacion,zra').eq('activo',true).in('codigo',CREDENTIAL_SECTOR_CODES).order('codigo')
+    .select('*').eq('activo',true).order('codigo')
   if (error) throw error
-  return data || []
+  return (data || []).filter(s => s.version_matriz === 2 || /^[ABCDGHIJKLMZ]$/.test(s.codigo))
 }
 
-export async function emitirCredencial({ persona, sedeNombre, anterior = null, area, sectorIds = [], autorizacionConfirmada = false, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
+export async function emitirCredencial({ persona, sedeNombre, anterior = null, area, sectorIds = [], sectorVigencias = {}, autorizacionConfirmada = false, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
   if (!autorizacionConfirmada) throw new Error('Confirmá la autorización individual antes de emitir.')
   const { data, error } = await supabase.rpc('emitir_credencial_multisede', {
     p_persona_id:persona.id, p_anterior_id:anterior?.id || null, p_sector_ids:sectorIds,
     p_datos:{ area:area || resolveCredentialArea(persona).key, sede_nombre:sedeNombre,
-      autorizacion_confirmada:autorizacionConfirmada, compartir_telefono:compartirTelefono, compartir_email:compartirEmail,
+      sector_vigencias:sectorVigencias, autorizacion_confirmada:autorizacionConfirmada, compartir_telefono:compartirTelefono, compartir_email:compartirEmail,
       grupo_sanguineo:grupoSanguineo || null, foto_pos_x:fotoX, foto_pos_y:fotoY, foto_zoom:fotoZoom },
   }).single()
   if (error) throw error
@@ -109,6 +110,8 @@ export async function prepareCredentialPrint(persona, credencial, logo) {
   if (!vigente || vigente.id !== credencial?.id) throw new Error('La credencial cambió. Cerrá y volvé a abrir la ficha antes de descargar.')
   if (hasIncompatibleCredentialSectors(persona,vigente)) throw new Error('La credencial contiene sectores de otra sede. Abrí la ficha y reemití antes de imprimir.')
   if (!credentialIsValid(vigente)) throw new Error('Sólo se pueden descargar credenciales vigentes.')
+  const catalog = await getSectoresCredencial()
+  vigente.sectores_autorizados = (vigente.sectores_autorizados || []).filter(s => catalog.some(c => c.id === s.id) && sectorPermissionValid(s)).map(s => ({...s,...catalog.find(c => c.id === s.id),vigente_hasta:s.vigente_hasta}))
   const [foto, qr] = await Promise.all([
     persona.foto_url ? getPersonaFotoDataUrl(persona.foto_url) : Promise.resolve(null),
     QRCode.toDataURL(urlValidacionCredencial(vigente.token), { width:700, margin:1, errorCorrectionLevel:'H' }),
@@ -185,16 +188,21 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
 
   if (credentialSectorSites(persona).length) {
   pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(6))
-  pdf.text('ACCESOS INTERNOS · ROJO: ZRA · Z: TOTAL', mx(12), my(358))
+  pdf.text('SECTORES AUTORIZADOS · R: RESTRINGIDO · VALIDAR QR', mx(12), my(350))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')
   if (!group.sectores.length) fitCredentialText(pdf,'SIN SECTORES AUTORIZADOS',mx(12),my(376),mx(246),1,ptFromPx(12))
   else {
-    const gap=3,width=Math.min(28,(246-gap*(group.sectores.length-1))/group.sectores.length)
+    const { columns, rows, width } = credentialTileLayout(group.sectores.length)
+    const height = Math.min(23, 30 / rows)
     group.sectores.forEach((sector,index)=>{
-      const x=mx(12+index*(width+gap))
-      pdf.setFillColor(...(sector.zra?[185,28,28]:[23,32,51]));pdf.roundedRect(x,my(360),mx(width),my(23),.6,.6,'F')
-      pdf.setTextColor(255);pdf.setFontSize(ptFromPx(Math.min(16,width*.6)))
-      pdf.text(sector.codigo,x+mx(width)/2,my(371.5),{align:'center',baseline:'middle'})
+      const x=mx(12+(index%columns)*(width+3)), y=my(353+Math.floor(index/columns)*height)
+      pdf.setFillColor(...hexToRgb(sector.color || (sector.zra?'#991B1B':'#172033')))
+      pdf.roundedRect(x,y,mx(width),my(height-1),.5,.5,'F')
+      pdf.setTextColor(255)
+      const text = `${isTotalAccess(sector)?'TOTAL':sectorCode(sector)}${sector.zra?' R':''}`
+      pdf.setFontSize(ptFromPx(Math.min(10,height-2)))
+      while(pdf.getTextWidth(text)>mx(width-2) && pdf.getFontSize()>3) pdf.setFontSize(pdf.getFontSize()-.25)
+      pdf.text(text,x+mx(width)/2,y+my(height-1)/2,{align:'center',baseline:'middle'})
     })
   }
 
