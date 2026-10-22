@@ -579,3 +579,8 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: consulta de solo lectura del registro 4323 y vehiculo_novedades en el proyecto autorizado; categorías A–H vacías, novedad vinculada existente.
 - Corrección: consulta por registro_id y componente compartido en detalle desktop/mobile, turno anterior y ficha de sede; estados de carga, error y reintento, descartando respuestas de reportes anteriores.
 - Recomendación: mantener las novedades vinculadas visibles independientemente de las categorías generales. Pruebas de regresión sin escrituras en producción.
+
+### 2026-10-22 — Validación de sede en el servidor de credenciales (pendiente)
+- **Severidad:** media; amplía el hallazgo de sectores de otra sede del 2026-10-15.
+- **Verificación:** inspección de solo lectura de validar_sectores_credencial y emitir_credencial_multisede en producción: comprueban catálogo activo y rol, pero no relacionan sede del sector con persona.sede_ids. El frontend lo limita, pero la llamada directa de un emisor puede omitir esa protección.
+- **Recomendación preparada:** la migración 20261022162846_matriz_sectores_REVIEW.sql exige sede asignada en el trigger y ámbito completo para gestores delegados. Verificada en Postgres aislado; pendiente de autorización y aplicación en producción. No considerar corregido solo por el cambio de frontend.

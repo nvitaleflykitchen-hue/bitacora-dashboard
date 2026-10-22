@@ -1,3 +1,5 @@
+import SectorManagement from '../components/SectorManagement'
+import { canManageSectorAccess } from '../lib/sectorMatrix'
 import Correos from '../views/Correos'
 import CredencialPersonalModal from '../components/CredencialPersonalModal'
 import { useFormAccess } from '../lib/useFormAccess'
@@ -484,8 +486,8 @@ function PersonaFicha({ sedes, personaId, canManage, canDelete, onBack, onCreate
           </div>
         </div>
         {canManage && <PersonaFotoEditor persona={persona} compact showAvatar={false} onChanged={load} />}
-        {perfil?.rol==='admin' && <button className="btn-ghost" style={{minHeight:44,marginTop:8}} onClick={()=>setShowCredential(true)}>Accesos y credencial</button>}
-        {showCredential && perfil?.rol==='admin' && <CredencialPersonalModal persona={persona} sedes={sedes} onClose={()=>setShowCredential(false)}/>}
+        {canManageSectorAccess(perfil) && <button className="btn-ghost" style={{minHeight:44,marginTop:8}} onClick={()=>setShowCredential(true)}>Accesos y credencial</button>}
+        {showCredential && canManageSectorAccess(perfil) && <CredencialPersonalModal persona={persona} sedes={sedes} onClose={()=>setShowCredential(false)}/>}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && <button className="btn-primary" style={{ minHeight:44 }} onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnModule:'personal' })}>+ Novedad</button>}
           {formsAllowed && <button className="btn-ghost" onClick={()=>setTab('permisos')}><FileText size={14}/> Generar formulario</button>}
@@ -739,6 +741,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
           </button>}
           {!isQualityOnly && <button onClick={() => setView('vacaciones')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'vacaciones' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'vacaciones' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Vacaciones</button>}
         </div>
+        <button className="btn-ghost" onClick={()=>setView('sectores')}>Sectores y accesos</button>
         {formsAllowed && !isQualityOnly && <button className="btn-ghost" onClick={()=>setView('permisos')}><FileText size={14}/> Formularios y permisos</button>}
         {view === 'lista' && (
           <>
@@ -759,7 +762,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
       </div>
 
       <div className="mobile-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 1rem 1rem', minHeight: 0 }}>
-        {view === 'permisos' ? (<Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos onOpenSection={setView}/></Suspense>) : loading ? (
+        {view === 'sectores' ? (<SectorManagement sedes={sedes} personas={personas}/>) : view === 'permisos' ? (<Suspense fallback={<p>Cargando formularios…</p>}><FormulariosPermisos onOpenSection={setView}/></Suspense>) : loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
             <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--phosphor)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
           </div>

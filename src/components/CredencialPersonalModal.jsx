@@ -1,3 +1,5 @@
+import SectorMatrix from './SectorMatrix'
+import { canManageSectorAccess, sectorCode, isTotalAccess, credentialTileLayout, localDay } from '../lib/sectorMatrix'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { X } from 'lucide-react'
@@ -27,10 +29,11 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   const [qr,setQr] = useState(null)
   const [area,setArea] = useState(resolveCredentialArea(persona).key)
   const [sectorIds,setSectorIds] = useState([])
+  const [sectorVigencias,setSectorVigencias] = useState({})
   const [autorizacion,setAutorizacion] = useState(false)
   const [previewSede,setPreviewSede] = useState('')
   const [draft,setDraft] = useState(defaults)
-  const admin = perfil?.rol === 'admin' && perfil?.activo !== false
+  const admin = canManageSectorAccess(perfil) && perfil?.activo !== false
   const set = (key,value) => setDraft(previous => ({...previous,[key]:value}))
 
   useEffect(() => {
@@ -39,6 +42,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
     Promise.all([getCredencialPersona(persona.id),getSectoresCredencial()]).then(([value,sectors]) => {
       if (cancelled) return
       setCredencial(value); setCatalog(sectors)
+      setSectorVigencias(Object.fromEntries((value?.sectores_autorizados || []).map(s => [s.id,s.vigente_hasta || ''])))
       setArea(resolveCredentialArea(persona,value).key)
       setSectorIds((value?.sectores_autorizados || []).map(s=>s.id))
       setDraft({ compartirTelefono:!!value?.compartir_telefono, compartirEmail:!!value?.compartir_email,
@@ -74,7 +78,8 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   const preview = groups.find(g=>g.sedeId===previewSede) || groups[0] || {nombre:fallbackSede,sectores:[],showSectors:usesSectors}
   const presentation = credentialPresentation(persona,{...credencial,area_impresa:area})
   const originalIds = (credencial?.sectores_autorizados || []).map(s=>s.id).sort().join(',')
-  const accessDirty = area!==resolveCredentialArea(persona,credencial).key || [...sectorIds].sort().join(',')!==originalIds
+  const expiryDirty = selected.some(s => (sectorVigencias[s.id] || '') !== (credencial?.sectores_autorizados?.find(v => v.id === s.id)?.vigente_hasta || ''))
+  const accessDirty = expiryDirty || area!==resolveCredentialArea(persona,credencial).key || [...sectorIds].sort().join(',')!==originalIds
   const settingsDirty = !!credencial && (draft.grupo!==(credencial.grupo_sanguineo || '') || draft.compartirTelefono!==!!credencial.compartir_telefono || draft.compartirEmail!==!!credencial.compartir_email || draft.fotoX!==Number(credencial.foto_pos_x??50) || draft.fotoY!==Number(credencial.foto_pos_y??50) || draft.fotoZoom!==Number(credencial.foto_zoom??1))
   const valid = credentialIsValid(credencial)
   const estado = credencial ? (credencial.estado==='activa'&&!valid?'vencida':credencial.estado) : 'sin emitir'
@@ -83,7 +88,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   const emitir = async () => {
     if (!(await confirmar({titulo:'Emitir credencial',mensaje:`Se emitirán ${selected.length} sectores en ${groups.length} sedes para esta persona.${credencial?' La credencial anterior quedará invalidada.':''}`,confirmText:'Confirmar emisión'}))) return
     await run(async()=>{
-      const value=await emitirCredencial({persona,sedeNombre:fallbackSede,anterior:credencial,area,sectorIds:selected.map(s=>s.id),autorizacionConfirmada:autorizacion,...draft,grupoSanguineo:draft.grupo})
+      const value=await emitirCredencial({persona,sedeNombre:fallbackSede,anterior:credencial,area,sectorVigencias,sectorIds:selected.map(s=>s.id),autorizacionConfirmada:autorizacion,...draft,grupoSanguineo:draft.grupo})
       setCredencial(value);setSectorIds((value.sectores_autorizados||[]).map(s=>s.id));setAutorizacion(false);toast.ok('Credencial emitida por dos años.')
     })
   }
@@ -107,10 +112,14 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
         {usesSectors&&<details className="glass rounded p-4 mb-3">
           <summary className="font-metric text-xs" style={{cursor:'pointer',color:'var(--text-dim)'}}>SECTORES AUTORIZADOS POR SEDE · {selected.length} seleccionados en {groups.length} sedes</summary>
           <div style={{marginTop:12}}>
-          <p style={hint}>Accesos internos Fly Kitchen. Z incluye todos los sectores de esta sede, también ZRA. D incluye cámaras y trolleys.</p>
-          {groupCredentialSectors(available).map(g=><div key={g.sedeId} style={{marginTop:14}}><strong style={{fontSize:12}}>{g.nombre}</strong>{g.sectores.map(s=><label key={s.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:8,fontSize:12}}><input type="checkbox" checked={sectorIds.includes(s.id)} onChange={()=>toggle(s.id)}/><span><b>{s.codigo}</b> · {s.nombre}{s.zra&&<b style={{color:'#ef4444'}}> · ZRA</b>}</span></label>)}</div>)}
+          <p style={hint}>Cada sector requiere autorización individual. El grupo y su color no otorgan acceso. Acceso total es una condición especial de la sede.</p>
+          {groupCredentialSectors(available).map(g=><div key={g.sedeId} style={{marginTop:14}}><strong>{g.nombre}</strong>
+            <SectorMatrix sectors={g.sectores} selectedIds={sectorIds} onSelect={s=>toggle(s.id)}/>
+            {g.sectores.filter(isTotalAccess).map(s=><label key={s.id} style={{display:'block',marginTop:12}}><input type="checkbox" checked={sectorIds.includes(s.id)} onChange={()=>toggle(s.id)}/> Acceso total a esta sede (incluye restringidos)</label>)}
+          </div>)}
+          {selected.map(s=><label key={s.id} style={{display:'block',marginTop:8}}>Vigencia de {sectorCode(s)} · {s.nombre}<input type="date" className="input-dark w-full" min={localDay()} max={fechaVencimientoCredencial()} value={sectorVigencias[s.id] || ''} onChange={e=>{setSectorVigencias(v=>({...v,[s.id]:e.target.value}));setAutorizacion(false)}}/><span style={hint}>Vacío: hasta el vencimiento de la credencial.</span></label>)}
           {!available.length&&<p>No hay sectores configurados para las sedes disponibles.</p>}
-          {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores del catálogo anterior o no disponibles. Para usar las letras, retiralos y seleccioná los accesos antes de reemitir. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
+          {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores del catálogo anterior o no disponibles. Para usar la matriz actual, retiralos y seleccioná los accesos antes de reemitir. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
           <p style={{...hint,marginTop:12}}>{selected.length} sectores en {groups.length} sedes. Cambiar accesos requiere reemitir.</p>
           </div>
         </details>}
@@ -140,7 +149,7 @@ export function CredentialPreview({persona,presentation,preview,draft,foto,qr,ve
         <b style={{fontSize:presentation.jobTitle.length>75?7:9,color:'#d75b00',lineHeight:1.1}}>{presentation.jobTitle}</b>
         <div style={{display:'flex',gap:5,justifyContent:'space-between',marginTop:'auto',fontSize:8}}><span>{preview.nombre.toUpperCase()}</span><b>{draft.grupo}</b></div>
       </div>
-      <div style={{visibility:preview.showSectors===false?'hidden':'visible',height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6.5,color:'#555'}}>ACCESOS INTERNOS · ROJO: ZRA · Z: TOTAL</div><div style={{display:'flex',gap:3,marginTop:2}}>{preview.sectores.length?preview.sectores.map(sector=><span key={sector.id} title={sector.zra?'Zona restringida aeroportuaria':'Sector autorizado'} style={{background:sector.zra?'#B91C1C':'#172033',color:'#fff',borderRadius:3,minWidth:0,flex:'0 1 28px',height:23,display:'grid',placeItems:'center',fontWeight:900,fontSize:16,lineHeight:1}}>{sector.codigo}</span>):<strong style={{fontSize:9}}>SIN SECTORES AUTORIZADOS</strong>}</div></div>
+      <div style={{visibility:preview.showSectors===false?'hidden':'visible',height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6,color:'#555'}}>SECTORES AUTORIZADOS · R: RESTRINGIDO · VALIDAR QR</div><div style={{display:'grid',gridTemplateColumns:`repeat(${credentialTileLayout(preview.sectores.length).columns},1fr)`,gap:1,marginTop:1,height:27}}>{preview.sectores.length?preview.sectores.map(sector=><span key={sector.id} title={sector.nombre} style={{background:sector.color || (sector.zra?'#991B1B':'#172033'),color:'#fff',borderRadius:2,minWidth:0,height:'100%',display:'grid',placeItems:'center',fontWeight:900,fontSize:Math.min(10,22/credentialTileLayout(preview.sectores.length).rows),lineHeight:1}}>{isTotalAccess(sector)?'TOTAL':sectorCode(sector)}{sector.zra?' R':''}</span>):<strong style={{fontSize:9,gridColumn:'1/-1'}}>SIN SECTORES AUTORIZADOS</strong>}</div></div>
       <div style={expiry}>VENCE {dateLabel(vencimiento)}</div>
     </div>
     <div style={card}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:50,objectFit:'contain',margin:'12px auto 8px'}}/>{qr?<img src={qr} alt="QR de validación de la credencial emitida" style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174,display:'grid',placeItems:'center',fontSize:12,textAlign:'center',padding:20}}>El QR estará disponible<br/>al emitir la credencial.</div>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:9,fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:12,fontSize:9,lineHeight:1.6}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>

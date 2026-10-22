@@ -106,12 +106,13 @@ export function AuthProvider({ children }) {
           .from('perfil_permisos')
           .select('modulo, accion, activo')
           .eq('perfil_id', authUser.id)
-          .in('modulo', ['compras', 'mantenimiento']),
+          .in('modulo', ['compras', 'mantenimiento', 'personal']),
         'Carga de permisos de módulos',
       )
       if (permisosError) throw permisosError
       data = {
         ...data,
+        sectores_permisos: (permisos || []).filter(p => p.activo && p.modulo === 'personal').map(p => p.accion),
         compras_permisos: (permisos || [])
           .filter(p => p.activo && p.modulo === 'compras')
           .map(p => p.accion)
@@ -123,7 +124,7 @@ export function AuthProvider({ children }) {
       }
     } catch (permisosError) {
       console.warn('[auth] no se pudieron cargar permisos de módulos', permisosError)
-      data = { ...data, compras_permisos: [], mantenimiento_permisos: [] }
+      data = { ...data, compras_permisos: [], mantenimiento_permisos: [], sectores_permisos: [] }
     }
 
     try {
