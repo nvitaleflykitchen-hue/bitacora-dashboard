@@ -1,4 +1,5 @@
--- PROPUESTA PENDIENTE DE APROBACIÓN. Solo proyecto mixyhfdlzjarvszinytk.
+-- Aprobado por el usuario y aplicado el 2026-10-23 en mixyhfdlzjarvszinytk.
+-- Referencia histórica: no volver a ejecutar sobre ese proyecto.
 -- Estado OAuth independiente: no modifica tablas de negocio ni sus políticas.
 begin;
 create table bitacora.mcp_oauth_clients (
