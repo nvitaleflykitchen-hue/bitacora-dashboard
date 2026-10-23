@@ -1,4 +1,4 @@
-const CACHE_VERSION='fly-gestion-shell-v3'
+const CACHE_VERSION='fly-gestion-shell-v4'
 const CORE=['/','/index.html','/manifest.webmanifest','/favicon.svg']
 
 async function cacheAppShell(){
@@ -26,6 +26,8 @@ self.addEventListener('fetch',event=>{
   if(request.method!=='GET')return
   const url=new URL(request.url)
   if(url.origin!==self.location.origin)return
+  // Authorization and API responses must never replace the offline app shell.
+  if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/.well-known/')||['/authorize','/token','/register','/revoke','/mcp/connect'].includes(url.pathname))return
   if(request.mode==='navigate'){
     event.respondWith(
       fetch(request,{cache:'no-store'})

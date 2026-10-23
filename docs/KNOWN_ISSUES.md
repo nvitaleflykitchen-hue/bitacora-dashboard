@@ -579,3 +579,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: consulta de solo lectura del registro 4323 y vehiculo_novedades en el proyecto autorizado; categorías A–H vacías, novedad vinculada existente.
 - Corrección: consulta por registro_id y componente compartido en detalle desktop/mobile, turno anterior y ficha de sede; estados de carga, error y reintento, descartando respuestas de reportes anteriores.
 - Recomendación: mantener las novedades vinculadas visibles independientemente de las categorías generales. Pruebas de regresión sin escrituras en producción.
+
+### Checklists: plantillas de limpieza incompatibles con el CHECK de tipo (2026-10-22)
+
+- **Severidad:** alta funcional para guardar las plantillas adicionales.
+- **Verificación:** inspección de solo lectura de constraints en el proyecto autorizado: `bitacora.checklists.tipo` acepta apertura/cierre. `src/data/checklistSedeTemplates.js` define además limpieza_diaria, limpieza_semanal y limpieza_quincenal para Libertad. No había envíos en la tabla al inspeccionarla.
+- **Efecto:** esos tipos adicionales no pueden persistirse bajo el constraint actual. No existe cronograma de envíos esperados para inferir omisiones.
+- **Recomendación:** alinear contrato de plantillas y esquema mediante una migración específica y pruebas de guardado. El endpoint MCP solo consulta apertura/cierre; la agrupación semanal no se presenta como cumplimiento de una plantilla semanal. No se modifica la base en esta tarea.
