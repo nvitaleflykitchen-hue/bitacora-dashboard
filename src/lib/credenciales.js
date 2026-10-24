@@ -1,3 +1,4 @@
+import { sectorColor, sectorShortName, sectorTileLayout } from './credentialCatalog'
 import QRCode from 'qrcode'
 import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
@@ -37,17 +38,17 @@ export async function registerCredentialHistoryObservation(token, description) {
 
 export async function getSectoresCredencial() {
   const { data, error } = await supabase.schema('equipo').from('credencial_sectores')
-    .select('id,sede_id,codigo,nombre,clasificacion,zra').eq('activo',true).in('codigo',CREDENTIAL_SECTOR_CODES).order('codigo')
+    .select('id,sede_id,codigo,nombre,clasificacion,zra,tipo,estado_fisico,habilitado_ingreso').eq('activo',true).in('codigo',CREDENTIAL_SECTOR_CODES).order('codigo')
   if (error) throw error
   return data || []
 }
 
-export async function emitirCredencial({ persona, sedeNombre, anterior = null, area, sectorIds = [], autorizacionConfirmada = false, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
+export async function emitirCredencial({ persona, sedeNombre, anterior = null, area, sectorIds = [], autorizacionResponsable = '', autorizacionMotivo = '', faVencimiento = '', autorizacionConfirmada = false, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
   if (!autorizacionConfirmada) throw new Error('Confirmá la autorización individual antes de emitir.')
   const { data, error } = await supabase.rpc('emitir_credencial_multisede', {
     p_persona_id:persona.id, p_anterior_id:anterior?.id || null, p_sector_ids:sectorIds,
     p_datos:{ area:area || resolveCredentialArea(persona).key, sede_nombre:sedeNombre,
-      autorizacion_confirmada:autorizacionConfirmada, compartir_telefono:compartirTelefono, compartir_email:compartirEmail,
+      autorizacion_confirmada:autorizacionConfirmada, autorizacion_responsable:autorizacionResponsable, autorizacion_motivo:autorizacionMotivo, fa_vencimiento:faVencimiento, compartir_telefono:compartirTelefono, compartir_email:compartirEmail,
       grupo_sanguineo:grupoSanguineo || null, foto_pos_x:fotoX, foto_pos_y:fotoY, foto_zoom:fotoZoom },
   }).single()
   if (error) throw error
@@ -109,11 +110,15 @@ export async function prepareCredentialPrint(persona, credencial, logo) {
   if (!vigente || vigente.id !== credencial?.id) throw new Error('La credencial cambió. Cerrá y volvé a abrir la ficha antes de descargar.')
   if (hasIncompatibleCredentialSectors(persona,vigente)) throw new Error('La credencial contiene sectores de otra sede. Abrí la ficha y reemití antes de imprimir.')
   if (!credentialIsValid(vigente)) throw new Error('Sólo se pueden descargar credenciales vigentes.')
+  if (vigente.sectores_autorizados?.length) {
+    const catalog = await getSectoresCredencial()
+    if (vigente.sectores_autorizados.some(s=>!catalog.some(c=>c.id===s.id))) throw new Error('La credencial contiene permisos del catálogo anterior. Reemití con la matriz vigente antes de imprimir.')
+  }
   const [foto, qr] = await Promise.all([
     persona.foto_url ? getPersonaFotoDataUrl(persona.foto_url) : Promise.resolve(null),
     QRCode.toDataURL(urlValidacionCredencial(vigente.token), { width:700, margin:1, errorCorrectionLevel:'H' }),
   ])
-  const fotoRecortada = foto ? await coverImageData(foto,450,360,vigente.foto_pos_x,vigente.foto_pos_y,vigente.foto_zoom) : null
+  const fotoRecortada = foto ? await coverImageData(foto,450,credentialSectorSites(persona).length?272:360,vigente.foto_pos_x,vigente.foto_pos_y,vigente.foto_zoom) : null
   return { persona, credencial:vigente, logo, fotoRecortada, qr }
 }
 
@@ -131,6 +136,7 @@ function fitCredentialText(pdf,text,x,y,width,maxLines,size) {
 export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecortada, group }) {
   const orange=[235,102,0],name=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
   const sede=group.nombre,presentation=credentialPresentation(persona,credencial)
+  const photoHeight=credentialSectorSites(persona).length?136:180
   const areaColor=hexToRgb(presentation.area.color)
   // ── FRENTE ──────────────────────────────────────────────────────────────────
   credentialBase(pdf)
@@ -139,7 +145,7 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
 
   // Foto y franja del departamento: misma geometría que la vista previa (225 × 180 px).
   const fotoW = mx(225), stripX = fotoW, stripW = CARD_W - fotoW
-  const fotoY = my(46), fotoH = my(180)
+  const fotoY = my(46), fotoH = my(photoHeight)
   pdf.setFillColor(...areaColor);pdf.rect(stripX, fotoY, stripW, fotoH, 'F')
   if (fotoRecortada) pdf.addImage(fotoRecortada,'JPEG',0,fotoY,fotoW,fotoH,undefined,'FAST')
   else { pdf.setFillColor(223,227,232);pdf.rect(0,fotoY,fotoW,fotoH,'F') }
@@ -151,7 +157,7 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
   letters.forEach((letter,i) => pdf.text(letter, stripX + stripW/2, lettersTop + letterLine*i + letterLine/2, { align:'center', baseline:'middle' }))
 
   // Bloque de datos: 121 px de alto, padding 7 px arriba, 12 px a los lados, 4 px abajo.
-  const infoTop = my(226), infoH = my(121), infoX = mx(12), infoW = mx(PREVIEW_W - 24)
+  const infoTop = my(46+photoHeight), infoH = my(121), infoX = mx(12), infoW = mx(PREVIEW_W - 24)
   const infoBottom = infoTop + infoH - my(4)
   pdf.setFillColor(250,250,250);pdf.rect(0,infoTop,CARD_W,infoH,'F')
   let cursor = infoTop + my(7)
@@ -185,16 +191,17 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
 
   if (credentialSectorSites(persona).length) {
   pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(6))
-  pdf.text('ACCESOS INTERNOS · ROJO: ZRA · Z: TOTAL', mx(12), my(358))
+  pdf.text('ACCESOS POR SEDE · VALIDAR QR ANTES DE INGRESAR', mx(12), my(309))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')
   if (!group.sectores.length) fitCredentialText(pdf,'SIN SECTORES AUTORIZADOS',mx(12),my(376),mx(246),1,ptFromPx(12))
   else {
-    const gap=3,width=Math.min(28,(246-gap*(group.sectores.length-1))/group.sectores.length)
+    const {columns,width,height}=sectorTileLayout(group.sectores.length)
     group.sectores.forEach((sector,index)=>{
-      const x=mx(12+index*(width+gap))
-      pdf.setFillColor(...(sector.zra?[185,28,28]:[23,32,51]));pdf.roundedRect(x,my(360),mx(width),my(23),.6,.6,'F')
-      pdf.setTextColor(255);pdf.setFontSize(ptFromPx(Math.min(16,width*.6)))
-      pdf.text(sector.codigo,x+mx(width)/2,my(371.5),{align:'center',baseline:'middle'})
+      const x=mx(12+(index%columns)*(width+3)), y=my(314+Math.floor(index/columns)*(height+3))
+      pdf.setFillColor(...hexToRgb(sectorColor(sector)));pdf.rect(x,y,mx(width),my(height),'F')
+      pdf.setTextColor(255);pdf.setFontSize(ptFromPx(Math.min(22,height*.55)))
+      pdf.text(sector.codigo,x+mx(width)/2,y+my(height*.34),{align:'center',baseline:'middle'})
+      fitCredentialText(pdf,sectorShortName(sector),x+mx(1),y+my(height*.77),mx(width-2),1,ptFromPx(Math.min(7,height*.20)))
     })
   }
 
@@ -203,7 +210,7 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
   const expiryTop = my(385), expiryH = my(43)
   pdf.setFillColor(...orange);pdf.rect(0,expiryTop,CARD_W,expiryH,'F')
   pdf.setTextColor(255);pdf.setFont('helvetica','bold');pdf.setFontSize(ptFromPx(18))
-  pdf.text(`VENCE  ${format(new Date(`${credencial.fecha_vencimiento}T12:00:00`),'dd·MM·yyyy')}`, CARD_W/2, expiryTop + expiryH/2, { align:'center', baseline:'middle' })
+  pdf.text(`VENCE  ${format(new Date(`${group.sectores.some(s=>s.codigo==='FA') ? (credencial.fa_vencimiento || credencial.fecha_vencimiento) : credencial.fecha_vencimiento}T12:00:00`),'dd·MM·yyyy')}`, CARD_W/2, expiryTop + expiryH/2, { align:'center', baseline:'middle' })
 
 }
 

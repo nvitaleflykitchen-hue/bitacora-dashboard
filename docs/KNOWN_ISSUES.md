@@ -1,5 +1,12 @@
 # KNOWN_ISSUES — bitacora-dashboard
 
+## Credenciales: pertenencia a sede y estado físico (2026-10-23, corrección preparada)
+
+- Severidad: ALTA. La emisión valida catálogo activo pero no contrasta la sede con `personas.sede_ids`; el QR tampoco retira accesos cuando la persona cambia de sede. El catálogo anterior no separa estado físico de autorización.
+- Verificación: lectura de `pg_get_functiondef` de emisión, trigger y QR en `mixyhfdlzjarvszinytk`. Sin escrituras en producción.
+- Corrección preparada: migración V1.1 comprueba pertenencia en emisión y QR, mantiene permisos y estado físico separados, excluye áreas fuera de servicio e incorpora auditoría privada. Probada con Postgres WASM aislado. Pendiente de aprobación y aplicación de SQL; no se afirma corregido en producción.
+
+
 ## Recreación de v_personas: pérdida de opciones de vista (corregido el 2026-09-29)
 
 - Severidad: ALTO. La primera ejecución de la migración de vínculo externo recreó `public.v_personas` sin preservar `security_invoker=true`.
