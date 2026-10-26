@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { getAutorizantesCredencial } from '../lib/credenciales'
 
 export default function CredencialAutorizanteSelect({ sedeIds, value, onChange }) {

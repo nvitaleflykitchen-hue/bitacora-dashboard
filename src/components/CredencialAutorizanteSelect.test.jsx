@@ -1,9 +1,11 @@
-import { render,screen,fireEvent,waitFor } from '@testing-library/react'
-import { beforeEach,it,expect,vi } from 'vitest'
+import React from 'react'
+import { render,screen,fireEvent,waitFor,cleanup } from '@testing-library/react'
+import { afterEach,beforeEach,it,expect,vi } from 'vitest'
 import CredencialAutorizanteSelect from './CredencialAutorizanteSelect'
 import { getAutorizantesCredencial } from '../lib/credenciales'
 vi.mock('../lib/credenciales',()=>({getAutorizantesCredencial:vi.fn()}))
 beforeEach(()=>vi.resetAllMocks())
+afterEach(cleanup)
 it('carga responsables de las sedes y requiere selección expresa',async()=>{
   getAutorizantesCredencial.mockResolvedValue([{id:'1',label:'Responsable de prueba · Jefa · Planta'}])
   const change=vi.fn()
