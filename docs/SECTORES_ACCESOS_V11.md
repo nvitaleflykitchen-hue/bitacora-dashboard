@@ -33,3 +33,7 @@ Orden de activación: aprobar SQL completo; aplicarlo únicamente en mixyhfdlzja
 - Verificación posterior del SQL: 188 credenciales conservadas; Planta 19 sectores (seis restringidos, 16 habilitados), Aeropuerto tres restringidos pendientes de habilitación; un permiso FA por sede sin asignación nominal automática. Auditoría con RLS y SELECT exclusivo de admin activo.
 - Ajuste solicitado el 26/10: FA es una ficha cuadrada de 48 px como una selección individual, sin estirarse al ancho de la banda; mismo cálculo para pantalla y PDF.
 - Escritorio y mobile reutilizan CredencialPersonalModal; QR público y generación A4 reutilizan la misma lógica. No cambia el acceso al sistema ni los roles de perfiles.
+
+### Ajuste de emisión (2026-10-26)
+La observación de autorización es opcional. Continúan obligatorios el responsable y la confirmación nominal. Para tarjetas con hasta cinco sectores la foto aumenta de 136 a 156 px, conservando CR80 y el tamaño de los permisos; preview y PDF comparten geometría.
+

@@ -22,3 +22,8 @@ export function sectorTileLayout(count) {
   const size = Math.min(48, (246-(columns-1)*3)/columns, (68-(rows-1)*3)/rows)
   return { columns, rows, width:size, height:size }
 }
+
+export function credentialFrontLayout(count, showSectors = true) {
+  const photoHeight = !showSectors ? 180 : count <= 5 ? 156 : 136
+  return { photoHeight, sectorsHeight: 218-photoHeight, sectorsTop: 167+photoHeight }
+}
