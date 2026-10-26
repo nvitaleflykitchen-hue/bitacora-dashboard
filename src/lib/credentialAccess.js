@@ -1,6 +1,7 @@
+import { PLANTA_SECTORS } from './credentialCatalog'
 // Los códigos sólo tienen significado dentro de su sede. Nunca inferir accesos del área.
 export const CREDENTIAL_SECTOR_SITE_IDS = [21,24]
-export const CREDENTIAL_SECTOR_CODES = ['A','B','C','D','G','H','I','J','K','L','M','Z']
+export const CREDENTIAL_SECTOR_CODES = [...PLANTA_SECTORS.map(s=>s[0]),'FA']
 
 // Z pertenece a una sede: nunca modifica las selecciones de las demás.
 export function toggleCredentialSector(catalog, ids, id) {
@@ -9,7 +10,7 @@ export function toggleCredentialSector(catalog, ids, id) {
   if (!sector) return ids
   return [...ids.filter(value=>{
     const current = catalog.find(item=>item.id===value)
-    return !current || Number(current.sede_id)!==Number(sector.sede_id) || (sector.codigo!=='Z' && current.codigo!=='Z')
+    return !current || Number(current.sede_id)!==Number(sector.sede_id) || (!['FA','Z'].includes(sector.codigo) && !['FA','Z'].includes(current.codigo))
   }),id]
 }
 export const credentialSectorSites = persona => (persona.sede_ids || []).map(Number).filter(id=>CREDENTIAL_SECTOR_SITE_IDS.includes(id))

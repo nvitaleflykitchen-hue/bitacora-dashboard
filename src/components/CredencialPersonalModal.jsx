@@ -1,3 +1,4 @@
+import { sectorColor, sectorShortName, sectorStateLabel, sectorTileLayout } from '../lib/credentialCatalog'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { X } from 'lucide-react'
@@ -12,7 +13,7 @@ import { confirmar, toast } from '../lib/feedback'
 
 const GRUPOS=['','A+','A-','B+','B-','AB+','AB-','O+','O-']
 const dateLabel = value => format(new Date(`${value}T12:00:00`),'dd/MM/yyyy')
-const defaults = { compartirTelefono:false, compartirEmail:false, grupo:'', fotoX:50, fotoY:50, fotoZoom:1 }
+const defaults = { compartirTelefono:false, compartirEmail:false, grupo:'', fotoX:50, fotoY:50, fotoZoom:1, autorizacionResponsable:'', autorizacionMotivo:'', faVencimiento:'' }
 
 export default function CredencialPersonalModal({ persona, sedes = [], onClose }) {
   const { perfil } = useAuth()
@@ -43,7 +44,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
       setSectorIds((value?.sectores_autorizados || []).map(s=>s.id))
       setDraft({ compartirTelefono:!!value?.compartir_telefono, compartirEmail:!!value?.compartir_email,
         grupo:value?.grupo_sanguineo || '', fotoX:Number(value?.foto_pos_x ?? 50),
-        fotoY:Number(value?.foto_pos_y ?? 50), fotoZoom:Number(value?.foto_zoom ?? 1) })
+        fotoY:Number(value?.foto_pos_y ?? 50), fotoZoom:Number(value?.foto_zoom ?? 1), autorizacionResponsable:value?.autorizacion_responsable || '', autorizacionMotivo:value?.autorizacion_motivo || '', faVencimiento:value?.fa_vencimiento || '' })
     }).catch(e => { if (!cancelled) setError(`No se pudo cargar la configuración de accesos. ${mensajeError(e)}`) })
       .finally(()=> { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -74,7 +75,10 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
   const preview = groups.find(g=>g.sedeId===previewSede) || groups[0] || {nombre:fallbackSede,sectores:[],showSectors:usesSectors}
   const presentation = credentialPresentation(persona,{...credencial,area_impresa:area})
   const originalIds = (credencial?.sectores_autorizados || []).map(s=>s.id).sort().join(',')
-  const accessDirty = area!==resolveCredentialArea(persona,credencial).key || [...sectorIds].sort().join(',')!==originalIds
+  const authorizationDirty = !!credencial && (draft.autorizacionResponsable!==(credencial.autorizacion_responsable||'') || draft.autorizacionMotivo!==(credencial.autorizacion_motivo||'') || draft.faVencimiento!==(credencial.fa_vencimiento||''))
+  const hasFA = selected.some(s=>s.codigo==='FA')
+  const authorizationReady = !selected.length || (draft.autorizacionResponsable.trim().length>=3 && draft.autorizacionMotivo.trim().length>=5 && (!hasFA || (draft.faVencimiento>=format(new Date(),'yyyy-MM-dd') && draft.faVencimiento<=fechaVencimientoCredencial())))
+  const accessDirty = authorizationDirty || area!==resolveCredentialArea(persona,credencial).key || [...sectorIds].sort().join(',')!==originalIds
   const settingsDirty = !!credencial && (draft.grupo!==(credencial.grupo_sanguineo || '') || draft.compartirTelefono!==!!credencial.compartir_telefono || draft.compartirEmail!==!!credencial.compartir_email || draft.fotoX!==Number(credencial.foto_pos_x??50) || draft.fotoY!==Number(credencial.foto_pos_y??50) || draft.fotoZoom!==Number(credencial.foto_zoom??1))
   const valid = credentialIsValid(credencial)
   const estado = credencial ? (credencial.estado==='activa'&&!valid?'vencida':credencial.estado) : 'sin emitir'
@@ -98,7 +102,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
       <div className="credential-preview-column" style={{flex:'1 1 560px',minWidth:0}}>
         <p style={{...hint,marginBottom:10}}>{!credencial||accessDirty||settingsDirty?'Vista previa · cambios pendientes':'Credencial emitida'} · El PDF incluye frente y dorso por cada sede autorizada.</p>
         {groups.length>1&&<label style={{display:'block',marginBottom:12}}>Vista previa por sede<select className="input-dark w-full" value={preview.sedeId} onChange={e=>setPreviewSede(e.target.value)}>{groups.map(g=><option key={g.sedeId} value={g.sedeId}>{g.nombre}</option>)}</select></label>}
-        <CredentialPreview onPhotoError={()=>{setFoto(null);setFotoError(true)}} persona={persona} presentation={presentation} preview={preview} draft={draft} foto={foto} qr={accessDirty||incompatible?null:qr} vencimiento={credencial?.fecha_vencimiento||fechaVencimientoCredencial()}/>
+        <CredentialPreview onPhotoError={()=>{setFoto(null);setFotoError(true)}} persona={persona} presentation={presentation} preview={preview} draft={draft} foto={foto} qr={accessDirty||incompatible?null:qr} vencimiento={(preview.sectores.some(s=>s.codigo==='FA')&&draft.faVencimiento)||credencial?.fecha_vencimiento||fechaVencimientoCredencial()}/>
       </div>
       <fieldset disabled={busy} style={{flex:'1 1 310px',minWidth:0,border:0,padding:0}}>
         <Panel title="ENCUADRE DE LA FOTO">{fotoError&&<div role="alert"><p>No se pudo cargar la fotografía.</p><button className="btn-ghost" onClick={()=>setFotoRetry(value=>value+1)}>Reintentar foto</button></div>}{[['Horizontal','fotoX',0,100,1],['Vertical','fotoY',0,100,1],['Zoom','fotoZoom',1,1.8,.05]].map(([label,key,min,max,step])=><label key={key} style={{display:'grid',gridTemplateColumns:'65px 1fr 40px',gap:8,fontSize:12,marginBottom:8}}>{label}<input type="range" min={min} max={max} step={step} value={draft[key]} onChange={e=>set(key,Number(e.target.value))}/><span>{key==='fotoZoom'?`${Math.round(draft[key]*100)}%`:draft[key]}</span></label>)}<button className="btn-ghost w-full" onClick={()=>setDraft(d=>({...d,fotoX:50,fotoY:50,fotoZoom:1}))}>Centrar automáticamente</button></Panel>
@@ -107,21 +111,26 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
         {usesSectors&&<details className="glass rounded p-4 mb-3">
           <summary className="font-metric text-xs" style={{cursor:'pointer',color:'var(--text-dim)'}}>SECTORES AUTORIZADOS POR SEDE · {selected.length} seleccionados en {groups.length} sedes</summary>
           <div style={{marginTop:12}}>
-          <p style={hint}>Accesos internos Fly Kitchen. Z incluye todos los sectores de esta sede, también ZRA. D incluye cámaras y trolleys.</p>
-          {groupCredentialSectors(available).map(g=><div key={g.sedeId} style={{marginTop:14}}><strong style={{fontSize:12}}>{g.nombre}</strong>{g.sectores.map(s=><label key={s.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:8,fontSize:12}}><input type="checkbox" checked={sectorIds.includes(s.id)} onChange={()=>toggle(s.id)}/><span><b>{s.codigo}</b> · {s.nombre}{s.zra&&<b style={{color:'#ef4444'}}> · ZRA</b>}</span></label>)}</div>)}
+          <p style={hint}>Autorizaciones individuales. FA incluye sólo los sectores habilitados de esa sede; no se hereda del departamento. Rojo: restringido o FA. Negro: no restringido. Ae, Pp y Da se seleccionan por separado.</p>
+          {groupCredentialSectors(available).map(g=><div key={g.sedeId} style={{marginTop:14}}><strong style={{fontSize:12}}>{g.nombre}</strong>{g.sectores.map(s=><label key={s.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginTop:8,fontSize:12}}><input type="checkbox" checked={sectorIds.includes(s.id)} onChange={()=>toggle(s.id)}/><span><b>{s.codigo}</b> · {s.nombre}{s.zra&&<b style={{color:'#ef4444'}}> · {s.tipo==='permiso'?'FA':'Restringido'}</b>}<small style={{display:'block'}}>{sectorStateLabel(s)}</small></span></label>)}</div>)}
           {!available.length&&<p>No hay sectores configurados para las sedes disponibles.</p>}
-          {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores del catálogo anterior o no disponibles. Para usar las letras, retiralos y seleccioná los accesos antes de reemitir. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
+          {!!unavailable.length&&<p role="alert" style={hint}>Hay {unavailable.length} sectores del catálogo anterior o no disponibles. Retiralos y seleccioná las nuevas siglas antes de reemitir. No se convierten automáticamente. <button className="btn-ghost" onClick={()=>{setSectorIds(ids=>ids.filter(id=>!unavailable.includes(id)));setAutorizacion(false)}}>Retirar de esta emisión</button></p>}
           <p style={{...hint,marginTop:12}}>{selected.length} sectores en {groups.length} sedes. Cambiar accesos requiere reemitir.</p>
           </div>
         </details>}
         {incompatible&&<p role="alert" style={hint}>Esta emisión contiene sectores de otra sede. Reemití para corregirla; la nueva credencial usará la sede de la ficha y únicamente sus sectores disponibles.</p>}
 
+        {!!selected.length&&<Panel title="AUTORIZACIÓN NOMINAL">
+          <label>Responsable que autoriza<input aria-label="Responsable que autoriza" className="input-dark w-full" value={draft.autorizacionResponsable} onChange={e=>{set('autorizacionResponsable',e.target.value);setAutorizacion(false)}}/></label>
+          <label>Motivo de autorización<textarea aria-label="Motivo de autorización" className="input-dark w-full" value={draft.autorizacionMotivo} onChange={e=>{set('autorizacionMotivo',e.target.value);setAutorizacion(false)}}/></label>
+          {hasFA&&<label>FA vigente hasta<input aria-label="FA vigente hasta" type="date" className="input-dark w-full" min={format(new Date(),'yyyy-MM-dd')} max={fechaVencimientoCredencial()} value={draft.faVencimiento} onChange={e=>{set('faVencimiento',e.target.value);setAutorizacion(false)}}/><p style={hint}>FA se autoriza expresamente por sede. Para revocarlo, retiralo y reemití; la emisión anterior deja de validar.</p></label>}
+        </Panel>}
         <Panel title="DATOS OPCIONALES"><label style={{fontSize:12}}>Grupo sanguíneo<select className="input-dark w-full" value={draft.grupo} onChange={e=>set('grupo',e.target.value)}>{GRUPOS.map(g=><option key={g} value={g}>{g||'— No imprimir —'}</option>)}</select></label>{[['Compartir teléfono laboral','compartirTelefono'],['Compartir correo laboral','compartirEmail']].map(([label,key])=><label key={key} style={{display:'flex',gap:8,marginTop:10,fontSize:12}}><input type="checkbox" checked={draft[key]} onChange={e=>set(key,e.target.checked)}/>{label}</label>)}
           {credencial&&<button className="btn-ghost w-full mt-3" disabled={!settingsDirty||accessDirty} onClick={()=>run(async()=>{setCredencial(await actualizarPrivacidadCredencial(credencial.id,draft.compartirTelefono,draft.compartirEmail,draft.grupo,draft.fotoX,draft.fotoY,draft.fotoZoom));toast.ok('Datos y encuadre guardados.')})}>Guardar datos y encuadre</button>}
         </Panel>
         <label style={{display:'flex',gap:8,fontSize:12,marginBottom:12}}><input type="checkbox" checked={autorizacion} onChange={e=>setAutorizacion(e.target.checked)}/>{usesSectors?'Confirmo que esta persona cuenta con autorización para los sectores seleccionados.':'Confirmo la emisión de la credencial para la sede de esta persona.'}</label>
         {!persona.foto_url&&<p style={hint}>Cargá una fotografía en la ficha del personal antes de emitir.</p>}
-        <div className="flex flex-col gap-2"><button className="btn-primary" disabled={!autorizacion||!foto} onClick={emitir}>{credencial?'Reemitir por 2 años':'Emitir credencial'}</button><button className="btn-ghost" disabled={!valid||accessDirty||settingsDirty||incompatible||!!unavailable.length} onClick={()=>run(()=>descargarCredencialPdf(persona,credencial))}>Descargar PDF CR80</button>{credencial?.estado==='activa'&&<><button className="btn-ghost" onClick={()=>invalidar('extraviada')}>Informar extravío</button><button className="btn-ghost" onClick={()=>invalidar('anulada')}>Anular credencial</button></>}</div>
+        <div className="flex flex-col gap-2"><button className="btn-primary" disabled={!autorizacion||!foto||!authorizationReady} onClick={emitir}>{credencial?'Reemitir por 2 años':'Emitir credencial'}</button><button className="btn-ghost" disabled={!valid||accessDirty||settingsDirty||incompatible||!!unavailable.length} onClick={()=>run(()=>descargarCredencialPdf(persona,credencial))}>Descargar PDF CR80</button>{credencial?.estado==='activa'&&<><button className="btn-ghost" onClick={()=>invalidar('extraviada')}>Informar extravío</button><button className="btn-ghost" onClick={()=>invalidar('anulada')}>Anular credencial</button></>}</div>
         <p style={{...hint,marginTop:12}}>Credencial interna Fly Kitchen. No reemplaza habilitaciones PSA ni habilita puertas por sí sola. Validar el QR antes de permitir el acceso.</p>
       </fieldset>
     </div>}
@@ -129,18 +138,19 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
 }
 
 export function CredentialPreview({persona,presentation,preview,draft,foto,qr,vencimiento,onPhotoError}) {
+  const tiles=sectorTileLayout(preview.sectores.length)
   const name=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
   return <div style={{display:'flex',gap:18,justifyContent:'center',flexWrap:'wrap'}}>
     <div style={card}>
       <div style={{height:46,flexShrink:0,display:'flex',justifyContent:'center',padding:3}}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:40,objectFit:'contain'}}/></div>
-      <div style={{height:180,flexShrink:0,display:'grid',gridTemplateColumns:'1fr 45px'}}><div style={{overflow:'hidden',background:'#dfe3e8'}}>{foto&&<img src={foto} alt="Fotografía del titular" onError={onPhotoError} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${draft.fotoX}% ${draft.fotoY}%`,transform:`scale(${draft.fotoZoom})`,transformOrigin:`${draft.fotoX}% ${draft.fotoY}%`}}/>}</div><div style={{background:presentation.area.color,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:27,fontWeight:900,lineHeight:1.05}}>{presentation.area.code.split('').map((letter,i)=><span key={i}>{letter}</span>)}</div></div>
+      <div style={{height:preview.showSectors===false?180:136,flexShrink:0,display:'grid',gridTemplateColumns:'1fr 45px'}}><div style={{overflow:'hidden',background:'#dfe3e8'}}>{foto&&<img src={foto} alt="Fotografía del titular" onError={onPhotoError} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${draft.fotoX}% ${draft.fotoY}%`,transform:`scale(${draft.fotoZoom})`,transformOrigin:`${draft.fotoX}% ${draft.fotoY}%`}}/>}</div><div style={{background:presentation.area.color,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:27,fontWeight:900,lineHeight:1.05}}>{presentation.area.code.split('').map((letter,i)=><span key={i}>{letter}</span>)}</div></div>
       <div style={{padding:'7px 12px 4px',height:121,flexShrink:0,display:'flex',flexDirection:'column',gap:2,boxSizing:'border-box'}}>
         <strong style={{fontSize:name.length>40?11:15,lineHeight:1.1,overflowWrap:'anywhere'}}>{name}</strong>
         <strong style={{fontSize:10}}>DNI {persona.dni || '—'}</strong><strong style={{fontSize:11}}>FLY KITCHEN S.A.</strong>
         <b style={{fontSize:presentation.jobTitle.length>75?7:9,color:'#d75b00',lineHeight:1.1}}>{presentation.jobTitle}</b>
         <div style={{display:'flex',gap:5,justifyContent:'space-between',marginTop:'auto',fontSize:8}}><span>{preview.nombre.toUpperCase()}</span><b>{draft.grupo}</b></div>
       </div>
-      <div style={{visibility:preview.showSectors===false?'hidden':'visible',height:38,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6.5,color:'#555'}}>ACCESOS INTERNOS · ROJO: ZRA · Z: TOTAL</div><div style={{display:'flex',gap:3,marginTop:2}}>{preview.sectores.length?preview.sectores.map(sector=><span key={sector.id} title={sector.zra?'Zona restringida aeroportuaria':'Sector autorizado'} style={{background:sector.zra?'#B91C1C':'#172033',color:'#fff',borderRadius:3,minWidth:0,flex:'0 1 28px',height:23,display:'grid',placeItems:'center',fontWeight:900,fontSize:16,lineHeight:1}}>{sector.codigo}</span>):<strong style={{fontSize:9}}>SIN SECTORES AUTORIZADOS</strong>}</div></div>
+      <div style={{visibility:preview.showSectors===false?'hidden':'visible',height:preview.showSectors===false?38:82,flexShrink:0,padding:'1px 12px',boxSizing:'border-box'}}><div style={{fontSize:6,color:'#555'}}>ACCESOS POR SEDE · VALIDAR QR ANTES DE INGRESAR</div><div style={{display:'grid',gridTemplateColumns:`repeat(${tiles.columns},${tiles.width}px)`,gap:3,marginTop:3}}>{preview.sectores.length?preview.sectores.map(sector=><span key={sector.id} title={`${sector.nombre} · ${sectorStateLabel(sector)}`} style={{background:sectorColor(sector),color:'#fff',minWidth:0,height:tiles.height,display:'flex',flexDirection:'column',justifyContent:'center',textAlign:'center',overflow:'hidden'}}><b style={{fontSize:Math.min(22,tiles.height*.55),lineHeight:1.1}}>{sector.codigo}</b><span style={{fontSize:Math.min(7,tiles.height*.20),lineHeight:1.1}}>{sectorShortName(sector)}</span></span>):<strong style={{fontSize:9}}>SIN SECTORES AUTORIZADOS</strong>}</div></div>
       <div style={expiry}>VENCE {dateLabel(vencimiento)}</div>
     </div>
     <div style={card}><img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{height:50,objectFit:'contain',margin:'12px auto 8px'}}/>{qr?<img src={qr} alt="QR de validación de la credencial emitida" style={{width:166,height:166,margin:'4px auto'}}/>:<div style={{height:174,display:'grid',placeItems:'center',fontSize:12,textAlign:'center',padding:20}}>El QR estará disponible<br/>al emitir la credencial.</div>}<div style={{borderTop:'2px solid #eb6600',borderBottom:'2px solid #eb6600',padding:9,fontWeight:900,fontSize:11}}>VALIDAR CREDENCIAL<br/>Y GUARDAR CONTACTO</div><div style={{padding:12,fontSize:9,lineHeight:1.6}}>Esta credencial es propiedad de<br/><b style={{color:'#eb6600'}}>Fly Kitchen S.A.</b><br/><br/>En caso de extravío,<br/>remitir a Recursos Humanos.</div><div style={{...expiry,fontSize:8}}>ALIMENTAMOS LO QUE NOS MUEVE</div></div>
