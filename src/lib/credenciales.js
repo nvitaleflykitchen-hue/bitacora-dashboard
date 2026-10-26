@@ -24,7 +24,9 @@ export async function getCredencialPersona(personaId) {
 export async function getInternalCredential(token) {
   const { data, error } = await supabase.rpc('obtener_credencial_interna', { p_token: token })
   if (error) throw error
-  return data || null
+  if (!data) return null
+  const current = await supabase.rpc('verificar_credencial_multisede', { p_token:token })
+  return { ...data, currentAccess:current.error ? null : current.data?.[0], accessError:!!current.error }
 }
 
 export async function registerCredentialHistoryObservation(token, description) {

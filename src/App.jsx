@@ -61,6 +61,7 @@ const SedeFicha = lazy(() => import('./views/SedeFicha'))
 const VuelosPlantilla = lazy(() => import('./views/VuelosPlantilla'))
 const EquipoView = lazy(() => import('./views/EquipoView'))
 const SedeEncargadoView = lazy(() => import('./views/SedeEncargadoView'))
+const PaseVerificacion = lazy(() => import('./views/PaseVerificacion'))
 const CredencialVerificacion = lazy(() => import('./views/CredencialVerificacion'))
 const EppEntregaConfirmacion = lazy(() => import('./views/EppEntregaConfirmacion'))
 const PurchaseTrackingView = lazy(() => import('./views/PurchaseTrackingView'))
@@ -368,9 +369,11 @@ function AppInner() {
 
 export default function App() {
   const publicParams = new URLSearchParams(window.location.search)
+  const paseToken = publicParams.get('pase')
   const credencialToken = publicParams.get('credencial')
   const eppEntregaToken = publicParams.get('eppEntrega')
   const publicAssetId = publicParams.get('scan') === 'activo' ? publicParams.get('id') : null
+  if (paseToken) return <Suspense fallback={<LoadingScreen/>}><PaseVerificacion token={paseToken}/></Suspense>
   if (credencialToken) return (
     <Suspense fallback={<LoadingScreen />}>
       <CredencialVerificacion token={credencialToken} />

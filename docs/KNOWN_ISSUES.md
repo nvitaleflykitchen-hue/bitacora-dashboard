@@ -593,3 +593,16 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** inspección de solo lectura de constraints en el proyecto autorizado: `bitacora.checklists.tipo` acepta apertura/cierre. `src/data/checklistSedeTemplates.js` define además limpieza_diaria, limpieza_semanal y limpieza_quincenal para Libertad. No había envíos en la tabla al inspeccionarla.
 - **Efecto:** esos tipos adicionales no pueden persistirse bajo el constraint actual. No existe cronograma de envíos esperados para inferir omisiones.
 - **Recomendación:** alinear contrato de plantillas y esquema mediante una migración específica y pruebas de guardado. El endpoint MCP solo consulta apertura/cierre; la agrupación semanal no se presenta como cumplimiento de una plantilla semanal. No se modifica la base en esta tarea.
+
+### QR de credencial: pantalla pública sin desplazamiento (2026-10-26)
+
+- **Severidad:** media operativa; los sectores inferiores quedaban fuera de la pantalla.
+- **Verificación:** `body` usa `overflow:hidden`; la vista pública sólo definía `min-height:100vh`. Reproducción aislada con 19 sectores y navegador de 720 px de alto.
+- **Corrección:** contenedor de altura `100dvh` y scroll vertical propio, alineado arriba. Verificado desplazamiento hasta el último sector y texto final; prueba de regresión incluida.
+- **Recomendación:** mantener scroll propio en las rutas públicas que evitan el layout principal.
+
+### Ficha interna al cambiar de QR (2026-10-26)
+
+- **Severidad:** media de presentación: podía conservar datos de la consulta anterior tras un error.
+- **Verificación:** el efecto reiniciaba loading/error pero no data al cambiar el token.
+- **Corrección:** se limpia la ficha antes de consultar el nuevo QR. Los sectores se obtienen de la validación vigente sólo después de autorizar la ficha interna; un error de acceso no reutiliza permisos históricos.

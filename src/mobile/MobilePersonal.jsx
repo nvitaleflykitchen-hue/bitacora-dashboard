@@ -1,3 +1,4 @@
+import PasesAcompanados from '../components/PasesAcompanados'
 import Correos from '../views/Correos'
 import CredencialPersonalModal from '../components/CredencialPersonalModal'
 import { useFormAccess } from '../lib/useFormAccess'
@@ -740,6 +741,8 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
           {!isQualityOnly && <button onClick={() => setView('vacaciones')} style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: 16, fontSize: '0.75rem', fontWeight: 700, border: 'none', background: view === 'vacaciones' ? 'rgba(57,255,20,0.15)' : 'transparent', color: view === 'vacaciones' ? 'var(--phosphor)' : 'var(--text-dim)' }}>Vacaciones</button>}
         </div>
         {formsAllowed && !isQualityOnly && <button className="btn-ghost" onClick={()=>setView('permisos')}><FileText size={14}/> Formularios y permisos</button>}
+        {perfil?.rol==='admin' && <button className="btn-ghost" onClick={()=>setView(view==='pases'?'lista':'pases')}>Pases acompañados</button>}
+        {view==='pases'&&perfil?.rol==='admin'&&<PasesAcompanados personas={personas} sedes={sedes}/>}
         {view === 'lista' && (
           <>
             <div style={{ position: 'relative', marginBottom: sedes.length > 1 ? '0.5rem' : 0 }}>
