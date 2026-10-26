@@ -19,5 +19,6 @@ export const sectorStateLabel = sector => sector.tipo === 'permiso' ? 'Permiso m
 export function sectorTileLayout(count) {
   const columns = count <= 4 ? Math.max(1,count) : count <= 10 ? 5 : 7
   const rows = Math.ceil(count / columns) || 1
-  return { columns, rows, width:(246-(columns-1)*3)/columns, height:(68-(rows-1)*3)/rows }
+  const size = Math.min(48, (246-(columns-1)*3)/columns, (68-(rows-1)*3)/rows)
+  return { columns, rows, width:size, height:size }
 }

@@ -14,6 +14,8 @@ describe('matriz definitiva V1.1',()=>{
     expect(toggleCredentialSector(catalog,['a','e'],'f')).toEqual(['e','f'])
     expect(toggleCredentialSector(catalog,['f','e'],'a')).toEqual(['e','a'])
     expect(sectorColor({codigo:'FA'})).toBe('#B91C1C')
+    expect(sectorTileLayout(1)).toMatchObject({width:48,height:48})
+    expect(sectorTileLayout(3)).toMatchObject({width:48,height:48})
     expect(sectorColor({codigo:'Ar',zra:false})).toBe('#000000')
   })
   it('acomoda todas las fichas dentro de la banda de la tarjeta',()=>{

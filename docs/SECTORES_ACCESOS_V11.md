@@ -1,6 +1,6 @@
 # Sectores y accesos V1.1 — piloto Córdoba
 
-Estado: preparado y probado localmente. SQL y publicación pendientes de aprobación operativa. Fuente: FLY_GESTION_Proyecto_Definitivo_Sectores_y_Accesos_V1.1.pdf (22/10/2026). El usuario confirmó el 23/10/2026 usar Ae, Pp y Da también en Aeropuerto de Córdoba.
+Estado: SQL autorizado y aplicado el 26/10/2026 en mixyhfdlzjarvszinytk; frontend en PR #176. Fuente: FLY_GESTION_Proyecto_Definitivo_Sectores_y_Accesos_V1.1.pdf (22/10/2026). El usuario confirmó el 23/10/2026 usar Ae, Pp y Da también en Aeropuerto de Córdoba.
 
 ## Alcance
 
@@ -21,7 +21,7 @@ La lectura de producción del 23/10 encontró seis credenciales con sectores. El
 
 Archivo: `supabase/migrations/20261023223632_sectores_accesos_v11_cordoba.sql`.
 
-Incluye la carga de catálogo, columnas de estado físico y autorización, reglas de emisión y QR, y tabla de auditoría con RLS. La auditoría permite SELECT sólo a administradores activos; no permite escritura directa de anon/authenticated. Triggers privados registran cambios. No altera reportes ni auditorías de calidad. No ejecutar hasta obtener aprobación de este SQL conforme AGENTS.md §0.3.
+Incluye la carga de catálogo, columnas de estado físico y autorización, reglas de emisión y QR, y tabla de auditoría con RLS. La auditoría permite SELECT sólo a administradores activos; no permite escritura directa de anon/authenticated. Triggers privados registran cambios. No altera reportes ni auditorías de calidad. Aprobación explícita recibida y SQL aplicado el 26/10/2026 conforme AGENTS.md §0.3. No volver a ejecutar.
 
 Orden de activación: aprobar SQL completo; aplicarlo únicamente en mixyhfdlzjarvszinytk; verificar catálogo/funciones/permisos; checks GitHub aprobados y merge de PR; verificar URL pública. No fusionar el frontend antes del SQL porque consulta columnas nuevas. No usar CLI/panel/MCP de Vercel para publicar.
 
@@ -30,4 +30,6 @@ Orden de activación: aprobar SQL completo; aplicarlo únicamente en mixyhfdlzja
 - `npm run check`: lint, 386 pruebas Vitest, integración SQL V1.1, seis pruebas MCP y build.
 - `npm run test:accesos`: PostgreSQL WASM efímero; valida 19+3, seis rojos, FA excluyente por sede, pertenencia de persona, vencimiento FA, proyección/suspensión, exigencia de acta, revocación, inmutabilidad y auditoría admin/consultor/anon.
 - UI de credencial y PDF revisados con datos ficticios, incluyendo 19 fichas y FA. PDF CR80 de cuatro páginas generado con las funciones reales y renderizado para inspección. No se emitieron credenciales reales.
+- Verificación posterior del SQL: 188 credenciales conservadas; Planta 19 sectores (seis restringidos, 16 habilitados), Aeropuerto tres restringidos pendientes de habilitación; un permiso FA por sede sin asignación nominal automática. Auditoría con RLS y SELECT exclusivo de admin activo.
+- Ajuste solicitado el 26/10: FA es una ficha cuadrada de 48 px como una selección individual, sin estirarse al ancho de la banda; mismo cálculo para pantalla y PDF.
 - Escritorio y mobile reutilizan CredencialPersonalModal; QR público y generación A4 reutilizan la misma lógica. No cambia el acceso al sistema ni los roles de perfiles.
