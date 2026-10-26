@@ -1,3 +1,4 @@
+import CredencialAutorizanteSelect from './CredencialAutorizanteSelect'
 import { sectorColor, sectorShortName, sectorStateLabel, sectorTileLayout } from '../lib/credentialCatalog'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
@@ -121,7 +122,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
         {incompatible&&<p role="alert" style={hint}>Esta emisión contiene sectores de otra sede. Reemití para corregirla; la nueva credencial usará la sede de la ficha y únicamente sus sectores disponibles.</p>}
 
         {!!selected.length&&<Panel title="AUTORIZACIÓN NOMINAL">
-          <label>Responsable que autoriza<input aria-label="Responsable que autoriza" className="input-dark w-full" value={draft.autorizacionResponsable} onChange={e=>{set('autorizacionResponsable',e.target.value);setAutorizacion(false)}}/></label>
+          <CredencialAutorizanteSelect sedeIds={sectorSites} value={draft.autorizacionResponsable} onChange={value=>{set('autorizacionResponsable',value);setAutorizacion(false)}}/>
           <label>Motivo de autorización<textarea aria-label="Motivo de autorización" className="input-dark w-full" value={draft.autorizacionMotivo} onChange={e=>{set('autorizacionMotivo',e.target.value);setAutorizacion(false)}}/></label>
           {hasFA&&<label>FA vigente hasta<input aria-label="FA vigente hasta" type="date" className="input-dark w-full" min={format(new Date(),'yyyy-MM-dd')} max={fechaVencimientoCredencial()} value={draft.faVencimiento} onChange={e=>{set('faVencimiento',e.target.value);setAutorizacion(false)}}/><p style={hint}>FA se autoriza expresamente por sede. Para revocarlo, retiralo y reemití; la emisión anterior deja de validar.</p></label>}
         </Panel>}
