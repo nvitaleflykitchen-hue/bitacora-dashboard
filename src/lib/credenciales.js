@@ -36,6 +36,18 @@ export async function registerCredentialHistoryObservation(token, description) {
   return data
 }
 
+// Usa las designaciones existentes en Sedes > Responsables, sin inferir permisos por departamento.
+export async function getAutorizantesCredencial(sedeIds) {
+  if (!sedeIds.length) return []
+  const { data, error } = await supabase.schema('bitacora').from('sede_contactos')
+    .select('id,sede_id,rol,sedes(nombre),contactos(id,nombre,cargo,activo)')
+    .eq('activo',true).in('sede_id',sedeIds)
+  if (error) throw error
+  return (data || []).filter(item=>item.contactos?.activo && /responsable|jef[ea]|jefatura|encargad[oa]|supervisor|coordinador|geren/i.test(`${item.rol || ''} ${item.contactos.cargo || ''}`))
+    .map(item=>({id:item.id,label:[item.contactos.nombre,item.contactos.cargo || item.rol,item.sedes?.nombre].filter(Boolean).join(' · ')}))
+    .sort((a,b)=>a.label.localeCompare(b.label,'es'))
+}
+
 export async function getSectoresCredencial() {
   const { data, error } = await supabase.schema('equipo').from('credencial_sectores')
     .select('id,sede_id,codigo,nombre,clasificacion,zra,tipo,estado_fisico,habilitado_ingreso').eq('activo',true).in('codigo',CREDENTIAL_SECTOR_CODES).order('codigo')
