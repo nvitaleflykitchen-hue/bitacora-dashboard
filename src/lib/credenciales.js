@@ -1,4 +1,4 @@
-import { sectorColor, sectorShortName, sectorTileLayout } from './credentialCatalog'
+import { sectorColor, sectorShortName, sectorTileLayout, credentialFrontLayout } from './credentialCatalog'
 import QRCode from 'qrcode'
 import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
@@ -130,8 +130,9 @@ export async function prepareCredentialPrint(persona, credencial, logo) {
     persona.foto_url ? getPersonaFotoDataUrl(persona.foto_url) : Promise.resolve(null),
     QRCode.toDataURL(urlValidacionCredencial(vigente.token), { width:700, margin:1, errorCorrectionLevel:'H' }),
   ])
-  const fotoRecortada = foto ? await coverImageData(foto,450,credentialSectorSites(persona).length?272:360,vigente.foto_pos_x,vigente.foto_pos_y,vigente.foto_zoom) : null
-  return { persona, credencial:vigente, logo, fotoRecortada, qr }
+  const fotosPorAltura = {}
+  if (foto) for (const height of [136,156,180]) fotosPorAltura[height] = await coverImageData(foto,450,height*2,vigente.foto_pos_x,vigente.foto_pos_y,vigente.foto_zoom)
+  return { persona, credencial:vigente, logo, fotosPorAltura, qr }
 }
 
 function credentialBase(pdf) {
@@ -145,10 +146,11 @@ function fitCredentialText(pdf,text,x,y,width,maxLines,size) {
   pdf.text(pdf.splitTextToSize(text,width),x,y)
 }
 
-export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecortada, group }) {
+export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecortada, fotosPorAltura, group }) {
   const orange=[235,102,0],name=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
   const sede=group.nombre,presentation=credentialPresentation(persona,credencial)
-  const photoHeight=credentialSectorSites(persona).length?136:180
+  const {photoHeight,sectorsTop}=credentialFrontLayout(group.sectores.length,credentialSectorSites(persona).length>0)
+  fotoRecortada = fotosPorAltura?.[photoHeight] || fotoRecortada
   const areaColor=hexToRgb(presentation.area.color)
   // ── FRENTE ──────────────────────────────────────────────────────────────────
   credentialBase(pdf)
@@ -203,13 +205,13 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
 
   if (credentialSectorSites(persona).length) {
   pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(6))
-  pdf.text('ACCESOS POR SEDE · VALIDAR QR ANTES DE INGRESAR', mx(12), my(309))
+  pdf.text('ACCESOS POR SEDE · VALIDAR QR ANTES DE INGRESAR', mx(12), my(sectorsTop+6))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')
   if (!group.sectores.length) fitCredentialText(pdf,'SIN SECTORES AUTORIZADOS',mx(12),my(376),mx(246),1,ptFromPx(12))
   else {
     const {columns,width,height}=sectorTileLayout(group.sectores.length)
     group.sectores.forEach((sector,index)=>{
-      const x=mx(12+(index%columns)*(width+3)), y=my(314+Math.floor(index/columns)*(height+3))
+      const x=mx(12+(index%columns)*(width+3)), y=my(sectorsTop+11+Math.floor(index/columns)*(height+3))
       pdf.setFillColor(...hexToRgb(sectorColor(sector)));pdf.rect(x,y,mx(width),my(height),'F')
       pdf.setTextColor(255);pdf.setFontSize(ptFromPx(Math.min(22,height*.55)))
       pdf.text(sector.codigo,x+mx(width)/2,y+my(height*.34),{align:'center',baseline:'middle'})

@@ -1,3 +1,4 @@
+import { credentialFrontLayout } from './credentialCatalog'
 import { describe, it, expect } from 'vitest'
 import { PLANTA_SECTORS, AIRPORT_SECTOR_CODES, sectorColor, sectorTileLayout } from './credentialCatalog'
 import { toggleCredentialSector } from './credentialAccess'
@@ -26,4 +27,14 @@ describe('matriz definitiva V1.1',()=>{
       expect(columns*rows).toBeGreaterThanOrEqual(count)
     }
   })
+})
+
+it('reserva foto mayor sin superponer permisos ni vencimiento',()=>{
+ for(let count=0;count<=19;count++){
+  const layout=credentialFrontLayout(count)
+  const tiles=sectorTileLayout(count)
+  expect(46+layout.photoHeight+121+layout.sectorsHeight+43).toBe(428)
+  expect(layout.sectorsTop+11+tiles.rows*tiles.height+(tiles.rows-1)*3).toBeLessThanOrEqual(385)
+ }
+ expect(credentialFrontLayout(1).photoHeight).toBeGreaterThan(136)
 })
