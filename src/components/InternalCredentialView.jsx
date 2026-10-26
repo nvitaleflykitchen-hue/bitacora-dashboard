@@ -3,6 +3,7 @@ import { BriefcaseBusiness, CalendarDays, ChevronLeft, FileCheck2, LockKeyhole, 
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getInternalCredential, registerCredentialHistoryObservation } from '../lib/credenciales'
+import { groupCredentialSectors } from '../lib/credentialAccess'
 import { PersonaAvatar } from './PersonaAvatar'
 
 const scopeLabels = {
@@ -47,7 +48,7 @@ export default function InternalCredentialView({ token, onClose, onOpenFullRecor
 
   useEffect(() => {
     let active = true
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setData(null)
     getInternalCredential(token)
       .then(result => { if (active) result ? setData(result) : setError('No se encontró la credencial.') })
       .catch(err => { if (active) setError(err?.message?.includes('permiso') ? err.message : 'No se pudo consultar esta credencial.') })
@@ -86,6 +87,13 @@ export default function InternalCredentialView({ token, onClose, onOpenFullRecor
         </section>
         <div style={{ color:'#93C5FD', background:'rgba(59,130,246,.08)', border:'1px solid rgba(59,130,246,.18)', borderRadius:8, padding:10, fontSize:'.72rem' }}>{scopeLabels[data.scope] || 'Acceso autorizado'} · Se muestran únicamente las secciones permitidas.</div>
         <Panel title="Identificación" icon={UserRound}><div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:12 }}><Field label="Estado laboral" value={person.active?'Activo':'Inactivo'}/><Field label="Sede/s" value={person.sites?.join(' · ') || 'Sin sede'}/></div></Panel>
+        <Panel title="Acceso vigente por sector" icon={ShieldCheck}>
+          {data.accessError ? <p role="alert">No se pudo verificar el acceso actual. No autorizar el ingreso hasta volver a consultar.</p> : data.currentAccess?.estado !== 'activa' ? <p>Sin autorización de ingreso vigente.</p> : <>
+            {groupCredentialSectors(data.currentAccess.sectores_autorizados || []).map(group=><section key={group.sedeId}><h3>{group.nombre}</h3>{group.sectores.map(sector=><div key={sector.id} style={{padding:'10px 0',borderTop:'1px solid #444'}}><strong>{sector.codigo} · {sector.nombre}</strong><p>{sector.zra?'Área restringida':'Sector general'} · Habilitado para ingreso</p><p style={{fontSize:12}}>Autorización individual vigente para esta sede.</p></div>)}</section>)}
+            {!data.currentAccess.sectores_autorizados?.length && <p>Sin sectores habilitados.</p>}
+            <p style={{fontSize:12}}>El permiso se valida al consultar. No incluye sectores suspendidos o pendientes de habilitación ni reemplaza las autorizaciones aeroportuarias.</p>
+          </>}
+        </Panel>
         {data.supervisor && <Panel title="Supervisor directo" icon={UserRound}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
             <div><p style={{ color:'var(--text)', fontWeight:750, fontSize:'.88rem' }}>{data.supervisor.name}</p>{data.supervisor.jobTitle && <p style={{ color:'var(--text-dim)', fontSize:'.7rem', marginTop:2 }}>{data.supervisor.jobTitle}</p>}</div>

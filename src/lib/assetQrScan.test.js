@@ -39,3 +39,7 @@ describe('parseInternalQrValue', () => {
     expect(parseInternalQrValue('QR desconocido')).toBeNull()
   })
 })
+
+it('reconoce un pase acompañado como tipo independiente',()=>{
+ expect(parseInternalQrValue('https://bitacora-dashboard.vercel.app/?pase=00000000-0000-4000-8000-000000000001')).toEqual({type:'pass',token:'00000000-0000-4000-8000-000000000001'})
+})

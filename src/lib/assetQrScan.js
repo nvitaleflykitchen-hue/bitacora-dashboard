@@ -29,6 +29,8 @@ export function parseInternalQrValue(rawValue) {
 
   try {
     const url = new URL(raw, window.location.origin)
+    const pass = url.searchParams.get('pase')?.trim()
+    if (UUID_RE.test(pass || '')) return { type:'pass', token:pass }
     const token = url.searchParams.get('credencial')?.trim()
     if (UUID_RE.test(token || '')) return { type:'credential', token }
   } catch {

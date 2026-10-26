@@ -1,3 +1,4 @@
+import PaseVerificacion from '../views/PaseVerificacion'
 import { lazy, Suspense, useState, useEffect, useMemo } from 'react'
 import MobileHome from './MobileHome'
 import PullToRefresh from './PullToRefresh'
@@ -76,6 +77,7 @@ export default function MobileApp() {
   const [returnContext, setReturnContext] = useState(null)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [purchaseScannerOpen, setPurchaseScannerOpen] = useState(false)
+  const [passToken, setPassToken] = useState(null)
   const [credentialToken, setCredentialToken] = useState(null)
 
   const openScannedQr = async target => {
@@ -88,6 +90,7 @@ export default function MobileApp() {
       setTab('mas')
       return
     }
+    if (target.type === 'pass') {setPassToken(target.token);return}
     setCredentialToken(target.token)
   }
 
@@ -261,6 +264,7 @@ export default function MobileApp() {
           help="Primera lectura: recepción en depósito. Segunda lectura: entrega al solicitante."
         />
       )}
+      {passToken && <PaseVerificacion token={passToken} onClose={()=>setPassToken(null)}/>}
       {credentialToken && <InternalCredentialView
         token={credentialToken}
         onClose={()=>setCredentialToken(null)}

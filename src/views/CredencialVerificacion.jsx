@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ShieldCheck, ShieldX, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
@@ -25,7 +25,7 @@ export default function CredencialVerificacion({ token }) {
     lines.push('END:VCARD')
     const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/vcard;charset=utf-8'}));link.download=`${data.nombre.replace(/\s+/g,'-')}.vcf`;link.click();URL.revokeObjectURL(link.href)
   }
-  return <div style={{ minHeight:'100vh', background:'#f2f2f0', display:'grid', placeItems:'center', padding:24, fontFamily:'Arial,sans-serif' }}>
+  return <div style={{ height:'100dvh', overflowY:'auto', overflowX:'hidden', boxSizing:'border-box', WebkitOverflowScrolling:'touch', alignItems:'start', background:'#f2f2f0', display:'grid', justifyItems:'center', padding:24, fontFamily:'Arial,sans-serif' }}>
     <main style={{ width:'min(440px,100%)', background:'#fff', color:'#111', borderRadius:22, padding:'34px 28px', textAlign:'center', boxShadow:'0 20px 70px rgba(0,0,0,.16)' }}>
       <img src="/fly-kitchen-credencial.png" alt="Fly Kitchen" style={{ width:260, maxWidth:'90%', margin:'0 auto 28px' }}/>
       {loading ? <><Loader2 size={42} style={{ animation:'spin 1s linear infinite', color:'#eb6600' }}/><p>Verificando credencial…</p></> : error ? <><ShieldX size={58} color="#b91c1c"/><h1 style={{ color:'#b91c1c' }}>NO SE PUDO VALIDAR</h1><p>El código no existe o no se pudo consultar su vigencia. Reintentá antes de permitir el acceso.</p></> : <>
