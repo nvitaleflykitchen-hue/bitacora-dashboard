@@ -6,6 +6,20 @@ export const NOTEBOOK_BPM_URL =
 
 export const RECURSOS_BIBLIOTECA = [
   {
+    id: "autorizacion-retiro-encomiendas", categoria: "Operaciones", tipo: "PDF",
+    titulo: "Autorización para Retiro de Encomiendas",
+    descripcion: "Generá una autorización con la firma del modelo original indicando transportista, origen y guía, remito o factura.",
+    codigo: "ADM-LOG-AUT-001", version: "2026", vigencia: "Vigente", responsable: "Administración",
+    generador: "autorizacion-retiro", soloAdmin: true,
+  },
+  {
+    id: "etiqueta-envio-encomiendas", categoria: "Operaciones", tipo: "PDF",
+    titulo: "Etiqueta para Envío de Encomiendas",
+    descripcion: "Elegí la sede, revisá destinatario, teléfono y domicilio y descargá la etiqueta para el paquete.",
+    codigo: "ADM-LOG-ETQ-001", version: "2026", vigencia: "Vigente", responsable: "Administración",
+    generador: "etiqueta-encomienda", soloAdmin: true,
+  },
+  {
     id: "manual-bpm-rev-08",
     categoria: "Calidad e inocuidad",
     tipo: "PDF",

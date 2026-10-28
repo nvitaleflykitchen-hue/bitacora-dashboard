@@ -606,3 +606,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Severidad:** media de presentación: podía conservar datos de la consulta anterior tras un error.
 - **Verificación:** el efecto reiniciaba loading/error pero no data al cambiar el token.
 - **Corrección:** se limpia la ficha antes de consultar el nuevo QR. Los sectores se obtienen de la validación vigente sólo después de autorizar la ficha interna; un error de acceso no reutiliza permisos históricos.
+
+### Generadores de encomiendas ausentes de Recursos (2026-10-28)
+
+- **Severidad:** media operativa; faltaban las herramientas de envío y autorización de retiro.
+- **Verificación:** comparación de origin/main con el respaldo local id-programacion-pruebas: faltaban ambos componentes, generadores PDF y entradas del catálogo.
+- **Corrección:** recuperados en la biblioteca compartida por Equipo de escritorio y móvil, sólo para administradores, conservando RecursosCompartidos. Se limita el texto y ajusta la etiqueta al A5; la autorización tiene desplazamiento en pantallas pequeñas.
+- **Recomendación:** mantener pruebas de apertura, acceso y generación. Los modelos conservan remitente, autorizados y firma originales; requieren revisión operativa cuando cambien esos datos. DNI queda editable y opcional: la consulta actual de responsables no lo devuelve. No se modificó la base de datos.
