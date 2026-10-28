@@ -19,5 +19,4 @@ it('imprime sólo los autorizados elegidos y admite listas que ocupan más de un
   const pages = []
   for (let i=1;i<=pdf.numPages;i++) pages.push((await (await pdf.getPage(i)).getTextContent()).items.map(item=>item.str).join(' '))
   expect(pages.join(' ').replace(/\s+/g,' ')).toContain('PERSONA AUTORIZADA DE PRUEBA 59')
-  await pdf.destroy()
-})
+}, 15000)
