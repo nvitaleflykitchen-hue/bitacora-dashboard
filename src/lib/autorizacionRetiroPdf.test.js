@@ -14,5 +14,10 @@ it('imprime sólo los autorizados elegidos y admite listas que ocupan más de un
   const largo=await crearAutorizacionRetiroPDF({...datos,personas:Array.from({length:60},(_,i)=>({nombre:`Persona autorizada de prueba ${i}`,dni:'12345678'}))})
   const bytes=await largo.arrayBuffer()
   expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThan(1)
-  expect(Buffer.from(bytes).toString('latin1')).toContain('PERSONA AUTORIZADA DE PRUEBA 59')
+  const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const pdf = await getDocument({data:new Uint8Array(bytes),useSystemFonts:true}).promise
+  const pages = []
+  for (let i=1;i<=pdf.numPages;i++) pages.push((await (await pdf.getPage(i)).getTextContent()).items.map(item=>item.str).join(' '))
+  expect(pages.join(' ').replace(/\s+/g,' ')).toContain('PERSONA AUTORIZADA DE PRUEBA 59')
+  await pdf.destroy()
 })
