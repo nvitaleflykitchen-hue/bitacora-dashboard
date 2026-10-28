@@ -1,3 +1,4 @@
+import { validarAutorizados } from './autorizadosRetiro.js'
 const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 
 function fechaEnLetras(value) {
@@ -15,7 +16,8 @@ async function imageData(url) {
   return new Uint8Array(await response.arrayBuffer())
 }
 
-export async function crearAutorizacionRetiroPDF({ empresa, origen, fecha, referencia }) {
+export async function crearAutorizacionRetiroPDF({ empresa, origen, fecha, referencia, personas }) {
+  const autorizados = validarAutorizados(personas)
   const { jsPDF } = await import('jspdf')
   const [logo, firma] = await Promise.all([
     imageData('/recursos/operaciones/fly-kitchen-logo.png'),
@@ -32,15 +34,20 @@ export async function crearAutorizacionRetiroPDF({ empresa, origen, fecha, refer
   const paragraph = (text, { bold=false, indent=0, gap=6 }={}) => {
     doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(11.5)
     const lines = doc.splitTextToSize(text, width - indent)
-    doc.text(lines, left + indent, y, { lineHeightFactor:1.35 })
-    y += lines.length * 5.5 + gap
+    for (const line of lines) {
+      if (y > 255) { doc.addPage(); y = 25 }
+      doc.text(line, left + indent, y)
+      y += 5.5
+    }
+    y += gap
   }
   paragraph(String(empresa).toUpperCase(), { bold:true, gap:2 })
   paragraph('Presente', { gap:9 })
-  paragraph('Yo, MARCELA LILIANA CORTE en mi carácter de PRESIDENTE de Fly Kitchen S. A. CUIT 30-70728569-5, autorizo a los Sres. PABLO OCAMPO DNI 37.316.088, FERNANDO GONZÁLEZ DNI 42.896.086, BRAIAN CABALLERO DNI 43.229.305, NAHUEL PEDANO DNI 43.450.813, KEVIN RAMALLO DNI 38.106.268 y MAURO BERTOLA DNI 42.979.180 a retirar un envío a nombre de la firma, según el siguiente detalle:', { indent:10, gap:9 })
+  paragraph(`Yo, MARCELA LILIANA CORTE en mi carácter de PRESIDENTE de Fly Kitchen S. A. CUIT 30-70728569-5, autorizo a ${autorizados.map(p => `${p.nombre.toUpperCase()} DNI ${p.dni}`).join('; ')} a retirar un envío a nombre de la firma, según el siguiente detalle:`, { indent:10, gap:9 })
   paragraph(`Origen: ${origen}`)
   paragraph('Destino: CÓRDOBA')
   paragraph(`Guía Nro. / Remito / Factura: ${referencia || '—'}`, { gap:10 })
+  if (y + 75 > 262) { doc.addPage(); y = 25 }
   paragraph('Desde ya, muchísimas gracias por su colaboración.', { gap:8 })
   paragraph('Sin otro particular, la saluda atentamente,', { gap:1 })
   doc.addImage(firma, 'JPEG', left, y, 38, 38)
