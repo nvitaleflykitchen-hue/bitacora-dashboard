@@ -1,4 +1,8 @@
 import RecursosCompartidos from "./RecursosCompartidos";
+import React, { lazy, Suspense, useState } from "react";
+import { useAuth } from "../lib/auth";
+const EtiquetaEncomiendaModal = lazy(() => import("./EtiquetaEncomiendaModal"));
+const AutorizacionRetiroModal = lazy(() => import("./AutorizacionRetiroModal"));
 import { BookOpen, Bot, Download, ExternalLink, FileText } from "lucide-react";
 import { RECURSOS_BIBLIOTECA } from "../data/recursosBiblioteca";
 
@@ -12,9 +16,12 @@ export default function BibliotecaRecursos({
   compact = false,
   categoria = null,
 }) {
-  const recursos = categoria
+  const { isAdmin } = useAuth();
+  const [generador, setGenerador] = useState(null);
+  const recursosBase = categoria
     ? RECURSOS_BIBLIOTECA.filter((recurso) => recurso.categoria === categoria)
     : RECURSOS_BIBLIOTECA;
+  const recursos = recursosBase.filter(recurso => !recurso.soloAdmin || isAdmin);
 
   return (
     <section>
@@ -123,6 +130,8 @@ export default function BibliotecaRecursos({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2" style={{ marginTop: compact ? 10 : 14 }}>
+                {recurso.generador && <button className="btn-primary" onClick={() => setGenerador(recurso.generador)}>Generar PDF</button>}
+                {recurso.url && (
                 <a
                   href={recurso.url}
                   target="_blank"
@@ -137,6 +146,7 @@ export default function BibliotecaRecursos({
                       ? "Abrir documento"
                       : "Leer"}
                 </a>
+                )}
                 {recurso.descarga && (
                   <a
                     href={recurso.descarga}
@@ -152,6 +162,10 @@ export default function BibliotecaRecursos({
           );
         })}
       </div>
+      {isAdmin && <Suspense fallback={<p role="status">Cargando generador…</p>}>
+        {generador === "etiqueta-encomienda" && <EtiquetaEncomiendaModal onClose={() => setGenerador(null)} />}
+        {generador === "autorizacion-retiro" && <AutorizacionRetiroModal onClose={() => setGenerador(null)} />}
+      </Suspense>}
     </section>
   );
 }
