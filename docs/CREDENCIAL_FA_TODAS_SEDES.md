@@ -24,9 +24,12 @@ No modifica `personas.sede_ids`, roles, documentos, fotografías ni credenciales
 
 ## Estado operativo
 
-**Migración pendiente de confirmación explícita. No aplicada ni publicada.** La regla AGENTS.md §0.3 exige mostrar SQL antes de aplicar GRANT/RLS. Aplicar exclusivamente en `mixyhfdlzjarvszinytk`, verificar cinco elegibles y emisiones conservadas, y recién después integrar/publicar frontend mediante PR. No desplegar el frontend antes de la migración: necesita consultar la nueva tabla.
+**SQL aprobado expresamente y aplicado el 29/10/2026 en `mixyhfdlzjarvszinytk`.** Se verificaron cinco personas habilitadas, RLS activo y ausencia de escrituras API. Las 301 credenciales anteriores conservaron su contenido (huella idéntica excluyendo el nuevo flag false); ninguna se reemitió ni recibió FA automáticamente. Publicación del frontend mediante PR #183 después de los checks aprobados.
+
 
 ## Verificación
+
+`npm run check` aprobado: 418 pruebas Vitest, integraciones SQL de accesos V1.1 y FA global, seis pruebas MCP, pases y build. Checks de GitHub aprobados.
 
 - `scripts/verify-credential-fa-global.mjs`: PostgreSQL WASM aislado, cinco elegibles, no elegible rechazado, autorización y fecha obligatorias, expiración, baja de persona, revocación, reemisión, sedes activas nuevas/inactivas, áreas no habilitadas, RLS admin/consultor/anon, auditoría y pertenencia intacta. Se ejecuta junto al control de accesos V1.1 en `npm run check`.
 - Pruebas de modal: opción desmarcada, emisión explícita con sede Central preservada y ausencia de opción para no habilitados.
