@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf'
 import { addYears, format } from 'date-fns'
 import { supabase } from './supabase'
 import { getPersonaFotoDataUrl } from './personaFotos'
-import { CREDENTIAL_SECTOR_CODES, credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors } from './credentialAccess'
+import { globalCredentialGroup, CREDENTIAL_SECTOR_CODES, credentialSectorSites, hasIncompatibleCredentialSectors, credentialIsValid, groupCredentialSectors } from './credentialAccess'
 import { credentialPresentation, resolveCredentialArea, hexToRgb } from './credentialAreas'
 
 export const fechaVencimientoCredencial = (fecha = new Date()) => format(addYears(fecha, 2), 'yyyy-MM-dd')
@@ -50,6 +50,13 @@ export async function getAutorizantesCredencial(sedeIds) {
     .sort((a,b)=>a.label.localeCompare(b.label,'es'))
 }
 
+export async function getFaMultisedeEligibility(personaId) {
+  const {data,error}=await supabase.schema('equipo').from('credencial_fa_multisede_personas')
+    .select('id').eq('id',personaId).eq('activo',true).maybeSingle()
+  if(error) throw error
+  return !!data
+}
+
 export async function getSectoresCredencial() {
   const { data, error } = await supabase.schema('equipo').from('credencial_sectores')
     .select('id,sede_id,codigo,nombre,clasificacion,zra,tipo,estado_fisico,habilitado_ingreso').eq('activo',true).in('codigo',CREDENTIAL_SECTOR_CODES).order('codigo')
@@ -57,12 +64,12 @@ export async function getSectoresCredencial() {
   return data || []
 }
 
-export async function emitirCredencial({ persona, sedeNombre, anterior = null, area, sectorIds = [], autorizacionResponsable = '', autorizacionMotivo = '', faVencimiento = '', autorizacionConfirmada = false, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
+export async function emitirCredencial({ persona, sedeNombre, anterior = null, area, sectorIds = [], autorizacionResponsable = '', autorizacionMotivo = '', faVencimiento = '', faTodasSedes = false, autorizacionConfirmada = false, compartirTelefono = false, compartirEmail = false, grupoSanguineo = null, fotoX = 50, fotoY = 50, fotoZoom = 1 }) {
   if (!autorizacionConfirmada) throw new Error('Confirmá la autorización individual antes de emitir.')
   const { data, error } = await supabase.rpc('emitir_credencial_multisede', {
     p_persona_id:persona.id, p_anterior_id:anterior?.id || null, p_sector_ids:sectorIds,
     p_datos:{ area:area || resolveCredentialArea(persona).key, sede_nombre:sedeNombre,
-      autorizacion_confirmada:autorizacionConfirmada, autorizacion_responsable:autorizacionResponsable, autorizacion_motivo:autorizacionMotivo, fa_vencimiento:faVencimiento, compartir_telefono:compartirTelefono, compartir_email:compartirEmail,
+      autorizacion_confirmada:autorizacionConfirmada, autorizacion_responsable:autorizacionResponsable, autorizacion_motivo:autorizacionMotivo, fa_vencimiento:faVencimiento, fa_todas_sedes:faTodasSedes, compartir_telefono:compartirTelefono, compartir_email:compartirEmail,
       grupo_sanguineo:grupoSanguineo || null, foto_pos_x:fotoX, foto_pos_y:fotoY, foto_zoom:fotoZoom },
   }).single()
   if (error) throw error
@@ -115,6 +122,7 @@ export const my = px => px * CARD_H / PREVIEW_H   // píxeles -> mm (vertical)
 export const ptFromPx = px => my(px) * 72 / 25.4
 
 export function credentialPrintGroups(credencial) {
+  if(credencial.fa_todas_sedes) return [globalCredentialGroup()]
   const groups = groupCredentialSectors(credencial.sectores_autorizados)
   return groups.length ? groups : [{ nombre:credencial.sede_nombre || 'Administración Central', sectores:[] }]
 }
@@ -122,7 +130,8 @@ export function credentialPrintGroups(credencial) {
 export async function prepareCredentialPrint(persona, credencial, logo) {
   const vigente = await getCredencialPersona(persona.id)
   if (!vigente || vigente.id !== credencial?.id) throw new Error('La credencial cambió. Cerrá y volvé a abrir la ficha antes de descargar.')
-  if (hasIncompatibleCredentialSectors(persona,vigente)) throw new Error('La credencial contiene sectores de otra sede. Abrí la ficha y reemití antes de imprimir.')
+  if (hasIncompatibleCredentialSectors(persona,vigente,vigente.fa_todas_sedes ? await getFaMultisedeEligibility(persona.id) : false)) throw new Error('La credencial contiene sectores de otra sede. Abrí la ficha y reemití antes de imprimir.')
+  if(vigente.fa_todas_sedes && (!vigente.fa_vencimiento || vigente.fa_vencimiento < format(new Date(),'yyyy-MM-dd'))) throw new Error('El permiso FA está vencido. Reemití con autorización vigente.')
   if (!credentialIsValid(vigente)) throw new Error('Sólo se pueden descargar credenciales vigentes.')
   if (vigente.sectores_autorizados?.length) {
     const catalog = await getSectoresCredencial()
@@ -151,7 +160,7 @@ function fitCredentialText(pdf,text,x,y,width,maxLines,size) {
 export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecortada, fotosPorAltura, group }) {
   const orange=[235,102,0],name=[persona.nombre,persona.apellido].filter(Boolean).join(' ').toUpperCase()
   const sede=group.nombre,presentation=credentialPresentation(persona,credencial)
-  const {photoHeight,sectorsTop}=credentialFrontLayout(group.sectores.length,credentialSectorSites(persona).length>0)
+  const {photoHeight,sectorsTop}=credentialFrontLayout(group.sectores.length,credencial.fa_todas_sedes || credentialSectorSites(persona).length>0)
   fotoRecortada = fotosPorAltura?.[photoHeight] || fotoRecortada
   const areaColor=hexToRgb(presentation.area.color)
   // ── FRENTE ──────────────────────────────────────────────────────────────────
@@ -205,7 +214,7 @@ export function drawCredentialFront(pdf, { persona, credencial, logo, fotoRecort
     pdf.text(credencial.grupo_sanguineo, CARD_W - infoX, infoBottom, { align:'right', baseline:'bottom' })
   }
 
-  if (credentialSectorSites(persona).length) {
+  if (credencial.fa_todas_sedes || credentialSectorSites(persona).length) {
   pdf.setTextColor(70);pdf.setFont('helvetica','normal');pdf.setFontSize(ptFromPx(6))
   pdf.text('ACCESOS POR SEDE · VALIDAR QR ANTES DE INGRESAR', mx(12), my(sectorsTop+6))
   pdf.setTextColor(15);pdf.setFont('helvetica','bold')

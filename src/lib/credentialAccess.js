@@ -14,7 +14,7 @@ export function toggleCredentialSector(catalog, ids, id) {
   }),id]
 }
 export const credentialSectorSites = persona => (persona.sede_ids || []).map(Number).filter(id=>CREDENTIAL_SECTOR_SITE_IDS.includes(id))
-export const hasIncompatibleCredentialSectors = (persona,credential) => (credential?.sectores_autorizados || []).some(sector=>!credentialSectorSites(persona).includes(Number(sector.sede_id)))
+export const hasIncompatibleCredentialSectors = (persona,credential,faEligible=false) => credential?.fa_todas_sedes ? !faEligible : (credential?.sectores_autorizados || []).some(sector=>!credentialSectorSites(persona).includes(Number(sector.sede_id)))
 
 export function groupCredentialSectors(sectors = []) {
   const groups = new Map()
@@ -38,3 +38,5 @@ export function selectedCredentialSectors(catalog, ids) {
   const selection = new Set(ids)
   return catalog.filter(sector => selection.has(sector.id))
 }
+
+export const globalCredentialGroup = () => ({ sedeId:'todas', nombre:'Todas las sedes', showSectors:true, sectores:[{id:'fa-todas',codigo:'FA',nombre:'Todas las sedes',tipo:'permiso',zra:true,estado_fisico:'no_aplica'}] })
