@@ -1,4 +1,8 @@
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { loadVehicleReport } from '../lib/flotaReportData'
+import { downloadVehicleReportPdf } from '../lib/flotaReportPdf'
+import { vehicleIdentity, fleetToday, fleetDate } from '../lib/flotaModel'
+import FlotaHistorial from '../components/FlotaHistorial'
+import React, { lazy, Suspense, useState, useEffect } from 'react'
 import { getActivos, getPoes } from '../lib/queries'
 import { ACTIVO_ESTADO_COLOR, DOC_ESTADO_COLOR } from '../lib/estados'
 import { toast } from '../lib/feedback'
@@ -13,7 +17,7 @@ const EstacionesEdenred = lazy(() => import('../views/flota/EstacionesEdenred'))
 // Flota mobile: vehículos con estado y vencimientos, y documentos/POEs.
 // Lectura + alerta de vencimientos; la gestión completa vive en escritorio.
 
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = fleetToday
 const diasHasta = f => f ? Math.ceil((new Date(f) - new Date(hoy())) / 86400000) : null
 
 const VENCIMIENTOS = [
@@ -41,6 +45,9 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
   const [docs, setDocs] = useState([])
   const [loading, setLoading] = useState(true)
   const [sel, setSel] = useState(null)
+  const [report,setReport]=useState(null)
+  const [reportError,setReportError]=useState('')
+  useEffect(()=>{let active=true;setReport(null);setReportError('');if(sel?.id)loadVehicleReport([{id:sel.id}]).then(([data])=>{if(active)setReport(data)}).catch(e=>{if(active)setReportError(e.message)});return()=>{active=false}},[sel?.id])
   useBackHandler(() => setSel(null), !!sel)
 
   useEffect(() => {
@@ -56,33 +63,38 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
   }, [focusType, focusId])
 
   if (sel) {
+    const vehicle=report?.vehicle || vehicleIdentity(sel)
     const docsVehiculo = docs.filter(d => d.activo_id === sel.id)
     return (
       <div className="mobile-scroll" style={{ padding: '0.75rem 1rem', height: '100%' }}>
         <button onClick={() => setSel(null)} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', color: 'var(--phosphor)', fontSize: '0.75rem', fontWeight: 700, padding: 0, marginBottom: 12 }}>
           <ChevronLeft size={15} /> Flota
         </button>
-        <h2 style={{ color: 'var(--text)', fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>{sel.nombre}</h2>
+        <h2 style={{ color: 'var(--text)', fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>{vehicle.nombre}</h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.7rem', margin: '4px 0 14px' }}>
-          {sel.marca || ''} {sel.modelo || ''}{sel.km_actual ? ` · ${sel.km_actual} km` : ''} · {sel.sede_nombre || sel.sede || '—'}
+          {vehicle.marca || ''} {vehicle.modelo || ''} · {vehicle.sede_nombre || vehicle.sede || '—'}
         </p>
+        <p>Dominio: {vehicle.dominio || 'Sin registrar'} · Año: {vehicle.anio || 'Sin registrar'} · Combustible: {vehicle.combustible || 'Sin registrar'}</p>
+        {reportError && <p role="alert">No se pudo cargar toda la ficha: {reportError}</p>}
+        {!report && !reportError && <p>Cargando historial y documentación…</p>}
+        {report && <><button className="btn-primary" onClick={async()=>{try {const data=await loadVehicleReport([sel]);downloadVehicleReportPdf(data,data[0].vehicle.sede_nombre)}catch(e){setReportError(e.message)}}}>Informe PDF completo</button><FlotaHistorial report={report}/><h3>Documentación</h3>{report.documentation.map(d=><p key={d.codigo}>{d.titulo}: {d.fecha_vencimiento && d.fecha_vencimiento < hoy() ? 'Vencido por fecha' : d.estado || 'Sin cargar'} · {fleetDate(d.fecha_vencimiento)}</p>)}<h3>Preventivos</h3>{report.plans.map(p=><p key={p.id}>{p.nombre} · {p.activo===false?'Inactivo':p.estado} · {fleetDate(p.proxima_fecha)} · {p.descripcion}</p>)}<p>{vehicle.notas_tecnico}</p></>}
         {onCreateNovedad && sel.sede_id && <button className="btn-primary w-full" style={{ marginBottom:12, minHeight:44 }} onClick={() => onCreateNovedad({ type:'vehiculo', id:sel.id, label:sel.nombre, sedeId:sel.sede_id, sedeLabel:sel.sede_nombre, returnModule:'flota' })}>+ Crear novedad del vehículo</button>}
         <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '0.85rem 1rem', marginBottom: '0.75rem' }}>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', margin: '0 0 8px' }}>VENCIMIENTOS</p>
           {VENCIMIENTOS.map(([campo, label]) => {
-            const d = diasHasta(sel[campo])
-            if (sel[campo] === null || sel[campo] === undefined) return null
+            const d = diasHasta(vehicle[campo])
+            if (vehicle[campo] === null || vehicle[campo] === undefined) return null
             const color = d === null ? 'var(--text-dim)' : d < 0 ? '#FF2A2A' : d <= 30 ? '#F59E0B' : '#39FF14'
             return (
               <div key={campo} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0' }}>
                 <span style={{ color: 'var(--text)', fontSize: '0.75rem' }}>{label}</span>
                 <span style={{ color, fontSize: '0.72rem', fontWeight: 700 }}>
-                  {sel[campo]} {d !== null && (d < 0 ? `(vencido ${-d}d)` : `(${d}d)`)}
+                  {vehicle[campo]} {d !== null && (d < 0 ? `(vencido ${-d}d)` : `(${d}d)`)}
                 </span>
               </div>
             )
           })}
-          {!VENCIMIENTOS.some(([c]) => sel[c]) && (
+          {!VENCIMIENTOS.some(([c]) => vehicle[c]) && (
             <p style={{ color: 'var(--text-dim)', fontSize: '0.72rem', margin: 0 }}>Sin vencimientos cargados.</p>
           )}
         </div>

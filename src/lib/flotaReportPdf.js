@@ -1,13 +1,14 @@
 import { jsPDF } from 'jspdf'
+import { fleetDate, fleetDateTime, fleetToday, closedTicket, interventionDate, interventionKind } from './flotaModel'
 
 const value = (v) => v === null || v === undefined || v === '' ? 'Sin registrar' : String(v)
 const slug = v => String(v || 'vehiculo').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')
-const date = v => v ? new Date(`${String(v).slice(0,10)}T12:00:00`).toLocaleDateString('es-AR') : 'Sin registrar'
+const date = fleetDate
 const money = v => v == null || v === '' ? 'Sin registrar' : `$ ${Number(v).toLocaleString('es-AR')}`
 
 export function vehicleReportFilename(items, siteName) {
   const name = items.length === 1 ? items[0].vehicle.nombre : `sede_${siteName}`
-  return `informe_flota_${slug(name)}_${new Date().toISOString().slice(0,10)}.pdf`
+  return `informe_flota_${slug(name)}_${fleetToday()}.pdf`
 }
 
 export function createVehicleReportPdf(items, siteName) {
@@ -31,7 +32,7 @@ export function createVehicleReportPdf(items, siteName) {
     y += 1.2
   }
   function section(title) {
-    next(13); y += 3
+    next(26); y += 3
     pdf.setDrawColor(42,125,35); pdf.setLineWidth(0.35); pdf.line(margin,y,width-margin,y); y += 5
     line(title,{bold:true,size:10})
   }
@@ -56,13 +57,13 @@ export function createVehicleReportPdf(items, siteName) {
   pdf.setFont('helvetica','bold'); pdf.setFontSize(17); pdf.setTextColor(25)
   pdf.text('Informe de Flota', margin, y); y += 8
   line(`Sede: ${siteName || 'Varias sedes'}  |  Vehículos: ${items.length}`)
-  line(`Emitido: ${new Date().toLocaleString('es-AR')}`,{muted:true})
+  line(`Emitido: ${fleetDateTime(new Date())}`,{muted:true})
 
   if (items.length > 1) {
     section('Resumen de la selección')
     line(`Operativos: ${items.filter(i => i.vehicle.estado === 'operativo').length}  |  En reparación: ${items.filter(i => i.vehicle.estado === 'en_reparacion').length}  |  Otros: ${items.filter(i => !['operativo','en_reparacion'].includes(i.vehicle.estado)).length}`)
     items.forEach(({vehicle,documentation,tickets,plans}) => {
-      const expired = documentation.filter(d => d.fecha_vencimiento && d.fecha_vencimiento < new Date().toISOString().slice(0,10)).length
+      const expired = documentation.filter(d => d.fecha_vencimiento && d.fecha_vencimiento < fleetToday()).length
       entry(vehicle.nombre,[`Estado: ${value(vehicle.estado)}  |  Documentos vencidos: ${expired}  |  Tickets: ${tickets.length}  |  Planes: ${plans.length}`])
     })
   }
@@ -75,18 +76,26 @@ export function createVehicleReportPdf(items, siteName) {
 
     section('Ficha del vehículo')
     line(`Código: ${value(v.codigo_interno)}  |  Categoría: ${value(v.categoria)}  |  Marca/modelo: ${value([v.marca,v.modelo].filter(Boolean).join(' '))}`)
-    line(`Dominio / identificación: ${value(v.dominio || v.numero_serie)}  |  KM actual: ${value(v.km_actual)}`)
+    line(`Dominio: ${value(v.dominio)} (${v.dominio_fuente})  |  Serie interna: ${value(v.numero_serie)}`)
+    line(`Año: ${value(v.anio)}  |  Combustible: ${value(v.combustible)}${v.datos_en_notas ? ' (datos conservados en notas)' : ''}`)
+    line(`Última lectura: ${item.reading?.km == null ? 'Sin registrar' : Number(item.reading.km).toLocaleString('es-AR')+' km'}  |  Fecha: ${date(item.reading?.fecha)}  |  Fuente: ${value(item.reading?.fuente)}`)
+    line('La última lectura registrada no certifica el kilometraje actual.',{muted:true})
+    line(`Proveedor habitual: ${value(v.proveedor_nombre)}`)
     line(`Ubicación: ${value(v.ubicacion_detalle)}  |  Bien concesionado: ${v.bien_concesionado === true ? 'Sí' : v.bien_concesionado === false ? 'No' : 'Sin definir'}`)
     if (v.concesion_propietario || v.concesion_referencia) line(`Concedente: ${value(v.concesion_propietario)}  |  Referencia: ${value(v.concesion_referencia)}`)
     if (v.notas || v.estado_notas) line(`Notas: ${[v.notas,v.estado_notas].filter(Boolean).join(' · ')}`)
 
+    if(v.notas_tecnico) { section('Observaciones y recomendaciones técnicas'); line(v.notas_tecnico) }
+    section('Controles de consistencia')
+    if(!item.warnings?.length) line('Sin contradicciones detectadas por los controles automáticos.')
+    ;(item.warnings || []).forEach(w=>line(w))
     section('Vencimientos principales')
-    ;[['Seguro',v.vencimiento_seguro],['VTV',v.vencimiento_vtv],['SENASA',v.vencimiento_senasa],['RMTSA',v.vencimiento_rmtsa]].forEach(([name,d]) => line(`${name}: ${date(d)}${d && d < new Date().toISOString().slice(0,10) ? ' · VENCIDO' : ''}`))
+    ;[['Seguro',v.vencimiento_seguro],['VTV',v.vencimiento_vtv],['SENASA',v.vencimiento_senasa],['RMTSA',v.vencimiento_rmtsa]].forEach(([name,d]) => line(`${name}: ${date(d)}${d && d < fleetToday() ? ' · VENCIDO' : ''}`))
     if (v.numero_poliza) line(`Póliza: ${v.numero_poliza}`)
 
     section('Documentación de auditoría / Flota')
     documentation.forEach(d => { entry(d.titulo,[
-      `Estado: ${d.registered ? value(d.estado) : 'Sin cargar'}  |  Vence: ${date(d.fecha_vencimiento)}  |  Aviso: ${value(d.aviso_dias || 30)} días`,
+      `Estado: ${d.fecha_vencimiento && d.fecha_vencimiento < fleetToday() ? 'VENCIDO POR FECHA; declarado '+value(d.estado) : d.registered ? value(d.estado) : 'Sin cargar'}  |  Vence: ${date(d.fecha_vencimiento)}  |  Aviso: ${value(d.aviso_dias || 30)} días`,
       d.observacion ? `Observación: ${d.observacion}` : null,
     ]); evidence(d.attachments) })
 
@@ -96,11 +105,25 @@ export function createVehicleReportPdf(items, siteName) {
 
     section('Mantenimiento preventivo')
     empty(plans,'Sin planes preventivos registrados.')
-    plans.forEach(p => entry(p.nombre,[`Estado: ${value(p.estado)}  |  Frecuencia: ${value(p.frecuencia)}  |  Próximo: ${date(p.proxima_fecha)}  |  Último: ${date(p.ultimo_realizado)}`, p.descripcion ? `Descripción: ${p.descripcion}` : null, `Responsable: ${value(p.responsable_nombre || p.responsable)}`, ...p.executions.map(e => `Ejecución ${date(e.fecha)} · ${value(e.realizado_por)} · ${value(e.observaciones)} · Costo ${money(e.costo)}`)]))
+    plans.forEach(p => entry(p.nombre,[`Estado: ${value(p.estado)} · Activo: ${p.activo === false ? 'No' : p.activo === true ? 'Sí' : 'Sin registrar'}  |  Frecuencia: ${value(p.frecuencia)}  |  Próximo: ${date(p.proxima_fecha)}  |  Último: ${date(p.ultimo_realizado)}`, p.descripcion ? `Descripción: ${p.descripcion}` : null, `Responsable: ${value(p.responsable_nombre || p.responsable)}`, ...p.executions.map(e => `Ejecución ${date(e.fecha)} · ${value(e.realizado_por)} · ${value(e.observaciones)} · Costo ${money(e.costo)}`)]))
 
-    section('Tickets de mantenimiento')
-    empty(tickets,'Sin tickets registrados.')
-    tickets.forEach(t => entry(`Ticket ${value(t.numero || t.id)} · ${date(t.created_at)} · ${value(t.estado)}`,[`${value(t.tipo)} · ${value(t.descripcion)}`, t.diagnostico ? `Diagnóstico: ${t.diagnostico}` : null, `Prioridad: ${value(t.prioridad)}  |  Responsable: ${value(t.responsable)}  |  KM: ${value(t.lectura_km)}  |  Costo: ${money(t.costo_real)}`]))
+    for (const [title, subset] of [['Tickets abiertos y pendientes',tickets.filter(t=>!closedTicket(t))],['Historial de intervenciones y diagnósticos',tickets.filter(closedTicket)]]) {
+      section(title)
+      empty(subset,'Sin registros en esta sección.')
+      subset.forEach(t=>{
+        entry(`Ticket ${value(t.numero || t.id)} · ${interventionKind(t)} · Estado: ${value(t.estado)}`, [
+          `Fecha efectiva: ${date(interventionDate(t))} | Incorporación al sistema: ${fleetDateTime(t.created_at)}`,
+          `${value(t.tipo)} · ${value(t.descripcion)}`,
+          t.trabajo_realizado ? `Trabajo registrado: ${t.trabajo_realizado}` : null,
+          t.diagnostico ? `Diagnóstico / garantía informada: ${t.diagnostico}` : null,
+          `Proveedor: ${value(t.proveedor_nombre)} | Responsable: ${value(t.responsable)} | Lectura: ${value(t.lectura_km)} km`,
+          `Presupuesto: ${money(t.presupuesto ?? t.costo_estimado)} (no acredita pago)`,
+          t.costo_real == null ? 'Costo real acreditado: sin constancia.' : `Costo real declarado: ${money(t.costo_real)}; verificar comprobante, no implica pago acreditado.`,
+          t.notas_costos ? `Notas económicas: ${t.notas_costos}` : null,
+        ])
+        evidence([...(t.attachments || []),...(t.evidencia_url ? [{nombre:'Documento de origen / proveedor',url:t.evidencia_url}] : [])])
+      })
+    }
 
     section('Reportes de escala vinculados')
     empty(scaleReports,'Sin reportes de escala vinculados a este vehículo.')
