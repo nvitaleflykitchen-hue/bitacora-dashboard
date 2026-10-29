@@ -1,12 +1,17 @@
 import { supabase, db } from './supabase'
 import { getVehiculoDocumentacionTemplate } from './documentacion'
+import { vehicleIdentity, lastReading, fleetWarnings, ticketDate } from './flotaModel'
 
 const CHECKLIST_PREFIX = 'CHECKLIST_VEHICULO::'
 
-async function read(query) {
-  const { data, error } = await query
-  if (error) throw error
-  return data || []
+export async function readAll(query) {
+  const rows=[]
+  for(let from=0;;from+=500) {
+    const {data,error}=await query.range(from,from+499)
+    if(error) throw error
+    rows.push(...(data || []))
+    if(!data || data.length<500) return rows
+  }
 }
 
 function parseChecklist(row) {
@@ -17,7 +22,9 @@ function parseChecklist(row) {
 
 export function groupVehicleReport(vehicles, rows) {
   const reportsById = new Map((rows.reports || []).map(row => [String(row.id), row]))
-  return vehicles.map(vehicle => {
+  return vehicles.map(rawVehicle => {
+    const vehicle=vehicleIdentity(rawVehicle)
+    vehicle.proveedor_nombre=(rows.providers || []).find(p=>p.id===vehicle.proveedor_servicio_id)?.nombre || null
     const id = String(vehicle.id)
     const docs = rows.documentation.filter(row => row.entity_id === id)
     const byCode = new Map(docs.map(row => [row.codigo, row]))
@@ -30,15 +37,19 @@ export function groupVehicleReport(vehicles, rows) {
       ...plan, executions:rows.executions.filter(row => String(row.plan_id) === String(plan.id)),
     }))
     const news = rows.news.filter(row => String(row.activo_id) === id)
+    const tickets=[...new Map(rows.tickets.filter(row=>String(row.activo_id)===id).map(t=>[t.id,t])).values()].map(t=>({...t,proveedor_nombre:(rows.providers || []).find(p=>p.id===t.proveedor_id)?.nombre || null,attachments:rows.attachments.filter(a=>a.entity_type==='ticket' && a.entity_id===String(t.id))})).sort((a,b)=>String(ticketDate(b)||'').localeCompare(String(ticketDate(a)||'')) || String(a.id).localeCompare(String(b.id)))
+    const checks=rows.visits.filter(row=>String(row.activo_id)===id).map(parseChecklist).filter(Boolean)
     return {
       vehicle,
+      reading:lastReading(vehicle,tickets,checks),
+      warnings:fleetWarnings(vehicle,documentation,plans),
       documentation,
       fleetDocuments:rows.fleetDocuments.filter(row => String(row.activo_id) === id).map(item => ({ ...item, attachments:rows.attachments.filter(a => a.entity_type === 'flota_documento' && a.entity_id === String(item.id)) })),
       plans,
-      tickets:rows.tickets.filter(row => String(row.activo_id) === id),
+      tickets,
       news:news.filter(row => !row.registro_id),
       scaleReports:news.filter(row => row.registro_id).map(row => ({ ...row, sourceReport:reportsById.get(String(row.registro_id)) || null })),
-      checks:rows.visits.filter(row => String(row.activo_id) === id).map(parseChecklist).filter(Boolean),
+      checks,
       extinguishers:rows.extinguishers.filter(row => String(row.activo_id) === id),
     }
   })
@@ -48,24 +59,29 @@ export async function loadVehicleReport(vehicles) {
   if (!vehicles.length) throw new Error('Seleccioná al menos un vehículo.')
   const ids = vehicles.map(v => v.id)
   const stringIds = ids.map(String)
+  const freshVehicles=await readAll(supabase.from('mnt_activos').select('*').in('id',ids).order('id'))
+  if(freshVehicles.length!==new Set(ids).size) throw Error('Una ficha ya no está disponible. Actualizá la selección antes de generar.')
   const [documentation, fleetDocuments, plans, tickets, news, visits, extinguishers] = await Promise.all([
-    read(db().from('documentacion_items').select('*').eq('entity_type','vehiculo').in('entity_id',stringIds)),
-    read(supabase.from('mnt_documentos_flota').select('*').in('activo_id',ids)),
-    read(supabase.from('mnt_planes').select('*').in('activo_id',ids)),
-    read(supabase.schema('mantenimiento').from('tickets').select('*').eq('categoria','Vehiculos').in('activo_id',ids).order('created_at',{ascending:false})),
-    read(db().from('vehiculo_novedades').select('*').in('activo_id',ids).order('fecha_reporte',{ascending:false})),
-    read(supabase.from('mnt_visitas').select('*').eq('activo_tipo','VEHICULO').in('activo_id',ids).order('fecha',{ascending:false})),
-    read(supabase.from('mnt_matafuegos').select('*').in('activo_id',ids)),
+    readAll(db().from('documentacion_items').select('*').eq('entity_type','vehiculo').in('entity_id',stringIds).order('id')),
+    readAll(supabase.from('mnt_documentos_flota').select('*').in('activo_id',ids).order('id')),
+    readAll(supabase.from('mnt_planes').select('*').in('activo_id',ids).order('id')),
+    readAll(supabase.schema('mantenimiento').from('tickets').select('*').in('activo_id',ids).order('created_at',{ascending:false}).order('id')),
+    readAll(db().from('vehiculo_novedades').select('*').in('activo_id',ids).order('fecha_reporte',{ascending:false}).order('id')),
+    readAll(supabase.from('mnt_visitas').select('*').eq('activo_tipo','VEHICULO').in('activo_id',ids).order('fecha',{ascending:false}).order('id')),
+    readAll(supabase.from('mnt_matafuegos').select('*').in('activo_id',ids).order('id')),
   ])
   const planIds = plans.map(p => p.id)
   const reportIds = [...new Set(news.map(n => n.registro_id).filter(Boolean))]
-  const reports = reportIds.length ? await read(db().from('registros').select('id,fecha_reporte,reportante,email_reportante,sede_id,sede_nombre,turno').in('id',reportIds)) : []
-  const executions = planIds.length ? await read(supabase.from('mnt_ejecuciones').select('*').in('plan_id',planIds).order('fecha',{ascending:false})) : []
+  const reports = reportIds.length ? await readAll(db().from('registros').select('id,fecha_reporte,reportante,email_reportante,sede_id,sede_nombre,turno').in('id',reportIds).order('id')) : []
+  const executions = planIds.length ? await readAll(supabase.from('mnt_ejecuciones').select('*').in('plan_id',planIds).order('fecha',{ascending:false}).order('id')) : []
   const docIds = documentation.map(item => String(item.id))
   const fleetIds = fleetDocuments.map(item => String(item.id))
-  const [docAttachments, fleetAttachments] = await Promise.all([
-    docIds.length ? read(db().from('adjuntos').select('entity_type,entity_id,nombre,url,descripcion').eq('entity_type','documentacion_item').in('entity_id',docIds)) : [],
-    fleetIds.length ? read(db().from('adjuntos').select('entity_type,entity_id,nombre,url,descripcion').eq('entity_type','flota_documento').in('entity_id',fleetIds)) : [],
+  const [docAttachments, fleetAttachments, ticketAttachments] = await Promise.all([
+    docIds.length ? readAll(db().from('adjuntos').select('entity_type,entity_id,nombre,url,descripcion').eq('entity_type','documentacion_item').in('entity_id',docIds).order('id')) : [],
+    fleetIds.length ? readAll(db().from('adjuntos').select('entity_type,entity_id,nombre,url,descripcion').eq('entity_type','flota_documento').in('entity_id',fleetIds).order('id')) : [],
+    tickets.length ? readAll(db().from('adjuntos').select('entity_type,entity_id,nombre,url,descripcion').eq('entity_type','ticket').in('entity_id',tickets.map(t=>String(t.id))).order('id')) : [],
   ])
-  return groupVehicleReport(vehicles, { documentation, fleetDocuments, plans, tickets, news, reports, visits, extinguishers, executions, attachments:[...docAttachments,...fleetAttachments] })
+  const providerIds=[...new Set([...freshVehicles.map(v=>v.proveedor_servicio_id),...tickets.map(t=>t.proveedor_id)].filter(Boolean))]
+  const providers=providerIds.length ? await readAll(supabase.from('mnt_proveedores').select('id,nombre').in('id',providerIds).order('id')) : []
+  return groupVehicleReport(freshVehicles, { documentation, fleetDocuments, plans, tickets, news, reports, visits, extinguishers, executions, providers, attachments:[...docAttachments,...fleetAttachments,...ticketAttachments] })
 }

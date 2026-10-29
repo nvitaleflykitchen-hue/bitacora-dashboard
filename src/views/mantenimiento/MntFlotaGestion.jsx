@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { vehicleIdentity, fleetToday } from '../../lib/flotaModel'
+import { saveFleetVehicle } from '../../lib/flotaVehicleSave'
+import FlotaHistorial from '../../components/FlotaHistorial'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
 import { supabase } from '../../lib/supabase'
-import { getActivos, upsertActivo, getSedes } from '../../lib/queries'
+import { getActivos, getProveedores, getSedes } from '../../lib/queries'
 import { Plus, RefreshCw, Filter, FileDown } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
 import DocumentacionChecklist from '../../components/DocumentacionChecklist'
@@ -25,7 +28,7 @@ const DOCS = [
   { key:'vencimiento_rmtsa',   label:'RMTSA' },
 ]
 
-const hoy = () => new Date().toISOString().split('T')[0]
+const hoy = fleetToday
 const estaVencido   = f => !!f && f < hoy()
 const proximoVencer = f => { if (!f) return false; const d = (new Date(f)-new Date())/86400000; return d>=0 && d<=30 }
 const docColor = f => estaVencido(f) ? '#FF2A2A' : proximoVencer(f) ? '#F59E0B' : f ? '#39FF14' : 'var(--text-dim)'
@@ -74,40 +77,38 @@ function ReportModal({ vehicles, sedes, initialSiteId, onClose }) {
   </div>
 }
 
-function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onReport }) {
+export function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onReport }) {
   const isNew = !vehiculo?.id
   const { rol, perfil } = useAuth()
   const canEdit = ['admin','encargado','editor','flota'].includes(rol) && !isQualityOnlyProfile(perfil)
   const [editing, setEditing] = useState(isNew)
-  const [form, setForm] = useState(vehiculo || { tipo:'VEHICULO', estado:'operativo', nombre:'' })
+  const [form, setForm] = useState(vehiculo ? vehicleIdentity(vehiculo) : { tipo:'VEHICULO', estado:'operativo', nombre:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
   const [planes, setPlanes] = useState([])
   const [loadingPlanes, setLoadingPlanes] = useState(false)
+  const [report,setReport]=useState(null)
+  const [providers,setProviders]=useState([])
+  const [changed,setChanged]=useState([])
+  const current=report?.vehicle || (vehiculo ? vehicleIdentity(vehiculo) : {})
   const documentsRef = useRef(null)
-  const set = (k,v) => setForm(f=>({...f,[k]:v}))
+  const set = (k,v) => {setChanged(keys=>[...new Set([...keys,k])]);setForm(f=>({...f,[k]:v}))}
 
   useEffect(() => {
-    if (!isNew && vehiculo?.id) {
+    let active=true
+    getProveedores().then(rows=>{if(active)setProviders(rows)}).catch(e=>{if(active)setErr(e.message)})
+    if(!isNew) {
       setLoadingPlanes(true)
-      supabase.from('mnt_planes').select('*').eq('activo_id', vehiculo.id).eq('activo', true).order('proxima_fecha')
-        .then(({ data }) => { setPlanes(data || []); setLoadingPlanes(false) })
+      loadVehicleReport([{id:vehiculo.id}]).then(([data])=>{if(active){setReport(data);setForm(data.vehicle);setPlanes(data.plans.filter(p=>p.activo!==false))}}).catch(e=>{if(active)setErr(`No se pudo cargar la ficha completa: ${e.message}`)}).finally(()=>{if(active)setLoadingPlanes(false)})
     }
+    return()=>{active=false}
   }, [isNew, vehiculo?.id])
 
   const handleSave = async () => {
     if (!form.nombre) { setErr('El nombre / patente es obligatorio'); return }
     setSaving(true); setErr(null)
     try {
-      let payload = { ...form, tipo:'VEHICULO' }
-      // 'dominio' no existe como columna en mantenimiento.activos — eliminarlo del payload
-      // para evitar el error "Could not find the 'dominio' column of 'mnt_activos'"
-      delete payload.dominio
-      if (payload.sede_id) {
-        const sede = sedes.find(s => s.id === Number(payload.sede_id))
-        if (sede) payload.sede_nombre = sede.nombre
-      }
-      await upsertActivo(payload)
+      await saveFleetVehicle(form, isNew ? null : current, changed, sedes)
       onSaved()
     } catch(e) { setErr(e.message) } finally { setSaving(false) }
   }
@@ -130,27 +131,27 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
     </div>
   )
 
-  const sedeName = vehiculo?.sede_nombre || sedes.find(s=>s.id===vehiculo?.sede_id)?.nombre
+  const sedeName = current?.sede_nombre || sedes.find(s=>s.id===current?.sede_id)?.nombre
 
   return (
     <div className='modal-overlay'>
-      <div role="dialog" aria-modal="true" aria-label={isNew ? 'Nuevo vehículo' : `Ficha de ${vehiculo.nombre}`} style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:6, padding:'0 1.25rem 1rem', width:'100%', maxWidth:1180, maxHeight:'94vh', overflowY:'auto' }}>
+      <div role="dialog" aria-modal="true" aria-label={isNew ? 'Nuevo vehículo' : `Ficha de ${current.nombre}`} style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:6, padding:'0 1.25rem 1rem', width:'100%', maxWidth:1180, maxHeight:'94vh', overflowY:'auto' }}>
 
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, padding:'1rem 0', position:'sticky', top:0, zIndex:2, background:'var(--surface)', borderBottom:'1px solid rgba(57,255,20,0.15)', marginBottom:'1rem' }}>
           <div>
             <h2 style={{ color:'var(--text)', fontWeight:700, fontSize:'1.1rem', margin:0 }}>
-              {isNew ? 'Nuevo Vehículo' : vehiculo.nombre}
+              {isNew ? 'Nuevo Vehículo' : current.nombre}
             </h2>
             {!isNew && (
               <div style={{ display:'flex', gap:6, marginTop:5 }}>
-                <span className='chip' style={{ background:`${ESTADO_COLOR[vehiculo.estado]||'#888'}18`, color:ESTADO_COLOR[vehiculo.estado]||'#888', border:`1px solid ${ESTADO_COLOR[vehiculo.estado]||'#888'}33`, borderRadius:2 }}>{vehiculo.estado}</span>
-                {vehiculo.dominio && <span className='chip' style={{ borderRadius:2 }}>{vehiculo.dominio}</span>}
+                <span className='chip' style={{ background:`${ESTADO_COLOR[current.estado]||'#888'}18`, color:ESTADO_COLOR[current.estado]||'#888', border:`1px solid ${ESTADO_COLOR[current.estado]||'#888'}33`, borderRadius:2 }}>{current.estado}</span>
+                {current.dominio && <span className='chip' style={{ borderRadius:2 }}>{current.dominio}</span>}
               </div>
             )}
           </div>
           <div className="flex flex-wrap gap-2 justify-end">
             {!isNew && !editing && <button type="button" className="btn-primary" onClick={() => documentsRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })}>Documentación</button>}
-            {!isNew && !editing && canEdit && <button type="button" className="btn-ghost" onClick={() => setEditing(true)}>Editar datos</button>}
+            {!isNew && !editing && canEdit && <button type="button" className="btn-ghost" disabled={loadingPlanes || !report} onClick={() => setEditing(true)}>Editar datos</button>}
             <button aria-label="Cerrar ficha" onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:'1.2rem', marginLeft:8 }}>✕</button>
           </div>
         </div>
@@ -158,14 +159,17 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
         {!isNew && !editing ? (
           <div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1.5rem' }}>
-              <Field label="Marca / Modelo" value={[vehiculo.marca, vehiculo.modelo].filter(Boolean).join(' ')} />
-              <Field label="Categoría" value={vehiculo.categoria} />
-              <Field label="Bien concesionado" value={concesionLabel(vehiculo.bien_concesionado)} />
-              {vehiculo.bien_concesionado === true && <><Field label="Entidad concedente" value={vehiculo.concesion_propietario || 'Sin registrar'} /><Field label="Contrato / acta" value={vehiculo.concesion_referencia || 'Sin referencia'} /></>}
+              <Field label="Marca / Modelo" value={[current.marca, current.modelo].filter(Boolean).join(' ')} />
+              <Field label="Categoría" value={current.categoria} />
+              <Field label="Bien concesionado" value={concesionLabel(current.bien_concesionado)} />
+              {current.bien_concesionado === true && <><Field label="Entidad concedente" value={current.concesion_propietario || 'Sin registrar'} /><Field label="Contrato / acta" value={current.concesion_referencia || 'Sin referencia'} /></>}
               <Field label="Sede / Unidad" value={sedeName} />
-              <Field label="Responsable" value={vehiculo.responsable} />
-              <Field label="Dominio" value={vehiculo.dominio} />
-              <Field label="Año" value={vehiculo.anio} />
+              <Field label="Responsable" value={current.responsable} />
+              <Field label="Dominio" value={current.dominio} />
+              <Field label="Año" value={current.anio} />
+              <Field label="Combustible" value={current.combustible} />
+              <Field label="Proveedor habitual" value={current.proveedor_nombre} />
+              {current.datos_en_notas && <p>Año/combustible recuperados de notas históricas; editá para confirmar los campos estructurados.</p>}
             </div>
             <p style={{ color:'var(--phosphor)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.1em', margin:'0.5rem 0 0.75rem', borderTop:'1px solid rgba(57,255,20,0.08)', paddingTop:'0.75rem', fontFamily:"'Roboto Mono',monospace" }}>Documentación</p>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1.5rem' }}>
@@ -175,7 +179,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
             <div ref={documentsRef} style={{ marginTop:'1rem', scrollMarginTop:110 }}>
               <DocumentacionChecklist
                 entityType="vehiculo"
-                entityId={vehiculo.id}
+                entityId={current.id}
                 template={getVehiculoDocumentacionTemplate(sedeName)}
                 canEdit={canEdit}
                 wide
@@ -196,7 +200,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
                   <div key={p.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem' }}>
                     <div>
                       <p style={{ color:'var(--text)', fontSize:'0.8rem', margin:0 }}>{p.nombre}</p>
-                      <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', margin:0 }}>{p.frecuencia}{p.ultimo_realizado ? ` · último: ${fmtFecha(p.ultimo_realizado)}` : ''}</p>
+                      <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', margin:0 }}>{p.descripcion && <span>{p.descripcion}<br/></span>}{p.frecuencia}{p.ultimo_realizado ? ` · último: ${fmtFecha(p.ultimo_realizado)}` : ''}</p>
                     </div>
                     <span style={{ color, fontSize:'0.72rem', fontFamily:'monospace', whiteSpace:'nowrap' }}>
                       {d === null ? '—' : d < 0 ? `${Math.abs(d)}d vencido` : d === 0 ? 'Hoy' : `en ${d}d`}
@@ -206,10 +210,12 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
               })
             )}
 
-            {vehiculo.notas && (
+            <FlotaHistorial report={report} />
+            {current.notas_tecnico && <div><h3>Observaciones técnicas</h3><p style={{whiteSpace:'pre-wrap'}}>{current.notas_tecnico}</p></div>}
+            {current.notas && (
               <div style={{ borderTop:'1px solid rgba(57,255,20,0.08)', paddingTop:'0.75rem', marginTop:'0.25rem' }}>
                 <p style={LABEL_S}>Notas</p>
-                <p style={{ color:'var(--text-dim)', fontSize:'0.8rem', margin:0, lineHeight:1.5 }}>{vehiculo.notas}</p>
+                <p style={{ color:'var(--text-dim)', fontSize:'0.8rem', margin:0, lineHeight:1.5 }}>{current.notas}</p>
               </div>
             )}
           </div>
@@ -229,7 +235,7 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
               <div style={ROW_S}><label style={LABEL_S}>Nombre / Patente *</label><input value={form.nombre} onChange={e=>set('nombre',e.target.value.toUpperCase())} style={INPUT_S} placeholder="Ej: AA239RK" required /></div>
               <ActivoConcesionFields form={form} onChange={set}/>
               <div style={ROW_S}><label style={LABEL_S}>Dominio</label><input value={form.dominio||''} onChange={e=>set('dominio',e.target.value.toUpperCase())} style={INPUT_S} placeholder="Ej: AA239RK" /></div>
-              <div style={ROW_S}><label style={LABEL_S}>Año</label><input type="number" value={form.anio||''} onChange={e=>set('anio',+e.target.value)} style={INPUT_S} placeholder="Ej: 2019" /></div>
+              <div style={ROW_S}><label style={LABEL_S}>Año</label><input type="number" value={form.anio||''} onChange={e=>set('anio',e.target.value ? Number(e.target.value) : null)} style={INPUT_S} placeholder="Ej: 2019" /></div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1rem' }}>
               <div style={ROW_S}><label style={LABEL_S}>Marca</label><input value={form.marca||''} onChange={e=>set('marca',e.target.value)} style={INPUT_S} placeholder="Ej: Ford" /></div>
@@ -257,6 +263,13 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
               ))}
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label>Combustible<input style={INPUT_S} value={form.combustible||''} onChange={e=>set('combustible',e.target.value)}/></label>
+              <label>Última lectura (km)<input type="number" min="0" style={INPUT_S} value={form.km_actual??''} onChange={e=>set('km_actual',e.target.value===''?null:Number(e.target.value))}/></label>
+              <label>Fecha de lectura<input type="date" style={INPUT_S} value={form.km_lectura_fecha||''} onChange={e=>set('km_lectura_fecha',e.target.value)}/></label>
+              <label>Proveedor habitual<select style={INPUT_S} value={form.proveedor_servicio_id||''} onChange={e=>set('proveedor_servicio_id',e.target.value)}><option value="">Sin asignar</option>{providers.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}</select></label>
+              <label>Observaciones técnicas<textarea style={INPUT_S} rows={5} value={form.notas_tecnico||''} onChange={e=>set('notas_tecnico',e.target.value)}/></label>
+            </div>
             <div style={ROW_S}><label style={LABEL_S}>Notas</label><textarea value={form.notas||''} onChange={e=>set('notas',e.target.value)} rows={3} style={{ ...INPUT_S, resize:'vertical' }} placeholder="Ej: Service cada 10.000 km" /></div>
           </>
         )}
@@ -265,15 +278,15 @@ function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNovedad, onR
 
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', marginTop:'1rem' }}>
           {!isNew && !editing && <button onClick={() => onReport(vehiculo)} className='btn-ghost'>Informe PDF</button>}
-          {!isNew && !editing && onCreateNovedad && vehiculo?.sede_id && (
-            <button onClick={() => onCreateNovedad({ type:'vehiculo', id:vehiculo.id, label:vehiculo.nombre, sedeId:vehiculo.sede_id, sedeLabel:sedeName, returnView:'mntFlotaGestion' })} className='btn-primary'>+ Crear novedad</button>
+          {!isNew && !editing && onCreateNovedad && current?.sede_id && (
+            <button onClick={() => onCreateNovedad({ type:'vehiculo', id:current.id, label:current.nombre, sedeId:current.sede_id, sedeLabel:sedeName, returnView:'mntFlotaGestion' })} className='btn-primary'>+ Crear novedad</button>
           )}
           {!isNew && !editing && canEdit && (
-            <button onClick={() => setEditing(true)} className='btn-primary'>Editar</button>
+            <button disabled={loadingPlanes || !report} onClick={() => setEditing(true)} className='btn-primary'>Editar</button>
           )}
           {(isNew || editing) && (
             <>
-              <button onClick={() => editing ? setEditing(false) : onClose()} className='btn-ghost'>Cancelar</button>
+              <button onClick={() => { if(editing){setForm(current);setChanged([]);setEditing(false)}else onClose() }} className='btn-ghost'>Cancelar</button>
               <button onClick={handleSave} disabled={saving} className='btn-primary' style={{ opacity: saving ? 0.5 : 1 }}>
                 {saving ? 'Guardando...' : (isNew ? 'Crear' : 'Guardar')}
               </button>

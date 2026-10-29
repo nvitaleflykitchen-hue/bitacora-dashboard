@@ -1,3 +1,8 @@
+import { toast } from '../../lib/feedback'
+import { loadVehicleReport, readAll } from '../../lib/flotaReportData'
+import { downloadVehicleReportPdf } from '../../lib/flotaReportPdf'
+import { isVehicleTicket } from '../../lib/maintenanceTickets'
+import { ticketDate, fleetDate, interventionDate, lastReading } from '../../lib/flotaModel'
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase, db } from '../../lib/supabase'
 import { fmtFecha } from '../../lib/dateUtils'
@@ -67,12 +72,9 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
 
   useEffect(() => {
     if (tab === 'historial' && savedTicket?.id) {
-      supabase.from('mnt_tickets')
-        .select('id,created_at,descripcion')
-        .eq('activo_nombre', savedTicket.activo_nombre)
-        .order('created_at', { ascending: false })
-        .limit(20)
-        .then(({ data }) => setHistorial(data || []))
+      let query=supabase.from('mnt_tickets').select('*')
+      query=savedTicket.activo_id ? query.eq('activo_id',savedTicket.activo_id) : query.eq('activo_nombre',savedTicket.activo_nombre)
+      readAll(query.order('created_at',{ascending:false}).order('id')).then(rows=>setHistorial(rows.sort((a,b)=>String(ticketDate(b)||'').localeCompare(String(ticketDate(a)||''))))).catch(e=>setErr(e.message))
     }
   }, [tab, savedTicket])
 
@@ -86,7 +88,7 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
     const payload = {
       ...form,
       estado: vehiculoEstadoToDb(form.estado),
-      categoria: 'Vehiculos',
+      categoria: savedTicket?.categoria || 'Vehiculos',
       lectura_km: form.lectura_km !== '' ? parseInt(form.lectura_km) : null,
       costo_real: form.costo_real !== '' ? parseFloat(form.costo_real) : null,
       fecha_limite: form.fecha_limite || null,
@@ -225,7 +227,7 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
                 <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.875rem', textAlign:'center', padding:'2rem 0' }}>Sin historial</p>
               ) : historial.map(h => (
                 <div key={h.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8, marginBottom:8 }}>
-                  <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.25)', marginBottom:3 }}>{h.created_at ? fmtFecha(h.created_at) : ''} · #{h.id}</div>
+                  <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.25)', marginBottom:3 }}>{fleetDate(interventionDate(h))} · #{h.numero || h.id} · Incorporado: {fleetDate(h.created_at)}</div>
                   <div style={{ fontSize:'0.875rem', color:'var(--text)' }}>{h.descripcion}</div>
                 </div>
               ))}
@@ -360,12 +362,12 @@ function HistorialPorUnidad({ tickets, novedades, onCreateNovedad }) {
   }, {})
   const patentes = Object.keys(byPatente).sort((a,b) => labels[a].localeCompare(labels[b], 'es'))
 
-  const hist = selected ? byPatente[selected] : []
+  const hist = selected ? [...byPatente[selected]].sort((a,b)=>String(ticketDate(b)||'').localeCompare(String(ticketDate(a)||''))) : []
   const novedadesUnidad = selected ? (novedadesByPatente[selected] || []) : []
   const unidadOrigen = selected ? [...hist, ...novedadesUnidad][0] : null
   const unidadId = selected?.startsWith('id:') ? selected.slice(3) : unidadOrigen?.activo_id
   const costoTotal = hist.reduce((s,t) => s+(t.costo_real||0), 0)
-  const lastKm = hist.reduce((m,t) => Math.max(m, t.lectura_km||0), 0)
+  const lastKm = lastReading({},hist).km
 
   const PC = { critica:'#FF2A2A', alta:'#F59E0B', media:'#50b4ff', baja:'var(--text-dim)' }
   const EC = { resuelto:'chip-green', 'en progreso':'chip-yellow', abierto:'chip-blue', bloqueado:'chip-red', rechazado:'chip-gray' }
@@ -414,7 +416,7 @@ function HistorialPorUnidad({ tickets, novedades, onCreateNovedad }) {
               </div>
               {costoTotal > 0 && (
                 <div className='kpi-card' style={{ minWidth:90 }}>
-                  <p className='kpi-label'>Costo total</p>
+                  <p className='kpi-label'>Costo declarado (no acredita pago)</p>
                   <p className='kpi-value' style={{ fontSize:'1.2rem' }}>${costoTotal.toLocaleString('es-AR')}</p>
                 </div>
               )}
@@ -428,7 +430,7 @@ function HistorialPorUnidad({ tickets, novedades, onCreateNovedad }) {
                 <p className='kpi-label'>Novedades</p>
                 <p className='kpi-value' style={{ fontSize:'1.5rem' }}>{novedadesUnidad.length}</p>
               </div>
-              <button className='btn-ghost' onClick={() => descargarHistorialVehiculoPdf({ vehiculo:labels[selected], tickets:hist, novedades:novedadesUnidad })}
+              <button className='btn-ghost' onClick={async () => {try {if(unidadId){const data=await loadVehicleReport([{id:unidadId}]);downloadVehicleReportPdf(data,data[0].vehicle.sede_nombre)}else descargarHistorialVehiculoPdf({vehiculo:labels[selected],tickets:hist,novedades:novedadesUnidad})}catch(e){toast.error(e.message)}}}
                 style={{ marginLeft:'auto', alignSelf:'center', display:'flex', alignItems:'center', gap:6 }}>
                 <Download size={13}/> Exportar PDF
               </button>
@@ -468,7 +470,7 @@ function HistorialPorUnidad({ tickets, novedades, onCreateNovedad }) {
                 <tbody>
                   {hist.map(t => (
                     <tr key={t.id}>
-                      <td style={{ fontFamily:"'Roboto Mono',monospace", fontSize:'0.72rem', whiteSpace:'nowrap' }}>{t.created_at ? fmtFecha(t.created_at) : '—'}</td>
+                      <td style={{ fontFamily:"'Roboto Mono',monospace", fontSize:'0.72rem', whiteSpace:'nowrap' }}>{fleetDate(interventionDate(t))}</td>
                       <td>
                         <span className={`chip ${t.tipo==='correctivo' ? 'chip-red' : 'chip-blue'}`} style={{ borderRadius:2 }}>{t.tipo||'—'}</span>
                       </td>
@@ -479,7 +481,7 @@ function HistorialPorUnidad({ tickets, novedades, onCreateNovedad }) {
                       <td style={{ fontFamily:"'Roboto Mono',monospace", fontSize:'0.72rem' }}>{t.lectura_km ? t.lectura_km.toLocaleString() : '—'}</td>
                       <td style={{ fontFamily:"'Roboto Mono',monospace", fontSize:'0.72rem', color:'var(--phosphor)' }}>{t.costo_real ? `$${t.costo_real.toLocaleString('es-AR')}` : '—'}</td>
                       <td><span className={`chip ${EC[t.estado]||'chip-gray'}`} style={{ borderRadius:2 }}>{t.estado}</span></td>
-                      <td style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{t.taller||'—'}</td>
+                      <td style={{ color:'var(--text-dim)', fontSize:'0.72rem' }}>{t.proveedor_nombre || t.responsable || '—'}</td>
                     </tr>
                   ))}
                   {hist.length === 0 && (
@@ -520,10 +522,14 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
     setLoading(true)
     setLoadError('')
     const [ticketsResult, novedadesResult] = await Promise.all([
-      supabase.from('mnt_tickets')
-        .select('id,numero,activo_id,activo_nombre,descripcion,diagnostico,estado,prioridad,tipo,lectura_km,responsable,sede,costo_real,fecha_limite,created_at,notas_costos,proveedor_id')
-        .eq('categoria', 'Vehiculos')
-        .order('created_at', { ascending: false }),
+      (async()=>{
+        const [allTickets,assets,providers]=await Promise.all([
+          readAll(supabase.from('mnt_tickets').select('*').order('created_at',{ascending:false}).order('id')),
+          readAll(supabase.from('mnt_activos').select('id,tipo').eq('tipo','VEHICULO').order('id')),
+          readAll(supabase.from('mnt_proveedores').select('id,nombre').order('id')),
+        ])
+        return {data:allTickets.filter(t=>isVehicleTicket(t,assets)).map(t=>({...t,proveedor_nombre:providers.find(p=>p.id===t.proveedor_id)?.nombre})),error:null}
+      })().catch(error=>({data:[],error})),
       db().from('vehiculo_novedades')
         .select('id,registro_id,activo_id,activo_nombre,tipo,descripcion,estado,reportante,fecha_reporte,created_at,sede_id,sede_nombre')
         .order('fecha_reporte', { ascending:false }),

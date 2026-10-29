@@ -613,3 +613,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** comparación de origin/main con el respaldo local id-programacion-pruebas: faltaban ambos componentes, generadores PDF y entradas del catálogo.
 - **Corrección:** recuperados en la biblioteca compartida por Equipo de escritorio y móvil, sólo para administradores, conservando RecursosCompartidos. Se limita el texto y ajusta la etiqueta al A5; la autorización tiene desplazamiento en pantallas pequeñas.
 - **Recomendación:** mantener pruebas de apertura, acceso y generación. Los modelos conservan remitente, autorizados y firma originales; requieren revisión operativa cuando cambien esos datos. DNI queda editable y opcional: la consulta actual de responsables no lo devuelve. No se modificó la base de datos.
+
+### Flota: ficha e informe incompletos (2026-10-29)
+
+- **Severidad:** alta funcional; se omitían nueve intervenciones del caso AC065RF y se confundía serie con patente.
+- **Verificación:** SQL de sólo lectura en el proyecto autorizado y comparación con filtros del frontend. Categoría histórica distinta de Vehiculos; columnas año/combustible ausentes; informe basado en ficha anterior sin recarga.
+- **Corrección:** consulta por activo sin filtro de categoría/estado, ficha actualizada, guardado parcial, campos persistentes, historial y PDF compartidos en escritorio/móvil. Migración aditiva sin modificar registros ni permisos.
+- **Recomendación:** reconciliar SENASA, ARIEL y respaldo del preventivo con documentación real. Conservar pruebas de fechas, paginación y guardado parcial. Detalle y limitaciones en FLOTA_CORRECCION_AC065RF.md.
