@@ -36,6 +36,8 @@ export function resolverContactos(contactos, perfiles, personas) {
     const telefono = perfil?.telefono?.trim() || persona?.telefono?.trim()
     return {
       ...contact,
+      _perfilId: perfil?.id || null,
+      _persona: persona ? { id: persona.id, nombre: persona.nombre, apellido: persona.apellido } : null,
       nombre: perfil?.nombre || (persona && fullName(persona)) || contact.nombre,
       // perfiles.email identifies the login account, not the contact mailbox.
       // Resolve contact details only; never write them back to the auth profile.

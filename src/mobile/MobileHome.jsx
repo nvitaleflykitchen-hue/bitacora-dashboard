@@ -1,3 +1,4 @@
+import EditarContactoInicio from '../components/EditarContactoInicio'
 import { useState, useEffect } from 'react'
 import { getMisRegistrosHoy, getMisTareas, getDirectorio, getLimpiezaPendienteHoy } from '../lib/queries'
 import { useAuth } from '../lib/auth'
@@ -17,6 +18,7 @@ function ContactoChip({ c }) {
         <p style={{ color:'var(--text)', fontWeight:700, fontSize:'0.78rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.nombre}</p>
         <p style={{ color:'var(--phosphor)', fontSize:'0.65rem', fontFamily:'monospace', opacity:0.75 }}>{c.telefono}</p>
       </div>
+      <EditarContactoInicio contacto={c} />
       <div style={{ display:'flex', gap:4, flexShrink:0 }}>
         <a href={`tel:+${c.tel}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(57,255,20,0.1)', border:'1px solid rgba(57,255,20,0.2)', color:'var(--phosphor)', borderRadius:5, textDecoration:'none', fontSize:'0.85rem' }}>📞</a>
         {c.wa && <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener noreferrer" style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.22)', color:'#25d366', borderRadius:5, textDecoration:'none', fontSize:'0.85rem' }}>💬</a>}
@@ -42,12 +44,14 @@ function ContactosRapidos() {
     const onVisible = () => { if (!document.hidden) refresh() }
     refresh()
     window.addEventListener('focus', refresh)
+    window.addEventListener('directorio-updated', refresh)
     document.addEventListener('visibilitychange', onVisible)
     const timer = window.setInterval(onVisible, 60000)
     return () => {
       active = false
       window.clearInterval(timer)
       window.removeEventListener('focus', refresh)
+      window.removeEventListener('directorio-updated', refresh)
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])

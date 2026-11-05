@@ -1,3 +1,4 @@
+import EditarContactoInicio from '../components/EditarContactoInicio'
 import { useState, useEffect } from 'react'
 import { ClipboardCheck, Building2, ShoppingCart, Wrench, Search, ChevronDown, ChevronUp, BarChart3, ScanLine } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -65,6 +66,7 @@ function ContactChip({ c }) {
           {c.telefono}
         </p>
       </div>
+      <EditarContactoInicio contacto={c} />
       {/* Botones de acción */}
       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
         <a
@@ -134,12 +136,14 @@ function ContactosSection() {
     const onVisible = () => { if (!document.hidden) refresh() }
     refresh()
     window.addEventListener('focus', refresh)
+    window.addEventListener('directorio-updated', refresh)
     document.addEventListener('visibilitychange', onVisible)
     const timer = window.setInterval(onVisible, 60000)
     return () => {
       active = false
       window.clearInterval(timer)
       window.removeEventListener('focus', refresh)
+      window.removeEventListener('directorio-updated', refresh)
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [open])
