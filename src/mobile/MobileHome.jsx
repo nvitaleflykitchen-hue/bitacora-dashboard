@@ -31,7 +31,25 @@ function ContactosRapidos() {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    getDirectorio().then(data => setContactos(data || [])).catch(() => {})
+    let active = true
+    let request = 0
+    const refresh = () => {
+      const current = ++request
+      getDirectorio().then(data => {
+        if (active && current === request) setContactos(data || [])
+      }).catch(() => {})
+    }
+    const onVisible = () => { if (!document.hidden) refresh() }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = window.setInterval(onVisible, 60000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   const byModulo = {}

@@ -308,7 +308,7 @@ export default function ContactosTab({ modulo }) {
     setLoading(true)
     setDbError(null)
     try {
-      const data = await getDirectorio(modulo)
+      const data = await getDirectorio(modulo, false)
       setContactos(data)
     } catch (e) {
       setDbError(e.message)
