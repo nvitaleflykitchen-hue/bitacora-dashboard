@@ -2,16 +2,43 @@ import React from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import EditarContactoInicio from './EditarContactoInicio'
-const mocks = vi.hoisted(() => ({ rol: 'admin', save: vi.fn() }))
+const mocks = vi.hoisted(() => ({ rol: 'admin', save: vi.fn(), remove: vi.fn() }))
 afterEach(cleanup)
 vi.mock('../lib/auth', () => ({ useAuth: () => ({ rol: mocks.rol }) }))
 vi.mock('../lib/supabase', () => ({ supabase: {} }))
-vi.mock('../lib/saveContactoInicio', () => ({ guardarContactoInicio: mocks.save }))
+vi.mock('../lib/saveContactoInicio', () => ({ guardarContactoInicio: mocks.save, eliminarContactoInicio: mocks.remove }))
 beforeEach(() => {
   mocks.rol = 'admin'
   mocks.save.mockReset().mockResolvedValue(undefined)
+  mocks.remove.mockReset().mockResolvedValue(undefined)
   HTMLDialogElement.prototype.showModal = function () { this.open = true }
   HTMLDialogElement.prototype.close = function () { this.open = false }
+})
+it('elimina sólo después de confirmar y recarga el directorio', async () => {
+  const listener = vi.fn()
+  window.addEventListener('directorio-updated', listener)
+  render(<EditarContactoInicio contacto={contacto} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Editar contacto Ana' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Eliminar contacto' }))
+  expect(mocks.remove).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+  expect(mocks.remove).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Eliminar contacto' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmar eliminación' }))
+  await waitFor(() => expect(listener).toHaveBeenCalledTimes(1))
+  expect(mocks.remove).toHaveBeenCalledWith({}, 'c')
+  expect(mocks.save).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  window.removeEventListener('directorio-updated', listener)
+})
+it('mantiene abierta la confirmación si la eliminación falla', async () => {
+  mocks.remove.mockRejectedValue(new Error('Sin permisos'))
+  render(<EditarContactoInicio contacto={contacto} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Editar contacto Ana' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Eliminar contacto' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmar eliminación' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Sin permisos')
+  expect(screen.getByRole('button', { name: 'Confirmar eliminación' })).toBeEnabled()
 })
 const contacto = { id: 'c', nombre: 'Ana', telefono: '3511234567', email: 'contacto@example.com' }
 it('no ofrece edición a lectores', () => {

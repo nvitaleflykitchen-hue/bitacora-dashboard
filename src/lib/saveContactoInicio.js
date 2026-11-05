@@ -1,5 +1,14 @@
 import { telefonoEnlace } from './directorioPersonas'
 
+export async function eliminarContactoInicio(client, id) {
+  if (!id) throw new Error('No se pudo identificar el contacto.')
+  const { data, error } = await client.schema('bitacora').from('directorio_contactos')
+    .update({ activo: false, updated_at: new Date().toISOString() })
+    .eq('id', id).select('id').single()
+  if (error) throw error
+  if (!data) throw new Error('No se pudo confirmar la eliminación. Revisá tus permisos.')
+}
+
 // Only contact fields are allowed here. In particular, perfiles.email is excluded.
 export async function guardarContactoInicio(client, contacto, form) {
   const nombre = form.nombre.trim()

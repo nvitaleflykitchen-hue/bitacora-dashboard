@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
-import { guardarContactoInicio } from '../lib/saveContactoInicio'
+import { guardarContactoInicio, eliminarContactoInicio } from '../lib/saveContactoInicio'
 
 function Editor({ contacto, onClose }) {
   const dialog = useRef(null)
@@ -13,6 +13,7 @@ function Editor({ contacto, onClose }) {
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
   useEffect(() => {
     const element = dialog.current
     element.showModal()
@@ -21,10 +22,22 @@ function Editor({ contacto, onClose }) {
   const set = (key, value) => setForm(previous => ({ ...previous, [key]: value }))
   async function save(event) {
     event.preventDefault()
+    if (confirmDelete || saving) return
     setSaving(true)
     setError('')
     try {
       await guardarContactoInicio(supabase, contacto, form)
+      window.dispatchEvent(new Event('directorio-updated'))
+      onClose()
+    } catch (err) { setError(err.message) }
+    finally { setSaving(false) }
+  }
+  async function remove() {
+    if (saving) return
+    setSaving(true)
+    setError('')
+    try {
+      await eliminarContactoInicio(supabase, contacto.id)
       window.dispatchEvent(new Event('directorio-updated'))
       onClose()
     } catch (err) { setError(err.message) }
@@ -48,10 +61,17 @@ function Editor({ contacto, onClose }) {
           ))}
           {!contacto._perfilId && !contacto._persona && <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.whatsapp} onChange={event => set('whatsapp', event.target.checked)} />Este número tiene WhatsApp</label>}
           {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
-          <div className="flex justify-end gap-3 pt-3">
+          {confirmDelete ? <div className="rounded border border-red-400 p-3 space-y-3" role="group" aria-label="Confirmar eliminación">
+            <p className="text-sm">¿Eliminar a <strong>{contacto.nombre}</strong> del directorio de contactos? Su ficha de Equipo y su cuenta de acceso se conservan.</p>
+            <div className="flex flex-wrap justify-end gap-3">
+              <button type="button" className="btn-ghost" onClick={() => { setConfirmDelete(false); setError('') }}>Volver</button>
+              <button type="button" className="btn-ghost text-red-400" onClick={remove}>{saving ? 'Eliminando…' : 'Confirmar eliminación'}</button>
+            </div>
+          </div> : <div className="flex flex-wrap justify-end gap-3 pt-3">
+            <button type="button" className="btn-ghost text-red-400 mr-auto" onClick={() => { setConfirmDelete(true); setError('') }}>Eliminar contacto</button>
             <button type="button" className="btn-ghost" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn-primary">{saving ? 'Guardando…' : 'Guardar cambios'}</button>
-          </div>
+          </div>}
         </fieldset>
       </form>
     </dialog>
