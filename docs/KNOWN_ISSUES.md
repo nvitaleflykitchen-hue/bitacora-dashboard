@@ -627,3 +627,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** revisión estática: Inicio desktop/mobile consultaba únicamente directorio_contactos y cargaba una sola vez.
 - **Cambio local:** resolución de personas por perfil_id, correo o nombre completo único; nombre y teléfono priorizan Usuarios, faltantes desde Equipo; el correo de contacto proviene de Equipo o del directorio, nunca se sustituye por el correo de acceso de Usuarios. No se escribe en perfiles ni en Auth. Conserva contactos generales. Inicio recarga al recuperar foco y cada minuto visible. El editor conserva los valores originales del directorio para no persistir datos derivados.
 - **Recomendación:** vincular explícitamente las personas con perfil_id para mantener la identidad aunque cambien nombre y correo. Pendiente publicación y verificación con sesiones de los distintos roles; las consultas respetan los permisos existentes.
+### Edición de contactos desde Inicio (2026-11-05)
+
+- **Severidad:** Media si falla una de las escrituras de una ficha vinculada.
+- **Verificación:** el cliente guarda secuencialmente Usuarios (nombre/teléfono), Equipo (nombre/apellido/teléfono/correo de contacto) y directorio; no existe una transacción entre esas solicitudes. Prueba automatizada de fallo en la segunda escritura confirma el aviso de guardado parcial.
+- **Cambio local:** edición desde tarjetas desktop/mobile para admin; actualiza las fuentes vinculadas y recarga Inicio al guardar. Nunca envía `email` a perfiles ni llama a Auth. Confirma cada UPDATE con una fila retornada; ante error parcial informa que se debe reintentar. No se aplicaron cambios de base ni políticas.
+- **Recomendación:** evaluar una RPC transaccional si se requiere atomicidad; cualquier cambio de permisos requiere revisión y aprobación previa. El acceso real sigue dependiendo de RLS existente, no del botón del frontend.
