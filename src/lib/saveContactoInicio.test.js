@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { guardarContactoInicio } from './saveContactoInicio'
+import { guardarContactoInicio, eliminarContactoInicio } from './saveContactoInicio'
 
 function mockClient(failAt = -1) {
   const writes = []
@@ -10,6 +10,19 @@ function mockClient(failAt = -1) {
   return { client, writes }
 }
 const form = { nombre: 'Ana', apellido: 'Pérez', telefono: '3511234567', email: 'contacto@example.com', whatsapp: true }
+
+it('da de baja sólo la tarjeta del directorio, sin borrar personas ni cuentas', async () => {
+  const { client, writes } = mockClient()
+  await eliminarContactoInicio(client, 'd')
+  expect(writes).toHaveLength(1)
+  expect(writes[0]).toMatchObject({ schema: 'bitacora', table: 'directorio_contactos', id: 'd', values: { activo: false } })
+  expect(Object.keys(writes[0].values).sort()).toEqual(['activo', 'updated_at'])
+})
+it('propaga un error al eliminar y rechaza contactos sin id', async () => {
+  const { client } = mockClient(1)
+  await expect(eliminarContactoInicio(client, 'd')).rejects.toThrow('Sin permisos')
+  await expect(eliminarContactoInicio(client, null)).rejects.toThrow('identificar')
+})
 
 it('actualiza las fichas vinculadas sin enviar el correo de acceso', async () => {
   const { client, writes } = mockClient()
