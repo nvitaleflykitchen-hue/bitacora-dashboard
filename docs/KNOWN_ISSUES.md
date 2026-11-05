@@ -620,3 +620,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** SQL de sólo lectura en el proyecto autorizado y comparación con filtros del frontend. Categoría histórica distinta de Vehiculos; columnas año/combustible ausentes; informe basado en ficha anterior sin recarga.
 - **Corrección:** consulta por activo sin filtro de categoría/estado, ficha actualizada, guardado parcial, campos persistentes, historial y PDF compartidos en escritorio/móvil. Migración aditiva sin modificar registros ni permisos.
 - **Recomendación:** reconciliar SENASA, ARIEL y respaldo del preventivo con documentación real. Conservar pruebas de fechas, paginación y guardado parcial. Detalle y limitaciones en FLOTA_CORRECCION_AC065RF.md.
+
+### Contactos rápidos desactualizados respecto de Usuarios/Equipo (2026-11-05)
+
+- **Severidad:** Media; datos de contacto antiguos y enlaces de llamada/WhatsApp desalineados.
+- **Verificación:** revisión estática: Inicio desktop/mobile consultaba únicamente directorio_contactos y cargaba una sola vez.
+- **Cambio local:** resolución de personas por perfil_id, correo o nombre completo único; nombre y teléfono priorizan Usuarios, faltantes desde Equipo; el correo de contacto proviene de Equipo o del directorio, nunca se sustituye por el correo de acceso de Usuarios. No se escribe en perfiles ni en Auth. Conserva contactos generales. Inicio recarga al recuperar foco y cada minuto visible. El editor conserva los valores originales del directorio para no persistir datos derivados.
+- **Recomendación:** vincular explícitamente las personas con perfil_id para mantener la identidad aunque cambien nombre y correo. Pendiente publicación y verificación con sesiones de los distintos roles; las consultas respetan los permisos existentes.

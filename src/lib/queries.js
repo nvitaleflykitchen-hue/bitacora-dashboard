@@ -1,3 +1,4 @@
+import { resolverContactos } from "./directorioPersonas";
 import { normalizarConcesion } from './activoConcesion'
 import { db, supabase } from "./supabase";
 import { formatCapaCode, nextCapaSequence } from "./capaCodes";
@@ -3412,12 +3413,19 @@ export async function eliminarComentario(id) {
 // Distinto de bitacora.contactos que es el directorio de responsables de sede.
 // ═══════════════════════════════════════════════════════════
 
-export async function getDirectorio(modulo = null) {
+export async function getDirectorio(modulo = null, resolverPersonas = true) {
   let q = db().from("directorio_contactos").select("*").eq("activo", true);
   if (modulo) q = q.eq("modulo", modulo);
   const { data, error } = await q.order("orden").order("nombre");
   if (error) throw error;
-  return data || [];
+  if (!resolverPersonas || !data?.length) return data || [];
+  const results = await Promise.allSettled([
+    db().from("perfiles").select("id, nombre, email, telefono, activo"),
+    supabase.from("v_personas").select("id, nombre, apellido, email, telefono, perfil_id, activo"),
+  ]);
+  const rows = results.map(result =>
+    result.status === "fulfilled" && !result.value.error ? result.value.data || [] : []);
+  return resolverContactos(data, rows[0], rows[1]);
 }
 
 export async function saveDirectorioContacto(payload) {

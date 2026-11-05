@@ -122,8 +122,27 @@ function ContactosSection() {
   const [allContactos, setAllContactos] = useState([])
 
   useEffect(() => {
-    if (open && allContactos.length === 0) getDirectorio().then(data => setAllContactos(data || [])).catch(() => {})
-  }, [open, allContactos.length])
+    if (!open) return
+    let active = true
+    let request = 0
+    const refresh = () => {
+      const current = ++request
+      getDirectorio().then(data => {
+        if (active && current === request) setAllContactos(data || [])
+      }).catch(() => {})
+    }
+    const onVisible = () => { if (!document.hidden) refresh() }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = window.setInterval(onVisible, 60000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [open])
 
   // Agrupar por módulo, solo módulos con datos
   const byModulo = {}
