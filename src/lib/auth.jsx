@@ -74,14 +74,15 @@ export function AuthProvider({ children }) {
 
     let data, error
     try {
-      const result=await withTimeout(db().from('perfiles').select('*').eq('id',authUser.id).single(),'Carga de perfil',navigator.onLine?AUTH_TIMEOUT_MS:1200)
+      const result=await withTimeout(supabase.rpc('obtener_perfil_sesion'),'Carga de perfil',navigator.onLine?AUTH_TIMEOUT_MS:1200)
       data=result.data;error=result.error
     } catch(loadError) {
       const cached=localStorage.getItem(offlinePerfilKey(authUser.id))
       if(cached){data=JSON.parse(cached);error=null}else throw loadError
     }
 
-    if (error || !data) {
+    if (error) throw error
+    if (!data) {
       const { data: nuevo, error: insertError } = await withTimeout(
         db()
           .from('perfiles')
@@ -100,6 +101,7 @@ export function AuthProvider({ children }) {
       data = nuevo
     }
 
+    if (data?.rol !== 'seguridad') {
     try {
       const { data: permisos, error: permisosError } = await withTimeout(
         db()
@@ -141,6 +143,7 @@ export function AuthProvider({ children }) {
       console.warn('[auth] no se pudieron cargar sedes con Kiosco', kioskError)
       data = { ...data, kiosk_sites: [], kiosk_sede_ids: [] }
     }
+    } else { data = { ...data, compras_permisos: [], mantenimiento_permisos: [], kiosk_sites: [], kiosk_sede_ids: [] } }
     localStorage.setItem(offlinePerfilKey(authUser.id),JSON.stringify(data))
 
     // Only update perfil state when data actually changed to avoid cascading re-renders
@@ -176,7 +179,7 @@ export function AuthProvider({ children }) {
       if (sedesError) throw sedesError
       setAllowedSedeIds((sedes || []).map(s => s.id))
       setAccessBlocked(!(sedes || []).length)
-    } else if ((rol === 'encargado' || rol === 'sede' || rol === 'operario' || rol === 'mnt_editor') && data?.sede_ids?.length) {
+    } else if ((rol === 'encargado' || rol === 'sede' || rol === 'operario' || rol === 'mnt_editor' || rol === 'seguridad') && data?.sede_ids?.length) {
       setAllowedSedeIds(data.sede_ids)
       setAccessBlocked(false)
     } else {

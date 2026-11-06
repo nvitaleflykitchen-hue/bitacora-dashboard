@@ -633,3 +633,17 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** el cliente guarda secuencialmente Usuarios (nombre/teléfono), Equipo (nombre/apellido/teléfono/correo de contacto) y directorio; no existe una transacción entre esas solicitudes. Prueba automatizada de fallo en la segunda escritura confirma el aviso de guardado parcial.
 - **Cambio local:** edición desde tarjetas desktop/mobile para admin; actualiza las fuentes vinculadas y recarga Inicio al guardar. Nunca envía `email` a perfiles ni llama a Auth. Confirma cada UPDATE con una fila retornada; ante error parcial informa que se debe reintentar. No se aplicaron cambios de base ni políticas.
 - **Recomendación:** evaluar una RPC transaccional si se requiere atomicidad; cualquier cambio de permisos requiere revisión y aprobación previa. El acceso real sigue dependiendo de RLS existente, no del botón del frontend.
+
+### Portería: acompañantes y aislamiento de cuentas (2026-11-06)
+
+- **Severidad:** Alta para exclusividad del nuevo rol; media para bloqueo de entrega.
+- **Verificación:** sólo lectura en `mixyhfdlzjarvszinytk`: `acompanantes_pase` devuelve `id` y consulta `perfiles.id` sin alias, causando ambigüedad PL/pgSQL. El CHECK de perfiles no contiene `seguridad`. Varias políticas existentes permiten operaciones a authenticated sin filtrar rol.
+- **Cambio preparado:** `supabase/security/seguridad_porteria_REVIEW.sql`: alias explícito, rol nuevo, RPC limitada por sede, trazabilidad de DNI y primer escaneo, políticas restrictivas sólo para Seguridad y hook REST de lista permitida. Prueba en Postgres aislado confirma restricciones e idempotencia. No aplicado en producción: requiere aprobación de GRANT/RLS según AGENTS.md §0.3.
+- **Recomendación:** aplicar el SQL revisado de forma coordinada con el frontend y create-user-direct, y probar una sesión real de guardia tras autorización. Ver `docs/SEGURIDAD_PORTERIA.md`.
+
+### Contraseña temporal mostrada al crear usuarios (2026-11-06)
+
+- **Severidad:** Media; impide que el administrador entregue las credenciales correctas.
+- **Verificación:** `create-user-direct` v16 genera contraseña aleatoria y devuelve `data.temp_password`, pero Usuarios mostraba y copiaba el literal 123456.
+- **Cambio preparado:** usa exclusivamente la contraseña temporal devuelta, sin registrarla en logs ni persistirla; las cuentas existentes conservan su clave. La función de alta ampliada exige administrador activo.
+- **Recomendación:** publicar la pantalla junto con el flujo de Seguridad y entregar las claves por el canal que decida el administrador.

@@ -22,10 +22,10 @@ export default function CambiarContrasena() {
       const { error: authErr } = await supabase.auth.updateUser({ password: nueva })
       if (authErr) throw authErr
 
-      await db()
-        .from('perfiles')
-        .update({ must_change_password: false })
-        .eq('id', user.id)
+      const { error: profileError } = perfil?.rol === 'seguridad'
+        ? await supabase.rpc('seguridad_operar', { p_accion: 'clave_actualizada' })
+        : await db().from('perfiles').update({ must_change_password: false }).eq('id', user.id)
+      if (profileError) throw profileError
 
       // Recargar para que auth.jsx actualice el perfil
       window.location.reload()

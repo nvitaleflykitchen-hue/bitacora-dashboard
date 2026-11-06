@@ -6,9 +6,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function createTemporaryPassword() {
+  const groups = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%*-_']
+  const all = groups.join('')
+  const pick = (chars: string) => chars[crypto.getRandomValues(new Uint32Array(1))[0] % chars.length]
+  const chars = groups.map(pick)
+  while (chars.length < 16) chars.push(pick(all))
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1)
+    ;[chars[i], chars[j]] = [chars[j], chars[i]]
+  }
+  return chars.join('')
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Método no permitido' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {
@@ -33,9 +52,9 @@ serve(async (req) => {
     }
 
     // Verify the caller is an admin
-    const { data: callerPerfil } = await supabaseAdmin.from('perfiles').select('rol').eq('id', user.id).single()
+    const { data: callerPerfil } = await supabaseAdmin.from('perfiles').select('rol,activo').eq('id', user.id).single()
     
-    if (callerPerfil?.rol?.toLowerCase() !== 'admin') {
+    if (!callerPerfil?.activo || callerPerfil?.rol?.toLowerCase() !== 'admin') {
       return new Response(JSON.stringify({ error: 'Se requiere rol admin' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
@@ -43,11 +62,17 @@ serve(async (req) => {
     let { persona_id } = input
     let { email, nombre, rol, telefono } = input
 
-    const allowedRoles = new Set(['admin', 'editor', 'encargado', 'consultor', 'grupo', 'sede', 'deposito', 'operario', 'flota', 'mnt_editor'])
+    const allowedRoles = new Set(['admin', 'editor', 'encargado', 'consultor', 'grupo', 'sede', 'deposito', 'operario', 'flota', 'mnt_editor', 'seguridad'])
     if (!allowedRoles.has(String(rol || '').toLowerCase())) {
       return new Response(JSON.stringify({ error: 'Tipo de acceso inválido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    const securitySedes = Array.isArray(input.sede_ids) ? [...new Set(input.sede_ids.map(Number))] : []
+    if (String(rol).toLowerCase() === 'seguridad') {
+      if (!securitySedes.length || securitySedes.some(id => !Number.isInteger(id))) throw new Error('Asigná al menos una sede a Seguridad.')
+      const { data: sites, error: sitesError } = await supabaseAdmin.from('sedes').select('id').in('id', securitySedes).eq('activa', true)
+      if (sitesError || sites?.length !== securitySedes.length) throw new Error('Sedes inválidas o inactivas.')
+    }
     let persona = null
     if (persona_id) {
       const personaResult = await supabaseAdmin
@@ -83,10 +108,12 @@ serve(async (req) => {
       })
     }
 
-    // Create user in Auth without sending an email
+    // Create user in Auth without sending an email. The temporary credential is
+    // generated per user and returned only in this response to the administrator.
+    const temporaryPassword = createTemporaryPassword()
     const { data: newUserAuth, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
-      password: '123456',
+      password: temporaryPassword,
       email_confirm: true,
       user_metadata: { nombre }
     })
@@ -100,7 +127,7 @@ serve(async (req) => {
       nombre: nombre,
       rol: rol,
       telefono: telefono || null,
-      sede_ids: persona?.sede_ids || null,
+      sede_ids: String(rol).toLowerCase() === 'seguridad' ? securitySedes : persona?.sede_ids || null,
       activo: true,
       must_change_password: true
     }).select().single()
@@ -120,7 +147,7 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ data: { user: newUserAuth.user, perfil: newPerfil } }), {
+    return new Response(JSON.stringify({ data: { user: newUserAuth.user, perfil: newPerfil, temp_password: temporaryPassword } }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
