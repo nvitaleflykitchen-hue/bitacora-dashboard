@@ -1,4 +1,4 @@
-# Seguridad y Portería — implementación preparada, pendiente de autorización
+# Seguridad y Portería
 
 ## Alcance
 - Cuentas propias con rol `seguridad` y sedes asignadas. Pantalla exclusiva adaptable a escritorio y móvil. Admin accede desde Equipo > Pases acompañados.
@@ -27,3 +27,9 @@
 - `npm run test:seguridad`: Postgres aislado PGlite, sin conexión a producción. Prueba roles, sedes, acompañantes, DNI, devolución, idempotencia del primer escaneo, estado anulado, guardia inactivo, acceso anónimo, bloqueo REST y tabla privada.
 - Pruebas unitarias y de UI: `seguridad.test.js`, `SeguridadPorteria.test.jsx`, además de regresión de roles, usuarios y credenciales.
 - No se insertaron ni modificaron datos reales durante el desarrollo.
+
+## Aplicación autorizada — 2026-11-06
+- Autorización explícita del usuario recibida. Migración aplicada: 20261106175629_seguridad_porteria_autorizada, proyecto mixyhfdlzjarvszinytk.
+- Restricción aplicada a 166 tablas con RLS, incluidas storage.objects y storage.buckets. Las tablas internas administradas por Supabase se excluyen: no tienen políticas permisivas. El intento inicial se revirtió íntegramente.
+- create-user-direct publicado como versión 17, conservando la autenticación propia y verify_jwt=false.
+- No se crearon cuentas ni se registraron entregas de prueba en producción.

@@ -129,9 +129,10 @@ create function equipo.es_cuenta_seguridad() returns boolean language sql stable
 $$;
 revoke all on function equipo.es_cuenta_seguridad() from public,anon,authenticated;
 grant execute on function equipo.es_cuenta_seguridad() to authenticated;
+-- Storage: sólo objects/buckets; las tablas internas de Supabase no tienen políticas permisivas.
 -- Restrictiva: combina por AND con las políticas existentes, sin afectar otros roles.
 do $$ declare t record; begin
- for t in select n.nspname,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and c.relrowsecurity and n.nspname in ('public','bitacora','equipo','mantenimiento','storage') loop
+ for t in select n.nspname,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and c.relrowsecurity and (n.nspname in ('public','bitacora','equipo','mantenimiento') or (n.nspname='storage' and c.relname in ('objects','buckets'))) loop
   execute format('create policy seguridad_solo_rpc on %I.%I as restrictive for all to authenticated using (not (select equipo.es_cuenta_seguridad())) with check (not (select equipo.es_cuenta_seguridad()))',t.nspname,t.relname);
  end loop;
 end $$;
