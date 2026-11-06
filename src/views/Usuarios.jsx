@@ -8,8 +8,8 @@ import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import SkeletonTable from '../components/SkeletonTable'
 
-const ROLES = ['admin','editor','encargado','consultor','grupo','sede','deposito','operario','flota','mnt_editor']
-const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede', deposito: 'Usuario de depósito', operario: 'Operario', flota: 'Flota', mnt_editor: 'Gestión Mantenimiento' }
+const ROLES = ['admin','editor','encargado','consultor','grupo','sede','deposito','operario','flota','mnt_editor','seguridad']
+const ROL_LABEL = { admin: 'Admin', editor: 'Editor', encargado: 'Encargado', consultor: 'Consultor', grupo: 'Grupo', sede: 'Sede', deposito: 'Usuario de depósito', operario: 'Operario', flota: 'Flota', mnt_editor: 'Gestión Mantenimiento', seguridad: 'Seguridad / Portería' }
 
 function rolChip(rol) {
   const label = ROL_LABEL[rol] || rol
@@ -261,10 +261,13 @@ function PermisoMantenimientoModal({ perfil, activo, adminId, onClose, onSaved }
 }
 
 function NuevoUsuarioModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', rol: 'editor' })
+  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', rol: 'editor', sede_ids: [] })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [ok, setOk] = useState(false)
+  const [temporaryPassword, setTemporaryPassword] = useState('')
+  const [securitySites, setSecuritySites] = useState([])
+  useEffect(() => { getSedes().then(setSecuritySites).catch(() => {}) }, [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -287,6 +290,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
   const handleInvitar = async (e) => {
     e.preventDefault()
     if (!form.nombre || !form.email) { setError('Nombre y email son obligatorios.'); return }
+    if (form.rol === 'seguridad' && !form.sede_ids.length) { setError('Asigná al menos una sede a Seguridad.'); return }
     setLoading(true); setError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -298,7 +302,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ email: form.email, nombre: form.nombre, rol: form.rol, telefono: form.telefono })
+          body: JSON.stringify({ email: form.email, nombre: form.nombre, rol: form.rol, telefono: form.telefono, sede_ids: form.sede_ids })
         }
       )
       const raw = await res.text()
@@ -339,6 +343,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
       if (!perfilCreado) {
         throw new Error(`La invitacion fue aceptada, pero no se creo el perfil. Edge fn response: ${JSON.stringify(json).substring(0, 100)}...`)
       }
+      setTemporaryPassword(json?.data?.temp_password || '')
       setOk(true)
       onCreated() // Refresca la tabla por detrás, pero deja el modal abierto
     } catch (err) {
@@ -365,7 +370,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
         <div className="mb-4 p-3 rounded" style={{ background: 'rgba(57,255,20,0.05)', border: '1px solid rgba(57,255,20,0.12)' }}>
           <p className="font-metric" style={{ color: 'var(--text)', fontSize: '0.7rem' }}>Alta directa (sin envio de email)</p>
           <p className="font-metric mt-1" style={{ color: 'var(--text-dim)', fontSize: '0.63rem', lineHeight: 1.5 }}>
-            El usuario ingresa con la contrasena temporal 123456 y el sistema le obligara a cambiarla al instante.
+            Se genera una contraseña temporal individual que deberá cambiar al ingresar.
           </p>
         </div>
 
@@ -375,7 +380,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
               Usuario creado exitosamente: {form.email}
             </p>
             <p className="font-metric mt-1 mb-5" style={{ color: 'var(--text-dim)', fontSize: '0.65rem' }}>
-              Informale al usuario que su contrasena temporal es 123456.
+              {temporaryPassword ? `Contraseña temporal: ${temporaryPassword}` : 'La cuenta ya existía. Conserva su contraseña actual.'}
             </p>
             
             <div className="flex flex-col gap-3 justify-center items-center">
@@ -383,7 +388,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
                 type="button" 
                 className="btn-primary w-full flex items-center justify-center gap-2" 
                 onClick={() => {
-                  const text = `Hola ${form.nombre}! Ya tenés acceso a la app de Fly Kitchen.\n\nLink: https://bitacora-dashboard.vercel.app\nUsuario: ${form.email}\nContraseña temporal: 123456\n\nEl sistema te pedirá cambiar tu contraseña la primera vez que ingreses.`;
+                  const text = `Hola ${form.nombre}! Ya tenés acceso a la app de Fly Kitchen.\n\nLink: https://bitacora-dashboard.vercel.app\nUsuario: ${form.email}\nContraseña temporal: ${temporaryPassword || 'cuenta existente, conserva su contraseña'}\n\nEl sistema te pedirá cambiar tu contraseña la primera vez que ingreses.`;
                   navigator.clipboard.writeText(text);
                   toast.ok('¡Datos copiados al portapapeles!');
                 }}
@@ -392,7 +397,7 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
               </button>
               
               <a 
-                href={`https://wa.me/?text=${encodeURIComponent(`Hola ${form.nombre}! Ya tenés acceso a la app de Fly Kitchen.\n\nLink: https://bitacora-dashboard.vercel.app\nUsuario: ${form.email}\nContraseña temporal: 123456\n\nEl sistema te pedirá cambiar tu contraseña la primera vez que ingreses.`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`Hola ${form.nombre}! Ya tenés acceso a la app de Fly Kitchen.\n\nLink: https://bitacora-dashboard.vercel.app\nUsuario: ${form.email}\nContraseña temporal: ${temporaryPassword || 'cuenta existente, conserva su contraseña'}\n\nEl sistema te pedirá cambiar tu contraseña la primera vez que ingreses.`)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-primary w-full flex items-center justify-center gap-2" 
@@ -428,12 +433,13 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
               </select>
             </div>
 
+            {form.rol === 'seguridad' && <SedesMultiSelector sedes={securitySites} grupos={[]} selectedIds={form.sede_ids} onChange={ids => set('sede_ids', ids)} />}
             {error && (
               <p className="font-metric text-xs" style={{ color: 'var(--alert)', fontSize: '0.7rem' }}>{error}</p>
             )}
 
             <p className="font-metric" style={{ color: 'var(--text-dim)', fontSize: '0.63rem', lineHeight: 1.5 }}>
-              El usuario podra ingresar con 123456 y debera elegir una contrasena nueva inmediatamente.
+              El usuario recibirá una contraseña temporal individual y deberá elegir una nueva al ingresar.
             </p>
 
             <div className="flex gap-2 pt-1">

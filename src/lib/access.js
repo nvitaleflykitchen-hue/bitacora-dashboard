@@ -1,4 +1,4 @@
-export const ROLES = ['admin', 'editor', 'consultor', 'grupo', 'encargado', 'sede', 'deposito', 'operario', 'flota', 'mnt_editor']
+export const ROLES = ['admin', 'editor', 'consultor', 'grupo', 'encargado', 'sede', 'deposito', 'operario', 'flota', 'mnt_editor', 'seguridad']
 
 export const ROLE_LABELS = {
   admin: 'Administrador',
@@ -11,10 +11,11 @@ export const ROLE_LABELS = {
   operario: 'Operario',
   flota: 'Responsable de Flota',
   mnt_editor: 'Gestión Mantenimiento',
+  seguridad: 'Seguridad / Portería',
 }
 
 // 'operario' y 'deposito' tienen navegaciones propias y no entran en el menú operativo general.
-const ALL_OPERATIONAL_ROLES = new Set(ROLES.filter(r => !['operario', 'deposito'].includes(r)))
+const ALL_OPERATIONAL_ROLES = new Set(ROLES.filter(r => !['operario', 'deposito', 'seguridad'].includes(r)))
 // 'flota' tiene su propio módulo (Flota) y no necesita el de Mantenimiento de
 // edificios/equipos: se excluye puntualmente de mantenimientoHub.
 const MANTENIMIENTO_ROLES = new Set([...ALL_OPERATIONAL_ROLES].filter(r => r !== 'flota'))
@@ -216,6 +217,7 @@ const VIEW_ROLES = {
 }
 
 export function canAccessView(rol, view, perfil = null) {
+  if (rol === 'seguridad') return view === 'seguridad'
   if (isSafetyOnlyProfile(perfil)) return SAFETY_ONLY_VIEWS.has(view)
   if (isQualityOnlyProfile(perfil)) return QUALITY_ONLY_VIEWS.has(view)
   if (isComprasOnlyProfile(perfil)) return COMPRAS_ONLY_VIEWS.has(view)
@@ -224,6 +226,7 @@ export function canAccessView(rol, view, perfil = null) {
 }
 
 export function getPrimaryNav(rol, perfil = null) {
+  if (rol === 'seguridad') return []
   if (isSafetyOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => SAFETY_ONLY_NAV.has(item.id))
   if (isQualityOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => QUALITY_ONLY_NAV.has(item.id))
   if (isComprasOnlyProfile(perfil)) return PRIMARY_NAV.filter(item => COMPRAS_ONLY_NAV.has(item.id))
@@ -250,6 +253,7 @@ export function getNavSection(view) {
 }
 
 export function canWrite(rol, domain, action = 'manage', perfil = null) {
+  if (rol === 'seguridad') return domain === 'seguridad'
   if (isSafetyOnlyProfile(perfil)) {
     if (['calidad', 'noConformidades', 'capa', 'tareas', 'mantenimiento'].includes(domain)) return true
     if (domain === 'bitacora') return ['report', 'attach'].includes(action)

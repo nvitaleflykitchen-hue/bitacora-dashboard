@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase'
 import CredencialAutorizanteSelect from './CredencialAutorizanteSelect'
 import { sectorColor, sectorShortName, sectorStateLabel, sectorTileLayout, credentialFrontLayout } from '../lib/credentialCatalog'
 import React, { useEffect, useState } from 'react'
@@ -19,6 +20,17 @@ const defaults = { compartirTelefono:false, compartirEmail:false, grupo:'', foto
 export default function CredencialPersonalModal({ persona, sedes = [], onClose }) {
   const { perfil } = useAuth()
   const [credencial,setCredencial] = useState(null)
+  const [entrega,setEntrega] = useState(undefined)
+  const [entregaError,setEntregaError] = useState(false)
+  useEffect(() => {
+    let active = true
+    setEntrega(undefined); setEntregaError(false)
+    if (!credencial?.id) return
+    supabase.schema('equipo').from('credencial_entregas').select('entregada_at').eq('credencial_id', credencial.id).maybeSingle().then(({ data, error }) => {
+      if (active) { setEntrega(data); setEntregaError(Boolean(error)) }
+    }).catch(() => { if (active) setEntregaError(true) })
+    return () => { active = false }
+  }, [credencial?.id])
   const [faEligible,setFaEligible] = useState(false)
   const [faTodasSedes,setFaTodasSedes] = useState(false)
   const [catalog,setCatalog] = useState([])
@@ -110,7 +122,7 @@ export default function CredencialPersonalModal({ persona, sedes = [], onClose }
       <fieldset disabled={busy} style={{flex:'1 1 310px',minWidth:0,border:0,padding:0}}>
         <Panel title="ENCUADRE DE LA FOTO">{fotoError&&<div role="alert"><p>No se pudo cargar la fotografía.</p><button className="btn-ghost" onClick={()=>setFotoRetry(value=>value+1)}>Reintentar foto</button></div>}{[['Horizontal','fotoX',0,100,1],['Vertical','fotoY',0,100,1],['Zoom','fotoZoom',1,1.8,.05]].map(([label,key,min,max,step])=><label key={key} style={{display:'grid',gridTemplateColumns:'65px 1fr 40px',gap:8,fontSize:12,marginBottom:8}}>{label}<input type="range" min={min} max={max} step={step} value={draft[key]} onChange={e=>set(key,Number(e.target.value))}/><span>{key==='fotoZoom'?`${Math.round(draft[key]*100)}%`:draft[key]}</span></label>)}<button className="btn-ghost w-full" onClick={()=>setDraft(d=>({...d,fotoX:50,fotoY:50,fotoZoom:1}))}>Centrar automáticamente</button></Panel>
         <Panel title="ESTADO"><strong style={{color:valid?'var(--phosphor)':'var(--alert)'}}>{estado.toUpperCase()}</strong>{credencial&&<p style={hint}>Emitida {dateLabel(credencial.fecha_emision)} · vence {dateLabel(credencial.fecha_vencimiento)}</p>}</Panel>
-        <Panel title="DEPARTAMENTO"><select aria-label="Departamento" className="input-dark w-full" value={area} onChange={e=>{setArea(e.target.value);setAutorizacion(false)}}>{CREDENTIAL_AREA_OPTIONS.map(a=><option key={a.value} value={a.value}>{a.code} — {a.label}</option>)}</select><p style={hint}>Identifica la función laboral. No otorga accesos automáticamente.</p></Panel>
+        <Panel title="ENTREGA FÍSICA"><p>{entregaError ? 'No se pudo consultar la entrega.' : entrega === undefined ? 'Consultando entrega…' : entrega?.entregada_at ? `Entregada: ${new Date(entrega.entregada_at).toLocaleString('es-AR')}` : 'Pendiente del primer escaneo de Seguridad.'}</p></Panel><Panel title="DEPARTAMENTO"><select aria-label="Departamento" className="input-dark w-full" value={area} onChange={e=>{setArea(e.target.value);setAutorizacion(false)}}>{CREDENTIAL_AREA_OPTIONS.map(a=><option key={a.value} value={a.value}>{a.code} — {a.label}</option>)}</select><p style={hint}>Identifica la función laboral. No otorga accesos automáticamente.</p></Panel>
         {(faEligible || credencial?.fa_todas_sedes)&&<Panel title="ACCESO MULTISEDE">
           <label style={{display:'flex',gap:8}}><input type="checkbox" checked={faTodasSedes} disabled={!faEligible && !faTodasSedes} onChange={e=>{setFaTodasSedes(e.target.checked);setSectorIds([]);setAutorizacion(false)}}/>FA · Todas las sedes</label>
           <p style={hint}>Autorización interna en todas las sedes activas, incluidas las que se activen durante su vigencia. Conserva la pertenencia a Equipo Central. No habilita áreas suspendidas o aún no puestas en servicio.</p>
