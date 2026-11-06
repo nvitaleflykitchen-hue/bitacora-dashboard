@@ -1,4 +1,3 @@
-import SeguridadPorteria from './views/SeguridadPorteria'
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/auth'
 import FeedbackHost from './components/FeedbackHost'
@@ -181,6 +180,8 @@ function ViewLoading() {
   )
 }
 
+const SeguridadPorteria = lazy(() => import('./views/SeguridadPorteria'))
+
 function AppInner() {
   const { user, perfil, rol, allowedSedeIds, accessBlocked, authError, loading, signOut, can } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
@@ -243,7 +244,7 @@ function AppInner() {
   if (!user)   return <LoginPage />
   if (accessBlocked) return <AccessBlocked onSignOut={signOut} />
   if (perfil?.must_change_password) return <CambiarContrasena />
-  if (rol === 'seguridad') return <SeguridadPorteria />
+  if (rol === 'seguridad') return <Suspense fallback={<LoadingScreen />}><SeguridadPorteria /></Suspense>
   if (purchaseTrackingToken) return <Suspense fallback={<LoadingScreen/>}><PurchaseTrackingView token={purchaseTrackingToken}/></Suspense>
   if (activeView === 'qrActivo' && isMobile) {
     return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} scanEventId={qrScanEventId} onNavigate={setActiveView} /></Suspense>
