@@ -653,3 +653,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: comparación del formulario con Usuarios y el contrato de create-user-direct; pruebas de UI con solicitud simulada.
 - Corrección: opción Seguridad / Portería, sedes activas seleccionables y obligatorias, contraseña recibida del servidor y aviso de que vincular una cuenta existente conserva sus permisos.
 - Recomendación: verificar ambos puntos de alta cuando se incorporen roles o cambie la respuesta del servidor. No se crearon cuentas reales durante la prueba.
+## Usuarios: recuperación anunciaba un email inexistente (corregido el 2026-11-11)
+
+- Severidad: BAJA. La confirmación de reset_password decía que enviaría un email; el endpoint sólo genera un enlace.
+- Verificación: lectura del código desplegado de admin-user-actions y del formulario Usuarios.
+- Corrección: la confirmación y el botón indican que generan un enlace de recuperación, sin envío de correo.
+- Recomendación: mantener los textos alineados con la acción real del endpoint.
