@@ -659,3 +659,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: lectura del código desplegado de admin-user-actions y del formulario Usuarios.
 - Corrección: la confirmación y el botón indican que generan un enlace de recuperación, sin envío de correo.
 - Recomendación: mantener los textos alineados con la acción real del endpoint.
+
+## Pases temporales: impresión antes de la entrega (corregido el 2026-11-11)
+
+- Severidad: MEDIA. El reemplazo de PasesAcompanados por Portería omitió la descarga PDF de los pases disponibles; sólo quedó accesible para entregas abiertas.
+- Verificación: inspección de SeguridadPorteria y prueba de UI que descarga ATA-01 sin invocar entregar.
+- Corrección: botón Descargar PDF para imprimir por pase disponible; sección desplegada inicialmente al entrar desde Equipo. Conserva el generador existente, QR persistente y descarga de pases en circulación.
+- Recomendación: mantener la impresión independiente del registro de entrega y cubrir ambas acciones con la prueba de regresión.

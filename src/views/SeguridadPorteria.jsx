@@ -56,7 +56,14 @@ export default function SeguridadPorteria({ embedded = false }) {
         <h3 className="font-bold my-3">Entregas abiertas · {data.entregas.length}</h3>
         {!loading&&!data.entregas.length&&<div className="porteria-empty"><ClipboardCheck size={32}/><h3>Sin devoluciones pendientes</h3><p>No hay pases pendientes de devolución en esta sede.</p></div>}
         {data.entregas.map(e=><article key={e.id} className="porteria-loan"><h3>{e.visitante}</h3><p>{e.codigo}</p><p>{e.sector} · Acompaña {e.acompanante}</p><p>Ingreso: {time(e.desde)}<br/>Hasta: {time(e.hasta)}</p>{new Date(e.hasta)<new Date()&&<p className="text-red-400">Vencido · devolución pendiente</p>}{e.dni_pendiente&&<p>DNI {e.dni} en custodia</p>}<div className="porteria-actions"><button className="btn-ghost" disabled={busy} onClick={()=>run(()=>descargarPase(e))}>Descargar pase PDF</button><button className="btn-primary" disabled={busy} onClick={()=>{setError('');setClosing({...e,dni_devuelto:false,pase_recibido:false,extravio:false})}}>Registrar devolución / salida</button></div></article>)}
-        <details className="porteria-fold"><summary>Pases temporales disponibles · {data.pases.length}</summary>{data.pases.map(p=><button key={p.id} className="btn-ghost m-2" disabled={busy||loading} onClick={()=>open(p)}>{p.codigo} · Entregar a operario</button>)}</details>
+        <details className="porteria-fold" open={embedded || undefined}><summary>Pases temporales · Impresión y entrega · {data.pases.length} disponibles</summary>
+          <p className="porteria-muted mt-3">Descargá el PDF para imprimir la tarjeta reutilizable. Imprimí a tamaño real (100 %), sin ajustar a la página. La entrega al operario se registra por separado.</p>
+          {data.pases.map(p=><article key={p.id} className="porteria-loan"><h3>{p.codigo}</h3><p className="porteria-muted">Disponible · Pase temporal acompañado</p><div className="porteria-actions">
+            <button className="btn-ghost" aria-label={'Descargar PDF '+p.codigo} disabled={busy||loading} onClick={()=>run(()=>descargarPase(p))}>Descargar PDF para imprimir</button>
+            <button className="btn-primary" disabled={busy||loading} onClick={()=>open(p)}>Entregar a operario</button>
+          </div></article>)}
+          {!data.pases.length&&!loading&&<p className="porteria-muted mt-3">No hay pases disponibles. Los que están en circulación se pueden descargar desde Entregas abiertas.</p>}
+        </details>
         <details className="porteria-fold"><summary>Historial de salidas recientes · {data.historial?.length||0}</summary><div style={{maxHeight:300,overflowY:'auto'}}>{data.historial?.map(e=><p key={e.id} className="my-2 text-sm">{e.visitante} · {e.codigo} · {e.cierre} · {time(e.devuelto_at)}{e.dni_devuelto_at ? ' · DNI devuelto' : ''}</p>)}{!data.historial?.length&&<p className="porteria-muted mt-3">Todavía no hay salidas registradas en esta sede.</p>}</div></details>
       </section>
     </div>
