@@ -33,3 +33,12 @@
 - Restricción aplicada a 166 tablas con RLS, incluidas storage.objects y storage.buckets. Las tablas internas administradas por Supabase se excluyen: no tienen políticas permisivas. El intento inicial se revirtió íntegramente.
 - create-user-direct publicado como versión 17, conservando la autenticación propia y verify_jwt=false.
 - No se crearon cuentas ni se registraron entregas de prueba en producción.
+## Mejora de identificación — 2026-11-11
+
+- Portería incorpora paneles de ingreso y visitas, métricas de pases y custodia y una ficha con foto, legajo, puesto, área y vigencia. El resultado de acceso sigue limitado a la sede del puesto.
+- Migración porteria_scan_details agrega esos campos a la respuesta autenticada, sin modificar GRANT, RLS ni permisos por sede.
+- Edge Function seguridad-escanear valida la sesión con Auth y ejecuta seguridad_operar con el JWT del guardia. Sólo después firma durante 5 minutos la foto obtenida de esa credencial en fotos-personal. No acepta rutas del cliente ni URLs externas. No publica el bucket.
+- verify_jwt=false en la función Edge porque valida explícitamente el bearer mediante Auth; la RPC conserva los controles de rol activo, sede y cambio de contraseña.
+- Si falla la foto, mantiene visible el resultado del escaneo con aviso; no repite ni pierde la entrega ya registrada.
+- Sedes/sectores en la verificación pública se consultan con un selector, una sede por vez. El alta desde Equipo también pliega las sedes.
+- Verificado con Postgres aislado, pruebas de contrato de la función Edge, UI y capturas locales desktop/móvil usando datos ficticios. Comprobación de respuesta real en transacción revertida; sin persistir escaneos de prueba.

@@ -85,6 +85,8 @@ assert.equal((await verify(cards[0].token)).vigente,false)
 await db.exec('reset role');
 await db.exec("create role authenticator; alter table bitacora.perfiles add column sede_ids integer[], add column must_change_password boolean default false; alter table bitacora.perfiles add constraint perfiles_rol_check check(rol in ('admin','consultor')); alter table bitacora.perfiles enable row level security; create policy fixture_profile on bitacora.perfiles for select to authenticated using (true);");
 await db.exec(await readFile(new URL('../supabase/security/seguridad_porteria_REVIEW.sql',import.meta.url),'utf8'));
+await db.exec('alter table equipo.personas add column legajo text');
+await db.exec(await readFile(new URL('../supabase/migrations/20261111112400_porteria_scan_details.sql',import.meta.url),'utf8'));
 const guard='00000000-0000-0000-0000-000000000010';
 await db.query("insert into auth.users values($1)",[guard]);
 await db.query("insert into bitacora.perfiles(id,rol,activo,sede_ids) values($1,'seguridad',true,array[24])",[guard]);
@@ -103,6 +105,8 @@ assert.ok((await operate('acompanantes',24,{sector})).some(p=>p.id===person));
 await assert.rejects(()=>db.query('select public.entregar_pase_acompanado(null,null,null,null,null,null,null)'),/permission denied/);
 const first=await operate('escanear',24,{tipo:'credencial',token:credential.token});
 assert.equal(first.primera_entrega,true);
+assert.equal(first.foto_path,'fixture.jpg');assert.equal(first.puesto,'Operario');assert.equal(first.area_impresa,'production');assert.ok(first.fecha_vencimiento);assert.equal(first.dni,undefined);
+await assert.rejects(()=>operate('escanear',25,{tipo:'credencial',token:credential.token}),/Sede no autorizada/);
 const second=await operate('escanear',24,{tipo:'credencial',token:credential.token});
 assert.equal(second.primera_entrega,false);assert.equal(second.entregada_at,first.entregada_at);
 const visitInput={visitante:'Visita aislada',dni:'30123456',dni_recibido:true,induccion:true,autorizacion:true,sector,acompanante:person,hasta:until};
