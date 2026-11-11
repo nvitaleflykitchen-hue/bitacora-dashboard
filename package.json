@@ -19,7 +19,7 @@
     "mcp:smoke": "node --env-file=.env.mcp.local scripts/mcp-smoke.mjs",
     "test:mcp": "node --test tests/mcp.test.mjs tests/mcp-oauth.test.mjs",
     "test:pases": "node scripts/verify-accompanied-passes.mjs ./node_modules/@electric-sql/pglite/dist/index.js",
-    "test:seguridad": "node scripts/verify-seguridad.mjs ./node_modules/@electric-sql/pglite/dist/index.js"
+    "test:seguridad": "node scripts/verify-seguridad.mjs ./node_modules/@electric-sql/pglite/dist/index.js && node scripts/verify-seguridad-edge.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",

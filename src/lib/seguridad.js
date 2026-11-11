@@ -15,3 +15,13 @@ export function parseSeguridadQr(raw) {
   } catch { /* Not a QR URL. */ }
   return null
 }
+
+export async function escanearSeguridad(sede, datos) {
+  const { data, error } = await supabase.functions.invoke('seguridad-escanear', { body: { sede: Number(sede), ...datos } })
+  if (error) {
+    let message = error.message
+    try { message = (await error.context?.json())?.error || message } catch { /* Fallback de red. */ }
+    throw new Error(message)
+  }
+  return data
+}

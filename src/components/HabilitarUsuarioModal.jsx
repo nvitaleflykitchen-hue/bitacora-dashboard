@@ -97,8 +97,8 @@ export default function HabilitarUsuarioModal({ persona, sedes = [], onClose, on
           <select aria-label="Tipo de acceso" className="input-dark w-full" value={rol} onChange={(event) => setRol(event.target.value)}>
             {ROLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
-          {rol === "seguridad" ? <fieldset className="mt-3">
-            <legend className="font-metric">Sedes de Seguridad / Portería</legend>
+          {rol === "seguridad" ? <fieldset className="mt-3"><details><summary style={{cursor:"pointer"}}>Sedes de Seguridad · {sedeIds.length} seleccionadas</summary>
+            <p className="font-metric mt-2">Sedes de Seguridad / Portería</p>
             <p className="font-metric mb-2" style={{ fontSize: "0.68rem" }}>Elegí al menos una sede. La cuenta tendrá acceso exclusivo al escaneo y los pases de esas sedes.</p>
             <div style={{ maxHeight: 180, overflowY: "auto" }}>
               {activeSites.map(sede => <label key={sede.id} className="flex items-center gap-2 py-1">
@@ -107,7 +107,7 @@ export default function HabilitarUsuarioModal({ persona, sedes = [], onClose, on
               </label>)}
             </div>
             {!activeSites.length && <p>No hay sedes activas disponibles.</p>}
-          </fieldset> : <p className="font-metric mt-3" style={{ color: "var(--text-dim)", fontSize: "0.62rem", lineHeight: 1.5 }}>El alcance territorial se toma de la sede o grupo asignado en la ficha de la persona.</p>}
+          </details></fieldset> : <p className="font-metric mt-3" style={{ color: "var(--text-dim)", fontSize: "0.62rem", lineHeight: 1.5 }}>El alcance territorial se toma de la sede o grupo asignado en la ficha de la persona.</p>}
           <div className="flex justify-end gap-2 mt-5">
             <button type="button" className="btn-ghost" onClick={onClose}>Cancelar</button>
             <button type="button" className="btn-primary flex items-center gap-2" disabled={loading || !email || (rol === "seguridad" && !sedeIds.length)} onClick={habilitar}><UserPlus size={13} /> {loading ? "Habilitando..." : "Habilitar usuario"}</button>
