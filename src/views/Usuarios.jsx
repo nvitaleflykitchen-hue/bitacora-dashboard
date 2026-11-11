@@ -458,6 +458,9 @@ function NuevoUsuarioModal({ onClose, onCreated }) {
 export default function Usuarios() {
   const { perfil: perfilActual } = useAuth()
   const [perfiles, setPerfiles] = useState([])
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroRol, setFiltroRol] = useState('')
+  const [filtroEstado, setFiltroEstado] = useState('')
   const [grupos, setGrupos]     = useState([])
   const [sedes, setSedes]       = useState([])
   const [loading, setLoading]   = useState(true)
@@ -550,7 +553,7 @@ export default function Usuarios() {
 
   const adminAction = async (action, p) => {
     const msgs = {
-      reset_password: `¿Enviar email de recuperación de contraseña a ${p.email}?`,
+      reset_password: `¿Generar un enlace para restablecer la contraseña de ${p.email}? No se envía ningún email.`,
       resend_invite:  `¿Reenviar invitación a ${p.email}?`,
       delete_user:    `⚠ ¿Eliminar permanentemente a ${p.nombre || p.email}? Esta acción no se puede deshacer.`,
     }
@@ -597,6 +600,17 @@ export default function Usuarios() {
     } catch (e) { toast.error('Error: ' + mensajeError(e)) }
     finally { setActionLoading(null) }
   }
+
+  const normalizar = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const terminos = normalizar(busqueda).split(/\s+/).filter(Boolean)
+  const perfilesVisibles = perfiles.filter(p => {
+    if (filtroRol && p.rol !== filtroRol) return false
+    if (filtroEstado && Boolean(p.activo) !== (filtroEstado === 'activo')) return false
+    const texto = normalizar([p.nombre, p.email, p.telefono, p.rol, ROL_LABEL[p.rol],
+      grupos.find(g => String(g.id) === String(p.grupo_id))?.nombre,
+      ...sedes.filter(s => (p.sede_ids || []).some(id => String(id) === String(s.id))).map(s => s.nombre)].filter(Boolean).join(' '))
+    return terminos.every(termino => texto.includes(termino))
+  })
 
   const activos   = perfiles.filter(p => p.activo).length
   const inactivos = perfiles.filter(p => !p.activo).length
@@ -652,6 +666,27 @@ export default function Usuarios() {
         </div>
       )}
 
+      <div className="glass p-4 space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex-1" style={{ minWidth: 220 }}>Buscar usuario
+            <input type="search" className="input-dark w-full mt-1" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, email, teléfono, grupo o sede" />
+          </label>
+          <label>Rol
+            <select className="input-dark block mt-1" value={filtroRol} onChange={e => setFiltroRol(e.target.value)}>
+              <option value="">Todos los roles</option>
+              {ROLES.map(rol => <option key={rol} value={rol}>{ROL_LABEL[rol]}</option>)}
+            </select>
+          </label>
+          <label>Estado
+            <select className="input-dark block mt-1" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+              <option value="">Todos los estados</option><option value="activo">Activos</option><option value="inactivo">Inactivos</option>
+            </select>
+          </label>
+          {(busqueda || filtroRol || filtroEstado) && <button type="button" className="btn-ghost" onClick={() => { setBusqueda(''); setFiltroRol(''); setFiltroEstado('') }}>Limpiar filtros</button>}
+        </div>
+        <p role="status" style={{ color: 'var(--text-dim)', fontSize: '.75rem' }}>{loading ? 'Cargando usuarios…' : `Mostrando ${perfilesVisibles.length} de ${perfiles.length} usuarios`}</p>
+      </div>
+
       {loading ? (
         <SkeletonTable filas={8} columnas={6} />
       ) : (
@@ -673,7 +708,8 @@ export default function Usuarios() {
                 </tr>
               </thead>
               <tbody>
-                {perfiles.map(p => {
+                {!perfilesVisibles.length && <tr><td colSpan={10} className="text-center py-8">No hay usuarios que coincidan con los filtros.</td></tr>}
+                {perfilesVisibles.map(p => {
                   const isEditing = editingId === p.id
                   const esMiPerfil = p.id === perfilActual?.id
                   return (
@@ -838,7 +874,7 @@ export default function Usuarios() {
                             {!isEditing && (
                               <>
                                 <button
-                                  title="Enviar reset de contraseña"
+                                  title="Generar enlace de recuperación de contraseña"
                                   onClick={() => adminAction('reset_password', p)}
                                   disabled={actionLoading === p.id + 'reset_password'}
                                   className="btn-ghost"
