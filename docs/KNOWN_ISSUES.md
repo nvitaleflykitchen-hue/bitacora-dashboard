@@ -647,3 +647,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** `create-user-direct` v16 genera contraseña aleatoria y devuelve `data.temp_password`, pero Usuarios mostraba y copiaba el literal 123456.
 - **Cambio preparado:** usa exclusivamente la contraseña temporal devuelta, sin registrarla en logs ni persistirla; las cuentas existentes conservan su clave. La función de alta ampliada exige administrador activo.
 - **Recomendación:** publicar la pantalla junto con el flujo de Seguridad y entregar las claves por el canal que decida el administrador.
+## Alta de usuario desde Equipo: Seguridad y contraseña temporal (corregido el 2026-11-11)
+
+- Severidad: MEDIA. HabilitarUsuarioModal omitía el rol seguridad y no enviaba sede_ids; además mostraba 123456 aunque create-user-direct devuelve una contraseña aleatoria.
+- Verificación: comparación del formulario con Usuarios y el contrato de create-user-direct; pruebas de UI con solicitud simulada.
+- Corrección: opción Seguridad / Portería, sedes activas seleccionables y obligatorias, contraseña recibida del servidor y aviso de que vincular una cuenta existente conserva sus permisos.
+- Recomendación: verificar ambos puntos de alta cuando se incorporen roles o cambie la respuesta del servidor. No se crearon cuentas reales durante la prueba.

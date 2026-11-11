@@ -798,6 +798,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
       {perfil?.rol === "admin" && showHabilitarUsuario && (
         <HabilitarUsuarioModal
           persona={persona}
+          sedes={sedes}
           onClose={() => setShowHabilitarUsuario(false)}
           onCreated={load}
         />
