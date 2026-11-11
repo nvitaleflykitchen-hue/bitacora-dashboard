@@ -8,6 +8,7 @@ export const CREDENTIAL_AREAS = Object.freeze({
   maintenance: Object.freeze({ code:'MNT', label:'Mantenimiento', color:'#D97706' }),
   administration: Object.freeze({ code:'ADM', label:'Administración', color:'#546E7A' }),
   hr: Object.freeze({ code:'RRHH', label:'Recursos Humanos', color:'#7B1FA2' }),
+  security: Object.freeze({ code:'SEG', label:'Seguridad / Portería', color:'#334155' }),
 })
 
 export const CREDENTIAL_AREA_OPTIONS = Object.entries(CREDENTIAL_AREAS).map(([value, config]) => ({ value, ...config }))

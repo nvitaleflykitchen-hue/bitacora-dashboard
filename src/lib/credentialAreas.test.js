@@ -13,6 +13,7 @@ describe('áreas funcionales de credenciales', () => {
       maintenance:{ code:'MNT', label:'Mantenimiento', color:'#D97706' },
       administration:{ code:'ADM', label:'Administración', color:'#546E7A' },
       hr:{ code:'RRHH', label:'Recursos Humanos', color:'#7B1FA2' },
+      security:{ code:'SEG', label:'Seguridad / Portería', color:'#334155' },
     })
   })
   it('clasifica como OPS los cargos operativos y nutricionistas responsables', () => {
