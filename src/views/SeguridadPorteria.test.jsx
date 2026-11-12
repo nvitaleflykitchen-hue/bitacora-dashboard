@@ -2,9 +2,10 @@ import React from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import SeguridadPorteria from './SeguridadPorteria'
-const mocks=vi.hoisted(()=>({rpc:vi.fn(),download:vi.fn()}))
+const mocks=vi.hoisted(()=>({rpc:vi.fn(),download:vi.fn(),batch:vi.fn()}))
 vi.mock('../lib/auth',()=>({useAuth:()=>({perfil:{nombre:'Guardia'},signOut:vi.fn()})}))
 vi.mock('../lib/seguridad',()=>({seguridadRpc:mocks.rpc,escanearSeguridad:(sede,qr)=>mocks.rpc('escanear',sede,qr),parseSeguridadQr:vi.fn()}))
+vi.mock('../lib/pasesA4',async importOriginal=>({...await importOriginal(),descargarPasesA4:mocks.batch}))
 vi.mock('../lib/pasesAcompanados',()=>({descargarPase:mocks.download}))
 vi.mock('../components/AssetQrScannerModal',()=>({default:({onScan})=><button onClick={()=>onScan({tipo:'credencial',token:'token'})}>Leer QR de prueba</button>}))
 afterEach(cleanup)
@@ -64,4 +65,17 @@ it('permite imprimir un pase disponible sin registrar una entrega',async()=>{
  await waitFor(()=>expect(mocks.download).toHaveBeenCalledWith(pase))
  expect(mocks.rpc.mock.calls.some(c=>c[0]==='entregar')).toBe(false)
  expect(screen.queryByLabelText('Entregar pase temporal')).toBeNull()
+})
+
+it('imprime juntos los disponibles y entregados sin duplicar el mismo QR',async()=>{
+ const pase={id:'pase-1',codigo:'ATA-01',tipo:'temporal',token:'qr-1'}
+ const visita={id:'visita-1',codigo:'VIS-1',tipo:'visita',token:'qr-2',visitante:'Visita'}
+ mocks.batch.mockResolvedValue(undefined)
+ mocks.rpc.mockImplementation(async action=>action==='sedes'?[{id:24,nombre:'Planta'}]:{sectores:[],personas:[],pases:[pase],entregas:[pase,visita]})
+ render(<SeguridadPorteria embedded/>)
+ const button=screen.getByRole('button',{name:'Imprimir todos los pases en A4'})
+ await waitFor(()=>expect(button).toBeEnabled())
+ fireEvent.click(button)
+ await waitFor(()=>expect(mocks.batch).toHaveBeenCalledWith([pase,visita]))
+ expect(mocks.rpc.mock.calls.some(c=>c[0]==='entregar')).toBe(false)
 })
