@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { seguridadRpc, parseSeguridadQr, escanearSeguridad } from '../lib/seguridad'
 import { descargarPase } from '../lib/pasesAcompanados'
+import { descargarPasesA4, pasesUnicos, PASES_POR_A4 } from '../lib/pasesA4'
 import AssetQrScannerModal from '../components/AssetQrScannerModal'
 import { ScanLine, ShieldCheck, MapPin, Users, CreditCard, ClipboardCheck } from 'lucide-react'
 import SeguridadScanResult from '../components/SeguridadScanResult'
@@ -30,6 +31,7 @@ export default function SeguridadPorteria({ embedded = false }) {
   const onScan=qr=>{setScan(false);setResult(null);run(async()=>{setResult(await escanearSeguridad(sede,qr))})}
   const field=(key,label,props={})=><label className="block mb-3 text-sm">{label}<input className="input-dark w-full mt-1" value={form[key]} onChange={e=>change(key,e.target.value)} {...props}/></label>
   const check=(key,label)=><label className="flex gap-2 mb-3 text-sm"><input type="checkbox" required checked={form[key]} onChange={e=>change(key,e.target.checked)}/>{label}</label>
+  const pasesParaImprimir = pasesUnicos([...data.pases, ...data.entregas])
   const vencidos = data.entregas.filter(e => new Date(e.hasta) < new Date()).length
   const dniPendientes = data.entregas.filter(e => e.dni_pendiente).length
   const sedeNombre = sedes.find(s => String(s.id) === String(sede))?.nombre || 'Sin sede'
@@ -52,6 +54,9 @@ export default function SeguridadPorteria({ embedded = false }) {
       </section>
       <section className="porteria-panel">
         <h2>Visitas y pases</h2><p className="porteria-muted">Entrega contra DNI, acompañamiento y control de salida.</p>
+        <div className="porteria-actions"><button className="btn-ghost" disabled={busy||loading||!pasesParaImprimir.length} onClick={()=>run(()=>descargarPasesA4(pasesParaImprimir))}>Imprimir todos los pases en A4</button></div>
+        <p className="porteria-muted">{pasesParaImprimir.length} pases · {Math.ceil(pasesParaImprimir.length/PASES_POR_A4)} hojas A4. Hasta {PASES_POR_A4} tarjetas por hoja, a tamaño real y con marcas de corte. Incluye los disponibles y los entregados en este puesto, sin repetir QR.</p>
+
         <div className="porteria-actions"><button className="btn-primary" disabled={!sede||busy||loading} onClick={()=>open(null)}>Entregar pase de visita</button></div>
         <h3 className="font-bold my-3">Entregas abiertas · {data.entregas.length}</h3>
         {!loading&&!data.entregas.length&&<div className="porteria-empty"><ClipboardCheck size={32}/><h3>Sin devoluciones pendientes</h3><p>No hay pases pendientes de devolución en esta sede.</p></div>}
