@@ -1,3 +1,4 @@
+import RrhhScope from '../components/RrhhScope'
 import PasesAcompanados from '../components/PasesAcompanados'
 import Correos from '../views/Correos'
 import CredencialPersonalModal from '../components/CredencialPersonalModal'
@@ -653,7 +654,7 @@ function PersonaFicha({ sedes, personaId, canManage, canDelete, onBack, onCreate
   )
 }
 
-export default function MobilePersonal({ focusContext, onCreateNovedad }) {
+function FlyKitchenPersonal({ focusContext, onCreateNovedad }) {
   const formsAllowed = useFormAccess()
   const { can, perfil, allowedSedeIds, user } = useAuth()
   const isQualityOnly = isQualityOnlyProfile(perfil)
@@ -754,7 +755,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }} className="hide-scrollbar">
                 <SedePill label="Todas" active={!selectedSede} onClick={() => setSelectedSede(null)} />
                 {personas.some(p => !p.sede_ids?.length && !p.sede_id) && <SedePill label="Equipo central" active={selectedSede?.id === 'central'} onClick={() => setSelectedSede({ id: 'central', nombre: 'Equipo central' })} />}
-                {sedes.map(s => <SedePill key={s.id} label={s.nombre} active={selectedSede?.id === s.id} onClick={() => setSelectedSede(s)} />)}
+                {sedes.map(s => <SedePill key={s.id} label={`FlyKitchen · ${s.nombre}`} active={selectedSede?.id === s.id} onClick={() => setSelectedSede(s)} />)}
               </div>
             )}
           </>
@@ -823,4 +824,8 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
       {showNew && <QuickPersonaModal sedes={sedes} requireSede={allowedSedeIds!==null} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />}
     </div>
   )
+}
+
+export default function MobilePersonal(props) {
+ return <RrhhScope key={`${props.focusContext?.type||''}:${props.focusContext?.id||''}`}>{focus=><FlyKitchenPersonal {...props} {...(focus?{focusContext:{type:'persona',id:focus}}:{})}/>}</RrhhScope>
 }
