@@ -673,3 +673,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Severidad:** baja, afecta la ejecución local de `npm run check`.
 - **Verificación:** con finales CRLF el verificador de Seguridad no retiraba el import remoto antes de evaluar el contrato simulado y fallaba con `Cannot use import statement outside a module`.
 - **Corrección:** aceptar LF y CRLF al retirar la primera línea; mantener la prueba aislada sin conexión a producción.
+
+
+### Carga inicial de Equipo — optimizada 2026-11-12
+
+- **Severidad:** media, demora de navegación y ráfaga de solicitudes de fotos.
+- **Verificación:** el módulo importaba paneles secundarios de forma inmediata y cada avatar solicitaba URLs firmadas aun fuera de pantalla; la lista esperaba también todo el historial de evaluaciones.
+- **Corrección:** paneles diferidos con indicador local, consulta de evaluaciones al abrir Análisis y fotos al aproximarse al área visible. El componente de avatar compartido también optimiza la lista móvil. Los datos y permisos permanecen sin cambios.
