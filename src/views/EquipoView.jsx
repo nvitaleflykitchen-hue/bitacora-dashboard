@@ -2065,7 +2065,7 @@ function PersonaFicha({ personaId, sedes = [], grupos = [], onBack, onCreateNove
                   <div
                     className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
                     style={{
-                      background: TIPO_COLOR[h.tipo] || "var(--phosphor)",
+                      background: TIPO_COLOR[h.tipo] || "var(--accent-fill)",
                     }}
                   />
                   <div className="flex-1">

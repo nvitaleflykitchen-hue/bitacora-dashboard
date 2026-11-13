@@ -109,7 +109,7 @@ function Subtareas({ tareaId, subtareas = [], onUpdate, readOnly }) {
             style={{
               width:14, height:14, borderRadius:3, flexShrink:0, marginTop:1, cursor:'pointer',
               border: sub.completada ? 'none' : '1px solid rgba(255,255,255,0.2)',
-              background: sub.completada ? 'var(--phosphor)' : 'transparent',
+              background: sub.completada ? 'var(--accent-fill)' : 'transparent',
               display:'flex', alignItems:'center', justifyContent:'center',
             }}>
             {sub.completada && <Check size={9} style={{ color:'#000' }} />}
@@ -150,7 +150,7 @@ function Subtareas({ tareaId, subtareas = [], onUpdate, readOnly }) {
 
       {/* Empty state hint */}
       {list.length === 0 && !adding && (
-        <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>
+        <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.2))', fontStyle:'italic' }}>
           {readOnly ? 'Sin subtareas' : 'Sin subtareas — click + para agregar'}
         </p>
       )}
@@ -232,7 +232,7 @@ function Intervinientes({ tareaId, intervinientes = [], onUpdate, readOnly }) {
       )}
 
       {list.length === 0 && !adding && (
-        <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>
+        <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.2))', fontStyle:'italic' }}>
           {readOnly ? 'Sin otros intervinientes' : 'Sin otros intervinientes — click + para agregar'}
         </p>
       )}

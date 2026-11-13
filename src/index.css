@@ -4,6 +4,9 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: dark;
+  --accent-fill: #39FF14;
+  --info: #60A5FA;
   --abyss:    #0A0A0E;
   --surface:  #1E1E24;
   --surface2: #26262E;
@@ -83,16 +86,16 @@ body { background-color: var(--abyss); color: var(--text); font-family: 'Inter',
 select.input-dark option { background:var(--surface); color:var(--text); }
 
 /* Contraste universal para todos los <select> inline de la app */
-select { background-color: #1a1a22 !important; color: var(--text) !important; }
+select { background-color: var(--surface) !important; color: var(--text) !important; }
 select option {
-  background-color: #1a1a22 !important;
-  color: #e5e7eb !important;
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
 }
 select option:checked,
 select option:focus,
 select option:hover {
-  background-color: #2a2a36 !important;
-  color: #39FF14 !important;
+  background-color: var(--surface2) !important;
+  color: var(--phosphor) !important;
 }
 
 /* Header de tabla en gris neutro (verde reservado a métricas/estado) y filas legibles */
@@ -130,7 +133,7 @@ select option:hover {
 .chip-red    { background:rgba(255,42,42,0.1);  color:var(--alert);    border:1px solid rgba(255,42,42,0.2);  }
 .chip-yellow { background:rgba(245,158,11,0.1); color:var(--warn);     border:1px solid rgba(245,158,11,0.2); }
 .chip-gray   { background:rgba(107,114,128,0.1);color:var(--text-dim); border:1px solid rgba(107,114,128,0.2);}
-.chip-blue   { background:rgba(59,130,246,0.1); color:#60A5FA;         border:1px solid rgba(59,130,246,0.2); }
+.chip-blue   { background:rgba(59,130,246,0.1); color:var(--info);         border:1px solid rgba(59,130,246,0.2); }
 
 .progress-bar  { height:3px; background:var(--surface2); border-radius:2px; overflow:hidden; }
 .progress-fill { height:100%; background:var(--phosphor); border-radius:2px; transition:width 0.4s ease; box-shadow:0 0 6px var(--phosphor-glow); }

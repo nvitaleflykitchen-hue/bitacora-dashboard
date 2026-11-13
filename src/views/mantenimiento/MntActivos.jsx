@@ -370,8 +370,8 @@ function ActivoModal({ activo, sedes, onClose, onSaved, onCreateNovedad }) {
                       </div>
                       <p style={{ fontSize:'0.72rem', color:'var(--text)', margin:0 }}>{h.descripcion}</p>
                       {h.diagnostico && <p style={{ fontSize:'0.62rem', color:'var(--text-dim)', margin:'3px 0 0' }}>{h.diagnostico}</p>}
-                      <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.4)', margin:'4px 0 0' }}>Técnico: {nombreResponsable(h) || 'Sin asignar'}</p>
-                      <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.4)', margin:'2px 0 0' }}>Proveedor: {nombreProveedor(h) || 'Sin asignar'}</p>
+                      <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.4))', margin:'4px 0 0' }}>Técnico: {nombreResponsable(h) || 'Sin asignar'}</p>
+                      <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.4))', margin:'2px 0 0' }}>Proveedor: {nombreProveedor(h) || 'Sin asignar'}</p>
                     </div>
                   )
                 })}
@@ -621,7 +621,7 @@ function QRModal({ activo, onClose }) {
           <p style={{ color:'var(--text)', fontWeight:700, fontSize:'1rem' }}>QR — {activo.nombre}</p>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:'1.2rem' }}>✕</button>
         </div>
-        <div style={{ background:'#0A0A0E', borderRadius:3, padding:'0.75rem', marginBottom:'1rem', display:'inline-block' }}>
+        <div style={{ background:'var(--surface)', borderRadius:3, padding:'0.75rem', marginBottom:'1rem', display:'inline-block' }}>
           <img src={qrSrc} alt="QR" width={200} height={200} style={{ display:'block', imageRendering:'pixelated' }} />
         </div>
         <p style={{ color:'var(--text-dim)', fontSize:'0.65rem', fontFamily:'monospace', wordBreak:'break-all', marginBottom:'1rem', padding:'0 0.5rem' }}>{url}</p>
@@ -635,7 +635,7 @@ function QRModal({ activo, onClose }) {
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem' }}>
           <button onClick={printLabel}
-            style={{ flex:1, background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.65rem', fontWeight:700, cursor:'pointer', fontSize:'0.82rem' }}>
+            style={{ flex:1, background:'var(--accent-fill)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.65rem', fontWeight:700, cursor:'pointer', fontSize:'0.82rem' }}>
             🖨 Imprimir etiqueta
           </button>
           <button onClick={printCompactLabel}
@@ -712,7 +712,7 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
     background: active ? 'rgba(249,115,22,0.15)' : 'var(--surface)',
     color:       active ? '#F97316'               : 'var(--text-dim)',
   })
-  const SEL_S = { background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.15)', color:'#e2e8f0', borderRadius:2, padding:'0.35rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
+  const SEL_S = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.15)', color:'var(--text)', borderRadius:2, padding:'0.35rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
 
   const hoy = new Date().toISOString().split('T')[0]
   const estaVencido  = f => f && f < hoy
@@ -724,13 +724,13 @@ export default function MntActivos({ focusId, onCreateNovedad }) {
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)} style={SEL_S}>
             <option value=''>Todas las sedes</option>
-            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
+            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'var(--surface)' }}>{s.nombre}</option>)}
           </select>
           <button onClick={()=>{ setScannerError(''); setScannerOpen(true) }} className="btn-ghost" style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
             <ScanLine size={16}/> Escanear QR
           </button>
           {canWrite && <button onClick={()=>setModal({})}
-            style={{ background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.55rem 1.1rem', fontWeight:700, cursor:'pointer' }}>
+            style={{ background:'var(--accent-fill)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.55rem 1.1rem', fontWeight:700, cursor:'pointer' }}>
             + Nuevo Activo
           </button>}
         </div>

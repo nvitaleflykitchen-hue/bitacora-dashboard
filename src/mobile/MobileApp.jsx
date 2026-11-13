@@ -1,3 +1,4 @@
+import ThemeToggle from '../components/ThemeToggle'
 import PaseVerificacion from '../views/PaseVerificacion'
 import { lazy, Suspense, useState, useEffect, useMemo } from 'react'
 import MobileHome from './MobileHome'
@@ -220,7 +221,7 @@ export default function MobileApp() {
           {screen === 'main' && canReport && (
             <button type="button" onClick={() => setScreen('reporte')}
               style={{
-                background: 'var(--phosphor)', color: '#0A0A0E',
+                background: 'var(--accent-fill)', color: '#0A0A0E',
                 border: 'none', borderRadius: 6, cursor: 'pointer',
                 fontSize: '0.72rem', fontWeight: 800, padding: '0.45rem 0.7rem', minHeight:44
               }}>
@@ -350,6 +351,8 @@ function MobilePerfil({ perfil, onLogout }) {
         </span>
         <p style={{ color:'var(--text-dim)', fontSize:'0.68rem', marginTop:12 }}>{APP_NAME} · versión {APP_VERSION}</p>
       </div>
+
+      <div className="theme-profile"><ThemeToggle /></div>
 
       <button onClick={actualizarAplicacion}
         style={{

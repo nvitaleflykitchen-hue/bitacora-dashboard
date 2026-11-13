@@ -33,7 +33,7 @@ export default function MntInsumos({ focusId }) {
   const nombreSede = (id) => sedes.find(s => s.id === id)?.nombre || '—'
   const bajoPorcentaje = (i) => i.stock_minimo > 0 ? (i.stock_actual / i.stock_minimo) : 999
 
-  const SEL_S = { background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.15)', color:'#e2e8f0', borderRadius:2, padding:'0.35rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
+  const SEL_S = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.15)', color:'var(--text)', borderRadius:2, padding:'0.35rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
 
   return (
     <div style={{ padding: '1.5rem 2rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -41,9 +41,9 @@ export default function MntInsumos({ focusId }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <select value={sedeId} onChange={e => setSedeId(e.target.value)} style={SEL_S}>
             <option value=''>Todas las sedes</option>
-            {sedes.map(s => <option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
+            {sedes.map(s => <option key={s.id} value={s.id} style={{ background:'var(--surface)' }}>{s.nombre}</option>)}
           </select>
-          <button onClick={() => setNuevoModal(true)} style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>+ Insumo</button>
+          <button onClick={() => setNuevoModal(true)} style={{ background: 'var(--accent-fill)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>+ Insumo</button>
         </div>
       </PageHeader>
 
@@ -75,7 +75,7 @@ export default function MntInsumos({ focusId }) {
                   <span style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>{ins.unidad || 'u'}</span>
                 </div>
                 <div style={{ height: 4, background: 'rgba(57,255,20,0.07)', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(100, pct * 100)}%`, background: bajo ? '#FF2A2A' : 'var(--phosphor)' }} />
+                  <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(100, pct * 100)}%`, background: bajo ? '#FF2A2A' : 'var(--accent-fill)' }} />
                 </div>
               </div>
               <button onClick={() => setModalMov(ins)}
@@ -141,7 +141,7 @@ function MovimientoModal({ insumo, onClose, onSaved }) {
         {err && <p style={{ color: 'var(--alert)', fontSize: '0.8rem', marginBottom: '1rem' }}>{err}</p>}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '0.65rem 1.2rem', borderRadius:2, background: 'rgba(57,255,20,0.05)', color: 'var(--text-dim)', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
             {saving ? 'Guardando...' : 'Registrar'}
           </button>
         </div>
@@ -193,7 +193,7 @@ function NuevoInsumoModal({ sedes, sedeIdDefault, onClose, onSaved }) {
         {err && <p style={{ color: 'var(--alert)', fontSize: '0.8rem', marginBottom: '1rem' }}>{err}</p>}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '0.65rem 1.2rem', borderRadius:2, background: 'rgba(57,255,20,0.05)', color: 'var(--text-dim)', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
             {saving ? 'Guardando...' : 'Crear'}
           </button>
         </div>

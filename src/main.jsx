@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './index.css'
+import './theme.css'
 import McpConnect from './components/McpConnect.jsx'
 
 if('serviceWorker' in navigator){

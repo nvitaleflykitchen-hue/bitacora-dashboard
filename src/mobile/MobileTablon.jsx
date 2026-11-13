@@ -79,7 +79,7 @@ export default function MobileTablon() {
           style={{
             position: 'absolute', bottom: '1.5rem', right: '1.5rem',
             width: 50, height: 50, borderRadius: 25,
-            background: 'var(--phosphor)', color: '#000',
+            background: 'var(--accent-fill)', color: '#000',
             border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10
           }}>
@@ -227,7 +227,7 @@ function NuevoAnuncioModal({ sedes, grupos, onClose, onSaved }) {
 
         <div style={{ display: 'flex', gap: '0.6rem' }}>
           <button onClick={onClose} style={{ flex: 1, padding: '0.65rem', borderRadius: 6, background: 'rgba(57,255,20,0.05)', color: 'var(--text-dim)', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving || !!okMsg} style={{ flex: 1, padding: '0.65rem', borderRadius: 6, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
+          <button onClick={handleSave} disabled={saving || !!okMsg} style={{ flex: 1, padding: '0.65rem', borderRadius: 6, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
             {saving ? 'Publicando...' : 'Publicar'}
           </button>
         </div>

@@ -666,3 +666,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: inspección de SeguridadPorteria y prueba de UI que descarga ATA-01 sin invocar entregar.
 - Corrección: botón Descargar PDF para imprimir por pase disponible; sección desplegada inicialmente al entrar desde Equipo. Conserva el generador existente, QR persistente y descarga de pases en circulación.
 - Recomendación: mantener la impresión independiente del registro de entrega y cubrir ambas acciones con la prueba de regresión.
+
+
+### Verificador Edge en Windows — corregido 2026-11-12
+
+- **Severidad:** baja, afecta la ejecución local de `npm run check`.
+- **Verificación:** con finales CRLF el verificador de Seguridad no retiraba el import remoto antes de evaluar el contrato simulado y fallaba con `Cannot use import statement outside a module`.
+- **Corrección:** aceptar LF y CRLF al retirar la primera línea; mantener la prueba aislada sin conexión a producción.

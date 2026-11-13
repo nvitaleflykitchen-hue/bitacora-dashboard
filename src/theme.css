@@ -1,0 +1,34 @@
+/* Optional warm paper palette; severity keeps its red / amber / blue / green meaning. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --abyss: #f5f3ed;
+  --bg: #f5f3ed;
+  --surface: #fffefb;
+  --surface2: #eae7df;
+  --text: #20231f;
+  --text-dim: #565c54;
+  --paper-muted: #565c54;
+  --slate: #656b62;
+  --phosphor: #166534;
+  --phosphor-dim: rgba(22,101,52,.08);
+  --phosphor-glow: transparent;
+  --alert: #b42324;
+  --warn: #895600;
+  --info: #175fa6;
+  --line: rgba(42,48,37,.18);
+  --line-soft: rgba(42,48,37,.1);
+}
+.theme-toggle {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;white-space:nowrap}
+.theme-sidebar {padding:8px 10px}
+.theme-sidebar .theme-toggle,.theme-profile .theme-toggle {width:100%}
+.theme-profile {margin-bottom:16px}
+.porteria-header-actions {display:flex;gap:10px;flex-wrap:wrap}
+:root[data-theme="light"] .glass {background:rgba(255,254,251,.94);border-color:var(--line)}
+:root[data-theme="light"] .modal-overlay {background:rgba(45,43,36,.4)}
+:root[data-theme="light"] .modal-panel {box-shadow:0 16px 60px rgba(45,43,36,.2)}
+:root[data-theme="light"] .scanline {display:none}
+:root[data-theme="light"] .btn-primary:hover {background:var(--phosphor-dim);box-shadow:none}
+:root[data-theme="light"] .porteria-stat.is-warning strong {color:var(--warn)}
+:root[data-theme="light"] .porteria-alert,:root[data-theme="light"] .is-denied .porteria-verdict {color:var(--alert)}
+:root[data-theme="light"] input,:root[data-theme="light"] select {color-scheme:light}
+@media print {.theme-toggle {display:none}}

@@ -144,7 +144,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
         </p>
         <button onClick={onBack} style={{
           marginTop:'0.5rem', padding:'0.75rem 2rem', borderRadius:8,
-          background:'var(--phosphor)', color:'#0A0A0E', fontWeight:700, border:'none', cursor:'pointer',
+          background:'var(--accent-fill)', color:'#0A0A0E', fontWeight:700, border:'none', cursor:'pointer',
         }}>
           Volver al inicio
         </button>
@@ -291,7 +291,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
                         ['no_cumplido', 'No cumplido', '#FF2A2A'],
                         ['no_aplica', 'No aplica', '#9CA3AF'],
                       ].map(([value, label, color]) => (
-                        <button key={value} onClick={() => setEstado(item.id, value)} disabled={!!yaHecho} style={{ padding:'0.42rem 0.2rem', borderRadius:6, border:`1px solid ${estado === value ? color : 'rgba(255,255,255,0.1)'}`, background:estado === value ? `${color}18` : 'transparent', color:estado === value ? color : 'var(--text-dim)', fontSize:'0.75rem', fontWeight:estado === value ? 700 : 400 }}>
+                        <button key={value} onClick={() => setEstado(item.id, value)} disabled={!!yaHecho} style={{ padding:'0.42rem 0.2rem', borderRadius:6, border:`1px solid ${estado === value ? color : 'var(--paper-muted, rgba(255,255,255,0.1))'}`, background:estado === value ? `${color}18` : 'transparent', color:estado === value ? color : 'var(--text-dim)', fontSize:'0.75rem', fontWeight:estado === value ? 700 : 400 }}>
                           {label}
                         </button>
                       ))}

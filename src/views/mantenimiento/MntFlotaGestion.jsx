@@ -348,7 +348,7 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
   const vencidos  = vehiculos.filter(conVencido).length
   const proximos  = vehiculos.filter(conProximo).length
 
-  const SEL_S = { background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.15)', color:'#e2e8f0', borderRadius:2, padding:'0.35rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
+  const SEL_S = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.15)', color:'var(--text)', borderRadius:2, padding:'0.35rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
 
   return (
     <div style={{ padding:'1.5rem 2rem', height:'100%', display:'flex', flexDirection:'column' }}>
@@ -356,7 +356,7 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)} style={SEL_S}>
             <option value=''>Todas las sedes</option>
-            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
+            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'var(--surface)' }}>{s.nombre}</option>)}
           </select>
           <button onClick={load} style={{ ...SEL_S, display:'flex', alignItems:'center', gap:5 }}><RefreshCw size={11}/> Actualizar</button>
           <button onClick={()=>setReportOpen(true)} disabled={loading || !allVehicles.length} style={{ ...SEL_S, display:'flex', alignItems:'center', gap:5 }}><FileDown size={13}/> Informes PDF</button>
@@ -385,11 +385,11 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
       </div>
 
       <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'1rem', alignItems:'center' }}>
-        <Filter size={13} style={{ color:'rgba(255,255,255,0.3)' }} />
+        <Filter size={13} style={{ color:'var(--paper-muted, rgba(255,255,255,0.3))' }} />
         <input value={busqueda} onChange={e=>setBusqueda(e.target.value)}
           placeholder="Buscar por nombre o dominio..."
           style={{ padding:'0.4rem 0.8rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.07)', color:'var(--text)', fontSize:'0.8rem', width:220 }} />
-        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.65rem', color:'rgba(255,255,255,0.4)', cursor:'pointer' }}>
+        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.4))', cursor:'pointer' }}>
           <input type="checkbox" checked={soloVenc} onChange={e=>setSoloVenc(e.target.checked)} style={{ accentColor:'#ff5050' }}/>
           Solo con vencimientos
         </label>

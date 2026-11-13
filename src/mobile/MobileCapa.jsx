@@ -356,7 +356,7 @@ export default function MobileCapa() {
           style={{
             position: 'absolute', bottom: '1.5rem', right: '1.5rem',
             minHeight: 48, borderRadius: 24, padding:'0.7rem 1rem',
-            background: 'var(--phosphor)', color: '#000',
+            background: 'var(--accent-fill)', color: '#000',
             border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap:6, fontSize:'0.78rem', fontWeight:800,
             boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10,
           }}>

@@ -127,7 +127,7 @@ export default function Tablon() {
         </div>
         {isAdmin && (
           <button onClick={() => setNuevoModal(true)}
-            style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius: 3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
+            style={{ background: 'var(--accent-fill)', color: '#0A0A0E', border: 'none', borderRadius: 3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
             + Anuncio
           </button>
         )}
@@ -232,7 +232,7 @@ function NuevoAnuncioModal({ sedes, grupos, onClose, onSaved }) {
           <AdjuntosPanel entityType="anuncio" entityId={savedEntidadId} compact={false} readOnly={false} />
           <div style={{ marginTop: '1.25rem', textAlign: 'right' }}>
             <button onClick={onSaved}
-              style={{ padding: '0.65rem 1.4rem', borderRadius: 2, background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
+              style={{ padding: '0.65rem 1.4rem', borderRadius: 2, background: 'var(--accent-fill)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
               Cerrar
             </button>
           </div>
@@ -361,7 +361,7 @@ function NuevoAnuncioModal({ sedes, grupos, onClose, onSaved }) {
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '0.65rem 1.2rem', borderRadius: 2, background: 'rgba(57,255,20,0.05)', color: 'var(--text-dim)', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
           <button onClick={handleSave} disabled={saving}
-            style={{ padding: '0.65rem 1.4rem', borderRadius: 2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
+            style={{ padding: '0.65rem 1.4rem', borderRadius: 2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
             {saving ? 'Publicando...' : 'Publicar →'}
           </button>
         </div>

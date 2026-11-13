@@ -115,7 +115,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
         <span
           style={{
             fontSize: "0.62rem",
-            color: "rgba(255,255,255,0.4)",
+            color: 'var(--paper-muted, rgba(255,255,255,0.4))',
             alignSelf: "center",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -150,12 +150,12 @@ function AuditoriaRow({ row, expanded, onToggle }) {
         >
           <User
             size={10}
-            style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }}
+            style={{ color: 'var(--paper-muted, rgba(255,255,255,0.3))', flexShrink: 0 }}
           />
           <span
             style={{
               fontSize: "0.62rem",
-              color: "rgba(255,255,255,0.55)",
+              color: 'var(--paper-muted, rgba(255,255,255,0.55))',
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -169,7 +169,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
         <span
           style={{
             fontSize: "0.6rem",
-            color: "rgba(255,255,255,0.25)",
+            color: 'var(--paper-muted, rgba(255,255,255,0.25))',
             alignSelf: "center",
             textAlign: "right",
           }}
@@ -181,7 +181,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
         <ChevronRight
           size={12}
           style={{
-            color: "rgba(255,255,255,0.25)",
+            color: 'var(--paper-muted, rgba(255,255,255,0.25))',
             alignSelf: "center",
             transition: "transform 0.15s",
             transform: expanded ? "rotate(90deg)" : "rotate(0)",
@@ -209,7 +209,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
               <p
                 style={{
                   fontSize: "0.6rem",
-                  color: "rgba(255,255,255,0.3)",
+                  color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                   fontFamily: "monospace",
                   marginBottom: 3,
                 }}
@@ -226,7 +226,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
               <p
                 style={{
                   fontSize: "0.6rem",
-                  color: "rgba(255,255,255,0.3)",
+                  color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                   fontFamily: "monospace",
                   marginBottom: 3,
                 }}
@@ -236,7 +236,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
               <p style={{ fontSize: "0.65rem", color: "var(--text)" }}>
                 {row.usuario_nombre || "—"}
               </p>
-              <p style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.3)" }}>
+              <p style={{ fontSize: "0.6rem", color: 'var(--paper-muted, rgba(255,255,255,0.3))' }}>
                 {row.usuario_email || ""}
               </p>
               {row.usuario_origen === "reportante_formulario" && (
@@ -255,7 +255,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
               <p
                 style={{
                   fontSize: "0.6rem",
-                  color: "rgba(255,255,255,0.3)",
+                  color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                   fontFamily: "monospace",
                   marginBottom: 3,
                 }}
@@ -268,7 +268,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
               <p
                 style={{
                   fontSize: "0.6rem",
-                  color: "rgba(255,255,255,0.3)",
+                  color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                   fontFamily: "monospace",
                 }}
               >
@@ -280,7 +280,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
                 <p
                   style={{
                     fontSize: "0.6rem",
-                    color: "rgba(255,255,255,0.3)",
+                    color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                     fontFamily: "monospace",
                     marginBottom: 3,
                   }}
@@ -304,9 +304,9 @@ function AuditoriaRow({ row, expanded, onToggle }) {
                 fontFamily: "monospace",
               }}
             >
-              <span style={{ color: "rgba(255,255,255,0.4)" }}>campo </span>
+              <span style={{ color: 'var(--paper-muted, rgba(255,255,255,0.4))' }}>campo </span>
               <span style={{ color: "#c084fc" }}>{row.campo}</span>
-              <span style={{ color: "rgba(255,255,255,0.3)" }}>: </span>
+              <span style={{ color: 'var(--paper-muted, rgba(255,255,255,0.3))' }}>: </span>
               <span
                 style={{
                   color: "rgba(255,80,80,0.7)",
@@ -315,7 +315,7 @@ function AuditoriaRow({ row, expanded, onToggle }) {
               >
                 {row.valor_antes || "null"}
               </span>
-              <span style={{ color: "rgba(255,255,255,0.3)" }}> → </span>
+              <span style={{ color: 'var(--paper-muted, rgba(255,255,255,0.3))' }}> → </span>
               <span style={{ color: "rgba(57,255,20,0.8)" }}>
                 {row.valor_nuevo || "null"}
               </span>
@@ -412,7 +412,7 @@ export default function AuditoriaView() {
   };
 
   const INP = {
-    background: "#1a1a22",
+    background: 'var(--surface)',
     border: "1px solid rgba(57,255,20,0.1)",
     color: "var(--text)",
     borderRadius: 2,
@@ -519,7 +519,7 @@ export default function AuditoriaView() {
             <p
               style={{
                 fontSize: "0.6rem",
-                color: "rgba(255,255,255,0.3)",
+                color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                 fontFamily: "monospace",
                 marginBottom: 2,
               }}
@@ -547,7 +547,7 @@ export default function AuditoriaView() {
             <p
               style={{
                 fontSize: "0.6rem",
-                color: "rgba(255,255,255,0.3)",
+                color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                 fontFamily: "monospace",
                 marginBottom: 2,
               }}
@@ -604,7 +604,7 @@ export default function AuditoriaView() {
           flexWrap: "wrap",
         }}
       >
-        <Filter size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
+        <Filter size={13} style={{ color: 'var(--paper-muted, rgba(255,255,255,0.3))' }} />
 
         <div
           style={{
@@ -618,7 +618,7 @@ export default function AuditoriaView() {
             style={{
               position: "absolute",
               left: 8,
-              color: "rgba(255,255,255,0.3)",
+              color: 'var(--paper-muted, rgba(255,255,255,0.3))',
               pointerEvents: "none",
             }}
           />
@@ -665,7 +665,7 @@ export default function AuditoriaView() {
           onChange={(e) => setFiltros((f) => ({ ...f, desde: e.target.value }))}
           style={{ ...INP, colorScheme: "dark" }}
         />
-        <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.65rem" }}>
+        <span style={{ color: 'var(--paper-muted, rgba(255,255,255,0.3))', fontSize: "0.65rem" }}>
           →
         </span>
         <input
@@ -708,7 +708,7 @@ export default function AuditoriaView() {
               key={h}
               style={{
                 fontSize: "0.6rem",
-                color: "rgba(255,255,255,0.3)",
+                color: 'var(--paper-muted, rgba(255,255,255,0.3))',
                 fontFamily: "monospace",
                 letterSpacing: "0.1em",
               }}
@@ -729,14 +729,14 @@ export default function AuditoriaView() {
               justifyContent: "center",
               height: 200,
               gap: 10,
-              color: "rgba(255,255,255,0.3)",
+              color: 'var(--paper-muted, rgba(255,255,255,0.3))',
               fontSize: "0.72rem",
             }}
           >
             <Clock size={16} style={{ opacity: 0.5 }} /> Cargando registros...
           </div>
         ) : loadError ? (
-          <div role="alert" style={{ maxWidth:560, margin:"42px auto", padding:"18px 20px", border:"1px solid rgba(255,80,80,0.28)", borderRadius:6, background:"rgba(255,80,80,0.06)", color:"rgba(255,255,255,0.72)", textAlign:"center" }}>
+          <div role="alert" style={{ maxWidth:560, margin:"42px auto", padding:"18px 20px", border:"1px solid rgba(255,80,80,0.28)", borderRadius:6, background:"rgba(255,80,80,0.06)", color:'var(--paper-muted, rgba(255,255,255,0.72))', textAlign:"center" }}>
             <AlertTriangle size={24} style={{ color:"#ff5050", marginBottom:8 }} />
             <p style={{ fontSize:"0.74rem", marginBottom:12 }}>{loadError}</p>
             <button onClick={load} style={{ ...INP, cursor:"pointer" }}>
@@ -748,7 +748,7 @@ export default function AuditoriaView() {
             style={{
               textAlign: "center",
               padding: 60,
-              color: "rgba(255,255,255,0.2)",
+              color: 'var(--paper-muted, rgba(255,255,255,0.2))',
             }}
           >
             <Shield size={40} style={{ marginBottom: 16, opacity: 0.2 }} />
@@ -783,7 +783,7 @@ export default function AuditoriaView() {
           <span
             style={{
               fontSize: "0.6rem",
-              color: "rgba(255,255,255,0.25)",
+              color: 'var(--paper-muted, rgba(255,255,255,0.25))',
               fontFamily: "monospace",
             }}
           >

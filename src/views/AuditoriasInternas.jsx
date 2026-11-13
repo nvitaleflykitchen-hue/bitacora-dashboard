@@ -742,7 +742,7 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack, mobile = false }
             <span>{answered} de {questions.length} puntos</span><strong style={{ color:"var(--phosphor)" }}>{progress}%</strong>
           </div>
           <div style={{ height:8, borderRadius:999, background:"rgba(255,255,255,.08)", overflow:"hidden" }}>
-            <div style={{ width:`${progress}%`, height:"100%", background:"var(--phosphor)", transition:"width .2s ease" }} />
+            <div style={{ width:`${progress}%`, height:"100%", background:"var(--accent-fill)", transition:"width .2s ease" }} />
           </div>
         </div>
 
@@ -760,7 +760,7 @@ function AuditDetail({ id, sedes, plantillas, perfiles, onBack, mobile = false }
                 const active = currentAnswer.valor === value;
                 const color = value === "Cumple" ? "#39ff14" : value === "Parcial" ? "#f59e0b" : value === "No cumple" ? "#ef4444" : "#94a3b8";
                 return <button type="button" key={value} onClick={() => setAnswers((state) => ({ ...state, [currentQuestion.id]:{ ...currentAnswer, valor:value } }))}
-                  style={{ minHeight:52, borderRadius:8, border:`1px solid ${active ? color : "rgba(255,255,255,.12)"}`, background:active ? `${color}18` : "rgba(255,255,255,.03)", color:active ? color : "var(--text-dim)", fontWeight:750, fontSize:"0.8rem" }}>
+                  style={{ minHeight:52, borderRadius:8, border:`1px solid ${active ? color : 'var(--paper-muted, rgba(255,255,255,.12))'}`, background:active ? `${color}18` : "rgba(255,255,255,.03)", color:active ? color : "var(--text-dim)", fontWeight:750, fontSize:"0.8rem" }}>
                   {value}
                 </button>;
               })}

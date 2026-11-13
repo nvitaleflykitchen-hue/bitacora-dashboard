@@ -1,3 +1,4 @@
+import ThemeToggle from './ThemeToggle'
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { APP_VERSION } from '../data/releases'
@@ -69,6 +70,7 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
+        <div className="theme-profile"><ThemeToggle /></div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="font-metric text-xs tracking-widest uppercase mb-1.5 block"

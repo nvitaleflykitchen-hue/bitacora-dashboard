@@ -164,7 +164,7 @@ function HistorialTab({ ticketId }) {
             <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap', marginBottom:3 }}>
               {anterior ? (
                 <>
-                  <span style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>Antes: <strong style={{ color:'rgba(255,255,255,0.55)', fontWeight:500 }}>{anterior}</strong></span>
+                  <span style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>Antes: <strong style={{ color:'var(--paper-muted, rgba(255,255,255,0.55))', fontWeight:500 }}>{anterior}</strong></span>
                   <span style={{ color:'rgba(57,255,20,0.45)', fontSize:'0.7rem' }}>→</span>
                   <span style={{ fontSize:'0.65rem', color:'var(--text-dim)' }}>Ahora: <strong style={{ color:'var(--text)', fontWeight:600 }}>{nuevo}</strong></span>
                 </>
@@ -233,7 +233,7 @@ function CostosTab({ ticket, form, set }) {
     loadItems()
   }
 
-  const INPUT  = { padding:'0.4rem 0.65rem', borderRadius:5, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
+  const INPUT  = { padding:'0.4rem 0.65rem', borderRadius:5, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
   const LABEL  = { color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.25rem' }
 
   return (
@@ -241,7 +241,7 @@ function CostosTab({ ticket, form, set }) {
 
       {/* Workflow presupuesto/OC */}
       <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'12px 14px' }}>
-        <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>WORKFLOW APROBACIÓN</p>
+        <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>WORKFLOW APROBACIÓN</p>
 
         {/* Toggle externo */}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
@@ -250,7 +250,7 @@ function CostosTab({ ticket, form, set }) {
               onClick={() => set('es_externo', !form.es_externo)}
               style={{
                 width:36, height:20, borderRadius:3, cursor:'pointer', transition:'all 0.2s',
-                background: form.es_externo ? 'var(--phosphor)' : 'rgba(57,255,20,0.1)',
+                background: form.es_externo ? 'var(--accent-fill)' : 'rgba(57,255,20,0.1)',
                 position:'relative', flexShrink:0,
               }}
             >
@@ -311,7 +311,7 @@ function CostosTab({ ticket, form, set }) {
       {/* Ítems de costo */}
       {ticket?.id && (
         <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'12px 14px' }}>
-          <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>ÍTEMS DE COSTO</p>
+          <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>ÍTEMS DE COSTO</p>
 
           {loading ? (
             <p style={{ fontSize:'0.7rem', color:'var(--text-dim)' }}>Cargando...</p>
@@ -321,7 +321,7 @@ function CostosTab({ ticket, form, set }) {
                 <div style={{ marginBottom:10 }}>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 90px 90px 90px 28px', gap:'0 6px', marginBottom:4 }}>
                     {['Concepto','Tipo','Cant × P.Unit','Subtotal',''].map((h,i) => (
-                      <span key={i} style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.07em', textTransform:'uppercase' }}>{h}</span>
+                      <span key={i} style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.07em', textTransform:'uppercase' }}>{h}</span>
                     ))}
                   </div>
                   {items.map(item => (
@@ -555,7 +555,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
     } catch(e) { setErr(e.message) } finally { setSaving(false) }
   }
 
-  const INPUT = { width:'100%', padding:'0.6rem 0.9rem', borderRadius:2, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.1)', color:'var(--text)', fontSize:'0.82rem', fontFamily:'inherit', boxSizing:'border-box', colorScheme:'dark' }
+  const INPUT = { width:'100%', padding:'0.6rem 0.9rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.1)', color:'var(--text)', fontSize:'0.82rem', fontFamily:'inherit', boxSizing:'border-box', colorScheme:'dark' }
   const LABEL = { color:'var(--text-dim)', fontSize:'0.6rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.3rem' }
   const ROW   = { marginBottom:'0.85rem' }
   const TAB   = (active) => ({ padding:'0.35rem 0.8rem', borderRadius:4, border:'none', cursor:'pointer', fontSize:'0.68rem', fontWeight:600, fontFamily:'inherit', background: active ? 'rgba(57,255,20,0.12)' : 'transparent', color: active ? 'var(--phosphor)' : 'var(--text-dim)' })
@@ -711,7 +711,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
 
             {/* FECHAS */}
             <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'10px 14px', marginBottom:'0.85rem' }}>
-              <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>FECHAS</p>
+              <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:10 }}>FECHAS</p>
               <div style={{ display:'grid', gridTemplateColumns:isNew ? '1fr 1fr' : '1fr 1fr 1fr', gap:'0 1rem' }}>
                 <div>
                   <label style={LABEL}>Apertura</label>
@@ -851,7 +851,7 @@ export function TicketModal({ ticket, activos, proveedores, responsables, sedes,
               {readOnly ? 'Cerrar' : 'Cancelar'}
             </button>
             {!readOnly && <button onClick={handleSave} disabled={saving}
-              style={{ padding:'0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color:'#0A0A0E', border:'none', cursor: saving ? 'not-allowed' : 'pointer', fontWeight:700 }}>
+              style={{ padding:'0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color:'#0A0A0E', border:'none', cursor: saving ? 'not-allowed' : 'pointer', fontWeight:700 }}>
               {saving ? 'Guardando...' : (isNew ? 'Crear Ticket' : 'Guardar')}
             </button>}
           </div>
@@ -988,9 +988,9 @@ export default function MntTickets({ focusId }) {
             </div>
           )}
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)}
-            style={{ background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.15)', color:'#e2e8f0', borderRadius:2, padding:'0.4rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }}>
+            style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.15)', color:'var(--text)', borderRadius:2, padding:'0.4rem 0.75rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }}>
             <option value=''>Todas las sedes</option>
-            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
+            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'var(--surface)' }}>{s.nombre}</option>)}
           </select>
           <button onClick={() => exportTicketsCSV(filtrados, responsables)}
             title="Exportar CSV"
@@ -1013,7 +1013,7 @@ export default function MntTickets({ focusId }) {
             <FileText size={14} /> Eficiencia PDF
           </button>
           {canReport && <button onClick={() => setModalTicket({})}
-            style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
+            style={{ background: 'var(--accent-fill)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
             + Nuevo Ticket
           </button>}
         </div>

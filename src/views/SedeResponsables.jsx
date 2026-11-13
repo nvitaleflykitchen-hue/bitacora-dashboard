@@ -190,7 +190,7 @@ function ContactoRow({ item, onDelete, onEdit }) {
           {item.rol}{c.cargo ? ` · ${c.cargo}` : ''}
         </p>
         {(c.telefono || c.email) && (
-          <p style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.6rem', marginTop:1 }}>
+          <p style={{ color:'var(--paper-muted, rgba(255,255,255,0.3))', fontSize:'0.6rem', marginTop:1 }}>
             {c.telefono}{c.telefono && c.email ? ' · ' : ''}{c.email}
           </p>
         )}
@@ -416,7 +416,7 @@ export default function SedeResponsables() {
               )}
 
               {sedeItems.length === 0 && !showAdd ? (
-                <div style={{ textAlign:'center', padding:'2.5rem 0', color:'rgba(255,255,255,0.15)' }}>
+                <div style={{ textAlign:'center', padding:'2.5rem 0', color:'var(--paper-muted, rgba(255,255,255,0.15))' }}>
                   <Users size={32} style={{ margin:'0 auto 0.75rem' }}/>
                   <p style={{ fontSize:'0.75rem' }}>Sin responsables — hacé click en Agregar</p>
                 </div>

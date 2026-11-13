@@ -490,7 +490,7 @@ function PersonaFicha({ sedes, personaId, canManage, canDelete, onBack, onCreate
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           {onCreateNovedad && (persona.sede_id || persona.sede_ids?.[0]) && <button className="btn-primary" style={{ minHeight:44 }} onClick={() => onCreateNovedad({ type:'persona', id:persona.id, label:`${persona.nombre} ${persona.apellido || ''}`.trim(), sedeId:persona.sede_id || persona.sede_ids[0], returnModule:'personal' })}>+ Novedad</button>}
           {formsAllowed && <button className="btn-ghost" onClick={()=>setTab('permisos')}><FileText size={14}/> Generar formulario</button>}
-          {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--phosphor)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
+          {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--accent-fill)', color: '#000', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Phone size={11} /> WhatsApp</a>}
           {mailLink && <a href={mailLink} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text)', padding: '0.35rem 0.7rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}><Mail size={11} /> Email</a>}
           {canDelete && <button onClick={deletePersona} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,42,42,0.12)', color:'#ff5c5c', border:'1px solid rgba(255,42,42,0.3)', padding:'0.35rem 0.7rem', borderRadius:6, fontSize:'0.75rem', fontWeight:700 }}><Trash2 size={11} /> Eliminar</button>}
         </div>
@@ -598,7 +598,7 @@ function PersonaFicha({ sedes, personaId, canManage, canDelete, onBack, onCreate
             {historial.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Sin registros.</p>}
             {historial.map(h => (
               <Card key={h.id} style={{ display: 'flex', gap: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 4, background: TIPO_COLOR[h.tipo] || 'var(--phosphor)', marginTop: 4, flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: 4, background: TIPO_COLOR[h.tipo] || 'var(--accent-fill)', marginTop: 4, flexShrink: 0 }} />
                 <div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 2 }}>
                     <span style={{ fontSize: '0.75rem', color: TIPO_COLOR[h.tipo], textTransform: 'uppercase', fontWeight: 700 }}>{h.tipo.replace('_', ' ')}</span>
@@ -813,7 +813,7 @@ export default function MobilePersonal({ focusContext, onCreateNovedad }) {
       {canManage && (
         <button onClick={() => setShowNew(true)} style={{
           position: 'absolute', bottom: '1.5rem', right: '1.5rem', minHeight:48, borderRadius:24, padding:'0.7rem 1rem',
-          background: 'var(--phosphor)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap:6, fontSize:'0.78rem', fontWeight:800,
+          background: 'var(--accent-fill)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap:6, fontSize:'0.78rem', fontWeight:800,
           boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10,
         }}>
           <Plus size={18} aria-hidden="true" /> Nueva persona

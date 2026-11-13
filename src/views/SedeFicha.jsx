@@ -51,9 +51,9 @@ function KpiCard({ label, val, sub, color, onClick }) {
     <div onClick={onClick} style={{ background:'var(--surface)', borderRadius:3, border:'1px solid rgba(57,255,20,0.08)', padding:'1rem 1.1rem', cursor: onClick ? 'pointer' : 'default', transition:'border-color .15s' }}
       onMouseEnter={e => onClick && (e.currentTarget.style.borderColor = 'rgba(57,255,20,0.3)')}
       onMouseLeave={e => onClick && (e.currentTarget.style.borderColor = 'rgba(57,255,20,0.08)')}>
-      <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.3)', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:8 }}>{label}</div>
+      <div style={{ fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:8 }}>{label}</div>
       <div style={{ fontSize:'2rem', fontWeight:700, color, lineHeight:1 }}>{val}</div>
-      {sub && <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.3)', marginTop:6 }}>{sub}</div>}
+      {sub && <div style={{ fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', marginTop:6 }}>{sub}</div>}
     </div>
   )
 }
@@ -137,8 +137,8 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
     }
   }
 
-  const inp = { background:'#0A0A0E', border:'1px solid rgba(57,255,20,0.12)', color:'#e2e8f0', fontFamily:'monospace', fontSize:'0.85rem', padding:'8px 10px', borderRadius:2, width:'100%', outline:'none' }
-  const lbl = { fontSize:'0.65rem', color:'rgba(255,255,255,0.35)', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
+  const inp = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.12)', color:'var(--text)', fontFamily:'monospace', fontSize:'0.85rem', padding:'8px 10px', borderRadius:2, width:'100%', outline:'none' }
+  const lbl = { fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.35))', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
@@ -146,9 +146,9 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div>
             <div style={{ fontSize:'0.65rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.12em', textTransform:'uppercase' }}>{sede?.id ? 'EDITAR' : 'NUEVA'} UNIDAD</div>
-            <div style={{ fontSize:'1rem', fontWeight:700, color:'#e2e8f0', marginTop:2 }}>{sede?.nombre || 'Nueva sede'}</div>
+            <div style={{ fontSize:'1rem', fontWeight:700, color:'var(--text)', marginTop:2 }}>{sede?.nombre || 'Nueva sede'}</div>
           </div>
-          <button onClick={onClose} aria-label="Cerrar ficha de sede" style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:4 }}><X size={18}/></button>
+          <button onClick={onClose} aria-label="Cerrar ficha de sede" style={{ background:'transparent', border:'none', color:'var(--paper-muted, rgba(255,255,255,0.3))', cursor:'pointer', padding:4 }}><X size={18}/></button>
         </div>
 
         <div style={{ marginBottom:10 }}>
@@ -210,7 +210,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
             <div style={{ display:'flex', gap:6 }}>
               <input style={{ ...inp, flex:1 }} autoFocus value={newGrupo} onChange={e=>setNewGrupo(e.target.value)} placeholder="Ej: Zona Norte"/>
               <button type="button" onClick={() => { setCreandoGrupo(false); setNewGrupo('') }}
-                style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'rgba(255,255,255,0.4)', fontSize:'0.68rem', padding:'0 10px', borderRadius:2, cursor:'pointer' }}>
+                style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'var(--paper-muted, rgba(255,255,255,0.4))', fontSize:'0.68rem', padding:'0 10px', borderRadius:2, cursor:'pointer' }}>
                 Cancelar
               </button>
             </div>
@@ -240,17 +240,17 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
 
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18 }}>
           <input type="checkbox" id="activa" checked={form.activa} onChange={e=>set('activa',e.target.checked)} style={{ accentColor:'#39FF14' }}/>
-          <label htmlFor="activa" style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', cursor:'pointer' }}>Sede activa</label>
+          <label htmlFor="activa" style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.5))', cursor:'pointer' }}>Sede activa</label>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18, padding:'10px 12px', border:'1px solid rgba(57,255,20,.16)', background:'rgba(57,255,20,.04)' }}>
           <input type="checkbox" id="kiosk-enabled" checked={form.kiosk_enabled} onChange={e=>set('kiosk_enabled',e.target.checked)} style={{ accentColor:'#39FF14' }}/>
-          <label htmlFor="kiosk-enabled" style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.65)', cursor:'pointer' }}><strong style={{color:'#39FF14'}}>Kiosco habilitado</strong><br/><span style={{fontSize:'.68rem'}}>Permite configurar productos y operar el POS en esta sede. Los usuarios también deben tener la sede asignada.</span></label>
+          <label htmlFor="kiosk-enabled" style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.65))', cursor:'pointer' }}><strong style={{color:'#39FF14'}}>Kiosco habilitado</strong><br/><span style={{fontSize:'.68rem'}}>Permite configurar productos y operar el POS en esta sede. Los usuarios también deben tener la sede asignada.</span></label>
         </div>
 
         {error && <div style={{ fontSize:'0.75rem', color:'#ff5050', marginBottom:10, padding:'6px 10px', background:'rgba(255,80,80,0.1)', borderRadius:2, border:'1px solid rgba(255,80,80,0.2)' }}>{error}</div>}
 
         <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-          <button onClick={onClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'rgba(255,255,255,0.4)', fontFamily:'monospace', fontSize:'0.72rem', padding:'7px 16px', borderRadius:2, cursor:'pointer' }}>Cancelar</button>
+          <button onClick={onClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'var(--paper-muted, rgba(255,255,255,0.4))', fontFamily:'monospace', fontSize:'0.72rem', padding:'7px 16px', borderRadius:2, cursor:'pointer' }}>Cancelar</button>
           <button onClick={save} disabled={saving} style={{ background:saving?'rgba(57,255,20,0.1)':'rgba(57,255,20,0.15)', border:'1px solid rgba(57,255,20,0.4)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.72rem', padding:'7px 18px', borderRadius:2, cursor:'pointer', display:'flex', alignItems:'center', gap:6, fontWeight:700 }}>
             <Save size={13}/>{saving ? 'Guardando...' : sede?.id ? 'Guardar cambios' : 'Crear sede'}
           </button>
@@ -384,10 +384,10 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
 
   return (
     <div style={{ flex:1, overflowY:'auto', background:'var(--abyss)', color:'var(--text)', fontFamily:'monospace' }}>
-      <div style={{ background:'#0d0d12', borderBottom:'1px solid rgba(57,255,20,0.15)', padding:'12px 20px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+      <div style={{ background:'var(--surface)', borderBottom:'1px solid rgba(57,255,20,0.15)', padding:'12px 20px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
         <div>
           <div style={{ color:'rgba(57,255,20,0.5)', fontSize:'0.68rem', letterSpacing:'.12em', textTransform:'uppercase' }}>BITACORA · FICHAS DE UNIDAD</div>
-          <div style={{ color:'#e2e8f0', fontWeight:700, fontSize:'1.125rem', marginTop:2 }}>Dashboard por Sede</div>
+          <div style={{ color:'var(--text)', fontWeight:700, fontSize:'1.125rem', marginTop:2 }}>Dashboard por Sede</div>
         </div>
         <div style={{ flex:1 }}/>
         {canManage && (
@@ -409,15 +409,15 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
         <select value={sedeId || ''} onChange={e=>setSedeId(Number(e.target.value))}
           style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.25)', color:'#39FF14', fontFamily:'monospace', fontSize:'0.8rem', padding:'6px 10px', borderRadius:2, maxWidth:260 }}>
           {Object.entries(tiposByGroup).map(([tipo, list]) => (
-            <optgroup key={tipo} label={"-- " + tipo.toUpperCase() + " --"} style={{ background:'#0A0A0E', color:'rgba(255,255,255,0.4)' }}>
-              {list.map(s => <option key={s.id} value={s.id} style={{ background:'var(--surface)', color:'#e2e8f0' }}>{s.nombre}</option>)}
+            <optgroup key={tipo} label={"-- " + tipo.toUpperCase() + " --"} style={{ background:'var(--surface)', color:'var(--paper-muted, rgba(255,255,255,0.4))' }}>
+              {list.map(s => <option key={s.id} value={s.id} style={{ background:'var(--surface)', color:'var(--text)' }}>{s.nombre}</option>)}
             </optgroup>
           ))}
         </select>
       </div>
 
       {!sede ? (
-        <div style={{ padding:'3rem', textAlign:'center', color:'rgba(255,255,255,0.2)', fontSize:'0.85rem' }}>Selecciona una unidad</div>
+        <div style={{ padding:'3rem', textAlign:'center', color:'var(--paper-muted, rgba(255,255,255,0.2))', fontSize:'0.85rem' }}>Selecciona una unidad</div>
       ) : (
         <div style={{ padding:'14px 20px' }}>
 
@@ -428,24 +428,24 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
             </div>
             <div style={{ flex:1 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                <span style={{ fontSize:'18px', fontWeight:800, color:'#e2e8f0' }}>{sede.nombre}</span>
+                <span style={{ fontSize:'18px', fontWeight:800, color:'var(--text)' }}>{sede.nombre}</span>
                 <span style={{ fontSize:'0.65rem', padding:'2px 8px', borderRadius:2, fontWeight:700, background:tc.bg, color:tc.color, border:'1px solid ' + tc.color + '44' }}>{sede.tipo?.toUpperCase()}</span>
                 {!sede.activa && <span style={{ fontSize:'0.65rem', padding:'2px 8px', borderRadius:2, background:'rgba(255,80,80,0.1)', color:'#ff5050', border:'1px solid rgba(255,80,80,0.2)' }}>INACTIVA</span>}
                 {sede.kiosk_enabled && <span style={{ fontSize:'0.65rem', padding:'2px 8px', borderRadius:2, background:'rgba(57,255,20,.08)', color:'#39FF14', border:'1px solid rgba(57,255,20,.24)' }}>KIOSCO</span>}
               </div>
               <div style={{ display:'flex', gap:20, marginTop:6, flexWrap:'wrap' }}>
-                {sede.direccion && <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:4 }}><MapPin size={11}/>  {sede.direccion}</span>}
-                {sede.responsable && <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:4 }}><User size={11}/> {sede.responsable}</span>}
-                {sede.telefono && <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', display:'flex', alignItems:'center', gap:4 }}><Phone size={11}/> {sede.telefono}</span>}
+                {sede.direccion && <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.5))', display:'flex', alignItems:'center', gap:4 }}><MapPin size={11}/>  {sede.direccion}</span>}
+                {sede.responsable && <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.5))', display:'flex', alignItems:'center', gap:4 }}><User size={11}/> {sede.responsable}</span>}
+                {sede.telefono && <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.5))', display:'flex', alignItems:'center', gap:4 }}><Phone size={11}/> {sede.telefono}</span>}
                 {!sede.direccion && !sede.responsable && !sede.telefono && (
-                  <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>
+                  <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.2))', fontStyle:'italic' }}>
                     Sin datos completados —
                     {canManage && <button onClick={()=>setModal('edit')} style={{ background:'transparent', border:'none', color:'rgba(57,255,20,0.5)', cursor:'pointer', fontFamily:'monospace', fontSize:'0.8rem', fontStyle:'normal', marginLeft:4 }}>
                       completar ahora
                     </button>}
                   </span>
                 )}
-                {sede.descripcion && <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.3)', marginTop:2, width:'100%' }}>{sede.descripcion}</span>}
+                {sede.descripcion && <span style={{ fontSize:'0.78rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', marginTop:2, width:'100%' }}>{sede.descripcion}</span>}
               </div>
             </div>
             <div style={{ display:'flex', gap:8, flexShrink:0, alignItems:'center' }}>
@@ -484,7 +484,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
               <button onClick={()=>setFichaTab('documentacion')} style={{ background:fichaTab==='documentacion'?'rgba(57,255,20,0.12)':'transparent', border:'1px solid rgba(57,255,20,0.24)', color:fichaTab==='documentacion'?'#39FF14':'rgba(57,255,20,0.65)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>DOCUMENTACIÓN</button>
               <button onClick={()=>setFichaTab('auditorias')} style={{ background:fichaTab==='auditorias'?'rgba(167,139,250,0.14)':'transparent', border:'1px solid rgba(167,139,250,0.3)', color:fichaTab==='auditorias'?'#c4b5fd':'#a78bfa', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>AUDITORÍAS</button>
               <button onClick={()=>setFichaTab('capacitaciones')} style={{ background:fichaTab==='capacitaciones'?'rgba(57,255,20,0.12)':'transparent', border:'1px solid rgba(57,255,20,0.24)', color:fichaTab==='capacitaciones'?'#39FF14':'rgba(57,255,20,0.65)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>CAPACITACIONES</button>
-              <button onClick={()=>onNavigate && onNavigate('sede')} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'rgba(255,255,255,0.4)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>VER BITACORA</button>
+              <button onClick={()=>onNavigate && onNavigate('sede')} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.12)', color:'var(--paper-muted, rgba(255,255,255,0.4))', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>VER BITACORA</button>
               <button onClick={()=>onNavigate && onNavigate('mntTickets')} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.2)', color:'rgba(57,255,20,0.6)', fontFamily:'monospace', fontSize:'0.7rem', padding:'5px 10px', borderRadius:2, cursor:'pointer' }}>TICKETS MNT</button>
               {canManage && sede.tipo === 'Aeropuerto' && (
                 <button onClick={()=>{ sessionStorage.setItem('bitacora:openSedeId', sede.id); onNavigate && onNavigate('vuelosPlantilla') }}
@@ -510,7 +510,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
               title={`Carpeta documental / auditoría · ${sede.tipo || 'Unidad'}`}
             />
           ) : loadingDetail ? (
-            <div style={{ textAlign:'center', padding:'2rem', color:'rgba(255,255,255,0.2)', fontSize:'0.8rem' }}>Cargando datos...</div>
+            <div style={{ textAlign:'center', padding:'2rem', color:'var(--paper-muted, rgba(255,255,255,0.2))', fontSize:'0.8rem' }}>Cargando datos...</div>
           ) : kpis && (
             <>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:8, marginBottom:14 }}>
@@ -528,19 +528,19 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
 
               <div style={{ display:'grid', gridTemplateColumns: capas.length > 0 ? 'minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1.5fr)', gap:10 }}>
                 {/* PERSONAL */}
-                <div style={{ background:'#0d0d12', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
+                <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
                   <div style={{ fontSize:'0.7rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
                     <div style={{ width:5, height:5, borderRadius:'50%', background:'#39FF14' }}/>Personal afectado
                   </div>
                   {personal.length === 0 ? (
-                    <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.8rem', textAlign:'center', padding:'1rem 0' }}>Sin personal asignado</p>
+                    <p style={{ color:'var(--paper-muted, rgba(255,255,255,0.2))', fontSize:'0.8rem', textAlign:'center', padding:'1rem 0' }}>Sin personal asignado</p>
                   ) : personal.map(p => {
                     return (
                       <div key={p.id} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:9, paddingBottom:9, borderBottom:'1px solid rgba(57,255,20,0.06)' }}>
                         <Avatar nombre={p.nombre} color="#39FF14" bg="rgba(57,255,20,0.1)" />
                         <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:'0.85rem', color:'#e2e8f0', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.nombre} {p.apellido}</div>
-                          <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.35)', marginTop:1 }}>{p.puesto || '-'}</div>
+                          <div style={{ fontSize:'0.85rem', color:'var(--text)', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.nombre} {p.apellido}</div>
+                          <div style={{ fontSize:'0.68rem', color:'var(--paper-muted, rgba(255,255,255,0.35))', marginTop:1 }}>{p.puesto || '-'}</div>
                         </div>
                       </div>
                     )
@@ -548,12 +548,12 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                 </div>
 
                 {/* NOVEDADES */}
-                <div style={{ background:'#0d0d12', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
+                <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
                   <div style={{ fontSize:'0.7rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
                     <div style={{ width:5, height:5, borderRadius:'50%', background:'#39FF14' }}/>Novedades de bitacora
                   </div>
                   {novedades.length === 0 ? (
-                    <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.8rem', textAlign:'center', padding:'1rem' }}>Sin registros recientes</p>
+                    <p style={{ color:'var(--paper-muted, rgba(255,255,255,0.2))', fontSize:'0.8rem', textAlign:'center', padding:'1rem' }}>Sin registros recientes</p>
                   ) : novedades.map(n => {
                     const color = ESTADO_COLOR[n.estado_general] || '#9ca3af'
                     const detalles = [n.detalle_a, n.detalle_b, n.detalle_c, n.detalle_d, n.detalle_e, n.detalle_f, n.detalle_g, n.detalle_h].filter(Boolean)
@@ -571,11 +571,11 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                         <div>
                           <div style={{ display:'flex', gap:5, alignItems:'center', marginBottom:3 }}>
                             <span style={{ fontSize:'0.62rem', padding:'1px 6px', borderRadius:3, fontWeight:700, background:color + '18', color, border:'1px solid ' + color + '33' }}>{n.estado_general || 'Normal'}</span>
-                            {n.turno && <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.25)' }}>{n.turno}</span>}
+                            {n.turno && <span style={{ fontSize:'0.62rem', color:'var(--paper-muted, rgba(255,255,255,0.25))' }}>{n.turno}</span>}
                           </div>
-                          <div style={{ fontSize:'0.82rem', color:'#e2e8f0', lineHeight:1.35 }}>{resumen}</div>
+                          <div style={{ fontSize:'0.82rem', color:'var(--text)', lineHeight:1.35 }}>{resumen}</div>
                           <RegistroVehiculos key={n.id} registroId={n.id} compact />
-                          {n.reportante && <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.3)', marginTop:2 }}>por {n.reportante}</div>}
+                          {n.reportante && <div style={{ fontSize:'0.68rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', marginTop:2 }}>por {n.reportante}</div>}
                         </div>
                       </div>
                     )
@@ -591,13 +591,13 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                   const abiertas = capas.filter(c => !['Completada','Verificada'].includes(c.estado))
                   const audCod   = capas.find(c => c.auditoria_codigo)?.auditoria_codigo
                   return (
-                    <div style={{ background:'#0d0d12', border:'1px solid rgba(139,92,246,0.2)', borderRadius:3, padding:12 }}>
+                    <div style={{ background:'var(--surface)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:3, padding:12 }}>
                       <div style={{ fontSize:'0.7rem', color:'#a78bfa', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           <div style={{ width:5, height:5, borderRadius:'50%', background:'#a78bfa' }}/>
                           Plan CAPA {audCod && <span style={{ color:'rgba(167,139,250,0.5)', marginLeft:4 }}>· {audCod}</span>}
                         </div>
-                        <span style={{ color:'rgba(255,255,255,0.25)' }}>{cerradas}/{total}</span>
+                        <span style={{ color:'var(--paper-muted, rgba(255,255,255,0.25))' }}>{cerradas}/{total}</span>
                       </div>
 
                       {/* Barra de progreso */}
@@ -621,10 +621,10 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                               <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:2 }}>
                                 <span style={{ fontSize:'0.62rem', color:'#a78bfa', fontFamily:'monospace', fontWeight:700 }}>{c.codigo}</span>
                                 {vencida && <span style={{ fontSize:'0.62rem', color:'#ff5050', fontWeight:700, background:'rgba(255,80,80,0.12)', padding:'0 4px', borderRadius:2 }}>VEN</span>}
-                                {c.fecha_limite && !vencida && <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.2)' }}>{new Date(c.fecha_limite).toLocaleDateString('es',{day:'2-digit',month:'short'})}</span>}
+                                {c.fecha_limite && !vencida && <span style={{ fontSize:'0.62rem', color:'var(--paper-muted, rgba(255,255,255,0.2))' }}>{new Date(c.fecha_limite).toLocaleDateString('es',{day:'2-digit',month:'short'})}</span>}
                               </div>
-                              <div style={{ fontSize:'0.8rem', color:'#e2e8f0', lineHeight:1.3, textAlign:'justify', wordBreak:'break-word' }}>{c.descripcion}</div>
-                              {c.responsable && <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.25)', marginTop:1 }}>{c.responsable}</div>}
+                              <div style={{ fontSize:'0.8rem', color:'var(--text)', lineHeight:1.3, textAlign:'justify', wordBreak:'break-word' }}>{c.descripcion}</div>
+                              {c.responsable && <div style={{ fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.25))', marginTop:1 }}>{c.responsable}</div>}
                             </div>
                           </div>
                         )
@@ -639,12 +639,12 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
 
               {/* ACTIVOS + TICKETS — fila propia, a todo el ancho, para que no queden apiñados */}
               <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:10, marginTop:10 }}>
-                <div style={{ background:'#0d0d12', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
+                <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
                   <div style={{ fontSize:'0.7rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
                     <div style={{ width:5, height:5, borderRadius:'50%', background:'#39FF14' }}/>Activos / Equipos
                   </div>
                   {activos.length === 0 ? (
-                    <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.8rem', textAlign:'center', padding:'0.5rem 0' }}>Sin activos registrados</p>
+                    <p style={{ color:'var(--paper-muted, rgba(255,255,255,0.2))', fontSize:'0.8rem', textAlign:'center', padding:'0.5rem 0' }}>Sin activos registrados</p>
                   ) : (
                     <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:'0 14px' }}>
                       {activos.map(a => {
@@ -652,8 +652,8 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                         return (
                           <div key={a.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:7, paddingBottom:7, borderBottom:'1px solid rgba(57,255,20,0.06)' }}>
                             <div style={{ minWidth:0 }}>
-                              <div style={{ fontSize:'0.8rem', color:'#e2e8f0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.nombre}</div>
-                              <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.3)', marginTop:1 }}>{a.tipo}</div>
+                              <div style={{ fontSize:'0.8rem', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.nombre}</div>
+                              <div style={{ fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', marginTop:1 }}>{a.tipo}</div>
                             </div>
                             <div style={{ width:6, height:6, borderRadius:'50%', background:sc, flexShrink:0 }}/>
                           </div>
@@ -663,7 +663,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                   )}
                 </div>
 
-                <div style={{ background:'#0d0d12', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
+                <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:12 }}>
                   <div style={{ fontSize:'0.7rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.12em', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
                     <div style={{ width:5, height:5, borderRadius:'50%', background:'#F59E0B' }}/>Tickets abiertos por área
                   </div>
@@ -689,7 +689,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                                 <div style={{ width:4, height:4, borderRadius:'50%', background: CAT_COLOR[cat]||'#9ca3af' }}/>
                                 <span style={{ fontSize:'0.7rem', color: CAT_COLOR[cat]||'#9ca3af', fontWeight:700, textTransform:'uppercase', letterSpacing:'.06em' }}>{cat}</span>
                               </div>
-                              <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.3)', background:'rgba(57,255,20,0.08)', borderRadius:2, padding:'0 6px' }}>{tkts.length}</span>
+                              <span style={{ fontSize:'0.7rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', background:'rgba(57,255,20,0.08)', borderRadius:2, padding:'0 6px' }}>{tkts.length}</span>
                             </div>
                             {tkts.slice(0,3).map(t => {
                               const pc = PRIO_COLOR[t.prioridad] || '#9ca3af'
@@ -697,13 +697,13 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                                 <div key={t.id} style={{ marginBottom:5, paddingBottom:5, paddingLeft:10, borderLeft:'1px solid rgba(57,255,20,0.08)', borderBottom:'1px solid rgba(57,255,20,0.05)' }}>
                                   <div style={{ display:'flex', gap:4, alignItems:'center', marginBottom:2 }}>
                                     <span style={{ fontSize:'0.6rem', padding:'1px 4px', borderRadius:2, fontWeight:700, background:pc+'18', color:pc }}>{t.prioridad}</span>
-                                    <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)' }}>#{t.numero}</span>
+                                    <span style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.2))' }}>#{t.numero}</span>
                                   </div>
-                                  <div style={{ fontSize:'0.8rem', color:'#e2e8f0', lineHeight:1.3, textAlign:'justify', wordBreak:'break-word' }}>{t.descripcion||'Sin descripcion'}</div>
+                                  <div style={{ fontSize:'0.8rem', color:'var(--text)', lineHeight:1.3, textAlign:'justify', wordBreak:'break-word' }}>{t.descripcion||'Sin descripcion'}</div>
                                 </div>
                               )
                             })}
-                            {tkts.length > 3 && <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.2)', textAlign:'center', paddingTop:3 }}>+{tkts.length-3} más</div>}
+                            {tkts.length > 3 && <div style={{ fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.2))', textAlign:'center', paddingTop:3 }}>+{tkts.length-3} más</div>}
                           </div>
                         ))}
                       </div>

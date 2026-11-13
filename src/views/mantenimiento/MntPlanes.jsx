@@ -95,7 +95,7 @@ function EjecucionModal({ plan, onClose, onSaved }) {
     return d.toISOString().split('T')[0]
   }
 
-  const INPUT = { padding:'0.5rem 0.75rem', borderRadius:5, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.8rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
+  const INPUT = { padding:'0.5rem 0.75rem', borderRadius:5, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.8rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
   const LABEL = { fontSize:'0.6rem', color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.3rem' }
 
   return (
@@ -123,7 +123,7 @@ function EjecucionModal({ plan, onClose, onSaved }) {
             <span style={{ fontSize:'0.75rem', color: pct === 100 ? 'var(--phosphor)' : 'var(--text)', fontFamily:'monospace', fontWeight:700 }}>{completados}/{total} — {pct}%</span>
           </div>
           <div style={{ height:6, background:'rgba(57,255,20,0.07)', borderRadius:3, overflow:'hidden' }}>
-            <div style={{ height:'100%', width:`${pct}%`, background: pct === 100 ? 'var(--phosphor)' : '#f59e0b', borderRadius:3, transition:'width 0.3s', boxShadow: pct === 100 ? '0 0 8px var(--phosphor)' : 'none' }} />
+            <div style={{ height:'100%', width:`${pct}%`, background: pct === 100 ? 'var(--accent-fill)' : '#f59e0b', borderRadius:3, transition:'width 0.3s', boxShadow: pct === 100 ? '0 0 8px var(--phosphor)' : 'none' }} />
           </div>
         </div>
 
@@ -137,7 +137,7 @@ function EjecucionModal({ plan, onClose, onSaved }) {
 
         {/* Checklist */}
         <div style={{ marginBottom:'1rem' }}>
-          <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>CHECKLIST</p>
+          <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>CHECKLIST</p>
           {checklist.map(item => (
             <div key={item.id} style={{
               padding:'10px 12px', marginBottom:4, borderRadius:2,
@@ -181,7 +181,7 @@ function EjecucionModal({ plan, onClose, onSaved }) {
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end' }}>
           <button onClick={onClose} style={{ padding:'0.6rem 1.1rem', borderRadius:2, background:'rgba(57,255,20,0.05)', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>Cancelar</button>
           <button onClick={handleSave} disabled={saving || !realizado}
-            style={{ padding:'0.6rem 1.3rem', borderRadius:2, background: (!realizado || saving) ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color:'#0A0A0E', border:'none', cursor: !realizado ? 'not-allowed' : 'pointer', fontWeight:700 }}>
+            style={{ padding:'0.6rem 1.3rem', borderRadius:2, background: (!realizado || saving) ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color:'#0A0A0E', border:'none', cursor: !realizado ? 'not-allowed' : 'pointer', fontWeight:700 }}>
             {saving ? 'Guardando...' : 'Registrar Ejecución'}
           </button>
         </div>
@@ -232,7 +232,7 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
     onSaved()
   }
 
-  const INPUT = { padding:'0.45rem 0.7rem', borderRadius:5, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
+  const INPUT = { padding:'0.45rem 0.7rem', borderRadius:5, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.78rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
   const LABEL = { fontSize:'0.6rem', color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.25rem' }
 
   return (
@@ -279,7 +279,7 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
 
         {/* Checklist */}
         <div style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.06)', borderRadius:3, padding:'12px 14px', marginBottom:'1rem' }}>
-          <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÍTEMS DE CHECKLIST ({checklist.length})</p>
+          <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÍTEMS DE CHECKLIST ({checklist.length})</p>
           {checklist.map((item, i) => (
             <div key={item.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 0', borderBottom: i < checklist.length-1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
               <span style={{ fontSize:'0.62rem', color:'var(--text-dim)', fontFamily:'monospace', minWidth:18 }}>{item.orden}.</span>
@@ -308,7 +308,7 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
         {/* Historial ejecuciones */}
         {ejecuciones.length > 0 && (
           <div style={{ marginBottom:'1rem' }}>
-            <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÚLTIMAS EJECUCIONES</p>
+            <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', marginBottom:8 }}>ÚLTIMAS EJECUCIONES</p>
             {ejecuciones.slice(0,5).map(e => (
               <div key={e.id} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid rgba(255,255,255,0.03)', fontSize:'0.72rem' }}>
                 <span style={{ color:'var(--phosphor)', fontFamily:'monospace' }}>{fmtFecha(e.fecha)}</span>
@@ -322,7 +322,7 @@ function PlanDetalle({ plan, activos, responsables, onClose, onSaved, onMassAssi
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end' }}>
           <button onClick={onClose} style={{ padding:'0.6rem 1.1rem', borderRadius:2, background:'rgba(57,255,20,0.05)', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>Cancelar</button>
           <button onClick={savePlan} disabled={saving}
-            style={{ padding:'0.6rem 1.3rem', borderRadius:2, background:saving?'rgba(57,255,20,0.4)':'var(--phosphor)', color:'#0A0A0E', border:'none', cursor:'pointer', fontWeight:700 }}>
+            style={{ padding:'0.6rem 1.3rem', borderRadius:2, background:saving?'rgba(57,255,20,0.4)':'var(--accent-fill)', color:'#0A0A0E', border:'none', cursor:'pointer', fontWeight:700 }}>
             {saving ? 'Guardando...' : 'Guardar Plan'}
           </button>
         </div>
@@ -394,7 +394,7 @@ function MassAssignModal({ plan, activos, sedes, onClose, onSaved }) {
     }
   }
 
-  const INPUT = { padding:'0.5rem 0.75rem', borderRadius:5, background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.8rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
+  const INPUT = { padding:'0.5rem 0.75rem', borderRadius:5, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.8rem', fontFamily:'inherit', width:'100%', colorScheme:'dark' }
   const LABEL = { fontSize:'0.6rem', color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:'0.3rem' }
 
   return (
@@ -426,7 +426,7 @@ function MassAssignModal({ plan, activos, sedes, onClose, onSaved }) {
         {sedeId && (
           <div style={{ marginBottom:'1rem' }}>
             <label style={LABEL}>3. Equipos Disponibles ({activosSede.length})</label>
-            <div style={{ background:'#1a1a22', border:'1px solid rgba(255,255,255,0.05)', borderRadius:5, maxHeight:180, overflowY:'auto', padding:'0.5rem' }}>
+            <div style={{ background:'var(--surface)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:5, maxHeight:180, overflowY:'auto', padding:'0.5rem' }}>
               {activosSede.length === 0 ? <p style={{ fontSize:'0.75rem', color:'var(--text-dim)', textAlign:'center', margin:'1rem 0' }}>No hay activos coincidentes.</p> : null}
               {activosSede.map(a => (
                 <label key={a.id} style={{ display:'flex', alignItems:'center', gap:8, fontSize:'0.8rem', color:'var(--text)', padding:'0.4rem', borderBottom:'1px solid rgba(255,255,255,0.02)', cursor:'pointer' }}>
@@ -460,7 +460,7 @@ function MassAssignModal({ plan, activos, sedes, onClose, onSaved }) {
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end' }}>
           <button onClick={onClose} style={{ padding:'0.6rem 1.1rem', borderRadius:2, background:'rgba(57,255,20,0.05)', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>Cancelar</button>
           <button onClick={handleSave} disabled={saving || !sedeId || selectedIds.length === 0 || !fecha}
-            style={{ padding:'0.6rem 1.3rem', borderRadius:2, background: (saving || !sedeId || selectedIds.length === 0 || !fecha) ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color:'#0A0A0E', border:'none', cursor: (saving || !sedeId || selectedIds.length === 0 || !fecha) ? 'not-allowed' : 'pointer', fontWeight:700 }}>
+            style={{ padding:'0.6rem 1.3rem', borderRadius:2, background: (saving || !sedeId || selectedIds.length === 0 || !fecha) ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color:'#0A0A0E', border:'none', cursor: (saving || !sedeId || selectedIds.length === 0 || !fecha) ? 'not-allowed' : 'pointer', fontWeight:700 }}>
             {saving ? 'Clonando...' : 'Clonar y Asignar'}
           </button>
         </div>
@@ -543,7 +543,7 @@ export default function MntPlanes({ defaultTipo, focusId } = {}) {
             </span>
           )}
           <button onClick={() => setModalDet({ id:'nuevo', nombre:'', frecuencia:'MENSUAL', tipo_activo:'EQUIPO', activo:true })}
-            style={{ background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.5rem 1rem', fontWeight:700, cursor:'pointer', fontSize:'0.8rem' }}>
+            style={{ background:'var(--accent-fill)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.5rem 1rem', fontWeight:700, cursor:'pointer', fontSize:'0.8rem' }}>
             + Nuevo Plan
           </button>
         </div>

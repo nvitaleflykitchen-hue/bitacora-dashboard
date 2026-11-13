@@ -302,7 +302,7 @@ export default function FlotaChecklist() {
                     const active = form.respuestas[item.id] === value
                     return (
                       <button key={value} type="button" disabled={!canManage} onClick={() => setItem(item.id, value)}
-                        style={{ border:`1px solid ${active ? color : 'rgba(255,255,255,0.12)'}`, background:active ? `${color}22` : 'transparent', color:active ? color : 'var(--text-dim)', borderRadius:3, padding:'0.35rem 0.5rem', fontSize:'0.62rem', fontWeight:800, cursor:canManage ? 'pointer' : 'default', fontFamily:'monospace' }}>
+                        style={{ border:`1px solid ${active ? color : 'var(--paper-muted, rgba(255,255,255,0.12))'}`, background:active ? `${color}22` : 'transparent', color:active ? color : 'var(--text-dim)', borderRadius:3, padding:'0.35rem 0.5rem', fontSize:'0.62rem', fontWeight:800, cursor:canManage ? 'pointer' : 'default', fontFamily:'monospace' }}>
                         {label}
                       </button>
                     )

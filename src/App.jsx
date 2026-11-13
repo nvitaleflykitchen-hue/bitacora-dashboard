@@ -314,7 +314,7 @@ function AppInner() {
         style={{
           position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 75,
           width: 40, height: 40, borderRadius: '50%',
-          background: showHelp ? 'var(--phosphor)' : 'var(--surface)',
+          background: showHelp ? 'var(--accent-fill)' : 'var(--surface)',
           border: '1px solid rgba(57,255,20,0.35)',
           color: showHelp ? '#0A0A0E' : 'var(--phosphor)',
           fontWeight: 800, fontSize: '1rem', cursor: 'pointer',

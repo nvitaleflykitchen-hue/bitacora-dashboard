@@ -184,9 +184,9 @@ export default function MobileEscalamientos() {
               {/* Meta */}
               <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  {e.reportante && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>{e.reportante}</span>}
+                  {e.reportante && <span style={{ color: 'var(--paper-muted, rgba(255,255,255,0.3))', fontSize: '0.75rem' }}>{e.reportante}</span>}
                   {e.fecha_reporte && (
-                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--paper-muted, rgba(255,255,255,0.3))', fontSize: '0.75rem' }}>
                       {format(new Date(e.fecha_reporte + 'T12:00:00'), "d MMM", { locale: es })}
                     </span>
                   )}

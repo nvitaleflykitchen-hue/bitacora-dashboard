@@ -391,7 +391,7 @@ function TicketCard({ t, onClick }) {
         </div>
         {subtareas.length > 0 && <div style={{ marginTop: 7 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-dim)', fontSize: '0.6rem', marginBottom: 3 }}><span>SUBTAREAS</span><span>{completadas}/{subtareas.length}</span></div>
-          <div style={{ height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><div style={{ width: `${Math.round(completadas * 100 / subtareas.length)}%`, height: '100%', background: 'var(--phosphor)' }} /></div>
+          <div style={{ height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><div style={{ width: `${Math.round(completadas * 100 / subtareas.length)}%`, height: '100%', background: 'var(--accent-fill)' }} /></div>
         </div>}
       </div>
       <ChevronRight size={15} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
@@ -596,7 +596,7 @@ export default function MobileTickets() {
           style={{
             position: 'absolute', bottom: '1.5rem', right: '1.5rem',
             width: 50, height: 50, borderRadius: 25,
-            background: 'var(--phosphor)', color: '#000',
+            background: 'var(--accent-fill)', color: '#000',
             border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10
           }}

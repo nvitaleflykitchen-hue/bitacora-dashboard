@@ -81,7 +81,7 @@ export default function MobileMarcacion({ onBack }) {
           </div>
         </section>
 
-        <button type="button" disabled={marking || !siteId} onClick={mark} style={{ width:'100%', minHeight:68, border:0, borderRadius:10, cursor:marking || !siteId ? 'not-allowed' : 'pointer', background:isOut ? '#F97316' : 'var(--phosphor)', color:'#0A0A0E', fontWeight:850, fontSize:'1.05rem', display:'flex', alignItems:'center', justifyContent:'center', gap:10, opacity:marking || !siteId ? .55 : 1 }}>
+        <button type="button" disabled={marking || !siteId} onClick={mark} style={{ width:'100%', minHeight:68, border:0, borderRadius:10, cursor:marking || !siteId ? 'not-allowed' : 'pointer', background:isOut ? '#F97316' : 'var(--accent-fill)', color:'#0A0A0E', fontWeight:850, fontSize:'1.05rem', display:'flex', alignItems:'center', justifyContent:'center', gap:10, opacity:marking || !siteId ? .55 : 1 }}>
           {isOut ? <LogOut size={22}/> : <LogIn size={22}/>} {marking ? 'Obteniendo ubicación…' : `MARCAR ${attendanceEventLabel(nextType).toUpperCase()}`}
         </button>
         <p style={{ color:'var(--text-dim)', fontSize:'.68rem', textAlign:'center', lineHeight:1.45, margin:'10px 12px 1.4rem' }}>Al marcar se solicitará tu ubicación. Durante el piloto, una geocerca o turno todavía no configurados quedarán pendientes de validación.</p>
