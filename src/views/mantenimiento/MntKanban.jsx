@@ -153,7 +153,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
               <span style={{ fontSize:'0.6rem', padding:'2px 8px', borderRadius:4, fontWeight:700, background:`${pc}22`, color:pc, border:`1px solid ${pc}44` }}>
                 {form.prioridad?.toUpperCase()}
               </span>
-              <span style={{ fontSize:'0.6rem', padding:'2px 8px', borderRadius:4, background:'#1a1a22', color:'rgba(255,255,255,0.5)', border:'1px solid rgba(57,255,20,0.08)' }}>
+              <span style={{ fontSize:'0.6rem', padding:'2px 8px', borderRadius:4, background:'var(--surface)', color:'var(--paper-muted, rgba(255,255,255,0.5))', border:'1px solid rgba(57,255,20,0.08)' }}>
                 {ticket.tipo || 'Sin tipo'}
               </span>
               {ticket.categoria && (
@@ -172,11 +172,11 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
                 </span>
               )}
             </div>
-            <p style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace' }}>
+            <p style={{ fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace' }}>
               ID {typeof ticket.id === 'string' ? ticket.id.substring(0,8).toUpperCase() : ticket.id}... · {tiempoTranscurrido(ticket.created_at)}
             </p>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', padding:4, flexShrink:0 }}>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'var(--paper-muted, rgba(255,255,255,0.4))', cursor:'pointer', padding:4, flexShrink:0 }}>
             <X size={18}/>
           </button>
         </div>
@@ -201,7 +201,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
               {/* Descripción */}
               <div>
-                <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:6 }}>DESCRIPCIÓN</label>
+                <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:6 }}>DESCRIPCIÓN</label>
                 {editing
                   ? <textarea style={{ ...INP, minHeight:80, resize:'vertical' }} value={form.descripcion} onChange={e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder="Ej: Pierde aceite en compresor principal"/>
                   : <p style={{ fontSize:'0.75rem', color:'var(--text)', lineHeight:1.5 }}>{ticket.descripcion || '(sin descripción)'}</p>
@@ -212,7 +212,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 {/* Estado */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>ESTADO</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>ESTADO</label>
                   {editing
                     ? <select style={SEL} value={form.estado} onChange={e=>setForm(f=>({...f,estado:e.target.value}))}>
                         <option value="abierto">Abierto</option>
@@ -230,7 +230,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
                 {/* Prioridad */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>PRIORIDAD</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>PRIORIDAD</label>
                   {editing
                     ? <select style={SEL} value={form.prioridad} onChange={e=>setForm(f=>({...f,prioridad:e.target.value}))}>
                         <option value="baja">Baja</option>
@@ -244,7 +244,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
                 {/* Responsable */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>RESPONSABLE</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>RESPONSABLE</label>
                   {editing
                     ? <select style={SEL} value={form.responsable_id} onChange={e=>setForm(f=>({...f,responsable_id:e.target.value}))}>
                         <option value="">Sin asignar</option>
@@ -258,7 +258,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
                 {/* Activo */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>ACTIVO</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>ACTIVO</label>
                   {editing
                     ? <select style={SEL} value={form.activo_id} onChange={e=>setForm(f=>({...f,activo_id:e.target.value}))}>
                         <option value="">Sin asignar</option>
@@ -266,12 +266,12 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
                       </select>
                     : <span style={{ fontSize:'0.7rem', color:'rgba(57,255,20,0.7)' }}>{ticket.activo_nombre || '—'}</span>
                   }
-                  {editing && loadingActivos && <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', display:'block', marginTop:3 }}>Cargando activos...</span>}
+                  {editing && loadingActivos && <span style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', display:'block', marginTop:3 }}>Cargando activos...</span>}
                 </div>
 
                 {/* Proveedor */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>PROVEEDOR</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>PROVEEDOR</label>
                   {editing
                     ? <select style={SEL} value={form.proveedor_id} onChange={e=>setForm(f=>({...f,proveedor_id:e.target.value}))}>
                         <option value="">Sin asignar</option>
@@ -285,13 +285,13 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
                 {/* Sede */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>SEDE</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>SEDE</label>
                   <span style={{ fontSize:'0.7rem', color:'var(--text)' }}>{ticket.sede || '—'}</span>
                 </div>
 
                 {/* Tipo */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>TIPO</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>TIPO</label>
                   {editing
                     ? <select style={SEL} value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))}>
                         <option value="correctivo">Correctivo</option>
@@ -303,14 +303,14 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
                 {/* Fecha apertura */}
                 <div>
-                  <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>APERTURA</label>
+                  <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>APERTURA</label>
                   <span style={{ fontSize:'0.7rem', color:'var(--text)' }}>{ticket.created_at ? fmtFecha(ticket.created_at) : '—'}</span>
                 </div>
 
                 {/* Fecha cierre */}
                 {ticket.fecha_cierre && (
                   <div>
-                    <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>CIERRE</label>
+                    <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:5 }}>CIERRE</label>
                     <span style={{ fontSize:'0.7rem', color:'#39ff14' }}>{fmtFecha(ticket.fecha_cierre)}</span>
                   </div>
                 )}
@@ -318,7 +318,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
 
               {/* Solución */}
               <div>
-                <label style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:6 }}>SOLUCIÓN / OBSERVACIONES</label>
+                <label style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', fontFamily:'monospace', letterSpacing:'0.1em', display:'block', marginBottom:6 }}>SOLUCIÓN / OBSERVACIONES</label>
                 {editing
                   ? <textarea style={{ ...INP, minHeight:70, resize:'vertical' }} value={form.solucion} onChange={e=>setForm(f=>({...f,solucion:e.target.value}))} placeholder="Qué se hizo, cómo se resolvió..."/>
                   : <p style={{ fontSize:'0.72rem', color: ticket.diagnostico ? 'var(--text)' : 'rgba(255,255,255,0.2)', lineHeight:1.5, fontStyle: ticket.diagnostico ? 'normal' : 'italic' }}>
@@ -331,7 +331,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
               <div style={{ display:'flex', gap:8, justifyContent:'flex-end', paddingTop:8, borderTop:'1px solid rgba(57,255,20,0.05)' }}>
                 {editing ? (
                   <>
-                    <button onClick={()=>setEditing(false)} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(57,255,20,0.08)', color:'rgba(255,255,255,0.6)', borderRadius:2, padding:'7px 16px', fontSize:'0.65rem', cursor:'pointer' }}>
+                    <button onClick={()=>setEditing(false)} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--paper-muted, rgba(255,255,255,0.6))', borderRadius:2, padding:'7px 16px', fontSize:'0.65rem', cursor:'pointer' }}>
                       Cancelar
                     </button>
                     <button onClick={save} disabled={saving} style={{ background:'rgba(57,255,20,0.12)', border:'1px solid rgba(57,255,20,0.3)', color:'#39ff14', borderRadius:2, padding:'7px 20px', fontSize:'0.65rem', fontWeight:700, cursor:'pointer' }}>
@@ -356,7 +356,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
               {loadingAudit ? (
                 <p style={{ color:'var(--text-dim)', fontSize:'0.72rem', textAlign:'center', padding:32 }}>Cargando trazabilidad...</p>
               ) : auditoria.length === 0 ? (
-                <div style={{ textAlign:'center', padding:40, color:'rgba(255,255,255,0.2)' }}>
+                <div style={{ textAlign:'center', padding:40, color:'var(--paper-muted, rgba(255,255,255,0.2))' }}>
                   <History size={32} style={{ marginBottom:12, opacity:0.3 }}/>
                   <p style={{ fontSize:'0.7rem' }}>Sin registros de auditoría para este ticket.</p>
                   <p style={{ fontSize:'0.62rem', marginTop:6, opacity:0.6 }}>Los cambios futuros aparecerán aquí automáticamente.</p>
@@ -369,7 +369,7 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
                       <div key={row.id} style={{ display:'flex', gap:12, paddingBottom:16, position:'relative' }}>
                         {/* línea vertical */}
                         {i < auditoria.length - 1 && (
-                          <div style={{ position:'absolute', left:10, top:22, bottom:0, width:1, background:'#1a1a22' }}/>
+                          <div style={{ position:'absolute', left:10, top:22, bottom:0, width:1, background:'var(--surface)' }}/>
                         )}
                         {/* dot */}
                         <div style={{ width:20, height:20, borderRadius:'50%', background:`${color}22`, border:`2px solid ${color}55`, flexShrink:0, marginTop:2, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -383,14 +383,14 @@ function TicketModal({ ticket, responsables, onClose, onUpdate }) {
                             <span style={{ fontSize:'0.62rem', color:'var(--text)', fontWeight:600 }}>
                               {row.usuario_nombre || row.usuario_email || 'Sistema'}
                             </span>
-                            <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.25)', marginLeft:'auto' }}>
+                            <span style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.25))', marginLeft:'auto' }}>
                               {row.created_at ? fmtFecha(row.created_at) : ''}
                             </span>
                           </div>
-                          <p style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.6)', lineHeight:1.4 }}>{row.descripcion}</p>
+                          <p style={{ fontSize:'0.68rem', color:'var(--paper-muted, rgba(255,255,255,0.6))', lineHeight:1.4 }}>{row.descripcion}</p>
                           {row.campo && (
-                            <p style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.3)', marginTop:3 }}>
-                              <span style={{ color:'rgba(255,255,255,0.4)' }}>{row.campo}:</span>{' '}
+                            <p style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))', marginTop:3 }}>
+                              <span style={{ color:'var(--paper-muted, rgba(255,255,255,0.4))' }}>{row.campo}:</span>{' '}
                               <span style={{ textDecoration:'line-through', color:'rgba(255,80,80,0.5)' }}>{row.valor_antes || '—'}</span>
                               {' → '}
                               <span style={{ color:'rgba(57,255,20,0.7)' }}>{row.valor_nuevo || '—'}</span>
@@ -443,7 +443,7 @@ function TicketCard({ ticket, responsables, activos, columnColor, expanded, onSe
       onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor=resuelto?'rgba(57,255,20,.35)':bloqueado?'rgba(255,80,80,.35)':'rgba(255,255,255,.1)' }}
     >
       <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
-        <span style={{fontSize:'.56rem',fontFamily:'monospace',color:'rgba(255,255,255,.42)',border:'1px solid rgba(255,255,255,.1)',borderRadius:3,padding:'2px 5px'}}>{ticketNumero}</span>
+        <span style={{fontSize:'.56rem',fontFamily:'monospace',color:'var(--paper-muted, rgba(255,255,255,.42))',border:'1px solid rgba(255,255,255,.1)',borderRadius:3,padding:'2px 5px'}}>{ticketNumero}</span>
         <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:4, fontWeight:700, background:`${pc}22`, color:pc, border:`1px solid ${pc}44` }}>
           {ticket.prioridad}
         </span>
@@ -457,11 +457,11 @@ function TicketCard({ ticket, responsables, activos, columnColor, expanded, onSe
       {ticket.activo_nombre && (
         <div style={{marginBottom:8}}>
           <p style={{fontSize:'.64rem',color:'rgba(57,255,20,.78)',fontWeight:650,display:'flex',gap:5,alignItems:'center'}}><Wrench size={10}/>{ticket.activo_nombre}</p>
-          {activo?.codigo && <p style={{fontSize:'.54rem',color:'rgba(255,255,255,.3)',margin:'2px 0 0 15px'}}>{activo.codigo}</p>}
+          {activo?.codigo && <p style={{fontSize:'.54rem',color:'var(--paper-muted, rgba(255,255,255,.3))',margin:'2px 0 0 15px'}}>{activo.codigo}</p>}
         </div>
       )}
 
-      {ticket.sede && <p style={{display:'flex',alignItems:'center',gap:5,fontSize:'.59rem',color:'rgba(255,255,255,.55)',marginBottom:8}}><MapPin size={10}/>{ticket.sede}</p>}
+      {ticket.sede && <p style={{display:'flex',alignItems:'center',gap:5,fontSize:'.59rem',color:'var(--paper-muted, rgba(255,255,255,.55))',marginBottom:8}}><MapPin size={10}/>{ticket.sede}</p>}
 
       <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
         {ticket.subarea && <span style={{fontSize:'.57rem',color:'#50b4ff',border:'1px solid rgba(80,180,255,.25)',padding:'2px 6px',borderRadius:3}}>{ticket.subarea}</span>}
@@ -470,7 +470,7 @@ function TicketCard({ ticket, responsables, activos, columnColor, expanded, onSe
 
       {bloqueado && (ticket.impacto_operativo || ticket.causa_raiz) && <div style={{background:'rgba(255,80,80,.075)',border:'1px solid rgba(255,80,80,.22)',borderRadius:4,padding:'8px 9px',marginBottom:10}}>
         <p style={{fontSize:'.54rem',color:'#ff5050',fontWeight:800,marginBottom:3}}>MOTIVO DEL BLOQUEO</p>
-        <p style={{fontSize:'.59rem',color:'rgba(255,255,255,.58)',lineHeight:1.35}}>{ticket.impacto_operativo || ticket.causa_raiz}</p>
+        <p style={{fontSize:'.59rem',color:'var(--paper-muted, rgba(255,255,255,.58))',lineHeight:1.35}}>{ticket.impacto_operativo || ticket.causa_raiz}</p>
       </div>}
 
       <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
@@ -479,7 +479,7 @@ function TicketCard({ ticket, responsables, activos, columnColor, expanded, onSe
         {ticket.fecha_limite && <span style={{display:'flex',alignItems:'center',gap:4,fontSize:'.56rem',color:sla==='vencido'?'#ff5050':'rgba(255,255,255,.46)',marginLeft:'auto'}}><CalendarDays size={10}/>Vence {fmtFecha(ticket.fecha_limite)}</span>}
       </div>
 
-      {expanded && ticket.descripcion && <p style={{fontSize:'.62rem',lineHeight:1.5,color:'rgba(255,255,255,.62)',padding:'9px 0',margin:'0 0 9px',borderTop:'1px solid rgba(255,255,255,.07)',borderBottom:'1px solid rgba(255,255,255,.07)'}}>{ticket.descripcion}</p>}
+      {expanded && ticket.descripcion && <p style={{fontSize:'.62rem',lineHeight:1.5,color:'var(--paper-muted, rgba(255,255,255,.62))',padding:'9px 0',margin:'0 0 9px',borderTop:'1px solid rgba(255,255,255,.07)',borderBottom:'1px solid rgba(255,255,255,.07)'}}>{ticket.descripcion}</p>}
 
       {subtareas.length > 0 && <div style={{marginBottom:9}}>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:'.56rem',color:'var(--text-dim)',marginBottom:5}}><span>SUBTAREAS</span><span>{completadas} de {subtareas.length}</span></div>
@@ -490,21 +490,21 @@ function TicketCard({ ticket, responsables, activos, columnColor, expanded, onSe
       {expanded && subtareas.length === 0 && <button type="button" onClick={event=>abrir(event,'plan')} style={{width:'100%',background:'rgba(255,180,0,.06)',border:'1px dashed rgba(255,180,0,.32)',borderRadius:4,color:'#ffb400',padding:'9px',fontSize:'.59rem',cursor:'pointer',marginBottom:9}}>+ Crear plan y subtareas</button>}
 
       {expanded && (ticket.impacto_operativo || ticket.trabajo_realizado) && <div style={{display:'grid',gap:7,marginBottom:10}}>
-        {ticket.impacto_operativo && <div><span style={{fontSize:'.52rem',color:'var(--text-dim)'}}>IMPACTO OPERATIVO</span><p style={{fontSize:'.59rem',color:'rgba(255,255,255,.65)',marginTop:2}}>{ticket.impacto_operativo}</p></div>}
-        {ticket.trabajo_realizado && <div><span style={{fontSize:'.52rem',color:'var(--text-dim)'}}>TRABAJO REALIZADO</span><p style={{fontSize:'.59rem',color:'rgba(255,255,255,.65)',marginTop:2}}>{ticket.trabajo_realizado}</p></div>}
+        {ticket.impacto_operativo && <div><span style={{fontSize:'.52rem',color:'var(--text-dim)'}}>IMPACTO OPERATIVO</span><p style={{fontSize:'.59rem',color:'var(--paper-muted, rgba(255,255,255,.65))',marginTop:2}}>{ticket.impacto_operativo}</p></div>}
+        {ticket.trabajo_realizado && <div><span style={{fontSize:'.52rem',color:'var(--text-dim)'}}>TRABAJO REALIZADO</span><p style={{fontSize:'.59rem',color:'var(--paper-muted, rgba(255,255,255,.65))',marginTop:2}}>{ticket.trabajo_realizado}</p></div>}
       </div>}
 
       {resuelto && <div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(57,255,20,.09)',border:'1px solid rgba(57,255,20,.2)',borderRadius:4,padding:'7px 8px',fontSize:'.58rem',color:'rgba(57,255,20,.8)',marginBottom:9}}><CheckCircle2 size={13}/>Resuelto {ticket.fecha_cierre ? `el ${fmtFecha(ticket.fecha_cierre)}` : ''}</div>}
 
-      <div style={{display:'flex',alignItems:'center',gap:13,color:'rgba(255,255,255,.36)',fontSize:'.57rem',marginTop:7}}>
+      <div style={{display:'flex',alignItems:'center',gap:13,color:'var(--paper-muted, rgba(255,255,255,.36))',fontSize:'.57rem',marginTop:7}}>
         <span style={{display:'flex',alignItems:'center',gap:4}}><MessageSquare size={11}/>Comentarios</span>
         {(ticket.evidencia_url || ticket.trabajo_realizado) && <span style={{display:'flex',alignItems:'center',gap:4}}><Paperclip size={11}/>Evidencia</span>}
         {ticket.tipo && <span style={{marginLeft:'auto',textTransform:'capitalize'}}>{ticket.tipo}</span>}
       </div>
       <div style={{borderTop:'1px solid rgba(255,255,255,.08)',marginTop:10,paddingTop:9,display:'flex',alignItems:'center',gap:8}}>
         <button type="button" onClick={abrir} style={{background:'none',border:0,color:'var(--text)',fontSize:'.6rem',cursor:'pointer',padding:0,display:'flex',alignItems:'center',gap:4}}>Abrir ficha <ExternalLink size={10}/></button>
-        <button type="button" onClick={event=>abrir(event,'comentarios')} style={{background:'none',border:0,borderLeft:'1px solid rgba(255,255,255,.1)',color:'rgba(255,255,255,.6)',fontSize:'.6rem',cursor:'pointer',padding:'0 0 0 10px'}}>Comentar</button>
-        <button type="button" aria-label="Más información" onClick={abrir} style={{marginLeft:'auto',background:'none',border:0,color:'rgba(255,255,255,.4)',padding:0,cursor:'pointer'}}><MoreVertical size={13}/></button>
+        <button type="button" onClick={event=>abrir(event,'comentarios')} style={{background:'none',border:0,borderLeft:'1px solid rgba(255,255,255,.1)',color:'var(--paper-muted, rgba(255,255,255,.6))',fontSize:'.6rem',cursor:'pointer',padding:'0 0 0 10px'}}>Comentar</button>
+        <button type="button" aria-label="Más información" onClick={abrir} style={{marginLeft:'auto',background:'none',border:0,color:'var(--paper-muted, rgba(255,255,255,.4))',padding:0,cursor:'pointer'}}><MoreVertical size={13}/></button>
       </div>
     </div>
   )
@@ -609,7 +609,7 @@ export default function MntKanban() {
   const activeFilters = [filterResp, filterPrior, filterSede, filterSLA].filter(Boolean).length
   const clearFilters = () => { setFilterResp(''); setFilterPrior(''); setFilterSede(''); setFilterSLA(false) }
 
-  const SEL = { background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'inherit' }
+  const SEL = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'inherit' }
 
   return (
     <div style={{ padding:'1.5rem 2rem', height:'100%', display:'flex', flexDirection:'column', gap:16 }}>
@@ -647,7 +647,7 @@ export default function MntKanban() {
 
       {/* Filtros */}
       <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
-        <Filter size={13} style={{ color:'rgba(255,255,255,0.3)' }}/>
+        <Filter size={13} style={{ color:'var(--paper-muted, rgba(255,255,255,0.3))' }}/>
         <select style={SEL} value={filterResp} onChange={e=>setFilterResp(e.target.value)}>
           <option value="">Todos los responsables</option>
           {responsables.map(r=><option key={r.id} value={r.id}>{r.nombre}</option>)}

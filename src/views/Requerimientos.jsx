@@ -75,7 +75,7 @@ function ObservationModal({ personas, onClose, onConfirm }) {
           if (event.key==='ArrowUp') { event.preventDefault(); setSelectedIndex(index=>(index-1+options.length)%options.length) }
           if (event.key==='Enter' || event.key==='Tab') { event.preventDefault(); insertMention(options[selectedIndex] || options[0]) }
         }}/>
-        {options.length>0 && <div style={{ position:'absolute', left:0, right:0, top:'100%', zIndex:2, background:'#17181d', border:'1px solid rgba(57,255,20,.28)', maxHeight:210, overflowY:'auto' }}>
+        {options.length>0 && <div style={{ position:'absolute', left:0, right:0, top:'100%', zIndex:2, background:'var(--surface)', border:'1px solid rgba(57,255,20,.28)', maxHeight:210, overflowY:'auto' }}>
           {options.map((persona,index)=><button type="button" key={persona.id} onMouseDown={event=>{event.preventDefault();insertMention(persona)}} style={{ width:'100%', textAlign:'left', padding:'9px 11px', border:0, color:index===selectedIndex?'var(--phosphor)':'var(--text)', background:index===selectedIndex?'rgba(57,255,20,.08)':'transparent' }}><strong>@{persona.nombre}</strong><span style={{ color:'var(--text-dim)', marginLeft:8, fontSize:'.62rem' }}>{persona.email || persona.rol}</span></button>)}
         </div>}
       </div>
@@ -126,7 +126,7 @@ function EquipoComprasNode({ persona, accent = '#60A5FA' }) {
       <p style={{ color:accent, fontSize:'.57rem', letterSpacing:'.08em', fontFamily:'monospace' }}>{persona.cargo.toUpperCase()}</p>
       <h3 style={{ color:'var(--text)', fontSize:'.82rem', fontWeight:750, marginTop:5 }}>{persona.nombre}</h3>
       <p style={{ color:'var(--text-dim)', fontSize:'.62rem', lineHeight:1.45, marginTop:6 }}>{persona.alcance}</p>
-      {persona.telefono && <p style={{ color:'rgba(255,255,255,.5)', fontSize:'.59rem', marginTop:7 }}>{persona.telefono}</p>}
+      {persona.telefono && <p style={{ color:'var(--paper-muted, rgba(255,255,255,.5))', fontSize:'.59rem', marginTop:7 }}>{persona.telefono}</p>}
       {(persona.emails||[]).map(email=><a key={email} href={`mailto:${email}`} style={{ color:'rgba(96,165,250,.8)', display:'block', fontSize:'.56rem', marginTop:3, overflowWrap:'anywhere' }}>{email}</a>)}
       <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:9 }}>
         {persona.telefono && <a href={whatsappHref(persona.telefono)} target="_blank" rel="noreferrer" className="btn-ghost" style={{ display:'flex', alignItems:'center', gap:4, fontSize:'.58rem', textDecoration:'none', padding:'4px 7px' }}><MessageCircle size={9}/> WhatsApp</a>}
@@ -197,7 +197,7 @@ import usePersistedState from '../hooks/usePersistedState'
 import { generarReporteEficienciaCompras } from '../lib/comprasEficienciaPdf'
 
 const colHeader = {
-  Pendiente: { color:'rgba(255,255,255,0.35)', bg:'rgba(107,114,128,0.08)' },
+  Pendiente: { color:'var(--paper-muted, rgba(255,255,255,0.35))', bg:'rgba(107,114,128,0.08)' },
   Observado: { color:'#FB923C',                    bg:'rgba(251,146,60,0.08)' },
   Aprobado:  { color:'#60A5FA',               bg:'rgba(59,130,246,0.08)' },
   Enviado:   { color:'#F59E0B',               bg:'rgba(245,158,11,0.07)' },
@@ -726,8 +726,8 @@ function ReqCard({ req, onEdit, onUpdateEstado, readOnly = false }) {
       {!readOnly && <div style={{ display:'flex', gap:5 }} onClick={e=>e.stopPropagation()}>
         <select value={req.estado}
           onChange={e=>onUpdateEstado(req.id, e.target.value)}
-          style={{ flex:1, background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.15)', color:'#e2e8f0', borderRadius:4, padding:'3px 6px', fontSize:'0.65rem', fontFamily:'inherit' }}>
-          {estadosDisponibles(req).map(s=><option key={s} value={s} style={{ background:'#1a1a2e', color:'#e2e8f0' }}>{s}</option>)}
+          style={{ flex:1, background:'var(--surface)', border:'1px solid rgba(255,255,255,0.15)', color:'var(--text)', borderRadius:4, padding:'3px 6px', fontSize:'0.65rem', fontFamily:'inherit' }}>
+          {estadosDisponibles(req).map(s=><option key={s} value={s} style={{ background:'var(--surface)', color:'var(--text)' }}>{s}</option>)}
         </select>
       </div>}
     </div>
@@ -905,7 +905,7 @@ export default function Requerimientos({ focusId }) {
   const ahora = new Date()
   const cumplidosMes = reqs.filter(r=>r.cumplido_at && new Date(r.cumplido_at).getMonth()===ahora.getMonth() && new Date(r.cumplido_at).getFullYear()===ahora.getFullYear()).length
 
-  const SEL = { background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.15)', color:'#e2e8f0', borderRadius:5, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'inherit' }
+  const SEL = { background:'var(--surface)', border:'1px solid rgba(255,255,255,0.15)', color:'var(--text)', borderRadius:5, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'inherit' }
   const solicitantes = Array.from(
     new Map(
       [...perfiles.map(p=>({...p, key:`perfil-${p.id}`})), ...contactos.map(c=>({...c, key:`contacto-${c.id}`}))]

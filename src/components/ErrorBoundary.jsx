@@ -24,7 +24,7 @@ export default class ErrorBoundary extends Component {
         justifyContent: 'center', background: 'var(--abyss, #0A0A0E)', padding: '2rem', textAlign: 'center',
       }}>
         <p style={{ color: '#39FF14', fontFamily: 'monospace', fontSize: '2rem', marginBottom: '1rem' }}>⚠</p>
-        <p style={{ color: '#E5E7EB', fontFamily: 'monospace', fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+        <p style={{ color: 'var(--text)', fontFamily: 'monospace', fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem' }}>
           Algo salió mal en esta pantalla
         </p>
         <p style={{ color: '#A9B1BE', fontFamily: 'monospace', fontSize: '0.75rem', maxWidth: 420, lineHeight: 1.6, marginBottom: '1.5rem' }}>

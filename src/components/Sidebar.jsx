@@ -1,3 +1,4 @@
+import ThemeToggle from './ThemeToggle'
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
@@ -23,7 +24,7 @@ function SectionLabel({ children }) {
   return (
     <div className="px-3 pt-4 pb-1">
       <span className="font-metric text-xs tracking-widest"
-        style={{ color:'rgba(57,255,20,0.35)', fontSize:'0.6rem', letterSpacing:'0.12em' }}>
+        style={{ color:'var(--text-dim)', fontSize:'0.6rem', letterSpacing:'0.12em' }}>
         {children}
       </span>
     </div>
@@ -151,7 +152,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
         <p className="font-title font-bold text-sm" style={{ color:'var(--phosphor)', lineHeight:1.2 }}>
           {APP_NAME}
         </p>
-        <p className="font-metric" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.45)', letterSpacing:'0.08em' }}>
+        <p className="font-metric" style={{ fontSize:'0.6rem', color:'var(--text-dim)', letterSpacing:'0.08em' }}>
           PLATAFORMA INTEGRAL · FK
         </p>
       </div>
@@ -161,7 +162,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
         <div className="px-2 pt-3">
           <button onClick={abrirReporte} className="w-full" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
-            background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius: 6,
+            background: 'var(--accent-fill)', color: '#0A0A0E', border: 'none', borderRadius: 6,
             padding: '0.55rem 0', fontWeight: 800, fontSize: '0.78rem', cursor: 'pointer',
           }}>
             <Plus size={14} /> Nuevo Reporte
@@ -196,6 +197,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
       </nav>
 
       {/* Footer */}
+      <div className="theme-sidebar"><ThemeToggle /></div>
       <div style={{ borderTop:'1px solid rgba(57,255,20,0.08)', padding:'0.7rem 0.65rem 0.75rem' }}>
         {showPwModal && <ChangePasswordModal onClose={() => setShowPwModal(false)} />}
         <button
@@ -234,7 +236,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
             </button>
           </div>
         </div>
-        <p className="font-metric mt-1.5" style={{ fontSize:'0.6rem', color:'rgba(57,255,20,0.2)', letterSpacing:'0.1em' }}>
+        <p className="font-metric mt-1.5" style={{ fontSize:'0.6rem', color:'var(--text-dim)', letterSpacing:'0.1em' }}>
           v{APP_VERSION} · FLY GESTIÓN
         </p>
         {localStorage.getItem('bd.forceDesktop') === '1' && (

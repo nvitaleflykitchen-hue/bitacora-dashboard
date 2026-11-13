@@ -5,7 +5,7 @@ import { isQualityOnlyProfile } from '../../lib/access'
 import PageHeader from '../../components/PageHeader'
 
 import { MATAFUEGO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
-const INPUT_S = { width:'100%', padding:'0.7rem 0.9rem', borderRadius:2, background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.08)', color:'#e2e8f0', fontSize:'0.88rem', fontFamily:'inherit', boxSizing:'border-box' }
+const INPUT_S = { width:'100%', padding:'0.7rem 0.9rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', fontSize:'0.88rem', fontFamily:'inherit', boxSizing:'border-box' }
 const LABEL_S = { color:'var(--text-dim)', fontSize:'0.62rem', textTransform:'uppercase', letterSpacing:'0.08em', display:'block', marginBottom:'0.35rem' }
 const ROW_S   = { marginBottom:'1rem' }
 
@@ -69,8 +69,8 @@ function MatafuegoModal({ item, vehiculos, onClose, onSaved }) {
 
         {err && <p style={{ color:'#FF2A2A', fontSize:'0.8rem', marginBottom:'1rem' }}>{err}</p>}
         <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end' }}>
-          <button onClick={onClose} style={{ padding:'0.65rem 1.2rem', borderRadius:2, background:'#1a1a22', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding:'0.65rem 1.4rem', borderRadius:2, background:saving?'rgba(57,255,20,0.4)':'var(--phosphor)', color:'#0A0A0E', border:'none', cursor:'pointer', fontWeight:700 }}>
+          <button onClick={onClose} style={{ padding:'0.65rem 1.2rem', borderRadius:2, background:'var(--surface)', color:'var(--text-dim)', border:'none', cursor:'pointer', fontWeight:600 }}>Cancelar</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding:'0.65rem 1.4rem', borderRadius:2, background:saving?'rgba(57,255,20,0.4)':'var(--accent-fill)', color:'#0A0A0E', border:'none', cursor:'pointer', fontWeight:700 }}>
             {saving ? 'Guardando...' : (isNew ? 'Crear' : 'Guardar')}
           </button>
         </div>
@@ -113,7 +113,7 @@ export default function FlotaMatafuegos() {
       <PageHeader title="Matafuegos · Flota">
         {canWrite && (
           <button onClick={()=>setModal({})}
-            style={{ background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.55rem 1.1rem', fontWeight:700, cursor:'pointer' }}>
+            style={{ background:'var(--accent-fill)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.55rem 1.1rem', fontWeight:700, cursor:'pointer' }}>
             + Nuevo
           </button>
         )}

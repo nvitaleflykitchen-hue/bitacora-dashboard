@@ -54,7 +54,7 @@ function SubtareasMobile({ tareaId, subtareas = [], onUpdate, readOnly }) {
       {list.map(sub => (
         <div key={sub.id} className="flex items-start gap-2 mb-2">
           <button onClick={() => toggle(sub.id)} disabled={saving || readOnly}
-            style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 2, border: sub.completada ? 'none' : '1px solid rgba(255,255,255,0.3)', background: sub.completada ? 'var(--phosphor)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 2, border: sub.completada ? 'none' : '1px solid rgba(255,255,255,0.3)', background: sub.completada ? 'var(--accent-fill)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {sub.completada && <Check size={12} style={{ color: '#000' }} />}
           </button>
           <span style={{ fontSize: '0.75rem', color: sub.completada ? 'var(--text-dim)' : 'var(--text)', textDecoration: sub.completada ? 'line-through' : 'none', flex: 1, lineHeight: 1.4 }}>
@@ -74,7 +74,7 @@ function SubtareasMobile({ tareaId, subtareas = [], onUpdate, readOnly }) {
           <button onClick={add} className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>+</button>
         </div>
       )}
-      {list.length === 0 && !adding && <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>Sin subtareas</p>}
+      {list.length === 0 && !adding && <p style={{ fontSize: '0.7rem', color: 'var(--paper-muted, rgba(255,255,255,0.3))', fontStyle: 'italic' }}>Sin subtareas</p>}
     </div>
   )
 }

@@ -19,7 +19,7 @@ function MiniBar({ value, max, color }) {
   const pct = max > 0 ? Math.max(2, (value/max)*100) : 0
   return (
     <div style={{ background:'rgba(255,255,255,0.05)', borderRadius:4, height:6, flex:1 }}>
-      <div style={{ width:`${pct}%`, height:'100%', borderRadius:4, background:color||'var(--phosphor)', transition:'width 0.5s' }} />
+      <div style={{ width:`${pct}%`, height:'100%', borderRadius:4, background:color||'var(--accent-fill)', transition:'width 0.5s' }} />
     </div>
   )
 }
@@ -37,7 +37,7 @@ function fmtMTTR(h) {
   return `${(h/24).toFixed(1)}d`
 }
 
-const SEL = { background:'#1a1a2e', border:'1px solid rgba(57,255,20,0.15)', color:'#e2e8f0', borderRadius:2, padding:'0.4rem 0.8rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
+const SEL = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.15)', color:'var(--text)', borderRadius:2, padding:'0.4rem 0.8rem', fontSize:'0.72rem', fontFamily:'inherit', cursor:'pointer' }
 const tabStyle = active => ({
   background: active ? 'rgba(57,255,20,0.12)' : 'transparent',
   color: active ? 'var(--phosphor)' : 'var(--text-dim)',
@@ -139,10 +139,10 @@ export default function MntDashboard({ onNavigate }) {
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <select value={sedeId} onChange={e=>setSedeId(e.target.value)} style={SEL}>
             <option value=''>Todas las sedes</option>
-            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'#1a1a2e' }}>{s.nombre}</option>)}
+            {sedes.map(s=><option key={s.id} value={s.id} style={{ background:'var(--surface)' }}>{s.nombre}</option>)}
           </select>
           <button onClick={()=>onNavigate('mntTickets')}
-            style={{ background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.5rem 1rem', fontWeight:700, cursor:'pointer', fontSize:'0.82rem', whiteSpace:'nowrap' }}>
+            style={{ background:'var(--accent-fill)', color:'#0A0A0E', border:'none', borderRadius:3, padding:'0.5rem 1rem', fontWeight:700, cursor:'pointer', fontSize:'0.82rem', whiteSpace:'nowrap' }}>
             + Nuevo Ticket
           </button>
         </div>

@@ -201,7 +201,7 @@ export default function MobileHome({ onNuevoReporte, onOpenSearch, onOpenScanner
       {onNuevoReporte && <button onClick={onNuevoReporte}
         style={{
           width: '100%', padding: '1rem', borderRadius: 8,
-          background: 'var(--phosphor)', color: '#0A0A0E',
+          background: 'var(--accent-fill)', color: '#0A0A0E',
           fontWeight: 700, fontSize: '1rem', letterSpacing: '0.02em',
           border: 'none', cursor: 'pointer', marginBottom: '1.5rem',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'

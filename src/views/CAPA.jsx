@@ -30,7 +30,7 @@ const TIPOS_GESTION = [
 const responsableNombre = capa => capa?.perfiles?.nombre || capa?.responsable || ''
 
 const COL_CONFIG = {
-  'Pendiente':    { label:'Pendiente',    color:'rgba(255,255,255,0.2)', accent:'rgba(255,255,255,0.15)' },
+  'Pendiente':    { label:'Pendiente',    color:'var(--paper-muted, rgba(255,255,255,0.2))', accent:'rgba(255,255,255,0.15)' },
   'En ejecución': { label:'En ejecución', color:'rgba(96,165,250,0.3)',  accent:'rgba(96,165,250,0.2)'  },
   'Completada':   { label:'Completada',   color:'rgba(250,204,21,0.3)',  accent:'rgba(250,204,21,0.2)'  },
   'Verificada':   { label:'Verificada',   color:'rgba(57,255,20,0.3)',   accent:'rgba(57,255,20,0.2)'   },

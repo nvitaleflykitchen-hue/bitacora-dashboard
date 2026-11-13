@@ -104,7 +104,7 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
   }
 
   const INP = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'9px 10px', lineHeight:1.45, fontSize:'0.875rem', fontFamily:'Inter,sans-serif', width:'100%', boxSizing:'border-box', outline:'none' }
-  const LBL = { fontSize:'0.75rem', color:'rgba(255,255,255,0.65)', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
+  const LBL = { fontSize:'0.75rem', color:'var(--paper-muted, rgba(255,255,255,0.65))', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:4, display:'block' }
   const TAB = (active) => ({ padding:'5px 14px', borderRadius:4, fontSize:'0.8rem', cursor:'pointer', fontFamily:'Inter,sans-serif', fontWeight:active?700:400, background: active ? 'rgba(57,255,20,0.1)' : 'transparent', border: active ? '1px solid rgba(57,255,20,0.3)' : '1px solid transparent', color: active ? '#39FF14' : 'rgba(255,255,255,0.65)' })
 
   return (
@@ -119,7 +119,7 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
             <div style={{ fontSize:'0.75rem', color:'rgba(57,255,20,0.5)', letterSpacing:'.1em', textTransform:'uppercase' }}>{isNew ? 'Nuevo ticket · Flota' : 'Editar ticket · Flota'}</div>
             <div style={{ fontSize:'1rem', fontWeight:700, color:'var(--text)', marginTop:1 }}>{isNew ? 'Nuevo incidente vehicular' : form.activo_nombre}</div>
           </div>
-          <button onClick={requestClose} aria-label="Cerrar ticket" style={{ background:'transparent', border:'none', color:'rgba(255,255,255,0.65)', cursor:'pointer', padding:4 }}><X size={16}/></button>
+          <button onClick={requestClose} aria-label="Cerrar ticket" style={{ background:'transparent', border:'none', color:'var(--paper-muted, rgba(255,255,255,0.65))', cursor:'pointer', padding:4 }}><X size={16}/></button>
         </div>
 
         {/* Tabs */}
@@ -222,12 +222,12 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
           {tab === 'documentos' && (savedTicket?.id ? <AdjuntosPanel entityType="ticket" entityId={savedTicket.id} label="Presupuestos, notas y comprobantes" /> : <p>Creá el ticket desde Detalle para adjuntar documentación.</p>)}
           {tab === 'historial' && (
             <div>
-              <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.65)', marginBottom:10 }}>Todos los tickets registrados para <strong style={{ color:'#39FF14' }}>{savedTicket?.activo_nombre}</strong></div>
+              <div style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.65))', marginBottom:10 }}>Todos los tickets registrados para <strong style={{ color:'#39FF14' }}>{savedTicket?.activo_nombre}</strong></div>
               {historial.length === 0 ? (
-                <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.875rem', textAlign:'center', padding:'2rem 0' }}>Sin historial</p>
+                <p style={{ color:'var(--paper-muted, rgba(255,255,255,0.2))', fontSize:'0.875rem', textAlign:'center', padding:'2rem 0' }}>Sin historial</p>
               ) : historial.map(h => (
                 <div key={h.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8, marginBottom:8 }}>
-                  <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.25)', marginBottom:3 }}>{fleetDate(interventionDate(h))} · #{h.numero || h.id} · Incorporado: {fleetDate(h.created_at)}</div>
+                  <div style={{ fontSize:'0.75rem', color:'var(--paper-muted, rgba(255,255,255,0.25))', marginBottom:3 }}>{fleetDate(interventionDate(h))} · #{h.numero || h.id} · Incorporado: {fleetDate(h.created_at)}</div>
                   <div style={{ fontSize:'0.875rem', color:'var(--text)' }}>{h.descripcion}</div>
                 </div>
               ))}
@@ -237,7 +237,7 @@ export function TicketModal({ ticket, patentes, onClose, onSaved }) {
 
         <div style={{ padding:'12px 20px', borderTop:'1px solid rgba(57,255,20,0.06)', display:'flex', gap:8, justifyContent:'flex-end', flexShrink:0 }}>
           {err && <span style={{ fontSize:'0.8rem', color:'#ff5050', flex:1, alignSelf:'center' }}>{err}</span>}
-          <button onClick={requestClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.08)', color:'rgba(255,255,255,0.4)', fontFamily:'Inter,sans-serif', fontSize:'0.8rem', padding:'6px 16px', borderRadius:5, cursor:'pointer' }}>Cancelar</button>
+          <button onClick={requestClose} style={{ background:'transparent', border:'1px solid rgba(57,255,20,0.08)', color:'var(--paper-muted, rgba(255,255,255,0.4))', fontFamily:'Inter,sans-serif', fontSize:'0.8rem', padding:'6px 16px', borderRadius:5, cursor:'pointer' }}>Cancelar</button>
           {tab === 'detalle' && (
             <button onClick={save} disabled={saving} style={{ background:'rgba(57,255,20,0.15)', border:'1px solid rgba(57,255,20,0.4)', color:'#39FF14', fontFamily:'Inter,sans-serif', fontSize:'0.8rem', padding:'6px 18px', borderRadius:5, cursor:'pointer', fontWeight:700 }}>
               {saving ? 'Guardando...' : isNew ? 'Crear ticket' : 'Guardar'}
@@ -269,14 +269,14 @@ function VehCard({ ticket, onClick, onShare }) {
         <span style={{ fontSize:'0.6rem', padding:'1px 6px', borderRadius:4, fontWeight:700, background:`${pc}22`, color:pc, border:`1px solid ${pc}44` }}>{ticket.prioridad}</span>
         {sla === 'vencido' && <span style={{ width:6,height:6,borderRadius:'50%',background:'#ff5050',display:'inline-block',boxShadow:'0 0 5px #ff5050' }} title="SLA vencido"/>}
         {sla === 'alerta'  && <span style={{ width:6,height:6,borderRadius:'50%',background:'#ffb400',display:'inline-block',boxShadow:'0 0 5px #ffb400' }} title="SLA por vencer"/>}
-        <span style={{ marginLeft:'auto', fontSize:'0.6rem', color:'rgba(255,255,255,0.25)' }}>{ticket.created_at ? fmtFecha(ticket.created_at) : ''}</span>
+        <span style={{ marginLeft:'auto', fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.25))' }}>{ticket.created_at ? fmtFecha(ticket.created_at) : ''}</span>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4 }}>
         <Car size={10} style={{ color:'rgba(57,255,20,0.5)', flexShrink:0 }}/>
         <span style={{ fontSize:'0.72rem', color:'#39FF14', fontWeight:700, fontFamily:'monospace' }}>{ticket.activo_nombre}</span>
         {ticket.lectura_km && (
-          <span style={{ marginLeft:'auto', fontSize:'0.6rem', color:'rgba(255,255,255,0.3)' }}>{ticket.lectura_km.toLocaleString()} km</span>
+          <span style={{ marginLeft:'auto', fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.3))' }}>{ticket.lectura_km.toLocaleString()} km</span>
         )}
       </div>
 
@@ -285,11 +285,11 @@ function VehCard({ ticket, onClick, onShare }) {
       </p>
 
       <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-        <User size={9} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
+        <User size={9} style={{ color:'var(--paper-muted, rgba(255,255,255,0.3))', flexShrink:0 }}/>
         <span style={{ fontSize:'0.6rem', color: ticket.responsable?'rgba(255,255,255,0.45)':'rgba(255,80,80,0.55)' }}>
           {ticket.responsable || 'Sin asignar'}
         </span>
-        {ticket.tipo && <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', marginLeft:'auto' }}>{ticket.tipo}</span>}
+        {ticket.tipo && <span style={{ fontSize:'0.6rem', color:'var(--paper-muted, rgba(255,255,255,0.2))', marginLeft:'auto' }}>{ticket.tipo}</span>}
       </div>
       <button type="button" draggable={false} onClick={event => { event.stopPropagation(); onShare(ticket) }} style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:8, background:'rgba(57,255,20,0.07)', border:'1px solid rgba(57,255,20,0.2)', color:'#39ff14', borderRadius:4, padding:'4px 7px', cursor:'pointer', fontSize:'0.62rem' }}>
         <Share2 size={11}/> Compartir
@@ -567,7 +567,7 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
   const activeFilters = [filterPat, filterPrior, filterTipo, filterSLA].filter(Boolean).length
   const clearFilters = () => { setFilterPat(''); setFilterPrior(''); setFilterTipo(''); setFilterSLA(false) }
 
-  const SEL = { background:'#1a1a22', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'monospace', cursor:'pointer' }
+  const SEL = { background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', color:'var(--text)', borderRadius:2, padding:'5px 10px', fontSize:'0.65rem', fontFamily:'monospace', cursor:'pointer' }
 
   return (
     <div style={{ padding:'1.5rem 2rem', height:'100%', display:'flex', flexDirection:'column', gap:16 }}>
@@ -631,7 +631,7 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
 
       {/* ── FILTROS ─────────────────────────────────────────────────────────── */}
       <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, flexWrap:'wrap' }}>
-        <Filter size={13} style={{ color:'rgba(255,255,255,0.3)' }}/>
+        <Filter size={13} style={{ color:'var(--paper-muted, rgba(255,255,255,0.3))' }}/>
         <select style={SEL} value={filterPat} onChange={e=>setFilterPat(e.target.value)}>
           <option value="">Todos los vehículos</option>
           {patentes.map(p=><option key={p} value={p}>{p}</option>)}
@@ -648,7 +648,7 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
           <option value="correctivo">Correctivo</option>
           <option value="preventivo">Preventivo</option>
         </select>
-        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.65rem', color:'rgba(255,255,255,0.4)', cursor:'pointer' }}>
+        <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.65rem', color:'var(--paper-muted, rgba(255,255,255,0.4))', cursor:'pointer' }}>
           <input type="checkbox" checked={filterSLA} onChange={e=>setFilterSLA(e.target.checked)} style={{ accentColor:'#ff5050' }}/>
           Solo SLA vencido
         </label>
@@ -665,7 +665,7 @@ export default function MntVehiculos({ focusId, onCreateNovedad }) {
         </div>
       )}
       {loading ? (
-        <p style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.75rem' }}>Cargando flota...</p>
+        <p style={{ color:'var(--paper-muted, rgba(255,255,255,0.3))', fontSize:'0.75rem' }}>Cargando flota...</p>
       ) : viewMode === 'kanban' ? (
         <div style={{ flex:1, display:'flex', gap:12, overflowX:'auto', minHeight:0 }}>
           {COLS.map(col => (

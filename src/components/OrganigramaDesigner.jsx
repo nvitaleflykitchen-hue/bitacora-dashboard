@@ -364,8 +364,8 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
   })
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:200, display:'grid', gridTemplateRows:'58px 1fr', background:'#0a0b0f' }}>
-      <header style={{ display:'flex', alignItems:'center', gap:10, padding:'0 14px', borderBottom:'1px solid rgba(57,255,20,.14)', background:'#14161b' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:200, display:'grid', gridTemplateRows:'58px 1fr', background:'var(--surface)' }}>
+      <header style={{ display:'flex', alignItems:'center', gap:10, padding:'0 14px', borderBottom:'1px solid rgba(57,255,20,.14)', background:'var(--surface)' }}>
         <button type="button" className="btn-ghost" onClick={onClose}><ArrowLeft size={14}/> VOLVER</button>
         <div style={{ minWidth:0 }}>
           <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'.84rem' }}>{canEdit ? 'DISEÑADOR' : 'VISOR'} DE ORGANIGRAMA</p>
@@ -391,7 +391,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
         </div>
       </header>
       <div style={{ minHeight:0, display:'grid', gridTemplateColumns:canEdit ? '260px minmax(0,1fr) 280px' : '1fr' }}>
-        {canEdit && <aside style={{ padding:12, overflow:'auto', borderRight:'1px solid rgba(255,255,255,.07)', background:'#111319' }}>
+        {canEdit && <aside style={{ padding:12, overflow:'auto', borderRight:'1px solid rgba(255,255,255,.07)', background:'var(--surface)' }}>
           <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'.62rem' }}>PERSONAS DISPONIBLES</p>
           <div className="relative" style={{ marginTop:10 }}>
             <Search size={13} style={{ position:'absolute', left:9, top:9, color:'var(--text-dim)' }}/>
@@ -401,7 +401,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             {available.map(contact => <button key={contact.id} type="button" onClick={() => addPerson(contact)} className="glass" style={{ textAlign:'left', padding:'9px 10px', border:'1px solid rgba(255,255,255,.07)' }}><p style={{ color:'var(--text)', fontSize:'.68rem', fontWeight:700 }}>{contact.nombre}</p><p style={{ color:'var(--text-dim)', fontSize:'.57rem', marginTop:3 }}>{contact.cargo || 'Sin cargo'} <Plus size={11} style={{ float:'right', color:'var(--phosphor)' }}/></p></button>)}
           </div>
         </aside>}
-        <main ref={canvasRef} data-organigrama-export-root style={{ minWidth:0, minHeight:0, background:'#0a0b0f' }}>
+        <main ref={canvasRef} data-organigrama-export-root style={{ minWidth:0, minHeight:0, background:'var(--surface)' }}>
           <ReactFlow
             nodes={nodes.map(node => ({ ...node, draggable:canEdit, connectable:canEdit }))}
             edges={edges.map(edge => ({ ...edge, className:`org-edge-${edge.data?.relationType || 'jerarquica'}` }))}
@@ -433,7 +433,7 @@ function DesignerWorkspace({ groupId, groupName, seeds, seedEdges, contacts, can
             <MiniMap pannable zoomable nodeColor={node => node.data.color || '#39ff14'} maskColor="rgba(5,6,9,.78)"/>
           </ReactFlow>
         </main>
-        {canEdit && <aside style={{ padding:14, overflow:'auto', borderLeft:'1px solid rgba(255,255,255,.07)', background:'#111319' }}>
+        {canEdit && <aside style={{ padding:14, overflow:'auto', borderLeft:'1px solid rgba(255,255,255,.07)', background:'var(--surface)' }}>
           <p className="font-metric" style={{ color:'var(--phosphor)', fontSize:'.62rem' }}>PROPIEDADES</p>
           {!selected && !selectedEdge && <p style={{ color:'var(--text-dim)', fontSize:'.65rem', marginTop:14, lineHeight:1.5 }}>Seleccioná una tarjeta o una conexión. Arrastrá desde el punto inferior de una tarjeta hacia otra para crear una dependencia.</p>}
           {selected && <div style={{ display:'grid', gap:12, marginTop:14 }}>

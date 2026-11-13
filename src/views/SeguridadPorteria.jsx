@@ -1,3 +1,4 @@
+import ThemeToggle from '../components/ThemeToggle'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { seguridadRpc, parseSeguridadQr, escanearSeguridad } from '../lib/seguridad'
@@ -36,7 +37,7 @@ export default function SeguridadPorteria({ embedded = false }) {
   const dniPendientes = data.entregas.filter(e => e.dni_pendiente).length
   const sedeNombre = sedes.find(s => String(s.id) === String(sede))?.nombre || 'Sin sede'
   return <main className="porteria-page" style={embedded ? {height:'auto'} : undefined}><div className="porteria-shell">
-    <header className="porteria-header"><div><span className="porteria-eyebrow">Fly Kitchen · Control de accesos</span><h1>Seguridad · Portería</h1><p>Operador: {perfil?.nombre} · Identificación, visitas y devoluciones</p></div>{!embedded&&<button className="btn-ghost" onClick={signOut}>Cerrar sesión</button>}</header>
+    <header className="porteria-header"><div><span className="porteria-eyebrow">Fly Kitchen · Control de accesos</span><h1>Seguridad · Portería</h1><p>Operador: {perfil?.nombre} · Identificación, visitas y devoluciones</p></div>{!embedded&&<div className="porteria-header-actions"><ThemeToggle /><button className="btn-ghost" onClick={signOut}>Cerrar sesión</button></div>}</header>
     <div className="porteria-station"><MapPin size={24} style={{color:'var(--phosphor)'}}/><label>Puesto / sede<select className="input-dark w-full" value={sede} disabled={busy||loading||!!form||!!closing||scan} onChange={e=>setSede(e.target.value)}>{!sedes.length&&<option value="">Sin sedes asignadas</option>}{sedes.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label><button className="btn-ghost" disabled={!sede||busy||loading} onClick={load}>Actualizar</button></div>
     {error&&!form&&!closing&&<p role="alert" className="porteria-alert">{error}</p>}{message&&<p role="status" className="my-3">{message}</p>}
     <div className="porteria-stats">

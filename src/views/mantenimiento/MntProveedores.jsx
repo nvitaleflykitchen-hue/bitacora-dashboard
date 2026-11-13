@@ -62,7 +62,7 @@ function ProveedorModal({ proveedor, sedes, onClose, onSaved }) {
         {err && <p style={{ color: 'var(--alert)', fontSize: '0.8rem', marginBottom: '1rem' }}>{err}</p>}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '0.65rem 1.2rem', borderRadius:2, background: 'rgba(57,255,20,0.05)', color: 'var(--text-dim)', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--phosphor)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '0.65rem 1.4rem', borderRadius:2, background: saving ? 'rgba(57,255,20,0.4)' : 'var(--accent-fill)', color: '#0A0A0E', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
             {saving ? 'Guardando...' : (isNew ? 'Crear' : 'Guardar')}
           </button>
         </div>
@@ -96,7 +96,7 @@ export default function MntProveedores({ focusId }) {
   return (
     <div style={{ padding: '1.5rem 2rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <PageHeader title="Proveedores">
-        <button onClick={() => setModal({})} style={{ background: 'var(--phosphor)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
+        <button onClick={() => setModal({})} style={{ background: 'var(--accent-fill)', color: '#0A0A0E', border: 'none', borderRadius:3, padding: '0.55rem 1.1rem', fontWeight: 700, cursor: 'pointer' }}>
           + Nuevo
         </button>
       </PageHeader>

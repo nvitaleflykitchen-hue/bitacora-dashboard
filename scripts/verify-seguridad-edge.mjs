@@ -7,7 +7,7 @@ const createClient=(_url,key)=>key==='anon' ? {
  auth:{getUser:async()=>({data:{user:authValid?{id:'guard'}:null},error:null})},
  rpc:async(name,params)=>{rpcCalls.push({name,params});return allow?{data:{estado:'activa',foto_path:path,nombre:'Fixture'},error:null}:{data:null,error:{code:'42501',message:'Sede no autorizada.'}}},
 } : {storage:{from:bucket=>({createSignedUrl:async(p,ttl)=>{signedCalls.push({bucket,path:p,ttl});if(storageFails)throw Error('network');return {data:{signedUrl:'https://example.com/signed'},error:null}}})}}
-new Function('Deno','createClient',source.replace(/^import.*\n/,'').replace('body: unknown','body').replaceAll("get('SUPABASE_URL')!","get('SUPABASE_URL')").replaceAll("get('SUPABASE_ANON_KEY')!","get('SUPABASE_ANON_KEY')").replaceAll("get('SUPABASE_SERVICE_ROLE_KEY')!","get('SUPABASE_SERVICE_ROLE_KEY')"))({
+new Function('Deno','createClient',source.replace(/^import[^\r\n]*\r?\n/,'').replace('body: unknown','body').replaceAll("get('SUPABASE_URL')!","get('SUPABASE_URL')").replaceAll("get('SUPABASE_ANON_KEY')!","get('SUPABASE_ANON_KEY')").replaceAll("get('SUPABASE_SERVICE_ROLE_KEY')!","get('SUPABASE_SERVICE_ROLE_KEY')"))({
  env:{get:key=>({SUPABASE_URL:'https://example.com',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service'})[key]},
  serve:fn=>{handler=fn},
 },createClient)

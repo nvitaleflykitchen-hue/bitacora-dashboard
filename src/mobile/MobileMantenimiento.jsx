@@ -357,7 +357,7 @@ function TabActivos({ allowedSedeIds, canEdit, canDelete, canCreateTicket, focus
       {canEdit && (
         <button onClick={() => setShowNew(true)} style={{
           position: 'absolute', bottom: '1rem', right: '1.25rem', width: 48, height: 48, borderRadius: 24,
-          background: 'var(--phosphor)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--accent-fill)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10,
         }}><Plus size={22} /></button>
       )}
@@ -466,7 +466,7 @@ function TabInsumos() {
                   <span style={{ color: 'var(--text-dim)', fontSize: '0.68rem' }}>{ins.unidad || 'u'}</span>
                 </div>
                 <div style={{ height: 4, background: 'rgba(57,255,20,0.07)', borderRadius: 2 }}>
-                  <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(100, pct * 100)}%`, background: bajo ? '#FF2A2A' : 'var(--phosphor)' }} />
+                  <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(100, pct * 100)}%`, background: bajo ? '#FF2A2A' : 'var(--accent-fill)' }} />
                 </div>
               </Card>
             )
@@ -474,7 +474,7 @@ function TabInsumos() {
       </div>
       <button onClick={() => setShowNew(true)} style={{
         position: 'absolute', bottom: '1rem', right: '1.25rem', width: 48, height: 48, borderRadius: 24,
-        background: 'var(--phosphor)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--accent-fill)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
         boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10,
       }}><Plus size={22} /></button>
       {movModal && <QuickMovimientoModal insumo={movModal} onClose={() => setMovModal(null)} onSaved={() => { setMovModal(null); load() }} />}
@@ -571,7 +571,7 @@ function TabMatafuegos({ allowedSedeIds }) {
       </div>
       <button onClick={() => setShowNew(true)} style={{
         position: 'absolute', bottom: '1rem', right: '1.25rem', width: 48, height: 48, borderRadius: 24,
-        background: 'var(--phosphor)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--accent-fill)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
         boxShadow: '0 4px 12px rgba(57,255,20,0.3)', zIndex: 10,
       }}><Plus size={22} /></button>
       {showNew && <QuickMatafuegoModal sedes={sedes} onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load() }} />}

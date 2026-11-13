@@ -84,7 +84,7 @@ export default function AccesosAppReport() {
     URL.revokeObjectURL(link.href)
   }
 
-  const inputStyle = { background:'#1a1a22', border:'1px solid rgba(57,255,20,.14)', color:'var(--text)', borderRadius:4, padding:'7px 10px', fontSize:'.68rem' }
+  const inputStyle = { background:'var(--surface)', border:'1px solid rgba(57,255,20,.14)', color:'var(--text)', borderRadius:4, padding:'7px 10px', fontSize:'.68rem' }
   const cards = [
     { label:'USUARIOS', value:stats.total, icon:Users, color:'#e6e6e6' },
     { label:'ACTIVOS 7 DÍAS', value:stats.activos7, icon:Activity, color:'#39ff14' },
@@ -128,7 +128,7 @@ export default function AccesosAppReport() {
 
       <div style={{ flex:1, minHeight:0, overflow:'auto', border:'1px solid rgba(57,255,20,.08)', borderRadius:5 }}>
         <table style={{ width:'100%', borderCollapse:'collapse', minWidth:850 }}>
-          <thead style={{ position:'sticky', top:0, background:'#111117', zIndex:1 }}><tr>{['Usuario','Rol','Último ingreso','Período','7 días','30 días','Frecuencia'].map(label => <th key={label} style={{ textAlign:'left', padding:'9px 12px', fontSize:'.58rem', fontFamily:'monospace', color:'rgba(255,255,255,.35)', borderBottom:'1px solid rgba(57,255,20,.1)' }}>{label}</th>)}</tr></thead>
+          <thead style={{ position:'sticky', top:0, background:'var(--surface)', zIndex:1 }}><tr>{['Usuario','Rol','Último ingreso','Período','7 días','30 días','Frecuencia'].map(label => <th key={label} style={{ textAlign:'left', padding:'9px 12px', fontSize:'.58rem', fontFamily:'monospace', color:'var(--paper-muted, rgba(255,255,255,.35))', borderBottom:'1px solid rgba(57,255,20,.1)' }}>{label}</th>)}</tr></thead>
           <tbody>
             {loading ? <tr><td colSpan="7" style={{ textAlign:'center', padding:50, opacity:.4 }}>Cargando accesos...</td></tr> : filtered.length === 0 ? <tr><td colSpan="7" style={{ textAlign:'center', padding:50, opacity:.4 }}>Sin usuarios para los filtros seleccionados.</td></tr> : filtered.map(row => {
               const freq = frecuencia(row)

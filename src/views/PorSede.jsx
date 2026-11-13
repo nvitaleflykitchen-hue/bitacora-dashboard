@@ -134,7 +134,7 @@ export default function PorSede({ focusId, focusSedeId }) {
                 <div className="progress-fill"
                   style={{
                     width: label.includes('%') ? value : '100%',
-                    background: alert ? 'var(--alert)' : 'var(--phosphor)',
+                    background: alert ? 'var(--alert)' : 'var(--accent-fill)',
                   }} />
               </div>
             </div>

@@ -43,7 +43,7 @@ export default function OverflowTabs({ primaryTabs, secondaryTabs, activeTab, on
           className="font-metric px-4 py-1.5 flex items-center gap-1.5 h-full"
           style={{ fontSize:'0.6rem', letterSpacing:'0.08em', background:activeSecondary ? 'rgba(57,255,20,0.1)' : 'transparent', color:activeSecondary ? 'var(--phosphor)' : 'var(--text-dim)', borderBottom:activeSecondary ? '2px solid var(--phosphor)' : '2px solid transparent' }}>
           <Ellipsis size={15} aria-hidden="true" /> MÁS
-          {activeSecondary && <span aria-hidden="true" style={{ width:5, height:5, borderRadius:'50%', background:'var(--phosphor)' }} />}
+          {activeSecondary && <span aria-hidden="true" style={{ width:5, height:5, borderRadius:'50%', background:'var(--accent-fill)' }} />}
         </button>
         {open && <div role="menu" aria-label="Más herramientas" className="absolute left-0 mt-1 py-1"
           style={{ zIndex:40, minWidth:250, background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 32px rgba(0,0,0,.65)' }}>

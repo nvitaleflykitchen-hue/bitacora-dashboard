@@ -15,7 +15,7 @@ const ESTADO_STYLE = {
   sin_novedades: { color: '#39FF14', bg: 'rgba(57,255,20,0.12)', label: 'Sin Novedades', dot: '#39FF14' },
   con_novedades: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', label: 'Hay Novedades', dot: '#F59E0B' },
   critico:       { color: '#FF2A2A', bg: 'rgba(255,42,42,0.12)',  label: 'Op. Condicionada', dot: '#FF2A2A' },
-  sin_reporte:   { color: 'rgba(255,255,255,0.3)', bg: 'rgba(255,255,255,0.04)', label: 'Sin Reporte', dot: 'rgba(255,255,255,0.2)' },
+  sin_reporte:   { color: 'var(--paper-muted, rgba(255,255,255,0.3))', bg: 'rgba(255,255,255,0.04)', label: 'Sin Reporte', dot: 'rgba(255,255,255,0.2)' },
 }
 const ESTADO_MAP = {
   'Sin novedades':          'sin_novedades',

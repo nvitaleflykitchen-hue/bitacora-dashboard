@@ -276,7 +276,7 @@ function ContactoModal({ contacto, modulo, perfiles, sedes, onClose, onSaved }) 
             <button type="button" onClick={onClose} style={{ background:'none', border:'1px solid rgba(255,255,255,0.1)', color:'var(--text-dim)', borderRadius:4, padding:'0.5rem 1rem', fontSize:'0.78rem', cursor:'pointer' }}>
               Cancelar
             </button>
-            <button type="submit" disabled={saving} style={{ background:'var(--phosphor)', color:'#0A0A0E', border:'none', borderRadius:4, padding:'0.5rem 1.2rem', fontSize:'0.78rem', fontWeight:700, cursor:'pointer', opacity: saving ? 0.6 : 1 }}>
+            <button type="submit" disabled={saving} style={{ background:'var(--accent-fill)', color:'#0A0A0E', border:'none', borderRadius:4, padding:'0.5rem 1.2rem', fontSize:'0.78rem', fontWeight:700, cursor:'pointer', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Guardando...' : contacto ? 'Guardar cambios' : 'Agregar contacto'}
             </button>
           </div>
@@ -368,7 +368,7 @@ export default function ContactosTab({ modulo }) {
           <p style={{ fontWeight:700, marginBottom:4 }}>Error al cargar contactos</p>
           <p style={{ opacity:0.8 }}>{dbError}</p>
           {dbError.includes('does not exist') && (
-            <p style={{ marginTop:8, color:'rgba(255,255,255,0.5)', fontSize:'0.7rem' }}>
+            <p style={{ marginTop:8, color:'var(--paper-muted, rgba(255,255,255,0.5))', fontSize:'0.7rem' }}>
               La tabla directorio_contactos no existe. Corré el archivo <strong>sql_directorio_contactos.sql</strong> en Supabase.
             </p>
           )}

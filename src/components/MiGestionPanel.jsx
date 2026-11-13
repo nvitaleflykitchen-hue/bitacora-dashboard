@@ -144,7 +144,7 @@ export default function MiGestionPanel({ onNavigate }) {
           <div className="p-3 rounded" style={{ background:'rgba(57,255,20,0.04)', border:'1px solid rgba(57,255,20,0.13)' }}>
             <div className="flex items-center gap-2 mb-2"><BatteryMedium size={14} color="var(--phosphor)" /><span className="font-metric" style={{ fontSize:'0.62rem', color:'var(--phosphor)' }}>ENERGÍA HOY · PRIVADO</span></div>
             <div className="flex gap-1 flex-wrap">
-              {[1,2,3,4,5,6,7,8,9,10].map(n => <button key={n} type="button" onClick={() => setEnergia(n)} style={{ width:25, height:25, borderRadius:4, border:'1px solid rgba(57,255,20,0.18)', background:energy === n ? 'var(--phosphor)' : 'transparent', color:energy === n ? '#071007' : 'var(--text-dim)', fontSize:'0.65rem' }}>{n}</button>)}
+              {[1,2,3,4,5,6,7,8,9,10].map(n => <button key={n} type="button" onClick={() => setEnergia(n)} style={{ width:25, height:25, borderRadius:4, border:'1px solid rgba(57,255,20,0.18)', background:energy === n ? 'var(--accent-fill)' : 'transparent', color:energy === n ? '#071007' : 'var(--text-dim)', fontSize:'0.65rem' }}>{n}</button>)}
             </div>
             <p style={{ color:'var(--text-dim)', fontSize:'0.62rem', marginTop:7 }}>Guardado únicamente en este dispositivo.</p>
           </div>

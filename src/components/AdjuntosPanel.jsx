@@ -357,7 +357,7 @@ export default function AdjuntosPanel({ entityType, entityId, compact = false, r
           <div style={{ position:'relative', maxWidth:'90vw', maxHeight:'90vh' }}>
             <img src={lightbox.url} alt={lightbox.nombre}
               style={{ maxWidth:'90vw', maxHeight:'85vh', objectFit:'contain', borderRadius:4 }} />
-            <p style={{ color:'rgba(255,255,255,0.5)', fontSize:'0.72rem', textAlign:'center', marginTop:6 }}>
+            <p style={{ color:'var(--paper-muted, rgba(255,255,255,0.5))', fontSize:'0.72rem', textAlign:'center', marginTop:6 }}>
               {lightbox.nombre}
             </p>
           </div>
