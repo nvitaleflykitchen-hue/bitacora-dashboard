@@ -1,3 +1,4 @@
+import RrhhScope from '../components/RrhhScope'
 const PasesAcompanados = lazyPanel(() => import('../components/PasesAcompanados'));
 const Correos = lazyPanel(() => import('../views/Correos'));
 import { useFormAccess } from '../lib/useFormAccess'
@@ -3150,7 +3151,7 @@ ${form.observaciones || "[Completar]"}`;
   );
 }
 
-export default function EquipoView({ onNavigate, focusId, focusType, onCreateNovedad }) {
+function FlyKitchenEquipo({ onNavigate, focusId, focusType, onCreateNovedad }) {
   const formsAllowed = useFormAccess()
   const { can, allowedSedeIds, perfil, user } = useAuth();
   const isQualityOnly = isQualityOnlyProfile(perfil);
@@ -3776,7 +3777,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
                         className="font-title font-bold text-sm"
                         style={{ color: "var(--phosphor)" }}
                       >
-                        {sede.nombre}
+                        FlyKitchen · {sede.nombre}
                       </h3>
                       <span
                         className="font-metric"
@@ -4038,4 +4039,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       </div>
     </div>
   );
+}
+
+export default function EquipoView(props) {
+ return <RrhhScope key={`${props.focusType||''}:${props.focusId||''}`}>{focus=><FlyKitchenEquipo {...props} {...(focus?{focusId:focus,focusType:'persona'}:{})}/>}</RrhhScope>
 }
