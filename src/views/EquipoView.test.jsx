@@ -22,7 +22,7 @@ it('opens the staff list without loading the evaluations history',async()=>{
  expect(await screen.findByText('Persona visible')).toBeInTheDocument()
  expect(mock.tables).toContain('v_personas')
  expect(mock.tables).not.toContain('v_evaluaciones')
- fireEvent.click(screen.getByRole('button',{name:'ANÁLISIS'}))
+ fireEvent.click(screen.getAllByRole('button',{name:'ANÁLISIS'})[0])
  await waitFor(()=>expect(mock.tables).toContain('v_evaluaciones'))
  expect(screen.getByText('Equipo')).toBeInTheDocument()
 })
