@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { FileText, Plus, X } from 'lucide-react'
 import { confirmar, toast } from '../lib/feedback'
-import { FORM_ACTIONS, FORM_STATES, formHistory, formWarnings, getFormPdf, listForms, loadFormContext, newVariables, personName, saveAirport, saveForm, saveRoleActions, saveSupervisor, saveTemplate, sectors, setTemplateActive, stateLabel, transitionForm, uploadFormPdf, validateForm } from '../lib/formulariosPermisos'
+import { FORM_ACTIONS, FORM_STATES, formHistory, formWarnings, getFormPdf, listForms, loadFormContext, newManualPerson, newVariables, personName, saveAirport, saveForm, saveRoleActions, saveSupervisor, saveTemplate, sectors, setTemplateActive, stateLabel, transitionForm, uploadFormPdf, validateForm } from '../lib/formulariosPermisos'
+import FormularioPersonaManual from './FormularioPersonaManual'
 import { createFormularioPdf } from '../lib/formulariosPdf'
 
 const input = 'input-dark w-full'
@@ -43,10 +44,14 @@ export default function FormulariosPermisos({ personaId = null, onOpenSection })
   }
   const template = context?.plantillas.find(t=>t.id===draft?.template_id)
   const selectedPeople = context?.personas.filter(p=>draft?.persona_ids.includes(p.id)) || []
-  const snapshot = draft && template ? { id:draft.id,plantilla:template,datos:{personas:selectedPeople,acompanante:context.personas.find(p=>p.id===draft.acompanante_id),variables:draft.variables,sede:context.sedes.find(s=>s.id===Number(draft.sede_id))?.nombre} } : null
+  const manualPeople = draft?.variables.personas_manuales || []
+  const responsibleOptions = context?.responsables || context?.personas || []
+  const totalPeople = selectedPeople.length + manualPeople.length
+  const snapshot = draft && template ? { id:draft.id,plantilla:template,datos:{personas:[...selectedPeople,...manualPeople],acompanante:draft.variables.responsable_manual || responsibleOptions.find(p=>p.id===draft.acompanante_id),variables:draft.variables,sede:context.sedes.find(s=>s.id===Number(draft.sede_id))?.nombre} } : null
   const warnings = snapshot ? formWarnings(snapshot.datos,template.tipo) : []
   function change(values){invalidatePreview();setDraft(d=>({...d,...values}))}
   function variable(key,value){change({variables:{...draft.variables,[key]:value}})}
+  function changeManual(index,person){variable('personas_manuales',manualPeople.map((p,i)=>i===index?person:p))}
   async function save(){const saved=await saveForm(draft);setDraft({...draft,id:saved.id,version:saved.version});await load();return saved}
   async function previewDraft(){
     validateForm(draft.variables,draft.persona_ids,template.tipo)
@@ -85,12 +90,20 @@ export default function FormulariosPermisos({ personaId = null, onOpenSection })
         {template?.instrucciones && <p className="text-sm">{template.instrucciones}</p>}
         <fieldset disabled={busy} className="space-y-4">
           <Field label="Sede / escala"><select className={input} value={draft.sede_id} onChange={e=>change({sede_id:e.target.value,persona_ids:[],acompanante_id:''})}><option value="">Seleccionar sede</option>{context.sedes.filter(s=>can(s.id,draft.id?'editar':'crear')).map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></Field>
-          <Field label="Buscar colaborador activo"><input className={input} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Nombre, apellido o legajo"/></Field>
-          <div className="space-y-2 overflow-auto" style={{maxHeight:210}}>{context.personas.filter(p=>p.sede_ids?.includes(Number(draft.sede_id))&&`${personName(p)} ${p.legajo||''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())).map(p=><label key={p.id} className="flex gap-2 items-center p-2"><input type={template?.tipo==='ppa_auto'?'radio':'checkbox'} name="participantes" checked={draft.persona_ids.includes(p.id)} onChange={()=>change({persona_ids:template.tipo==='ppa_auto'?[p.id]:draft.persona_ids.includes(p.id)?draft.persona_ids.filter(id=>id!==p.id):[...draft.persona_ids,p.id]})}/>{personName(p)} · {p.legajo||'Sin legajo'}</label>)}</div>
-          <p className="text-sm">{selectedPeople.length} persona/s seleccionada/s. Los datos se toman de sus fichas al guardar.</p>
+          <h4>Personas que solicitan el permiso</h4><Field label="Buscar colaborador activo"><input className={input} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Nombre, apellido o legajo"/></Field>
+          <div className="space-y-2 overflow-auto" style={{maxHeight:210}}>{context.personas.filter(p=>p.sede_ids?.includes(Number(draft.sede_id))&&`${personName(p)} ${p.legajo||''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())).map(p=><label key={p.id} className="flex gap-2 items-center p-2"><input type={template?.tipo==='ppa_auto'?'radio':'checkbox'} name="participantes" checked={draft.persona_ids.includes(p.id)} disabled={template?.tipo==='ppa_auto'&&manualPeople.length>0} onChange={()=>change({persona_ids:template.tipo==='ppa_auto'?[p.id]:draft.persona_ids.includes(p.id)?draft.persona_ids.filter(id=>id!==p.id):[...draft.persona_ids,p.id]})}/>{personName(p)} · {p.legajo||'Sin legajo'}</label>)}</div>
+          <p className="text-sm">{totalPeople} persona/s: {selectedPeople.length} de Equipo y {manualPeople.length} de carga manual.</p>
+          <button type="button" className="btn-ghost" disabled={totalPeople>=100||(template?.tipo==='ppa_auto'&&totalPeople>0)} onClick={()=>variable('personas_manuales',[...manualPeople,newManualPerson()])}><Plus size={14} className="inline"/> Agregar persona manual</button>
+          {template?.tipo==='ppa_auto'&&selectedPeople.length>0&&<button type="button" className="btn-ghost ml-2" onClick={()=>change({persona_ids:[],variables:{...draft.variables,personas_manuales:[newManualPerson(selectedPeople[0])]}})}>Completar persona manualmente</button>}
+          {manualPeople.map((p,i)=><FormularioPersonaManual key={i} label={`Persona manual ${i+1}`} value={p} airport={template?.tipo==='ppa_auto'} onChange={v=>changeManual(i,v)} onRemove={()=>variable('personas_manuales',manualPeople.filter((_,j)=>j!==i))}/>)}
           {selectedPeople.map(p=><div className="text-sm" key={p.id}><strong>{personName(p)}</strong> · DNI {p.dni||'sin cargar'} · {p.puesto||'sin cargo'} · Categoría {p.categoria||'sin cargar'}<AirportData key={`${p.id}-${JSON.stringify(p.aeroportuario)}`} person={p} editable={can(draft.sede_id,'editar')} busy={busy} run={run} onSaved={async()=>{invalidatePreview();await load()}}/></div>)}
-          {template?.tipo==='anexo_e' && <Field label="Responsable del acompañamiento"><select className={input} value={draft.acompanante_id} onChange={e=>change({acompanante_id:e.target.value})}><option value="">Seleccionar acompañante</option>{context.personas.map(p=><option key={p.id} value={p.id}>{personName(p)} · PPA {p.aeroportuario?.ppa||'sin cargar'}</option>)}</select></Field>}
-          {snapshot?.datos.acompanante && <AirportData key={`${snapshot.datos.acompanante.id}-${JSON.stringify(snapshot.datos.acompanante.aeroportuario)}`} person={snapshot.datos.acompanante} editable={snapshot.datos.acompanante.sede_ids?.some(s=>can(s,'editar'))} busy={busy} run={run} onSaved={async()=>{invalidatePreview();await load()}}/>}
+          {template?.tipo==='anexo_e' && <>
+            <Field label="Responsable del acompañamiento"><select className={input} value={draft.variables.responsable_manual?'manual':draft.acompanante_id} onChange={e=>change({acompanante_id:e.target.value==='manual'?'':e.target.value,variables:{...draft.variables,responsable_manual:e.target.value==='manual'?newManualPerson(snapshot?.datos.acompanante || {}):null}})}><option value="">Seleccionar responsable</option><option value="manual">Completar responsable manualmente</option>{responsibleOptions.map(p=><option key={p.id} value={p.id}>{personName(p)} · PPA {p.aeroportuario?.ppa||'sin cargar'}</option>)}</select></Field>
+            {draft.variables.responsable_manual ? <FormularioPersonaManual label="Responsable manual" value={draft.variables.responsable_manual} airport onChange={v=>variable('responsable_manual',v)}/> : snapshot?.datos.acompanante && <>
+              <AirportData key={`${snapshot.datos.acompanante.id}-${JSON.stringify(snapshot.datos.acompanante.aeroportuario)}`} person={snapshot.datos.acompanante} editable={snapshot.datos.acompanante.sede_ids?.some(s=>can(s,'editar'))} busy={busy} run={run} onSaved={async()=>{invalidatePreview();await load()}}/>
+              <button type="button" className="btn-ghost" onClick={()=>change({acompanante_id:'',variables:{...draft.variables,responsable_manual:newManualPerson(snapshot.datos.acompanante)}})}>Completar datos del responsable sólo para este formulario</button>
+            </>}
+          </>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[['fecha','Fecha','date'],['dias','Días adicionales (opcional)','text'],['desde','Desde','time'],['hasta','Hasta','time'],['empresa','Empresa / organismo','text'],['aeropuerto','Aeropuerto','text'],['sectores','Sectores solicitados (1 a 7)','text']].map(([key,label,type])=><Field key={key} label={label}><input className={input} type={type} value={draft.variables[key]||''} onChange={e=>variable(key,e.target.value)} maxLength={180}/></Field>)}</div>
           <Field label="Tareas a desarrollar"><textarea className={input} value={draft.variables.tareas} onChange={e=>variable('tareas',e.target.value)} maxLength={4000}/></Field>
           {template?.tipo==='anexo_e' && sectors(draft.variables.sectores).map(s=><Field key={s} label={`Justificación sector ${s}`}><input className={input} value={draft.variables.justificaciones?.[s]||''} maxLength={500} onChange={e=>variable('justificaciones',{...draft.variables.justificaciones,[s]:e.target.value})}/></Field>)}
@@ -98,8 +111,8 @@ export default function FormulariosPermisos({ personaId = null, onOpenSection })
         </fieldset>
         {!!warnings.length && <ul className="text-sm space-y-1" style={{color:'#ff7373'}}>{warnings.map(w=><li key={w}>{w}</li>)}</ul>}
         <div className="flex flex-wrap gap-2">
-          <button className="btn-ghost" disabled={busy||!draft.sede_id||!draft.persona_ids.length} onClick={()=>run(async()=>{invalidatePreview();await save();toast.ok('Borrador guardado.')})}>Guardar borrador</button>
-          <button className="btn-ghost" disabled={busy||!selectedPeople.length} onClick={()=>run(previewDraft)}>Vista previa</button>
+          <button className="btn-ghost" disabled={busy||!draft.sede_id||!totalPeople} onClick={()=>run(async()=>{invalidatePreview();await save();toast.ok('Borrador guardado.')})}>Guardar borrador</button>
+          <button className="btn-ghost" disabled={busy||!totalPeople} onClick={()=>run(previewDraft)}>Vista previa</button>
           {can(draft.sede_id,'generar') && <button className="btn-primary" disabled={busy||!preview||preview.final} onClick={()=>run(generate)}>{busy?'Procesando…':'Generar PDF'}</button>}
         </div>
       </div>}

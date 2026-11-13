@@ -33,3 +33,11 @@ Pruebas con Postgres aislado (PGlite): roles/sedes, acceso anónimo/directo, con
 ## Habilitación de base verificada
 
 Se verificaron las seis tablas con RLS, dos plantillas iniciales, bucket privado de 3 MB y ausencia de permisos anónimos de ejecución o de escritura directa autenticada. No se designaron supervisores automáticamente. El aviso informativo de Supabase «RLS enabled, no policies» es esperado en estas tablas: se revocó acceso directo y las operaciones pasan exclusivamente por RPC con validación de usuario y sede. No agregar políticas permisivas para silenciarlo.
+
+## Responsables y carga manual (2026-10-04)
+
+La selección de responsables incorpora expresamente a Nicolas Abel Luis Vitale, Benjamin Renato Garcia Abalos y Raúl Guillermo Solorza, aunque su ficha esté en Equipo Central u otra sede. La lista publica sólo nombre, cargo y datos del permiso necesarios para el formulario; no amplía la lista de personas de Equipo ni habilita otras sedes/roles. Se conservan los controles de actividad y de acceso a la función.
+
+«Agregar persona manual» permite crear un formulario enteramente manual o combinar personas de Equipo con invitados, como Emanuel Calderón o Pablo Fernández. «Completar responsable manualmente» permite escribir nombre, DNI, cargo, PPA, sectores y vencimiento; también puede copiar un responsable seleccionado y completar sus datos sólo para ese documento. Los datos manuales quedan marcados `origen: manual`, sin un ID de persona, y persisten en el borrador, la copia, el PDF y la auditoría. No crean fichas de personal ni conceden permisos de usuario. Los documentos enteramente manuales se consultan en el historial general por sede; no se asocian por coincidencia de nombre a una ficha.
+
+La migración `20261004172208_formularios_carga_manual.sql` sustituye la validación de al menos un ID por al menos una persona estructurada, conserva un máximo de cien (una en auto-acompañamiento) y normaliza los campos manuales en el servidor. Reemplaza las RPC existentes conservando sus firmas y permisos; no modifica GRANT, RLS ni políticas.

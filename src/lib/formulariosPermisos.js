@@ -6,6 +6,11 @@ export const stateLabel = value => ({ pendiente_firma:'Pendiente de firma' }[val
 export const personName = p => [p.apellido, p.nombre].filter(Boolean).join(', ')
 export const todayLocal = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,10) }
 export const sectors = value => [...new Set(String(value || '').split(/[^0-9]+/).filter(s => /^[1-7]$/.test(s)))].sort()
+export const newManualPerson = (person = {}) => ({
+  id:null, origen:'manual', nombre:person.nombre || '', apellido:person.apellido || '',
+  dni:person.dni || '', legajo:person.legajo || '', puesto:person.puesto || '',
+  aeroportuario:Object.fromEntries(['ppa','tipo','sectores','aeropuerto','emision','vencimiento','estado'].map(k=>[k,person.aeroportuario?.[k] || ''])),
+})
 export function formWarnings(data, type, today = todayLocal()) {
   const warnings = []
   for (const p of data.personas || []) {
@@ -30,7 +35,10 @@ export function formWarnings(data, type, today = todayLocal()) {
   return warnings
 }
 export function validateForm(variables, ids, type) {
-  if (!ids.length || (type === 'ppa_auto' && ids.length !== 1)) throw new Error('Seleccioná una persona para auto-acompañamiento o una o varias para Anexo E.')
+  const manual = variables.personas_manuales || []
+  const count = ids.length + manual.length
+  if (!count || count > 100 || (type === 'ppa_auto' && count !== 1)) throw new Error('Seleccioná o cargá una persona para auto-acompañamiento o hasta 100 para Anexo E.')
+  if ([...manual,...(variables.responsable_manual ? [variables.responsable_manual] : [])].some(p=>!p.nombre?.trim())) throw new Error('Completá el nombre de cada persona manual.')
   if (!variables.fecha || !variables.desde || !variables.hasta || !variables.tareas?.trim()) throw new Error('Completá fecha, horario desde/hasta y tareas.')
   if (variables.hasta <= variables.desde) throw new Error('El horario hasta debe ser posterior al horario desde.')
   if (!/^[1-7]([ ,;/]+[1-7])*$/.test(String(variables.sectores).trim())) throw new Error('Indicá al menos un sector solicitado (1 a 7).')

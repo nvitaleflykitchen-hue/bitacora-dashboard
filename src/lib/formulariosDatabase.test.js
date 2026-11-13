@@ -30,6 +30,7 @@ beforeAll(async()=>{
  insert into bitacora.sedes values(1,'Sede Uno',1,'Aeropuerto'),(2,'Sede Dos',2,'Hospital');
  insert into equipo.personas values('${person}','Ana','Prueba','12345678','100','Operador',array[1],true,'123','2027-01-01'),('${other}','Otra','Prueba','23456789','200','Operador',array[2],true,null,null);`)
  await pg.exec(readFileSync(new URL('../../supabase/migrations/20261003235333_formularios_permisos_review.sql',import.meta.url),'utf8'))
+ await pg.exec(readFileSync(new URL('../../supabase/migrations/20261004172208_formularios_carga_manual.sql',import.meta.url),'utf8'))
  await login(admin);await pg.exec('set role authenticated')
  template=(await pg.query("select bitacora.fp_context() as c")).rows[0].c.plantillas.find(t=>t.tipo==='ppa_auto').id
 },60000)
@@ -87,4 +88,30 @@ it('excludes hospitals even for admin and requires explicit supervisor designati
  await login(admin);await pg.query('select bitacora.fp_supervisor_save($1,false)',[editor]);await login(editor)
  expect((await pg.query('select bitacora.fp_available(null) as allowed')).rows[0].allowed).toBe(false)
  await login(admin)
+})
+it('includes only the designated corporate responsables without exposing their DNI or permitting participants outside the airport',async()=>{
+ const corporate='00000000-0000-0000-0000-000000000013'
+ await pg.exec(`reset role; insert into equipo.personas values('${corporate}','Nicolas Abel Luis','Vitale','99999999','1000','Coordinador',array[2],true,'4321','2027-01-01'); set role authenticated;`)
+ await login(limited)
+ const c=(await pg.query('select bitacora.fp_context() as c')).rows[0].c
+ const responsible=c.responsables.find(p=>p.id===corporate)
+ expect(responsible.nombre).toBe('Nicolas Abel Luis');expect(responsible).not.toHaveProperty('dni')
+ expect(c.personas.some(p=>p.id===corporate)).toBe(false)
+ const saved=(await pg.query('select to_jsonb(bitacora.fp_save(null,0,$1,1,$2::uuid[],$3,$4)) as f',[template,[person],corporate,variables])).rows[0].f
+ expect(saved.datos.acompanante.id).toBe(corporate)
+ await expect(save(null,0,1,[corporate])).rejects.toThrow('asignada a la sede')
+ await expect(pg.query('select bitacora.fp_save(null,0,$1,1,$2::uuid[],$3,$4)',[template,[person],other,variables])).rejects.toThrow('fuera del alcance')
+ await login(admin)
+})
+it('saves entirely manual Anexo E, strips forged identifiers and retains drafts for editing/duplication',async()=>{
+ const type=(await pg.query('select bitacora.fp_context() as c')).rows[0].c.plantillas.find(t=>t.tipo==='anexo_e').id
+ const v={...variables,personas_manuales:[{id:other,nombre:'Emanuel',apellido:'Calderón',dni:'123',puesto:'Mantenimiento'}],responsable_manual:{nombre:'Pablo',apellido:'Fernandez',puesto:'Responsable',aeroportuario:{ppa:'123',sectores:'1, 3'}}}
+ const result=(await pg.query('select to_jsonb(bitacora.fp_save(null,0,$1,1,$2::uuid[],null,$3)) as f',[type,[],v])).rows[0].f
+ expect(result.persona_ids).toEqual([]);expect(result.datos.personas[0]).toMatchObject({id:null,origen:'manual',nombre:'Emanuel'})
+ expect(result.datos.acompanante).toMatchObject({id:null,origen:'manual',nombre:'Pablo'})
+ expect(result.datos.variables.personas_manuales).toEqual(result.datos.personas)
+ const edited=(await pg.query('select to_jsonb(bitacora.fp_save($1,$2,$3,1,$4::uuid[],null,$5)) as f',[result.id,result.version,type,[],result.datos.variables])).rows[0].f
+ expect(edited.version).toBe(2);expect(edited.datos.personas).toEqual(result.datos.personas)
+ await expect(pg.query('select bitacora.fp_save(null,0,$1,2,$2::uuid[],null,$3)',[type,[],v])).rejects.toThrow('Sin permiso')
+ await expect(pg.query('select bitacora.fp_save(null,0,$1,1,$2::uuid[],null,$3)',[type,[],{...v,personas_manuales:[{nombre:''}]}])).rejects.toThrow('nombre')
 })
