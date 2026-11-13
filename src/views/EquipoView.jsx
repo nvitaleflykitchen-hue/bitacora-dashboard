@@ -1,7 +1,7 @@
-import PasesAcompanados from '../components/PasesAcompanados'
-import Correos from '../views/Correos'
+const PasesAcompanados = lazyPanel(() => import('../components/PasesAcompanados'));
+const Correos = lazyPanel(() => import('../views/Correos'));
 import { useFormAccess } from '../lib/useFormAccess'
-import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
+import React, { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import {
@@ -35,27 +35,27 @@ import {
   Archive,
   CalendarOff,
 } from "lucide-react";
-import OrganigramaView from "./OrganigramaView";
-import AdjuntosPanel from "../components/AdjuntosPanel";
-import CapacitacionesRelacionadas from "../components/CapacitacionesRelacionadas";
-import ContactosTab from "../components/ContactosTab";
-import DocumentacionChecklist from "../components/DocumentacionChecklist";
-import PersonaFormularios from "../components/PersonaFormularios";
+const OrganigramaView = lazyPanel(() => import('./OrganigramaView'));
+const AdjuntosPanel = lazyPanel(() => import('../components/AdjuntosPanel'));
+const CapacitacionesRelacionadas = lazyPanel(() => import('../components/CapacitacionesRelacionadas'));
+const ContactosTab = lazyPanel(() => import('../components/ContactosTab'));
+const DocumentacionChecklist = lazyPanel(() => import('../components/DocumentacionChecklist'));
+const PersonaFormularios = lazyPanel(() => import('../components/PersonaFormularios'));
 const FormulariosPermisos = lazy(() => import("../components/FormulariosPermisos"));
 import { PersonaAvatar, PersonaFotoEditor } from "../components/PersonaAvatar";
-import CredencialPersonalModal from "../components/CredencialPersonalModal";
-import CredencialesMasivasA4 from "../components/CredencialesMasivasA4";
-import VacacionesPanel from "../components/VacacionesPanel";
-import PersonaRrhhPanel from "../components/PersonaRrhhPanel";
-import BibliotecaRecursos from "../components/BibliotecaRecursos";
-import EvaluacionesAnalysisPanel from "../components/EvaluacionesAnalysisPanel";
+const CredencialPersonalModal = lazyPanel(() => import('../components/CredencialPersonalModal'));
+const CredencialesMasivasA4 = lazyPanel(() => import('../components/CredencialesMasivasA4'));
+const VacacionesPanel = lazyPanel(() => import('../components/VacacionesPanel'));
+const PersonaRrhhPanel = lazyPanel(() => import('../components/PersonaRrhhPanel'));
+const BibliotecaRecursos = lazyPanel(() => import('../components/BibliotecaRecursos'));
+const EquipoAnalisis = lazyPanel(() => import('./equipo/EquipoAnalisis'));
 import OverflowTabs from "../components/OverflowTabs";
 import ActionOverflowMenu from "../components/ActionOverflowMenu";
-import HabilitarUsuarioModal from "../components/HabilitarUsuarioModal";
+const HabilitarUsuarioModal = lazyPanel(() => import('../components/HabilitarUsuarioModal'));
 import { PERSONA_DOCUMENTACION_TEMPLATE } from "../lib/documentacion";
-import ReclutamientoBoard from "./equipo/ReclutamientoBoard";
-import UniformesEppPanel from "./equipo/UniformesEppPanel";
-import EppPersonaPanel from "./equipo/EppPersonaPanel";
+const ReclutamientoBoard = lazyPanel(() => import('./equipo/ReclutamientoBoard'));
+const UniformesEppPanel = lazyPanel(() => import('./equipo/UniformesEppPanel'));
+const EppPersonaPanel = lazyPanel(() => import('./equipo/EppPersonaPanel'));
 import {
   isQualityOnlyProfile,
   isQualityTeamPerson,
@@ -67,11 +67,11 @@ import { CRITERIOS_GUIA, ESCALA_GUIA, RECORDATORIO_ESCALA } from "../data/evalua
 import { confirmar, pedirTexto, toast } from "../lib/feedback";
 import { confirmarAccionSensible } from "../lib/sensitiveActions";
 import { mensajeError } from "../lib/errores";
-import PersonalNovedadesReportModal from "../components/PersonalNovedadesReportModal";
-import PersonaVinculoPanel from "../components/PersonaVinculoPanel";
+const PersonalNovedadesReportModal = lazyPanel(() => import('../components/PersonalNovedadesReportModal'));
+const PersonaVinculoPanel = lazyPanel(() => import('../components/PersonaVinculoPanel'));
 import { esPersonalOperativo, esPersonaExterna, coincideVinculo } from "../lib/personaVinculo";
-import PersonaEncuadrePanel from "../components/PersonaEncuadrePanel";
-import HorariosDotacion from "../components/HorariosDotacion";
+const PersonaEncuadrePanel = lazyPanel(() => import('../components/PersonaEncuadrePanel'));
+const HorariosDotacion = lazyPanel(() => import('../components/HorariosDotacion'));
 import {
   downloadHistorialPersonalPdf,
   textoHistorialPersonal,
@@ -88,6 +88,14 @@ import {
   promedioEvaluacion,
   puntajesEvaluacion,
 } from "../lib/evaluacionObjetividad";
+
+// Each optional panel owns its loading boundary, so navigation remains usable.
+function lazyPanel(loader) {
+  const Panel = lazy(loader);
+  return function DeferredPanel(props) {
+    return <Suspense fallback={<p role="status" style={{padding:16,color:'var(--text-dim)'}}>Cargando sección…</p>}><Panel {...props}/></Suspense>;
+  };
+}
 
 const PERIODO_PRUEBA_DIAS = 180;
 const PLANTA_CORDOBA_SEDE_ID = 24;
@@ -3150,7 +3158,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
   const isAdmin = perfil?.rol === "admin";
   const canManage = can("equipo", "manage") && !isSafetyOnly;
   const [personas, setPersonas] = useState([]);
-  const [evaluacionesEquipo, setEvaluacionesEquipo] = useState([]);
+
   const [bajas, setBajas] = useState([]);
   const [duplicados, setDuplicados] = useState([]);
   const [sedes, setSedes] = useState([]);
@@ -3170,9 +3178,8 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
 
   const load = async () => {
     setLoading(true);
-    const [pRes, evaluacionesRes, bajasRes, sRes, gRes, candidatosDuplicadosRes, encuadresRes, rolesRes, puestosRes, rrhhRes] = await Promise.all([
+    const [pRes, bajasRes, sRes, gRes, candidatosDuplicadosRes, encuadresRes, rolesRes, puestosRes, rrhhRes] = await Promise.all([
       supabase.from("v_personas").select("*").order("nombre"),
-      supabase.from("v_evaluaciones").select("*").order("fecha_evaluacion", { ascending: false }),
       supabase.schema("equipo").from("personas").select("id,nombre,apellido,puesto,area,sede_ids,fecha_ingreso,fecha_baja,motivo_baja,observaciones_baja,foto_url,baja_registrada_at,motivo_reactivacion").eq("activo", false).is("duplicado_de", null).not("fecha_baja", "is", null).not("motivo_baja", "is", null).order("fecha_baja", { ascending: false }),
       supabase
         .schema("bitacora")
@@ -3242,14 +3249,6 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
       ? personasTerritoriales.filter((p) => isQualityTeamPerson(p, perfil))
       : personasTerritoriales;
     setPersonas(personasPermitidas);
-    const personasPermitidasIds = new Set(
-      personasPermitidas.map((persona) => String(persona.id)),
-    );
-    setEvaluacionesEquipo(
-      (evaluacionesRes.data || []).filter((evaluacion) =>
-        personasPermitidasIds.has(String(evaluacion.persona_id)),
-      ),
-    );
     const bajasTerritoriales = allowedSedeIds === null
       ? bajasRes.data || []
       : (bajasRes.data || []).filter((p) => p.sede_ids?.some((id) => allowedSedeIds.includes(id)));
@@ -4029,8 +4028,7 @@ export default function EquipoView({ onNavigate, focusId, focusType, onCreateNov
               })}
           </div>
         ) : tab === "analisis" ? (
-          <EvaluacionesAnalysisPanel
-            evaluaciones={evaluacionesEquipo.filter(e => personalStaff.some(p => p.id === e.persona_id))}
+          <EquipoAnalisis
             personas={personalStaff}
             onOpenPersona={setSelectedId}
           />

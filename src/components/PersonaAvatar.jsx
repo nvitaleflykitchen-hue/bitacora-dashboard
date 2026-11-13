@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Camera, ImagePlus, Trash2 } from 'lucide-react'
 import { eliminarPersonaFoto, getPersonaFotoUrls, guardarPersonaFoto } from '../lib/personaFotos'
 import { mensajeError } from '../lib/errores'
@@ -14,6 +14,19 @@ function initials(persona) {
 }
 
 export function PersonaAvatar({ persona, size = 64 }) {
+  const container = useRef(null)
+  const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined')
+  useEffect(() => {
+    if (visible || !container.current) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setVisible(true)
+        observer.disconnect()
+      }
+    }, { rootMargin: '160px' })
+    observer.observe(container.current)
+    return () => observer.disconnect()
+  }, [visible])
   const [src, setSrc] = useState(null)
   const [originalSrc, setOriginalSrc] = useState(null)
   const [failed, setFailed] = useState(false)
@@ -21,7 +34,9 @@ export function PersonaAvatar({ persona, size = 64 }) {
   useEffect(() => {
     let active = true
     setFailed(false)
-    if (!persona?.foto_url) {
+    setSrc(null)
+    setOriginalSrc(null)
+    if (!visible || !persona?.foto_url) {
       setSrc(null)
       setOriginalSrc(null)
       return () => { active = false }
@@ -34,7 +49,7 @@ export function PersonaAvatar({ persona, size = 64 }) {
       })
       .catch(() => { if (active) setFailed(true) })
     return () => { active = false }
-  }, [persona?.foto_url])
+  }, [persona?.foto_url, visible])
 
   const style = {
     width:size, height:size, minWidth:size, borderRadius:'50%', overflow:'hidden',
@@ -42,9 +57,9 @@ export function PersonaAvatar({ persona, size = 64 }) {
     display:'flex', alignItems:'center', justifyContent:'center',
   }
   if (src && !failed) {
-    return <div style={style}><img src={src} alt={`Foto de ${persona?.nombre || 'persona'}`} loading="lazy" decoding="async" onError={() => { if (originalSrc && src !== originalSrc) setSrc(originalSrc); else setFailed(true) }} style={{ width:'100%', height:'100%', objectFit:'cover' }} /></div>
+    return <div ref={container} style={style}><img src={src} alt={`Foto de ${persona?.nombre || 'persona'}`} loading="lazy" decoding="async" onError={() => { if (originalSrc && src !== originalSrc) setSrc(originalSrc); else setFailed(true) }} style={{ width:'100%', height:'100%', objectFit:'cover' }} /></div>
   }
-  return <div style={style} aria-label={`Sin foto. Iniciales ${initials(persona)}`}><span className="font-title" style={{ color:'var(--phosphor)', fontWeight:800, fontSize:size * 0.32 }}>{initials(persona)}</span></div>
+  return <div ref={container} style={style} aria-label={`Sin foto. Iniciales ${initials(persona)}`}><span className="font-title" style={{ color:'var(--phosphor)', fontWeight:800, fontSize:size * 0.32 }}>{initials(persona)}</span></div>
 }
 
 export function PersonaFotoEditor({ persona, onChanged, compact = false, showAvatar = true }) {
