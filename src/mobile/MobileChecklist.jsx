@@ -7,6 +7,7 @@ import { ELPIDIO_TORRES_SEDE_ID, ELPIDIO_TURNO_INFO, CHECKLIST_REEMPLAZO_POR_SED
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import EmptyState from '../components/EmptyState'
+import AirportVehicleChecklist from '../components/AirportVehicleChecklist'
 
 const TIPO_LABELS = {
   apertura: { label: 'Apertura', emoji: '🌅', color: '#39FF14' },
@@ -16,6 +17,7 @@ const TIPO_LABELS = {
 export default function MobileChecklist({ onBack, onGoTareas }) {
   const { perfil, allowedSedeIds } = useAuth()
   const [tipo,      setTipo]      = useState(null)    // 'apertura' | 'cierre'
+  const [airport,setAirport]=useState(false)
   const [sedes,     setSedes]     = useState([])
   const [sedeId,    setSedeId]    = useState(null)
   const [items,     setItems]     = useState([])      // template items
@@ -131,6 +133,8 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
     byCat[item.categoria].push(item)
   }
 
+  if (airport) return <AirportVehicleChecklist onBack={()=>setAirport(false)}/>
+
   // ── Pantalla de éxito ──
   if (submitted) {
     return (
@@ -183,6 +187,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
             </div>
           )}
           <p style={{ color:'var(--text-dim)', fontSize:'0.85rem', marginBottom:'0.5rem' }}>¿Qué checklist querés completar?</p>
+          <button className="btn-primary" style={{width:'100%',minHeight:64}} onClick={()=>setAirport(true)}>Control de vehículo · Gran porte aeroportuario</button>
           {Object.entries(selectorInfo).map(([key, info]) => (
             <button key={key} disabled={!sedeId} onClick={() => setTipo(key)} style={{
               width:'100%', padding:'1.25rem', borderRadius:10, cursor:'pointer',

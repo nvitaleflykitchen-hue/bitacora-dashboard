@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import AirportVehicleChecklist from '../../components/AirportVehicleChecklist'
+import { isAirportVehicle } from '../../lib/airportChecklist'
 import { getActivoById, getTickets, createTicket, getSedes, TICKET_TIPOS_VALIDOS } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
@@ -23,7 +25,12 @@ function fmtHora(iso) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-export default function QRActivoView({ activoId, onNavigate, scanEventId = null }) {
+export default function QRActivoView(props) {
+  if (isAirportVehicle(props.activoId)) return <AirportVehicleChecklist activoId={props.activoId} onBack={()=>props.onNavigate('inicio')}/>
+  return <GeneralQRActivoView {...props}/>
+}
+
+function GeneralQRActivoView({ activoId, onNavigate, scanEventId = null }) {
   const { can } = useAuth()
   const canManage = can('mantenimiento', 'manage')
   const canReport = canManage || can('mantenimiento', 'report')

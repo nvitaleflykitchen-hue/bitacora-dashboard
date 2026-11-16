@@ -1,5 +1,18 @@
 # KNOWN_ISSUES — bitacora-dashboard
 
+## Checklist vehicular genérico: permisos e identificación (2026-11-16)
+
+- **Severidad:** alta. Las políticas `activos_auth_*` y `visitas_activo_auth_*` permiten SELECT/INSERT/UPDATE con condición `true` para usuarios autenticados. El checklist genérico escribe visitas directamente y acepta un nombre de responsable editable. El filtrado visual por sede no es una barrera de servidor.
+- **Verificación:** lectura de `pg_policies` en `mixyhfdlzjarvszinytk` y `FlotaChecklist.jsx`. Sin pruebas de escritura en producción.
+- **Mitigación preparada para gran porte:** registros nuevos en tabla sin acceso directo, RPC con autor de sesión, validación y alcance por sede, fotos privadas. No se amplían permisos del rol operario sobre mantenimiento. El flujo genérico conserva su comportamiento previo y requiere una revisión separada de permisos.
+- **Recomendación:** revisar las políticas existentes con SQL y aprobación explícita. No se aplicó ninguna modificación de RLS durante esta implementación pendiente de autorización.
+
+## Checklist vehicular: error después de guardar (corrección preparada 2026-11-16)
+
+- **Severidad:** media. `FlotaChecklist.jsx` invocaba `toast.success`, inexistente, después de persistir; podía presentar un error aunque el control ya estuviera guardado.
+- **Verificación:** lectura del componente y API de `feedback`; build y lint locales.
+- **Corrección:** usar `toast.ok`. El nuevo flujo aeroportuario diferencia guardado de control y subida de fotos y utiliza reintentos idempotentes.
+
 ## Credenciales: pertenencia a sede y estado físico (corregido el 2026-10-26)
 
 - Severidad: ALTA. La emisión valida catálogo activo pero no contrasta la sede con `personas.sede_ids`; el QR tampoco retira accesos cuando la persona cambia de sede. El catálogo anterior no separa estado físico de autorización.
