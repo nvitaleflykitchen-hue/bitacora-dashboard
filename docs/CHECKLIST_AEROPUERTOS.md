@@ -2,7 +2,7 @@
 
 ## Estado
 
-Implementación preparada el 2026-11-16. SQL pendiente de aprobación explícita y aplicación en `mixyhfdlzjarvszinytk`. No publicar el frontend antes de aplicar y verificar el SQL.
+Implementación del 2026-11-16. SQL aprobado explícitamente por el usuario y aplicado en `mixyhfdlzjarvszinytk` mediante la migración `checklist_aeropuertos_cuatro_vehiculos`. Verificación real: cuenta de sede 21 ve cuatro vehículos; otra sede y cambio de contraseña pendiente ven cero. Guardado sobre vehículo en reparación validado en transacción con ROLLBACK: cero controles persistidos y estado conservado. Publicación por PR y checks GitHub.
 
 ## Unidades verificadas en producción
 
@@ -45,6 +45,8 @@ Archivo exacto: `supabase/security/checklist_aeropuertos_REVIEW.sql`.
 - Sin cambios en roles, políticas de activos/visitas, sedes, registros, cuentas ni estado de vehículos.
 
 AGENTS.md §0.3 exige mostrar el SQL y esperar confirmación antes de ejecutar GRANT/RLS. La autorización genérica de implementación no reemplaza esa revisión. Después de aprobar: aplicar solo al proyecto indicado, verificar permisos con transacciones de lectura, ejecutar CI y publicar por PR/merge GitHub.
+
+Advisors posteriores revisados: RLS sin políticas en la tabla es intencional (sin acceso directo); las RPC SECURITY DEFINER validan sesión y alcance. El helper booleano de fotos es ejecutable por anon porque participa en políticas restrictivas contra permisos amplios preexistentes; con sesión anónima devuelve false. No devuelve filas ni URLs. Estas advertencias se conservan documentadas, sin ampliar permisos para silenciarlas.
 
 ## Verificación
 
