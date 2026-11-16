@@ -7,6 +7,7 @@ import { ELPIDIO_TORRES_SEDE_ID, ELPIDIO_TURNO_INFO, CHECKLIST_REEMPLAZO_POR_SED
 import { toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import EmptyState from '../components/EmptyState'
+import { GeneralFlotaChecklist } from '../views/flota/FlotaChecklist'
 import AirportVehicleChecklist from '../components/AirportVehicleChecklist'
 
 const TIPO_LABELS = {
@@ -18,6 +19,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
   const { perfil, allowedSedeIds } = useAuth()
   const [tipo,      setTipo]      = useState(null)    // 'apertura' | 'cierre'
   const [airport,setAirport]=useState(false)
+  const [general,setGeneral]=useState(false)
   const [sedes,     setSedes]     = useState([])
   const [sedeId,    setSedeId]    = useState(null)
   const [items,     setItems]     = useState([])      // template items
@@ -133,6 +135,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
     byCat[item.categoria].push(item)
   }
 
+  if (general) return <div className="mobile-scroll" style={{height:'100%',overflowY:'auto'}}><GeneralFlotaChecklist onBack={()=>setGeneral(false)}/></div>
   if (airport) return <AirportVehicleChecklist onBack={()=>setAirport(false)}/>
 
   // ── Pantalla de éxito ──
@@ -187,6 +190,7 @@ export default function MobileChecklist({ onBack, onGoTareas }) {
             </div>
           )}
           <p style={{ color:'var(--text-dim)', fontSize:'0.85rem', marginBottom:'0.5rem' }}>¿Qué checklist querés completar?</p>
+          <button className="btn-primary" style={{width:'100%',minHeight:64,marginBottom:12}} onClick={()=>setGeneral(true)}>Control diario · Resto de los vehículos</button>
           <button className="btn-primary" style={{width:'100%',minHeight:64}} onClick={()=>setAirport(true)}>Control de vehículo · Gran porte aeroportuario</button>
           {Object.entries(selectorInfo).map(([key, info]) => (
             <button key={key} disabled={!sedeId} onClick={() => setTipo(key)} style={{

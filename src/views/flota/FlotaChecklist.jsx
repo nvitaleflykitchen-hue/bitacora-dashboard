@@ -8,21 +8,14 @@ import { mensajeError } from '../../lib/errores'
 import { toast } from '../../lib/feedback'
 import AirportVehicleChecklist from '../../components/AirportVehicleChecklist'
 import { isAirportVehicle } from '../../lib/airportChecklist'
+import { GENERAL_VEHICLE_ITEMS as ITEMS, GENERAL_ANSWERS, emptyGeneralAnswers as buildEmptyItems, generalChecklistError, generalChecklistStatus as overallStatus } from '../../lib/generalVehicleChecklist'
+import { vehicleIdentity, fleetToday, FLEET_TZ } from '../../lib/flotaModel'
+import './FlotaChecklist.css'
 
 const CHECKLIST_PREFIX = 'CHECKLIST_VEHICULO::'
 
-const ITEMS = [
-  { id:'documentacion', label:'Documentación obligatoria a bordo', help:'Cédula, seguro, VTV/RTO, SENASA/RMTSA si aplica.' },
-  { id:'luces', label:'Luces y señalización', help:'Bajas, altas, giro, balizas, stop y marcha atrás.' },
-  { id:'cubiertas', label:'Cubiertas y auxilio', help:'Estado visual, presión aparente, dibujo y rueda de auxilio.' },
-  { id:'frenos', label:'Frenos y dirección', help:'Respuesta normal, sin ruidos ni vibraciones anormales.' },
-  { id:'fluidos', label:'Fluidos y pérdidas', help:'Aceite, refrigerante, líquido de frenos y pérdidas visibles.' },
-  { id:'matafuego', label:'Matafuego y elementos de seguridad', help:'Carga vigente, precinto, balizas/chaleco si corresponde.' },
-  { id:'limpieza', label:'Limpieza e higiene', help:'Cabina, caja/sector de carga y ausencia de residuos.' },
-  { id:'carroceria', label:'Carrocería / caja / frío', help:'Golpes, cierres, burletes, equipo de frío o aislamiento si aplica.' },
-]
-
 const ESTADOS = {
+  pendiente: { label:'Sin completar', color:'#94A3B8' },
   apto: { label:'Apto', color:'#39FF14' },
   observado: { label:'Observado', color:'#F59E0B' },
   no_apto: { label:'No apto', color:'#FF5050' },
@@ -33,15 +26,14 @@ function pad(n) {
 }
 
 function todayKey() {
-  const d = new Date()
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return fleetToday()
 }
 
 function dateKey(value) {
   if (!value) return ''
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ''
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return new Intl.DateTimeFormat('en-CA', { timeZone:FLEET_TZ }).format(d)
 }
 
 function fmtFechaHora(value) {
@@ -60,17 +52,6 @@ function parseChecklist(row) {
   } catch {
     return null
   }
-}
-
-function buildEmptyItems() {
-  return ITEMS.reduce((acc, item) => ({ ...acc, [item.id]:'ok' }), {})
-}
-
-function overallStatus(respuestas) {
-  const values = Object.values(respuestas || {})
-  if (values.includes('critico')) return 'no_apto'
-  if (values.includes('observado')) return 'observado'
-  return 'apto'
 }
 
 function estadoBadge(estado) {
@@ -105,9 +86,10 @@ export default function FlotaChecklist() {
   return <div style={{height:'100%',overflow:'auto'}}><div style={{padding:'16px 24px'}}><button className="btn-primary" onClick={()=>setAirport(true)}>Gran porte aeroportuario · Checklist y QR</button><a className="btn-ghost" style={{marginLeft:12}} href="/recursos/qr-gran-porte-aeropuertos.pdf" target="_blank" rel="noreferrer">Imprimir los 4 QR · A4</a></div><GeneralFlotaChecklist/></div>
 }
 
-function GeneralFlotaChecklist() {
+export function GeneralFlotaChecklist({ onBack } = {}) {
   const { perfil, rol, allowedSedeIds, can } = useAuth()
-  const canManage = can('flota', 'manage') || ['admin','editor','grupo','encargado'].includes(rol)
+  const canCreateTicket = can('flota', 'manage') || ['admin','editor','grupo','encargado'].includes(rol)
+  const canManage = canCreateTicket || ['operario','sede'].includes(rol)
   const [vehiculos, setVehiculos] = useState([])
   const [visitas, setVisitas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -119,7 +101,7 @@ function GeneralFlotaChecklist() {
     km:'',
     observaciones:'',
     respuestas: buildEmptyItems(),
-    crearTicket: true,
+    crearTicket: canCreateTicket,
   })
 
   const load = async () => {
@@ -133,18 +115,19 @@ function GeneralFlotaChecklist() {
         return
       }
       if (allowedSedeIds?.length) filtros.sedeIds = allowedSedeIds
-      const [vehiculosData, visitasResult] = await Promise.all([
-        getActivos(filtros),
-        supabase.from('mnt_visitas')
-          .select('id,activo_id,activo_nombre,activo_sede,fecha,visitante,tipo_visita,observacion')
-          .eq('activo_tipo', 'VEHICULO')
-          .order('fecha', { ascending:false })
-          .limit(250),
-      ])
-      if (visitasResult.error) throw visitasResult.error
+      const vehiculosData = await getActivos(filtros)
       const activos = (vehiculosData || []).filter(v => !isAirportVehicle(v.id) && !['baja','inactivo'].includes(String(v.estado || '').toLowerCase()))
       const activoIds = new Set(activos.map(v => String(v.id)))
       setVehiculos(activos)
+      if (!activos.length) { setVisitas([]); return }
+      const visitasResult = await supabase.from('mnt_visitas')
+          .select('id,activo_id,activo_nombre,activo_sede,fecha,visitante,tipo_visita,observacion')
+          .eq('activo_tipo', 'VEHICULO')
+          .in('activo_id', [...activoIds])
+          .like('observacion', CHECKLIST_PREFIX + '%')
+          .order('fecha', { ascending:false })
+          .limit(1000)
+      if (visitasResult.error) throw visitasResult.error
       setVisitas((visitasResult.data || []).map(parseChecklist).filter(Boolean).filter(v => activoIds.has(String(v.activo_id))))
     } catch (e) {
       setErr(mensajeError(e))
@@ -177,18 +160,24 @@ function GeneralFlotaChecklist() {
   const handleSave = async () => {
     if (!canManage) return
     if (!selected) { setErr('Seleccioná un vehículo.'); return }
+    if (saving) return
+    const validation = generalChecklistError(form)
+    if (validation) { setErr(validation); return }
     setSaving(true)
     setErr(null)
     try {
       const payload = {
-        version: 1,
+        version: 2,
+        plantilla: 'control_diario_general',
+        fecha_control: fleetToday(),
+        dominio: vehicleIdentity(selected).dominio,
         tipo: 'checklist_vehiculo',
         estado,
         activo_id: selected.id,
         activo_nombre: selected.nombre,
         sede_id: selected.sede_id || null,
         sede: selected.sede_nombre || selected.sede || null,
-        conductor: form.conductor.trim() || perfil?.nombre || null,
+        conductor: perfil?.nombre || perfil?.email || null,
         km: form.km !== '' ? Number(form.km) : null,
         observaciones: form.observaciones.trim() || null,
         respuestas: form.respuestas,
@@ -208,7 +197,9 @@ function GeneralFlotaChecklist() {
         })
       if (visitaError) throw visitaError
 
-      if (form.crearTicket && requiereTicket) {
+      let ticketError = null
+      if (canCreateTicket && form.crearTicket && requiereTicket) {
+        try {
         const problemas = ITEMS
           .filter(item => ['observado','critico'].includes(form.respuestas[item.id]))
           .map(item => `${item.label}: ${form.respuestas[item.id] === 'critico' ? 'crítico' : 'observado'}`)
@@ -228,16 +219,18 @@ function GeneralFlotaChecklist() {
           descripcion: `Checklist vehicular ${ESTADOS[estado].label}: ${selected.nombre}`,
           diagnostico: [problemas, payload.observaciones].filter(Boolean).join('\n\n'),
         })
+        } catch (error) { ticketError = error }
       }
 
-      toast.ok(requiereTicket && form.crearTicket ? 'Checklist guardado y ticket creado.' : 'Checklist guardado.')
+      toast.ok(requiereTicket && form.crearTicket && !ticketError ? 'Checklist guardado y ticket creado.' : 'Checklist guardado.')
+      if (ticketError) toast.warn('El checklist quedó guardado, pero no se pudo crear el ticket: ' + mensajeError(ticketError))
       setForm({
         activo_id:'',
         conductor: perfil?.nombre || '',
         km:'',
         observaciones:'',
         respuestas: buildEmptyItems(),
-        crearTicket: true,
+        crearTicket: canCreateTicket,
       })
       await load()
     } catch (e) {
@@ -251,8 +244,9 @@ function GeneralFlotaChecklist() {
   const LBL = { display:'block', color:'var(--text-dim)', fontSize:'0.62rem', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:5 }
 
   return (
-    <div style={{ padding:'1.5rem 2rem', overflowY:'auto', height:'100%' }}>
-      <PageHeader title="Checklist vehicular" subtitle="Control obligatorio de salida/uso para vehículos Fly">
+    <div className="general-checklist">
+      {onBack && <button className="btn-ghost" onClick={onBack}>← Volver a checklists</button>}
+      <PageHeader title="Checklist vehicular" subtitle="Control diario · Vehículos de flota general">
         <button onClick={load} disabled={loading} className="btn btn-secondary"><RefreshCw size={14}/> Actualizar</button>
       </PageHeader>
 
@@ -265,52 +259,54 @@ function GeneralFlotaChecklist() {
 
       {err && <div style={{ border:'1px solid rgba(255,80,80,0.35)', color:'#FF5050', background:'rgba(255,80,80,0.08)', padding:'0.8rem 1rem', borderRadius:3, marginBottom:'1rem', fontSize:'0.75rem' }}>{err}</div>}
 
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1.15fr) minmax(320px, 0.85fr)', gap:'1rem', alignItems:'start' }}>
+      <div className="general-checklist-layout">
         <section style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:'1rem' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:'0.9rem' }}>
             <ClipboardCheck size={16} color="var(--phosphor)" />
             <div>
-              <h3 style={{ margin:0, color:'var(--text)', fontSize:'0.95rem' }}>Nuevo checklist</h3>
-              <p style={{ margin:0, color:'var(--text-dim)', fontSize:'0.68rem' }}>Si queda observado o no apto puede abrir ticket automáticamente.</p>
+              <h3 style={{ margin:0, color:'var(--text)', fontSize:'0.95rem' }}>Nuevo control diario</h3>
+              <p style={{ margin:0, color:'var(--text-dim)', fontSize:'0.68rem' }}>Respondé cada control. Registrar el checklist no cambia el estado del vehículo.</p>
             </div>
             <span style={{ ...estadoBadge(estado), marginLeft:'auto' }}>{ESTADOS[estado].label}</span>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1.2fr 1fr 0.6fr', gap:'0.7rem', marginBottom:'0.9rem' }}>
+          <div className="general-checklist-fields">
             <div>
               <label style={LBL}>Vehículo *</label>
-              <select style={INPUT} value={form.activo_id} onChange={e => setForm(f => ({ ...f, activo_id:e.target.value }))} disabled={!canManage}>
+              <select aria-label="Vehículo" style={INPUT} value={form.activo_id} onChange={e => setForm(f => ({ ...f, activo_id:e.target.value, respuestas:buildEmptyItems(), observaciones:'', km:'' }))} disabled={!canManage}>
                 <option value="">— Seleccionar vehículo —</option>
-                {vehiculos.map(v => <option key={v.id} value={v.id}>{v.nombre}{v.sede_nombre || v.sede ? ` · ${v.sede_nombre || v.sede}` : ''}</option>)}
+                {vehiculos.map(v => <option key={v.id} value={v.id}>{v.nombre}{vehicleIdentity(v).dominio ? ` · ${vehicleIdentity(v).dominio}` : ''}{v.sede_nombre || v.sede ? ` · ${v.sede_nombre || v.sede}` : ''}</option>)}
               </select>
             </div>
             <div>
               <label style={LBL}>Conductor / responsable</label>
-              <input style={INPUT} value={form.conductor} onChange={e => setForm(f => ({ ...f, conductor:e.target.value }))} disabled={!canManage} placeholder="Nombre de quien controla" />
+              <input aria-label="Responsable" style={INPUT} value={perfil?.nombre || perfil?.email || ''} readOnly />
             </div>
             <div>
               <label style={LBL}>Km</label>
-              <input style={INPUT} type="number" value={form.km} onChange={e => setForm(f => ({ ...f, km:e.target.value }))} disabled={!canManage} placeholder="0" />
+              <input style={INPUT} aria-label="Kilometraje" type="number" min="0" step="1" value={form.km} onChange={e => setForm(f => ({ ...f, km:e.target.value }))} disabled={!canManage} placeholder="0" />
             </div>
           </div>
 
+          <p style={{marginBottom:12}}>Fecha: {fleetToday().split('-').reverse().join('/')} · {Object.values(form.respuestas).filter(Boolean).length}/10 controles respondidos{selected ? ` · Estado: ${selected.estado || 'Sin informar'}` : ''}</p>
           <div style={{ display:'grid', gap:'0.55rem' }}>
             {ITEMS.map(item => (
-              <div key={item.id} style={{ border:'1px solid rgba(255,255,255,0.06)', borderRadius:3, padding:'0.7rem', display:'grid', gridTemplateColumns:'1fr auto', gap:'0.8rem', alignItems:'center' }}>
+              <div key={item.id} className="general-checklist-item" role="group" aria-label={item.label}>
                 <div>
                   <p style={{ margin:0, color:'var(--text)', fontWeight:700, fontSize:'0.78rem' }}>{item.label}</p>
                   <p style={{ margin:'0.2rem 0 0', color:'var(--text-dim)', fontSize:'0.65rem' }}>{item.help}</p>
                 </div>
-                <div style={{ display:'flex', gap:4 }}>
+                <div className="general-checklist-answers">
                   {[
-                    ['ok','OK','#39FF14'],
-                    ['observado','OBS','#F59E0B'],
-                    ['critico','CRÍTICO','#FF5050'],
+                    ['ok','Conforme','var(--phosphor)'],
+                    ['observado','No conforme','#F59E0B'],
+                    ['critico','Crítico','#FF5050'],
+                    ...(item.optional ? [['na','No aplica','#94A3B8']] : []),
                   ].map(([value, label, color]) => {
                     const active = form.respuestas[item.id] === value
                     return (
-                      <button key={value} type="button" disabled={!canManage} onClick={() => setItem(item.id, value)}
-                        style={{ border:`1px solid ${active ? color : 'var(--paper-muted, rgba(255,255,255,0.12))'}`, background:active ? `${color}22` : 'transparent', color:active ? color : 'var(--text-dim)', borderRadius:3, padding:'0.35rem 0.5rem', fontSize:'0.62rem', fontWeight:800, cursor:canManage ? 'pointer' : 'default', fontFamily:'monospace' }}>
+                      <button key={value} type="button" aria-pressed={active} disabled={!canManage || saving} onClick={() => setItem(item.id, value)}
+                        style={{ border:`1px solid ${active ? color : 'var(--paper-muted, rgba(255,255,255,0.12))'}`, background:active ? 'var(--surface2, var(--surface))' : 'transparent', color:active ? color : 'var(--text-dim)', borderRadius:3, padding:'0.35rem 0.5rem', fontSize:'0.62rem', fontWeight:800, cursor:canManage ? 'pointer' : 'default', fontFamily:'monospace' }}>
                         {label}
                       </button>
                     )
@@ -322,10 +318,10 @@ function GeneralFlotaChecklist() {
 
           <div style={{ marginTop:'0.8rem' }}>
             <label style={LBL}>Observaciones</label>
-            <textarea style={{ ...INPUT, minHeight:90, resize:'vertical' }} value={form.observaciones} onChange={e => setForm(f => ({ ...f, observaciones:e.target.value }))} disabled={!canManage} placeholder="Describí cualquier desvío, daño, faltante o condición de uso." />
+            <textarea aria-label="Observaciones" style={{ ...INPUT, minHeight:90, resize:'vertical' }} value={form.observaciones} onChange={e => setForm(f => ({ ...f, observaciones:e.target.value }))} disabled={!canManage} placeholder="Describí cualquier desvío, daño, faltante o condición de uso." />
           </div>
 
-          {requiereTicket && (
+          {requiereTicket && canCreateTicket && (
             <label style={{ display:'flex', gap:8, alignItems:'center', color:'var(--text)', fontSize:'0.72rem', marginTop:'0.8rem' }}>
               <input type="checkbox" checked={form.crearTicket} onChange={e => setForm(f => ({ ...f, crearTicket:e.target.checked }))} disabled={!canManage} />
               Crear ticket de flota automáticamente por este desvío.
@@ -348,7 +344,7 @@ function GeneralFlotaChecklist() {
             ) : (
               <div style={{ display:'grid', gap:6, maxHeight:260, overflowY:'auto' }}>
                 {pendientes.map(v => (
-                  <button key={v.id} onClick={() => canManage && setForm(f => ({ ...f, activo_id:v.id }))} style={{ textAlign:'left', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.18)', color:'var(--text)', borderRadius:3, padding:'0.55rem 0.7rem', cursor:canManage ? 'pointer' : 'default' }}>
+                  <button key={v.id} onClick={() => canManage && setForm(f => ({ ...f, activo_id:v.id, respuestas:buildEmptyItems(), observaciones:'', km:'' }))} style={{ textAlign:'left', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.18)', color:'var(--text)', borderRadius:3, padding:'0.55rem 0.7rem', cursor:canManage ? 'pointer' : 'default' }}>
                     <strong style={{ display:'block', fontSize:'0.75rem' }}><Car size={12} style={{ verticalAlign:'middle', marginRight:5 }}/>{v.nombre}</strong>
                     <span style={{ color:'var(--text-dim)', fontSize:'0.63rem' }}>{v.sede_nombre || v.sede || 'Sin sede'} · Último: {fmtFechaHora(latestByVehicle.get(v.id)?.row?.fecha)}</span>
                   </button>
@@ -371,8 +367,9 @@ function GeneralFlotaChecklist() {
                       <span style={{ color:'var(--text-dim)', fontSize:'0.63rem', marginLeft:'auto' }}>{fmtFechaHora(v.row.fecha)}</span>
                     </div>
                     <p style={{ margin:'0.45rem 0 0', color:'var(--text-dim)', fontSize:'0.66rem' }}>
-                      {v.conductor ? `Conductor: ${v.conductor}` : 'Sin conductor'}{v.km ? ` · Km ${v.km}` : ''}{v.observaciones ? ` · ${v.observaciones}` : ''}
+                      {v.conductor ? `Conductor: ${v.conductor}` : 'Sin conductor'}{v.km != null ? ` · Km ${v.km}` : ''}{v.observaciones ? ` · ${v.observaciones}` : ''}
                     </p>
+                    <details style={{marginTop:8}}><summary>Ver controles</summary>{Object.entries(v.respuestas || {}).map(([id, answer])=><p key={id}>{ITEMS.find(i=>i.id===id)?.label || id}: {GENERAL_ANSWERS[answer] || answer}</p>)}</details>
                     {['observado','no_apto'].includes(v.estado) && (
                       <p style={{ margin:'0.35rem 0 0', color:v.estado === 'no_apto' ? '#FF5050' : '#F59E0B', fontSize:'0.64rem' }}>
                         <Ticket size={12} style={{ verticalAlign:'middle', marginRight:4 }}/> Revisar ticket asociado si se generó automáticamente.

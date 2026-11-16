@@ -2,7 +2,7 @@
 
 ## Checklist vehicular genérico: permisos e identificación (2026-11-16)
 
-- **Severidad:** alta. Las políticas `activos_auth_*` y `visitas_activo_auth_*` permiten SELECT/INSERT/UPDATE con condición `true` para usuarios autenticados. El checklist genérico escribe visitas directamente y acepta un nombre de responsable editable. El filtrado visual por sede no es una barrera de servidor.
+- **Severidad:** alta. Las políticas `activos_auth_*` y `visitas_activo_auth_*` permiten SELECT/INSERT/UPDATE con condición `true` para usuarios autenticados. El checklist genérico escribe visitas directamente. Desde la adaptación diaria del 16/11 el responsable se toma de la sesión y no es editable en el formulario, pero el cliente puede ser manipulado. El filtrado visual por sede no es una barrera de servidor.
 - **Verificación:** lectura de `pg_policies` en `mixyhfdlzjarvszinytk` y `FlotaChecklist.jsx`. Sin pruebas de escritura en producción.
 - **Mitigación preparada para gran porte:** registros nuevos en tabla sin acceso directo, RPC con autor de sesión, validación y alcance por sede, fotos privadas. No se amplían permisos del rol operario sobre mantenimiento. El flujo genérico conserva su comportamiento previo y requiere una revisión separada de permisos.
 - **Recomendación:** revisar las políticas existentes con SQL y aprobación explícita. No se aplicó ninguna modificación de RLS durante esta implementación pendiente de autorización.

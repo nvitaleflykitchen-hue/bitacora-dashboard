@@ -1,0 +1,10 @@
+.general-checklist { padding:24px 32px; }
+.general-checklist-layout { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr); gap:16px; align-items:start; }
+.general-checklist-fields { display:grid; grid-template-columns:1.2fr 1fr .6fr; gap:12px; margin-bottom:16px; }
+.general-checklist-item { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; border:1px solid var(--border, #8884); border-radius:6px; padding:12px; }
+.general-checklist-answers { display:flex; flex-wrap:wrap; gap:6px; }
+.general-checklist-answers button { min-height:44px; }
+@media(max-width:1000px) {
+  .general-checklist { padding:16px; }
+  .general-checklist-layout,.general-checklist-fields,.general-checklist-item { grid-template-columns:1fr; }
+}
