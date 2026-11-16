@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
+import { isAirportVehicle } from './lib/airportChecklist'
 import { AuthProvider, useAuth } from './lib/auth'
 import FeedbackHost from './components/FeedbackHost'
 import LoginPage from './components/LoginPage'
@@ -246,7 +247,7 @@ function AppInner() {
   if (perfil?.must_change_password) return <CambiarContrasena />
   if (rol === 'seguridad') return <Suspense fallback={<LoadingScreen />}><SeguridadPorteria /></Suspense>
   if (purchaseTrackingToken) return <Suspense fallback={<LoadingScreen/>}><PurchaseTrackingView token={purchaseTrackingToken}/></Suspense>
-  if (activeView === 'qrActivo' && isMobile) {
+  if (activeView === 'qrActivo' && (isMobile || isAirportVehicle(qrActivoId))) {
     return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} scanEventId={qrScanEventId} onNavigate={setActiveView} /></Suspense>
   }
   // Escape a escritorio: admin/editor pueden forzar la versión completa desde

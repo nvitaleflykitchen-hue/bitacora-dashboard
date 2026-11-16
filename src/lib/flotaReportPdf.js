@@ -143,7 +143,7 @@ export function createVehicleReportPdf(items, siteName) {
 
     section('Checklists de vehículo')
     empty(checks,'Sin controles registrados.')
-    checks.forEach(c => entry(`${date(c.fecha)} · ${value(c.estado)} · ${value(c.conductor || c.visitante)}`,[`KM: ${value(c.km)}  |  Observaciones: ${value(c.observaciones)}`, ...Object.entries(c.respuestas || {}).map(([key,answer]) => `${key}: ${value(answer)}`)]))
+    checks.forEach(c => entry(`${date(c.fecha)} · ${value(({sin_novedades:'Sin novedades',con_novedades:'Con novedades'})[c.estado] || c.estado)} · ${value(c.conductor || c.visitante)}`,[...(c.turno ? [`Turno: ${c.turno} | Combustible: ${value(c.combustible)}`] : []),`KM: ${value(c.km)}  |  Observaciones: ${value(c.observaciones)}`, ...Object.entries(c.respuestas || {}).map(([key,answer]) => `${key}: ${value(answer)}`)]))
 
     section('Matafuegos asignados')
     empty(extinguishers,'Sin matafuegos asociados directamente al vehículo.')

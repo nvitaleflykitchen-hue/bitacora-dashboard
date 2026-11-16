@@ -1,0 +1,19 @@
+.airport-checklist{max-width:960px;margin:0 auto;padding:20px;color:var(--text);height:100%;overflow:auto;background:var(--bg,var(--surface))}
+.airport-checklist header{display:flex;justify-content:space-between;gap:16px;align-items:start;margin-bottom:20px}
+.airport-checklist h1{font-size:1.5rem}.airport-checklist h2{font-size:1.1rem;margin:16px 0 10px}.airport-checklist p{margin:8px 0;line-height:1.5}
+.airport-eyebrow{font-size:.75rem;color:var(--text-dim);letter-spacing:.08em}
+.airport-checklist label{display:block;margin:12px 0;font-size:.9rem}
+.airport-checklist input,.airport-checklist select,.airport-checklist textarea{display:block;width:100%;min-height:44px;padding:10px;margin-top:6px;color:var(--text);background:var(--surface);border:1px solid var(--border,#777);border-radius:6px;box-sizing:border-box}
+.airport-checklist textarea{min-height:90px}.airport-checklist fieldset{border:0;padding:0;min-width:0}
+.airport-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 16px}
+.airport-identity,.airport-saved{padding:16px;border:1px solid var(--border,#777);border-radius:8px;background:var(--surface);margin:16px 0}
+.airport-identity h2{font-size:1.8rem;margin-top:0}.airport-identity p:last-child{color:var(--text-dim);font-size:.85rem}
+.airport-item{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--border,#777);padding:12px 0}
+.airport-item [role=group]{display:flex;gap:6px;flex-shrink:0}
+.airport-answer{min-width:44px;min-height:44px;border:1px solid var(--border,#777);border-radius:6px;background:var(--surface);color:var(--text);font-weight:bold}
+.airport-answer.ok{background:#176b35;color:white}.airport-answer.nc{background:#a52b22;color:white}.airport-answer.na{background:#485768;color:white}
+.airport-checklist button{cursor:pointer}.airport-checklist button:disabled{cursor:default;opacity:.55}
+.airport-history{margin-top:28px}.airport-history details{padding:12px 0;border-top:1px solid var(--border,#777)}.airport-history summary{cursor:pointer;line-height:1.6}.airport-history ul{padding-left:20px;line-height:1.7}
+.airport-error{padding:12px;border:1px solid #e75c52;border-radius:6px}.airport-nc{color:var(--warning,#e8a444)}.airport-ok{color:var(--phosphor)}
+.airport-photos{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.airport-photos img{width:120px;height:120px;object-fit:cover;border-radius:6px}
+@media(max-width:480px){.airport-checklist{padding:14px}.airport-checklist h1{font-size:1.2rem}.airport-item strong{font-size:.85rem}.airport-fields{grid-template-columns:1fr}.airport-item{gap:8px}}

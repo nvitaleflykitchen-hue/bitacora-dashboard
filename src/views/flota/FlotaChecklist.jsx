@@ -6,6 +6,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { mensajeError } from '../../lib/errores'
 import { toast } from '../../lib/feedback'
+import AirportVehicleChecklist from '../../components/AirportVehicleChecklist'
+import { isAirportVehicle } from '../../lib/airportChecklist'
 
 const CHECKLIST_PREFIX = 'CHECKLIST_VEHICULO::'
 
@@ -98,6 +100,12 @@ function KPI({ label, value, sub, color }) {
 }
 
 export default function FlotaChecklist() {
+  const [airport,setAirport]=useState(false)
+  if(airport)return <AirportVehicleChecklist onBack={()=>setAirport(false)}/>
+  return <div style={{height:'100%',overflow:'auto'}}><div style={{padding:'16px 24px'}}><button className="btn-primary" onClick={()=>setAirport(true)}>Gran porte aeroportuario · Checklist y QR</button><a className="btn-ghost" style={{marginLeft:12}} href="/recursos/qr-gran-porte-aeropuertos.pdf" target="_blank" rel="noreferrer">Imprimir los 4 QR · A4</a></div><GeneralFlotaChecklist/></div>
+}
+
+function GeneralFlotaChecklist() {
   const { perfil, rol, allowedSedeIds, can } = useAuth()
   const canManage = can('flota', 'manage') || ['admin','editor','grupo','encargado'].includes(rol)
   const [vehiculos, setVehiculos] = useState([])
@@ -134,7 +142,7 @@ export default function FlotaChecklist() {
           .limit(250),
       ])
       if (visitasResult.error) throw visitasResult.error
-      const activos = (vehiculosData || []).filter(v => !['baja','inactivo'].includes(String(v.estado || '').toLowerCase()))
+      const activos = (vehiculosData || []).filter(v => !isAirportVehicle(v.id) && !['baja','inactivo'].includes(String(v.estado || '').toLowerCase()))
       const activoIds = new Set(activos.map(v => String(v.id)))
       setVehiculos(activos)
       setVisitas((visitasResult.data || []).map(parseChecklist).filter(Boolean).filter(v => activoIds.has(String(v.activo_id))))
@@ -222,7 +230,7 @@ export default function FlotaChecklist() {
         })
       }
 
-      toast.success(requiereTicket && form.crearTicket ? 'Checklist guardado y ticket creado.' : 'Checklist guardado.')
+      toast.ok(requiereTicket && form.crearTicket ? 'Checklist guardado y ticket creado.' : 'Checklist guardado.')
       setForm({
         activo_id:'',
         conductor: perfil?.nombre || '',

@@ -1,6 +1,8 @@
 import { supabase, db } from './supabase'
 import { getVehiculoDocumentacionTemplate } from './documentacion'
 import { vehicleIdentity, lastReading, fleetWarnings, ticketDate } from './flotaModel'
+import { isAirportVehicle } from './airportChecklist'
+import { loadAirportHistory } from './airportChecklistApi'
 
 const CHECKLIST_PREFIX = 'CHECKLIST_VEHICULO::'
 
@@ -70,6 +72,8 @@ export async function loadVehicleReport(vehicles) {
     readAll(supabase.from('mnt_visitas').select('*').eq('activo_tipo','VEHICULO').in('activo_id',ids).order('fecha',{ascending:false}).order('id')),
     readAll(supabase.from('mnt_matafuegos').select('*').in('activo_id',ids).order('id')),
   ])
+  const airportChecks=(await Promise.all(ids.filter(isAirportVehicle).map(loadAirportHistory))).flat()
+  visits.push(...airportChecks.map(c=>({activo_id:c.activo_id,fecha:c.creado_at,visitante:c.responsable,observacion:CHECKLIST_PREFIX+JSON.stringify({...c,conductor:c.responsable,estado:c.resultado,observaciones:c.observaciones})})))
   const planIds = plans.map(p => p.id)
   const reportIds = [...new Set(news.map(n => n.registro_id).filter(Boolean))]
   const reports = reportIds.length ? await readAll(db().from('registros').select('id,fecha_reporte,reportante,email_reportante,sede_id,sede_nombre,turno').in('id',reportIds).order('id')) : []
