@@ -11,6 +11,7 @@ import AdjuntosPanel from '../../components/AdjuntosPanel'
 import { descripcionPostulacion, generateFichaAltaPdf, generateFichaEntrevistaPdf } from '../../lib/reclutamientoPdf'
 import { confirmar, toast } from '../../lib/feedback'
 import { mensajeError } from '../../lib/errores'
+import { downloadRequerimientoPersonalPdf } from '../../lib/requerimientoPersonalPdf'
 
 const SOLICITUD_ESTADOS = [
   ['borrador', 'Borrador'],
@@ -60,6 +61,7 @@ const EMPTY_SOLICITUD = {
   sede_id: '',
   horario: '',
   fecha_apertura: new Date().toISOString().split('T')[0],
+  fecha_necesidad: '',
   urgencia: 'Media',
   periodo_necesidad: 'Permanente',
   motivo: '',
@@ -145,6 +147,7 @@ function cleanSolicitudPayload(form, userId) {
     sede_id: Number(form.sede_id),
     horario: form.horario || null,
     fecha_apertura: form.fecha_apertura || null,
+    fecha_necesidad: form.fecha_necesidad || null,
     urgencia: form.urgencia || 'Media',
     periodo_necesidad: form.periodo_necesidad || null,
     motivo: form.motivo || null,
@@ -308,6 +311,11 @@ function ModalShell({ title, subtitle, children, onClose }) {
   )
 }
 
+function printRequerimiento(solicitud) {
+  try { downloadRequerimientoPersonalPdf(solicitud) }
+  catch (error) { toast.error(mensajeError(error)) }
+}
+
 function buildWhatsappText(solicitud, sedes) {
   const sede = sedes.find(s => String(s.id) === String(solicitud.sede_id))
   const bullets = raw => {
@@ -316,7 +324,8 @@ function buildWhatsappText(solicitud, sedes) {
   }
   const urgency = solicitud.urgencia === 'Alta' ? 'URGENTE' : (solicitud.urgencia || '[Completar]')
   const cantidad = Number(solicitud.cantidad || 0) === 1 ? '1 persona' : `${solicitud.cantidad || '[Completar]'} personas`
-  return `SOLICITUD DE PERSONAL
+  return `REQUERIMIENTO DE PERSONAL
+${solicitud.codigo_requerimiento || 'Código automático al guardar'}
 
 📌 Puesto:
 ${solicitud.puesto || '[Completar]'}
@@ -376,7 +385,7 @@ function SolicitudModal({ initial, sedes, onClose, onSaved }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const save = async (nextState) => {
+  const save = async (nextState, print = false) => {
     if (!form.puesto.trim() || !form.sede_id) {
       toast.warn('Completá puesto y sede antes de guardar.')
       return
@@ -392,11 +401,12 @@ function SolicitudModal({ initial, sedes, onClose, onSaved }) {
       toast.error('Error guardando solicitud: ' + mensajeError(error))
       return
     }
+    if (print) printRequerimiento({ ...data, sede_nombre: sedes.find(s => String(s.id) === String(data.sede_id))?.nombre })
     onSaved(data)
   }
 
   return (
-    <ModalShell title="Solicitud de personal" subtitle="Guarda la búsqueda y genera el texto para WhatsApp" onClose={onClose}>
+    <ModalShell title="Requerimiento de personal" subtitle={initial?.codigo_requerimiento || 'Código único automático al guardar'} onClose={onClose}>
       <div className="grid grid-cols-2 gap-5 p-5">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -409,6 +419,7 @@ function SolicitudModal({ initial, sedes, onClose, onSaved }) {
             </Field>
             <Field label="Horario"><input className="input-dark w-full" value={form.horario || ''} onChange={e=>set('horario', e.target.value)} placeholder="Ej: 06:00 a 14:00" /></Field>
             <Field label="Fecha apertura"><input type="date" className="input-dark w-full" value={form.fecha_apertura || ''} onChange={e=>set('fecha_apertura', e.target.value)} /></Field>
+            <Field label="Fecha requerida"><input type="date" className="input-dark w-full" value={form.fecha_necesidad || ''} onChange={e=>set('fecha_necesidad', e.target.value)} /></Field>
             <Field label="Urgencia">
               <select className="input-dark w-full" value={form.urgencia || 'Media'} onChange={e=>set('urgencia', e.target.value)}>
                 <option>Alta</option><option>Media</option><option>Baja</option>
@@ -457,6 +468,7 @@ function SolicitudModal({ initial, sedes, onClose, onSaved }) {
           <div className="flex justify-end gap-2 mt-3">
             <button onClick={onClose} className="btn-ghost">Cancelar</button>
             <button onClick={() => save()} disabled={saving} className="btn-ghost flex items-center gap-1.5"><Save size={12}/> Guardar</button>
+            <button onClick={() => save(undefined, true)} disabled={saving} className="btn-ghost flex items-center gap-1.5"><Download size={12}/> Guardar y PDF</button>
             <button onClick={() => save('enviada_whatsapp')} disabled={saving} className="btn-primary flex items-center gap-1.5"><Send size={12}/> Guardar como enviada</button>
           </div>
         </div>
@@ -663,6 +675,7 @@ export default function ReclutamientoBoard({
   const [candidateActionId, setCandidateActionId] = useState(null)
   const [showFinalizados, setShowFinalizados] = useState(false)
   const [showHistorialSolicitudes, setShowHistorialSolicitudes] = useState(false)
+  const [requestSearch, setRequestSearch] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -736,7 +749,7 @@ export default function ReclutamientoBoard({
     const solicitudesText = [...solicitudIds]
       .map(id => {
         const solicitud = solicitudesById.get(id)
-        return `${solicitud?.puesto || ''} ${solicitud?.sede_nombre || ''}`
+        return `${solicitud?.codigo_requerimiento || ''} ${solicitud?.puesto || ''} ${solicitud?.sede_nombre || ''}`
       })
       .join(' ')
     const target = `${c.nombre_apellido || ''} ${c.dni || ''} ${c.cuil || ''} ${solicitudesText}`
@@ -971,7 +984,7 @@ export default function ReclutamientoBoard({
               <Briefcase size={16}/> Selección de personal
             </h2>
             <p className="font-metric" style={{ fontSize:'0.62rem', color:'var(--text-dim)' }}>
-              Solicitud → WhatsApp → CVs → entrevista → evaluación → preocupacional → ingreso
+              Requerimiento → WhatsApp → CVs → entrevista → evaluación → preocupacional → ingreso
             </p>
           </div>
         </div>
@@ -984,14 +997,14 @@ export default function ReclutamientoBoard({
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color:'var(--text-dim)' }} />
             <input className="input-dark w-full pl-7" placeholder="Buscar candidato..." value={search} onChange={e=>setSearch(e.target.value)} style={{ fontSize:'0.75rem', height:30 }} />
           </div>
-          {canManage && <button onClick={() => setActiveSolicitud({})} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}><ClipboardCheck size={12}/> Nueva solicitud</button>}
+          {canManage && <button onClick={() => setActiveSolicitud({})} className="btn-ghost flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}><ClipboardCheck size={12}/> Nuevo requerimiento</button>}
           {canManage && <button onClick={() => setActiveCandidato({})} className="btn-primary flex items-center gap-1.5" style={{ fontSize:'0.72rem' }}><Plus size={12}/> Nuevo candidato</button>}
         </div>
       </div>
 
       <div className="grid grid-cols-4 gap-0 glass" style={{ border:'1px solid rgba(57,255,20,0.08)' }}>
         {[
-          ['Solicitudes abiertas', solicitudesAbiertas.length],
+          ['Requerimientos abiertos', solicitudesAbiertas.length],
           ['CVs en proceso', candidatos.filter(c => !['incorporado','no_apto','archivado'].includes(c.estado)).length],
           ['Entrevistas', candidatos.filter(c => c.estado === 'entrevista').length],
           ['Listos ingreso', candidatos.filter(c => c.estado === 'apto_ingreso').length],
@@ -1005,12 +1018,15 @@ export default function ReclutamientoBoard({
 
       <div className="glass p-3">
         <div className="flex items-center justify-between mb-2">
-          <p className="font-metric" style={{ fontSize:'0.68rem', color:'var(--phosphor)', letterSpacing:'0.08em' }}>SOLICITUDES ACTIVAS</p>
+          <p className="font-metric" style={{ fontSize:'0.68rem', color:'var(--phosphor)', letterSpacing:'0.08em' }}>REQUERIMIENTOS DE PERSONAL</p>
+          <input className="input-dark" aria-label="Buscar requerimiento" placeholder="Código, puesto o sede..." value={requestSearch} onChange={e=>{setRequestSearch(e.target.value);if(e.target.value)setShowHistorialSolicitudes(true)}} />
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1">
-          {solicitudesAbiertas.map(s => (
+          {solicitudesAbiertas.filter(s=>normalizeString(`${s.codigo_requerimiento} ${s.puesto} ${s.sede_nombre}`).includes(normalizeString(requestSearch.trim()))).map(s => (
             <div key={s.id} className="glass p-3 text-left flex-shrink-0" style={{ width:285, border:'1px solid rgba(255,255,255,0.08)' }}>
+              <p className="font-metric" style={{color:'var(--phosphor)',fontSize:'.72rem'}}>{s.codigo_requerimiento || 'Código pendiente'}</p>
               <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'0.86rem' }}>{s.puesto}</p>
+              <button className="btn-ghost" onClick={()=>printRequerimiento(s)} aria-label={`PDF ${s.codigo_requerimiento || s.puesto}`}><Download size={12}/> PDF A4</button>
               <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', marginTop:2 }}>{s.sede_nombre || 'Sin sede'} · {solicitudEstadoOperativo(s.estado)}</p>
               <p style={{ color:'var(--text-dim)', fontSize:'0.66rem', marginTop:6 }}><CalendarDays size={11} style={{ display:'inline', marginRight:4 }} /> {formatDate(s.fecha_apertura)} · {s.urgencia}</p>
               <div className="flex gap-2 mt-3">
@@ -1036,9 +1052,11 @@ export default function ReclutamientoBoard({
         </div>
         {showHistorialSolicitudes && (
           <div className="flex gap-3 overflow-x-auto pb-1 mt-3">
-            {solicitudesCerradas.map(s => (
+            {solicitudesCerradas.filter(s=>normalizeString(`${s.codigo_requerimiento} ${s.puesto} ${s.sede_nombre}`).includes(normalizeString(requestSearch.trim()))).map(s => (
               <div key={s.id} className="glass p-3 text-left flex-shrink-0" style={{ width:285, border:'1px solid rgba(255,255,255,0.08)', opacity: 0.75 }}>
+                <p className="font-metric" style={{color:'var(--phosphor)',fontSize:'.72rem'}}>{s.codigo_requerimiento || 'Código pendiente'}</p>
                 <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'0.86rem' }}>{s.puesto}</p>
+                <button className="btn-ghost" onClick={()=>printRequerimiento(s)} aria-label={`PDF ${s.codigo_requerimiento || s.puesto}`}><Download size={12}/> PDF A4</button>
                 <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', marginTop:2 }}>{s.sede_nombre || 'Sin sede'} · {solicitudEstadoOperativo(s.estado)}</p>
                 <p style={{ color:'var(--text-dim)', fontSize:'0.66rem', marginTop:6 }}><CalendarDays size={11} style={{ display:'inline', marginRight:4 }} /> {formatDate(s.fecha_apertura)}</p>
                 <div className="flex gap-2 mt-3">
