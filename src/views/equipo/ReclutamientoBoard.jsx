@@ -1,3 +1,4 @@
+import SolicitudesActivas from './SolicitudesActivas'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle, Briefcase, CalendarDays, ClipboardCheck, Download,
@@ -236,7 +237,7 @@ function estadoLabel(list, value) {
 
 function solicitudEstadoOperativo(estado) {
   const label = estadoLabel(SOLICITUD_ESTADOS, estado)
-  return SOLICITUD_ESTADOS_POST_ENVIO.has(estado)
+  return estado !== 'enviada_whatsapp' && SOLICITUD_ESTADOS_POST_ENVIO.has(estado)
     ? `Enviada a WhatsApp · ${label}`
     : label
 }
@@ -657,6 +658,7 @@ export default function ReclutamientoBoard({
   const [loading, setLoading] = useState(true)
   const [schemaError, setSchemaError] = useState(null)
   const [search, setSearch] = useState('')
+  const [selectedSolicitudId, setSelectedSolicitudId] = useState(null)
   const [activeSolicitud, setActiveSolicitud] = useState(null)
   const [activeCandidato, setActiveCandidato] = useState(null)
   const [activeEntrevista, setActiveEntrevista] = useState(null)
@@ -729,6 +731,7 @@ export default function ReclutamientoBoard({
   const entrevistasByCandidato = useMemo(() => new Map(entrevistas.map(e => [e.candidato_id, e])), [entrevistas])
   const normalizeString = str => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : ""
   const filtered = candidatos.filter(c => {
+    if (selectedSolicitudId && c.solicitud_id !== selectedSolicitudId && !linksByCandidate.get(c.id)?.has(selectedSolicitudId)) return false
     const q = normalizeString(search.trim())
     if (!q) return true
     const solicitudIds = new Set(linksByCandidate.get(c.id) || [])
@@ -1003,29 +1006,10 @@ export default function ReclutamientoBoard({
         ))}
       </div>
 
-      <div className="glass p-3">
-        <div className="flex items-center justify-between mb-2">
-          <p className="font-metric" style={{ fontSize:'0.68rem', color:'var(--phosphor)', letterSpacing:'0.08em' }}>SOLICITUDES ACTIVAS</p>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {solicitudesAbiertas.map(s => (
-            <div key={s.id} className="glass p-3 text-left flex-shrink-0" style={{ width:285, border:'1px solid rgba(255,255,255,0.08)' }}>
-              <p className="font-title font-bold" style={{ color:'var(--text)', fontSize:'0.86rem' }}>{s.puesto}</p>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.7rem', marginTop:2 }}>{s.sede_nombre || 'Sin sede'} · {solicitudEstadoOperativo(s.estado)}</p>
-              <p style={{ color:'var(--text-dim)', fontSize:'0.66rem', marginTop:6 }}><CalendarDays size={11} style={{ display:'inline', marginRight:4 }} /> {formatDate(s.fecha_apertura)} · {s.urgencia}</p>
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => setActiveCandidato({ solicitud_id: s.id, estado: 'cv_recibido' })} className="btn-primary flex-1" style={{ fontSize:'0.66rem', padding:'0.35rem 0.5rem' }}>
-                  + Candidato / CV
-                </button>
-                <button onClick={() => setActiveSolicitud(s)} className="btn-ghost" style={{ fontSize:'0.66rem', padding:'0.35rem 0.5rem' }}>
-                  Editar
-                </button>
-              </div>
-            </div>
-          ))}
-          {solicitudesAbiertas.length === 0 && <p style={{ color:'var(--text-dim)', fontSize:'0.75rem' }}>No hay solicitudes abiertas.</p>}
-        </div>
-      </div>
+      <SolicitudesActivas solicitudes={solicitudesAbiertas} candidatos={candidatos} linksByCandidate={linksByCandidate}
+        canManage={canManage} loading={loading} selectedId={selectedSolicitudId} onEdit={setActiveSolicitud}
+        onAdd={s => setActiveCandidato({ solicitud_id: s.id, estado: 'cv_recibido' })}
+        onFollow={id => { setSelectedSolicitudId(id); setSearch(''); document.getElementById('seguimiento-candidatos')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} />
 
       <div className="glass p-3">
         <div className="flex items-center justify-between mb-2">
@@ -1053,6 +1037,11 @@ export default function ReclutamientoBoard({
         )}
       </div>
 
+      <div id="seguimiento-candidatos" className="space-y-2">
+      {selectedSolicitudId && <div className="flex flex-wrap items-center gap-3 text-sm" role="status">
+        <span>Seguimiento: {solicitudesById.get(selectedSolicitudId)?.puesto} · {solicitudesById.get(selectedSolicitudId)?.sede_nombre}</span>
+        <button className="btn-ghost" onClick={() => setSelectedSolicitudId(null)}>Ver todas las búsquedas</button>
+      </div>}
       <div className="flex gap-4 overflow-x-auto pb-4">
         {(() => {
           const isSearching = search.trim().length > 0
@@ -1204,6 +1193,7 @@ export default function ReclutamientoBoard({
             )
           })
         })()}
+      </div>
       </div>
     </div>
   )
