@@ -693,3 +693,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Severidad:** media, demora de navegación y ráfaga de solicitudes de fotos.
 - **Verificación:** el módulo importaba paneles secundarios de forma inmediata y cada avatar solicitaba URLs firmadas aun fuera de pantalla; la lista esperaba también todo el historial de evaluaciones.
 - **Corrección:** paneles diferidos con indicador local, consulta de evaluaciones al abrir Análisis y fotos al aproximarse al área visible. El componente de avatar compartido también optimiza la lista móvil. Los datos y permisos permanecen sin cambios.
+
+### QR aeroportuario interceptado por ficha pública — corregido 2026-11-16
+
+- **Severidad:** media. El QR externo mostraba la ficha pública antes de alcanzar el checklist autenticado. El escáner interno enviaba activos a Mantenimiento y rechazaba operarios.
+- **Verificación:** recorrido de App desde la URL real `?scan=activo&id=...`; seis pruebas de integración cubren las cuatro unidades, login/cambio obligatorio de clave y conservación de la ficha pública de otros activos.
+- **Corrección:** las cuatro unidades ingresan por AuthProvider y su checklist; el escáner interno usa esa misma URL antes de aplicar el permiso de activos generales. Se conservan los QR impresos y la validación de sede de las RPC.
+- **Recomendación:** probar siempre la ruta desde App, no solamente el componente de formulario.

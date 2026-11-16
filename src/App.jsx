@@ -385,7 +385,7 @@ export default function App() {
     </Suspense>
   )
   if(eppEntregaToken)return <><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/><OfflineStatus/></>
-  if (publicAssetId) return (
+  if (publicAssetId && !isAirportVehicle(publicAssetId)) return (
     <Suspense fallback={<LoadingScreen />}>
       <PublicAssetQrView assetId={publicAssetId} />
       <OfflineStatus />
