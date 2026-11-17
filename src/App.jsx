@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
-import { isAirportVehicle } from './lib/airportChecklist'
+import { isFleetChecklistVehicle } from './lib/fleetQr'
 import { AuthProvider, useAuth } from './lib/auth'
 import FeedbackHost from './components/FeedbackHost'
 import LoginPage from './components/LoginPage'
@@ -247,7 +247,7 @@ function AppInner() {
   if (perfil?.must_change_password) return <CambiarContrasena />
   if (rol === 'seguridad') return <Suspense fallback={<LoadingScreen />}><SeguridadPorteria /></Suspense>
   if (purchaseTrackingToken) return <Suspense fallback={<LoadingScreen/>}><PurchaseTrackingView token={purchaseTrackingToken}/></Suspense>
-  if (activeView === 'qrActivo' && (isMobile || isAirportVehicle(qrActivoId))) {
+  if (activeView === 'qrActivo' && (isMobile || isFleetChecklistVehicle(qrActivoId))) {
     return <Suspense fallback={<LoadingScreen />}><QRActivoView activoId={qrActivoId} scanEventId={qrScanEventId} onNavigate={setActiveView} /></Suspense>
   }
   // Escape a escritorio: admin/editor pueden forzar la versión completa desde
@@ -385,7 +385,7 @@ export default function App() {
     </Suspense>
   )
   if(eppEntregaToken)return <><Suspense fallback={<LoadingScreen/>}><EppEntregaConfirmacion token={eppEntregaToken}/></Suspense><FeedbackHost/><OfflineStatus/></>
-  if (publicAssetId && !isAirportVehicle(publicAssetId)) return (
+  if (publicAssetId && !isFleetChecklistVehicle(publicAssetId)) return (
     <Suspense fallback={<LoadingScreen />}>
       <PublicAssetQrView assetId={publicAssetId} />
       <OfflineStatus />

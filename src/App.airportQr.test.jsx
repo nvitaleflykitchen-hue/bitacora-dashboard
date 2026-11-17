@@ -3,6 +3,7 @@ import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import App from './App'
 import { AIRPORT_VEHICLES } from './lib/airportChecklist'
+import generalVehicles from './data/vehicleQrCatalog.json'
 
 const state = vi.hoisted(() => ({ auth: {} }))
 vi.mock('./lib/auth', () => ({ AuthProvider: ({ children }) => children, useAuth: () => state.auth }))
@@ -13,6 +14,7 @@ vi.mock('./components/OfflineStatus', () => ({ default: () => null }))
 vi.mock('./components/LoginPage', () => ({ default: () => <h1>Iniciar sesión</h1> }))
 vi.mock('./components/CambiarContrasena', () => ({ default: () => <h1>Cambiar contraseña</h1> }))
 vi.mock('./components/AirportVehicleChecklist', () => ({ default: ({ activoId }) => <h1>Checklist {activoId}</h1> }))
+vi.mock('./views/flota/FlotaChecklist', () => ({ GeneralFlotaChecklist: ({ activoId }) => <h1>Checklist general {activoId}</h1> }))
 vi.mock('./views/mantenimiento/PublicAssetQrView', () => ({ default: () => <h1>Ficha pública</h1> }))
 
 beforeEach(() => {
@@ -26,6 +28,24 @@ it.each(AIRPORT_VEHICLES)('el QR externo de $plate abre el checklist, no la fich
   render(<App />)
   expect(await screen.findByRole('heading', { name: `Checklist ${id}` })).toBeInTheDocument()
   expect(screen.queryByText('Ficha pública')).not.toBeInTheDocument()
+})
+
+it.each(generalVehicles)('QR de $nombre abre el control general preseleccionado', async ({ id }) => {
+  window.history.replaceState({}, '', `/?scan=activo&id=${id}`)
+  render(<App />)
+  expect(await screen.findByRole('heading', { name: `Checklist general ${id}` })).toBeInTheDocument()
+  expect(screen.queryByText('Ficha pública')).not.toBeInTheDocument()
+})
+
+it('el QR general exige login y conserva el vehículo al ingresar', async () => {
+  const id=generalVehicles[0].id
+  window.history.replaceState({}, '', `/?scan=activo&id=${id}`)
+  state.auth.user=null
+  const view=render(<App />)
+  expect(screen.getByText('Iniciar sesión')).toBeInTheDocument()
+  state.auth.user={id:'operario'}
+  view.rerender(<App />)
+  expect(await screen.findByRole('heading', {name:`Checklist general ${id}`})).toBeInTheDocument()
 })
 
 it('conserva el destino después de iniciar sesión y cambiar la clave obligatoria', async () => {

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import AirportVehicleChecklist from '../../components/AirportVehicleChecklist'
 import { isAirportVehicle } from '../../lib/airportChecklist'
+import { isGeneralFleetVehicle } from '../../lib/fleetQr'
+import { GeneralFlotaChecklist } from '../flota/FlotaChecklist'
 import { getActivoById, getTickets, createTicket, getSedes, TICKET_TIPOS_VALIDOS } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import AdjuntosPanel from '../../components/AdjuntosPanel'
@@ -27,6 +29,7 @@ function fmtHora(iso) {
 
 export default function QRActivoView(props) {
   if (isAirportVehicle(props.activoId)) return <AirportVehicleChecklist activoId={props.activoId} onBack={()=>props.onNavigate('inicio')}/>
+  if (isGeneralFleetVehicle(props.activoId)) return <div style={{height:'100dvh',overflowY:'auto'}}><GeneralFlotaChecklist activoId={props.activoId} onBack={()=>window.location.assign(window.location.origin)}/></div>
   return <GeneralQRActivoView {...props}/>
 }
 
