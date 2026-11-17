@@ -25,3 +25,10 @@ it('el operario registra el control sin recibir gestión de tickets',async()=>{
  mock.rol='operario';render(<GeneralFlotaChecklist/>);await select();fill();fireEvent.click(within(screen.getByRole('group',{name:'Verificación de frenos'})).getByRole('button',{name:'No conforme'}));fireEvent.change(screen.getByLabelText('Observaciones'),{target:{value:'Ruido al frenar'}});expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}));await waitFor(()=>expect(mock.insert).toHaveBeenCalled());expect(mock.ticket).not.toHaveBeenCalled()
 })
 it('rechaza kilómetros negativos y no aplica fuera de rampa',()=>{const form={respuestas:Object.fromEntries(GENERAL_VEHICLE_ITEMS.map(i=>[i.id,'ok'])),km:-1};expect(generalChecklistError(form)).toMatch(/kilometraje/);form.km='';form.respuestas.frenos='na';expect(generalChecklistError(form)).toMatch(/10 controles/)})
+
+it('el QR fija el vehículo y lo conserva después del guardado',async()=>{
+ render(<GeneralFlotaChecklist activoId="ordinary"/>);await screen.findByRole('option',{name:/Camioneta/});expect(screen.getByLabelText('Vehículo')).toHaveValue('ordinary');expect(screen.getByLabelText('Vehículo')).toBeDisabled();fill();fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}));await waitFor(()=>expect(mock.insert).toHaveBeenCalledTimes(1));expect(screen.getByLabelText('Vehículo')).toHaveValue('ordinary')
+})
+it('no permite registrar un QR de una unidad que no devolvió la consulta autorizada',async()=>{
+ render(<GeneralFlotaChecklist activoId="fuera-de-sede"/>);await screen.findByRole('alert');expect(screen.getByRole('button',{name:'Guardar checklist'})).toBeDisabled();expect(mock.insert).not.toHaveBeenCalled()
+})

@@ -20,7 +20,7 @@ import { parseInternalQrValue } from '../lib/assetQrScan'
 import { escanearSeguimientoCompra, parsePurchaseTrackingValue } from '../lib/comprasWorkflow'
 import { toast } from '../lib/feedback'
 import { newScanEventId } from '../lib/assetScans'
-import { isAirportVehicle, airportVehicleUrl } from '../lib/airportChecklist'
+import { isFleetChecklistVehicle, fleetVehicleUrl } from '../lib/fleetQr'
 import InternalCredentialView from '../components/InternalCredentialView'
 
 const MobileReporte = lazy(() => import('./MobileReporte'))
@@ -85,8 +85,8 @@ export default function MobileApp() {
   const openScannedQr = async target => {
     setScannerOpen(false)
     if (target.type === 'asset') {
-      if (isAirportVehicle(target.id)) {
-        window.location.assign(airportVehicleUrl(target.id))
+      if (isFleetChecklistVehicle(target.id)) {
+        window.location.assign(fleetVehicleUrl(target.id))
         return
       }
       if (!canAccessView(rol, 'mntActivos', perfil)) return toast.warn('No tenés permiso para abrir activos internos.')

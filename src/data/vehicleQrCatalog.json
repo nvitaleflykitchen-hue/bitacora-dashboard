@@ -1,0 +1,104 @@
+[
+  {
+    "id": "5b7321a9-28aa-4c60-8424-0eb53b6ad176",
+    "nombre": "Lifan - AD 286 IH",
+    "sede_nombre": "Aeropuerto de Córdoba",
+    "codigo_interno": "AD 286 IH"
+  },
+  {
+    "id": "995e0c90-b842-4754-b996-3590aa306082",
+    "nombre": "DOBLO - AC065RF",
+    "sede_nombre": "Aeropuerto Mendoza",
+    "codigo_interno": "AC065RF"
+  },
+  {
+    "id": "b887af47-800e-4ad0-8307-a49d3815a3c7",
+    "nombre": "Kangoo - AF602RB",
+    "sede_nombre": "Aeropuerto Rosario",
+    "codigo_interno": "AF602RB"
+  },
+  {
+    "id": "f3d0d2b7-52e2-4488-a45b-f24fdbc23ab0",
+    "nombre": "Kangoo - AF558CW",
+    "sede_nombre": "Aeropuerto Salta",
+    "codigo_interno": "AF558CW"
+  },
+  {
+    "id": "49f3a932-120c-4d29-a603-db5b8206889d",
+    "nombre": "Lifan - AD 286 II",
+    "sede_nombre": "Aeropuerto Tucumán",
+    "codigo_interno": "AD 286 II"
+  },
+  {
+    "id": "a08b9a9c-ad54-4c54-bd71-d713ee2dd718",
+    "nombre": "Berlingo - AA341AD",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AA341AD"
+  },
+  {
+    "id": "f47851f9-b99e-45db-be4c-6d9b917c62a5",
+    "nombre": "Fiat Fiorino - OFV 575",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "OFV 575"
+  },
+  {
+    "id": "ad1a6ab7-f2fc-430c-a95e-a346c56dfa7c",
+    "nombre": "FOISON BOX - AD286II",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AD286II"
+  },
+  {
+    "id": "1de7e178-3dc4-412c-a8ff-f618ebef00b2",
+    "nombre": "Foton - AF 859 UZ",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AF 859 UZ"
+  },
+  {
+    "id": "f805f5a5-2dd2-4a92-b149-0695063c702f",
+    "nombre": "Kangoo - AG899UL",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AG899UL"
+  },
+  {
+    "id": "fafbc993-6348-4073-9bba-6afca82360b4",
+    "nombre": "Kangoo - AG908WU",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AG908WU"
+  },
+  {
+    "id": "6d86c92e-3ff6-4356-901b-bf9a4fc60b51",
+    "nombre": "Kangoo - AG908XL",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AG908XL"
+  },
+  {
+    "id": "0058456a-df8a-4f4d-b8f8-1de76e9d8379",
+    "nombre": "Kangoo - AH062MX",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AH062MX"
+  },
+  {
+    "id": "8ef8c82f-34f4-4c95-a8b4-1d88b3e9c26c",
+    "nombre": "Kangoo - AH533ZD",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AH533ZD"
+  },
+  {
+    "id": "c8a9ca1e-0489-470e-b0f7-87a9d1084479",
+    "nombre": "Mercedes Accelo - AG886ZX",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AG886ZX"
+  },
+  {
+    "id": "0bf02274-8c8f-43b0-8e62-08f54e225b1e",
+    "nombre": "PEUGEOT EXPERT - AH172MS",
+    "sede_nombre": "Planta de Producción Córdoba",
+    "codigo_interno": "AH172MS"
+  },
+  {
+    "id": "936bda43-fc03-41f6-acbb-f1b5985406a9",
+    "nombre": "LIFAN - FOISON BOX",
+    "sede_nombre": "Universidad Santa Fe",
+    "codigo_interno": "FK-VH-000001"
+  }
+]

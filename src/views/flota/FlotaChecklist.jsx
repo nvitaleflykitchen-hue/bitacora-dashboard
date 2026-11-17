@@ -86,7 +86,7 @@ export default function FlotaChecklist() {
   return <div style={{height:'100%',overflow:'auto'}}><div style={{padding:'16px 24px'}}><button className="btn-primary" onClick={()=>setAirport(true)}>Gran porte aeroportuario · Checklist y QR</button><a className="btn-ghost" style={{marginLeft:12}} href="/recursos/qr-gran-porte-aeropuertos.pdf" target="_blank" rel="noreferrer">Imprimir los 4 QR · A4</a></div><GeneralFlotaChecklist/></div>
 }
 
-export function GeneralFlotaChecklist({ onBack } = {}) {
+export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
   const { perfil, rol, allowedSedeIds, can } = useAuth()
   const canCreateTicket = can('flota', 'manage') || ['admin','editor','grupo','encargado'].includes(rol)
   const canManage = canCreateTicket || ['operario','sede'].includes(rol)
@@ -96,7 +96,7 @@ export function GeneralFlotaChecklist({ onBack } = {}) {
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
   const [form, setForm] = useState({
-    activo_id:'',
+    activo_id:activoId || '',
     conductor: perfil?.nombre || '',
     km:'',
     observaciones:'',
@@ -116,7 +116,7 @@ export function GeneralFlotaChecklist({ onBack } = {}) {
       }
       if (allowedSedeIds?.length) filtros.sedeIds = allowedSedeIds
       const vehiculosData = await getActivos(filtros)
-      const activos = (vehiculosData || []).filter(v => !isAirportVehicle(v.id) && !['baja','inactivo'].includes(String(v.estado || '').toLowerCase()))
+      const activos = (vehiculosData || []).filter(v => (!activoId || v.id === activoId) && !isAirportVehicle(v.id) && !['baja','inactivo'].includes(String(v.estado || '').toLowerCase()))
       const activoIds = new Set(activos.map(v => String(v.id)))
       setVehiculos(activos)
       if (!activos.length) { setVisitas([]); return }
@@ -136,7 +136,7 @@ export function GeneralFlotaChecklist({ onBack } = {}) {
     }
   }
 
-  useEffect(() => { load() }, [allowedSedeIds])
+  useEffect(() => { load() }, [allowedSedeIds, activoId])
 
   const selected = vehiculos.find(v => String(v.id) === String(form.activo_id)) || null
   const estado = overallStatus(form.respuestas)
@@ -225,7 +225,7 @@ export function GeneralFlotaChecklist({ onBack } = {}) {
       toast.ok(requiereTicket && form.crearTicket && !ticketError ? 'Checklist guardado y ticket creado.' : 'Checklist guardado.')
       if (ticketError) toast.warn('El checklist quedó guardado, pero no se pudo crear el ticket: ' + mensajeError(ticketError))
       setForm({
-        activo_id:'',
+        activo_id:activoId || '',
         conductor: perfil?.nombre || '',
         km:'',
         observaciones:'',
@@ -249,6 +249,8 @@ export function GeneralFlotaChecklist({ onBack } = {}) {
       <PageHeader title="Checklist vehicular" subtitle="Control diario · Vehículos de flota general">
         <button onClick={load} disabled={loading} className="btn btn-secondary"><RefreshCw size={14}/> Actualizar</button>
       </PageHeader>
+      {!activoId && <p style={{marginBottom:16}}><a className="btn-ghost" href="/recursos/qr-flota-general.pdf" target="_blank" rel="noreferrer">Imprimir QR del resto de la flota · 17 etiquetas A4</a></p>}
+      {activoId && !loading && !selected && <p role="alert">Este vehículo no está disponible para tu cuenta o está dado de baja. Consultá con el responsable de tu sede.</p>}
 
       <div style={{ display:'flex', gap:'0.65rem', flexWrap:'wrap', marginBottom:'1rem' }}>
         <KPI label="Vehículos activos" value={vehiculos.length} color="var(--phosphor)" />
@@ -273,7 +275,7 @@ export function GeneralFlotaChecklist({ onBack } = {}) {
           <div className="general-checklist-fields">
             <div>
               <label style={LBL}>Vehículo *</label>
-              <select aria-label="Vehículo" style={INPUT} value={form.activo_id} onChange={e => setForm(f => ({ ...f, activo_id:e.target.value, respuestas:buildEmptyItems(), observaciones:'', km:'' }))} disabled={!canManage}>
+              <select aria-label="Vehículo" style={INPUT} value={form.activo_id} onChange={e => setForm(f => ({ ...f, activo_id:e.target.value, respuestas:buildEmptyItems(), observaciones:'', km:'' }))} disabled={!canManage || !!activoId}>
                 <option value="">— Seleccionar vehículo —</option>
                 {vehiculos.map(v => <option key={v.id} value={v.id}>{v.nombre}{vehicleIdentity(v).dominio ? ` · ${vehicleIdentity(v).dominio}` : ''}{v.sede_nombre || v.sede ? ` · ${v.sede_nombre || v.sede}` : ''}</option>)}
               </select>
