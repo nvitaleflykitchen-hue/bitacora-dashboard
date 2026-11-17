@@ -208,6 +208,7 @@ const VIEW_ROLES = {
   mntVehiculos: new Set(['admin','editor','consultor','grupo','encargado','mnt_editor']),
   flotaGestion: new Set(['admin','editor','consultor','grupo','encargado']),
   qrActivo: ALL_OPERATIONAL_ROLES,
+  seguridad: new Set(['admin']),
   usuarios: new Set(['admin']),
   auditoria: new Set(['admin']),
   accesosApp: new Set(['admin']),

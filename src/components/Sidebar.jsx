@@ -188,6 +188,7 @@ export default function Sidebar({ activeView, onNavigate, onNuevoReporte }) {
         {isAdmin && (
           <>
             <SectionLabel>ADMIN</SectionLabel>
+            <NavItem id="seguridad" label="Seguridad / Portería" icon={Shield} active={activeView==='seguridad'} onClick={nav} />
             <NavItem id="usuarios"  label="Usuarios"     icon={Users}  active={activeView==='usuarios'}  onClick={nav} />
             <NavItem id="auditoria" label="Trazabilidad" icon={Shield} active={activeView==='auditoria'} onClick={nav} />
             <NavItem id="accesosApp" label="Accesos" icon={Activity} active={activeView==='accesosApp'} onClick={nav} />
