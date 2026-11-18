@@ -1,3 +1,4 @@
+import { useChecklistFindings } from './ChecklistFindings'
 import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { AIRPORT_ITEMS, AIRPORT_SHIFTS, AIRPORT_FUEL, AIRPORT_VEHICLES, airportToday, validateAirportChecklist } from '../lib/airportChecklist'
@@ -29,6 +30,7 @@ export default function AirportVehicleChecklist({activoId=null,onBack}) {
   const submitLock=useRef(false)
   const requestId=useRef(crypto.randomUUID())
   const selected=vehicles.find(v=>v.id===selectedId)
+  const findings=useChecklistFindings(selected,(item,value,detail)=>setForm(f=>({...f,respuestas:{...f.respuestas,[item.id]:value==='critico'?'nc':value},observaciones:detail?[f.observaciones,`${item.label} · ${value}: ${detail.texto} (ticket ${detail.ticket_id})`].filter(Boolean).join('\n'):f.observaciones})))
   const identity=AIRPORT_VEHICLES.find(v=>v.id===selectedId)
   useEffect(()=>{
     let active=true;setLoading(true);setError('')
@@ -71,6 +73,7 @@ export default function AirportVehicleChecklist({activoId=null,onBack}) {
       {!vehicles.length&&!error&&<p>No tenés vehículos de gran porte asignados a tus sedes.</p>}
       {activoId&&!selected&&!error&&<p role="alert">El vehículo no está disponible para tu cuenta o no pertenece a tus sedes.</p>}
       {selected&&<><div className="airport-identity"><h2>{identity?.plate}</h2><p>{selected.nombre} · {selected.sede_nombre||`Sede ${selected.sede_id}`}</p><p>Estado en Flota: <strong>{String(selected.estado||'sin informar').replaceAll('_',' ')}</strong></p><p>Podés realizar el control también durante una reparación. Guardarlo no modifica el estado de mantenimiento.</p></div>
+        {findings.panel}
         {saved?<div className="airport-saved" role="status"><h2>Control guardado</h2><p>{saved.fecha} · Turno {saved.turno} · {saved.resultado==='con_novedades'?'Con novedades':'Sin novedades'}</p><p>Responsable: {saved.responsable}</p>
           {photos.length>0&&<button disabled={saving} className="btn-primary" onClick={async()=>{setSaving(true);setError('');try{await uploadPending(saved)}finally{setSaving(false)}}}>Reintentar fotos pendientes</button>}
           {!photos.length&&<button className="btn-ghost" onClick={()=>{setSaved(null);setForm(emptyForm());requestId.current=crypto.randomUUID()}}>Otro turno</button>}</div>:
@@ -79,7 +82,7 @@ export default function AirportVehicleChecklist({activoId=null,onBack}) {
           <label>Kilometraje<input type="number" min="0" max="2147483647" step="1" value={form.km} onChange={e=>set('km',e.target.value)} required/></label>
           <label>Combustible<select value={form.combustible} onChange={e=>set('combustible',e.target.value)} required><option value="">Seleccioná</option>{AIRPORT_FUEL.map(t=><option key={t}>{t}</option>)}</select></label></div>
           <p>{answered} de {AIRPORT_ITEMS.length} controles respondidos. OK: cumple · NC: no cumple · NA: no aplica.</p>
-          {[...new Set(AIRPORT_ITEMS.map(i=>i.group))].map(group=><div key={group}><h2>{group}</h2>{AIRPORT_ITEMS.filter(i=>i.group===group).map(item=><div className="airport-item" key={item.id}><strong id={`aero-${item.id}`}>{item.label}</strong><div role="group" aria-labelledby={`aero-${item.id}`}>{(item.allowNa?['ok','nc','na']:['ok','nc']).map(value=><button type="button" key={value} aria-pressed={form.respuestas[item.id]===value} className={`airport-answer ${form.respuestas[item.id]===value?value:''}`} onClick={()=>setForm(f=>({...f,respuestas:{...f.respuestas,[item.id]:value}}))}>{value.toUpperCase()}</button>)}</div></div>)}</div>)}
+          {[...new Set(AIRPORT_ITEMS.map(i=>i.group))].map(group=><div key={group}><h2>{group}</h2>{AIRPORT_ITEMS.filter(i=>i.group===group).map(item=><div className="airport-item" key={item.id}><strong id={`aero-${item.id}`}>{item.label}</strong><div role="group" aria-labelledby={`aero-${item.id}`}>{(item.allowNa?['ok','nc','critico','na']:['ok','nc','critico']).map(value=><button type="button" key={value} aria-pressed={form.respuestas[item.id]===value} className={`airport-answer ${form.respuestas[item.id]===value?value:''}`} onClick={()=>findings.choose(item,value)}>{value.toUpperCase()}</button>)}</div></div>)}</div>)}
           <label>Observaciones<textarea value={form.observaciones} maxLength={4000} onChange={e=>set('observaciones',e.target.value)} placeholder="Describí cada NC y justificá los puntos NA. Si todo está OK, podés dejarlo vacío."/></label>
           <label>Fotos opcionales (hasta 5, máximo 10 MB cada una)<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e=>{const files=[...e.target.files];if(files.length>5||files.some(f=>!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>10*1024*1024)){setError('Elegí hasta 5 fotos JPG, PNG o WebP de hasta 10 MB.');e.target.value='';setPhotos([])}else{setPhotos(files);setError('')}}}/></label>
           {duplicate&&<p role="status">Este vehículo ya tiene un control del turno {form.turno} de hoy. Consultalo en el historial.</p>}

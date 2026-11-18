@@ -1,5 +1,11 @@
 # KNOWN_ISSUES — bitacora-dashboard
 
+## Tickets de checklist: concurrencia al reutilizar (2026-11-18)
+
+- **Severidad:** media. La consulta de ticket pendiente y su creación/ampliación usan las API existentes en dos pasos. Dos operadores simultáneos pueden duplicar tickets o perder una ampliación concurrente del diagnóstico.
+- **Verificación:** inspección de `ChecklistFindings.jsx`, tests de reutilización secuencial. No se hicieron escrituras de prueba en producción.
+- **Recomendación:** migrar a una RPC transaccional con bloqueo por vehículo/punto y registro append-only de observaciones; revisar el SQL de permisos con el usuario antes de aplicarlo.
+
 ## Checklist vehicular genérico: permisos e identificación (2026-11-16)
 
 - **Severidad:** alta. Las políticas `activos_auth_*` y `visitas_activo_auth_*` permiten SELECT/INSERT/UPDATE con condición `true` para usuarios autenticados. El checklist genérico escribe visitas directamente. Desde la adaptación diaria del 16/11 el responsable se toma de la sesión y no es editable en el formulario, pero el cliente puede ser manipulado. El filtrado visual por sede no es una barrera de servidor.
