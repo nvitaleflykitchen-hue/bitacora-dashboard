@@ -2,6 +2,7 @@ import { loadVehicleReport } from '../lib/flotaReportData'
 import { downloadVehicleReportPdf } from '../lib/flotaReportPdf'
 import { vehicleIdentity, fleetToday, fleetDate } from '../lib/flotaModel'
 import FlotaHistorial from '../components/FlotaHistorial'
+import VehicleQrButton from '../components/VehicleQrButton'
 import React, { lazy, Suspense, useState, useEffect } from 'react'
 import { getActivos, getPoes } from '../lib/queries'
 import { ACTIVO_ESTADO_COLOR, DOC_ESTADO_COLOR } from '../lib/estados'
@@ -71,6 +72,7 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
           <ChevronLeft size={15} /> Flota
         </button>
         <h2 style={{ color: 'var(--text)', fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>{vehicle.nombre}</h2>
+        <VehicleQrButton vehicle={vehicle}/>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.7rem', margin: '4px 0 14px' }}>
           {vehicle.marca || ''} {vehicle.modelo || ''} · {vehicle.sede_nombre || vehicle.sede || '—'}
         </p>

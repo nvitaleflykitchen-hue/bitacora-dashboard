@@ -15,6 +15,7 @@ import ActivoConcesionFields, { ActivoConcesionBadge } from '../../components/Ac
 import { concesionLabel } from '../../lib/activoConcesion'
 import { loadVehicleReport } from '../../lib/flotaReportData'
 import { downloadVehicleReportPdf } from '../../lib/flotaReportPdf'
+import VehicleQrButton from '../../components/VehicleQrButton'
 
 import { ACTIVO_ESTADO_COLOR as ESTADO_COLOR } from '../../lib/estados'
 const INPUT_S = { width:'100%', padding:'0.4rem 0.75rem', borderRadius:2, background:'var(--surface)', border:'1px solid rgba(107,114,128,0.3)', color:'var(--text)', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', boxSizing:'border-box', outline:'none' }
@@ -150,6 +151,7 @@ export function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNoved
             )}
           </div>
           <div className="flex flex-wrap gap-2 justify-end">
+            {!isNew && !editing && <VehicleQrButton vehicle={current}/>}
             {!isNew && !editing && <button type="button" className="btn-primary" onClick={() => documentsRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })}>Documentación</button>}
             {!isNew && !editing && canEdit && <button type="button" className="btn-ghost" disabled={loadingPlanes || !report} onClick={() => setEditing(true)}>Editar datos</button>}
             <button aria-label="Cerrar ficha" onClick={onClose} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:'1.2rem', marginLeft:8 }}>✕</button>

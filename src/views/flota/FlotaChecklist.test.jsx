@@ -18,9 +18,6 @@ it('excluye aeroportuarios y bajas, exige diez respuestas y guarda reparación c
  fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}));expect(mock.insert).not.toHaveBeenCalled();expect(screen.getByText('Respondé los 10 controles antes de guardar.')).toBeInTheDocument()
  fill();fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}));await waitFor(()=>expect(mock.insert).toHaveBeenCalledTimes(1));const row=mock.insert.mock.calls[0][0];const payload=JSON.parse(row.observacion.split('::')[1]);expect(payload).toMatchObject({version:2,conductor:'Responsable',respuestas:{rampa:'na'}});expect(row.created_by).toBe('person');expect(Object.keys(payload.respuestas)).toHaveLength(10)
 })
-it('exige observaciones por desvíos y diferencia ticket fallido sin perder el guardado',async()=>{
- mock.ticket.mockRejectedValue(Error('sin red'));render(<GeneralFlotaChecklist/>);await select();fill();fireEvent.click(within(screen.getByRole('group',{name:'Verificación de frenos'})).getByRole('button',{name:'Crítico'}));fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}));expect(mock.insert).not.toHaveBeenCalled();fireEvent.change(screen.getByLabelText('Observaciones'),{target:{value:'No responde el freno'}});fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}));await waitFor(()=>expect(mock.warn).toHaveBeenCalled());expect(mock.insert).toHaveBeenCalledTimes(1);expect(screen.getByLabelText('Vehículo')).toHaveValue('')
-})
 it('el operario registra el control sin recibir gestión de tickets',async()=>{
  mock.rol='operario';render(<GeneralFlotaChecklist/>);await select();fill();fireEvent.click(within(screen.getByRole('group',{name:'Verificación de frenos'})).getByRole('button',{name:'No conforme'}));fireEvent.change(screen.getByLabelText('Observaciones'),{target:{value:'Ruido al frenar'}});expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}));await waitFor(()=>expect(mock.insert).toHaveBeenCalled());expect(mock.ticket).not.toHaveBeenCalled()
 })
@@ -32,3 +29,5 @@ it('el QR fija el vehículo y lo conserva después del guardado',async()=>{
 it('no permite registrar un QR de una unidad que no devolvió la consulta autorizada',async()=>{
  render(<GeneralFlotaChecklist activoId="fuera-de-sede"/>);await screen.findByRole('alert');expect(screen.getByRole('button',{name:'Guardar checklist'})).toBeDisabled();expect(mock.insert).not.toHaveBeenCalled()
 })
+
+vi.mock('../../components/ChecklistFindings',()=>({useChecklistFindings:(_v,answer)=>({choose:(item,value)=>answer(item,value,null),panel:null})}))

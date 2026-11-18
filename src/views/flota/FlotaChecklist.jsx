@@ -1,11 +1,13 @@
+import { useChecklistFindings } from '../../components/ChecklistFindings'
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Car, CheckCircle2, ClipboardCheck, RefreshCw, Save, Ticket } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
-import { getActivos, createTicket } from '../../lib/queries'
+import { getActivos } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { mensajeError } from '../../lib/errores'
 import { toast } from '../../lib/feedback'
+import FleetChecklistDashboard from '../../components/FleetChecklistDashboard'
 import AirportVehicleChecklist from '../../components/AirportVehicleChecklist'
 import { isAirportVehicle } from '../../lib/airportChecklist'
 import { GENERAL_VEHICLE_ITEMS as ITEMS, GENERAL_ANSWERS, emptyGeneralAnswers as buildEmptyItems, generalChecklistError, generalChecklistStatus as overallStatus } from '../../lib/generalVehicleChecklist'
@@ -81,9 +83,11 @@ function KPI({ label, value, sub, color }) {
 }
 
 export default function FlotaChecklist() {
-  const [airport,setAirport]=useState(false)
-  if(airport)return <AirportVehicleChecklist onBack={()=>setAirport(false)}/>
-  return <div style={{height:'100%',overflow:'auto'}}><div style={{padding:'16px 24px'}}><button className="btn-primary" onClick={()=>setAirport(true)}>Gran porte aeroportuario · Checklist y QR</button><a className="btn-ghost" style={{marginLeft:12}} href="/recursos/qr-gran-porte-aeropuertos.pdf" target="_blank" rel="noreferrer">Imprimir los 4 QR · A4</a></div><GeneralFlotaChecklist/></div>
+  const [mode,setMode]=useState(null)
+  if(mode===null)return <FleetChecklistDashboard onStart={id=>setMode(id||'general')}/>
+  if(isAirportVehicle(mode))return <AirportVehicleChecklist activoId={mode} onBack={()=>setMode(null)}/>
+  if(mode==='airport')return <AirportVehicleChecklist onBack={()=>setMode(null)}/>
+  return <div style={{height:'100%',overflow:'auto'}}><button className="btn-ghost" onClick={()=>setMode('airport')}>Control de gran porte</button><GeneralFlotaChecklist activoId={mode==='general'?null:mode} onBack={()=>setMode(null)}/></div>
 }
 
 export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
@@ -139,8 +143,8 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
   useEffect(() => { load() }, [allowedSedeIds, activoId])
 
   const selected = vehiculos.find(v => String(v.id) === String(form.activo_id)) || null
+  const findings=useChecklistFindings(selected,(item,value,detail)=>setForm(f=>({...f,respuestas:{...f.respuestas,[item.id]:value},observaciones_puntos:{...f.observaciones_puntos,[item.id]:detail},observaciones:detail?[f.observaciones,`${item.label}: ${detail.texto} (ticket ${detail.ticket_id})`].filter(Boolean).join('\n'):f.observaciones})))
   const estado = overallStatus(form.respuestas)
-  const requiereTicket = estado === 'no_apto' || estado === 'observado'
   const hoy = todayKey()
 
   const latestByVehicle = useMemo(() => {
@@ -155,7 +159,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
   const pendientes = vehiculos.filter(v => dateKey(latestByVehicle.get(v.id)?.row?.fecha) !== hoy)
   const observadosHoy = checksHoy.filter(v => ['observado','no_apto'].includes(v.estado)).length
 
-  const setItem = (id, value) => setForm(f => ({ ...f, respuestas:{ ...f.respuestas, [id]:value } }))
+  const setItem = (id,value)=>findings.choose(ITEMS.find(i=>i.id===id),value)
 
   const handleSave = async () => {
     if (!canManage) return
@@ -181,6 +185,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
         km: form.km !== '' ? Number(form.km) : null,
         observaciones: form.observaciones.trim() || null,
         respuestas: form.respuestas,
+        observaciones_puntos: form.observaciones_puntos || {},
         creado_por: perfil?.nombre || perfil?.email || null,
         created_at: new Date().toISOString(),
       }
@@ -197,33 +202,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
         })
       if (visitaError) throw visitaError
 
-      let ticketError = null
-      if (canCreateTicket && form.crearTicket && requiereTicket) {
-        try {
-        const problemas = ITEMS
-          .filter(item => ['observado','critico'].includes(form.respuestas[item.id]))
-          .map(item => `${item.label}: ${form.respuestas[item.id] === 'critico' ? 'crítico' : 'observado'}`)
-          .join('\n')
-
-        await createTicket({
-          tipo: 'correctivo',
-          prioridad: estado === 'no_apto' ? 'critica' : 'alta',
-          estado: 'abierto',
-          categoria: 'Vehiculos',
-          activo_id: selected.id,
-          activo_nombre: selected.nombre,
-          sede_id: selected.sede_id || null,
-          sede: selected.sede_nombre || selected.sede || null,
-          lectura_km: payload.km,
-          creado_por: perfil?.id || null,
-          descripcion: `Checklist vehicular ${ESTADOS[estado].label}: ${selected.nombre}`,
-          diagnostico: [problemas, payload.observaciones].filter(Boolean).join('\n\n'),
-        })
-        } catch (error) { ticketError = error }
-      }
-
-      toast.ok(requiereTicket && form.crearTicket && !ticketError ? 'Checklist guardado y ticket creado.' : 'Checklist guardado.')
-      if (ticketError) toast.warn('El checklist quedó guardado, pero no se pudo crear el ticket: ' + mensajeError(ticketError))
+      toast.ok('Checklist guardado. Los tickets de cada desvío quedaron registrados al confirmar sus observaciones.')
       setForm({
         activo_id:activoId || '',
         conductor: perfil?.nombre || '',
@@ -249,7 +228,6 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
       <PageHeader title="Checklist vehicular" subtitle="Control diario · Vehículos de flota general">
         <button onClick={load} disabled={loading} className="btn btn-secondary"><RefreshCw size={14}/> Actualizar</button>
       </PageHeader>
-      {!activoId && <p style={{marginBottom:16}}><a className="btn-ghost" href="/recursos/qr-flota-general.pdf" target="_blank" rel="noreferrer">Imprimir QR del resto de la flota · 17 etiquetas A4</a></p>}
       {activoId && !loading && !selected && <p role="alert">Este vehículo no está disponible para tu cuenta o está dado de baja. Consultá con el responsable de tu sede.</p>}
 
       <div style={{ display:'flex', gap:'0.65rem', flexWrap:'wrap', marginBottom:'1rem' }}>
@@ -261,6 +239,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
 
       {err && <div style={{ border:'1px solid rgba(255,80,80,0.35)', color:'#FF5050', background:'rgba(255,80,80,0.08)', padding:'0.8rem 1rem', borderRadius:3, marginBottom:'1rem', fontSize:'0.75rem' }}>{err}</div>}
 
+      {selected && findings.panel}
       <div className="general-checklist-layout">
         <section style={{ background:'var(--surface)', border:'1px solid rgba(57,255,20,0.08)', borderRadius:3, padding:'1rem' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:'0.9rem' }}>
@@ -322,13 +301,6 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
             <label style={LBL}>Observaciones</label>
             <textarea aria-label="Observaciones" style={{ ...INPUT, minHeight:90, resize:'vertical' }} value={form.observaciones} onChange={e => setForm(f => ({ ...f, observaciones:e.target.value }))} disabled={!canManage} placeholder="Describí cualquier desvío, daño, faltante o condición de uso." />
           </div>
-
-          {requiereTicket && canCreateTicket && (
-            <label style={{ display:'flex', gap:8, alignItems:'center', color:'var(--text)', fontSize:'0.72rem', marginTop:'0.8rem' }}>
-              <input type="checkbox" checked={form.crearTicket} onChange={e => setForm(f => ({ ...f, crearTicket:e.target.checked }))} disabled={!canManage} />
-              Crear ticket de flota automáticamente por este desvío.
-            </label>
-          )}
 
           <div style={{ display:'flex', gap:8, marginTop:'1rem' }}>
             <button onClick={handleSave} disabled={!canManage || saving || !selected} className="btn btn-primary"><Save size={14}/> {saving ? 'Guardando...' : 'Guardar checklist'}</button>

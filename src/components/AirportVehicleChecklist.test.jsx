@@ -35,3 +35,5 @@ it('reintenta fotos sin volver a guardar el control',async()=>{
   await waitFor(()=>expect(screen.queryByRole('button',{name:'Reintentar fotos pendientes'})).not.toBeInTheDocument())
   expect(api.saveAirportChecklist).toHaveBeenCalledTimes(1);expect(api.uploadAirportPhoto).toHaveBeenCalledTimes(2)
 })
+
+vi.mock('./ChecklistFindings',()=>({useChecklistFindings:(_v,answer)=>({choose:(item,value)=>answer(item,value,null),panel:null})}))
