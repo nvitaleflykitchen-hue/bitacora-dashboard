@@ -27,7 +27,7 @@ export default function FleetChecklistDashboard({onStart}){
  const open=tickets.filter(t=>ids.has(t.activo_id)&&!closedTicket(t)),bad=rows.filter(c=>Object.values(c.respuestas||{}).some(a=>['nc','observado','critico'].includes(a)))
  const sites=[...new Map(vehicles.map(v=>[String(v.sede_id),v.sede_nombre||v.sede||'Sin sede'])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'es'))
  const counts={};rows.forEach(c=>Object.entries(c.respuestas||{}).forEach(([k,v])=>{if(['nc','observado','critico'].includes(v))counts[k]=(counts[k]||0)+1}))
- return <section style={{padding:24}}><h2>Tablero de checklists de flota</h2><p>Flota general y gran porte · Estado actual y controles del período</p>
+ return <section aria-label="Tablero de checklists de flota" tabIndex={0} style={{padding:24, flex:1, minHeight:0, overflowY:'auto'}}><h2>Tablero de checklists de flota</h2><p>Flota general y gran porte · Estado actual y controles del período</p>
  <div style={{display:'flex',flexWrap:'wrap',gap:12,margin:'16px 0'}}>
  <label>Sede<select aria-label="Sede del tablero" className="input-dark" value={site} onChange={e=>{S(e.target.value);A('')}}><option value="">Todas las sedes</option>{sites.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
  <label>Vehículo<select aria-label="Vehículo del tablero" className="input-dark" value={vehicle} onChange={e=>A(e.target.value)}><option value="">Todos los vehículos</option>{vehicles.filter(v=>!site||String(v.sede_id)===site).map(v=><option key={v.id} value={v.id}>{v.nombre}</option>)}</select></label>
