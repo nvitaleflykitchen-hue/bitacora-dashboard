@@ -31,8 +31,8 @@ export function validateAirportChecklist(form) {
   if (form.km === '' || !Number.isSafeInteger(Number(form.km)) || Number(form.km)<0 || Number(form.km)>2147483647) return 'Ingresá un kilometraje entero válido.'
   if (!AIRPORT_FUEL.includes(form.combustible)) return 'Seleccioná el nivel de combustible.'
   if (AIRPORT_ITEMS.some(i=>!(i.allowNa?['ok','nc','na']:['ok','nc']).includes(form.respuestas?.[i.id]))) return 'Respondé todos los puntos del control.'
-  const needsNote=Object.values(form.respuestas).some(v=>v==='nc'||v==='na')
-  if (needsNote && String(form.observaciones||'').trim().length<5) return 'Describí las novedades y justificá los puntos que no aplican.'
+  const needsNote=Object.values(form.respuestas).some(v=>v==='nc')
+  if (needsNote && String(form.observaciones||'').trim().length<5) return 'Describí las no conformidades.'
   if (String(form.observaciones||'').length>4000) return 'Las observaciones no pueden superar 4000 caracteres.'
   return null
 }

@@ -14,11 +14,11 @@ describe('Checklist gran porte',()=>{
     expect(validateAirportChecklist({...valid(),respuestas:{}})).toBeTruthy()
     expect(validateAirportChecklist({...valid(),turno:''})).toBeNull()
   })
-  it('exige detalle de NC y justificación NA solo donde corresponde',()=>{
+  it('exige detalle solo para NC y admite NA sin justificación donde corresponde',()=>{
     const form=valid();form.respuestas.luces='nc'
     expect(validateAirportChecklist(form)).toMatch(/Describí/)
     form.observaciones='Luz trasera rota';expect(validateAirportChecklist(form)).toBeNull()
     form.respuestas.luces='na';expect(validateAirportChecklist(form)).toBeTruthy()
-    form.respuestas.luces='ok';form.respuestas.urea='na';expect(validateAirportChecklist(form)).toBeNull()
+    form.respuestas.luces='ok';form.respuestas.urea='na';form.observaciones='';expect(validateAirportChecklist(form)).toBeNull()
   })
 })
