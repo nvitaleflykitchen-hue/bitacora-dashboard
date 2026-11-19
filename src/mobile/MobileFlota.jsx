@@ -1,3 +1,4 @@
+import VehicleReportOptions, {defaultReportOptions} from '../components/VehicleReportOptions'
 import { loadVehicleReport } from '../lib/flotaReportData'
 import { downloadVehicleReportPdf } from '../lib/flotaReportPdf'
 import { vehicleIdentity, fleetToday, fleetDate } from '../lib/flotaModel'
@@ -48,6 +49,7 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
   const [sel, setSel] = useState(null)
   const [report,setReport]=useState(null)
   const [reportError,setReportError]=useState('')
+  const [reportOptions,setReportOptions]=useState(defaultReportOptions)
   useEffect(()=>{let active=true;setReport(null);setReportError('');if(sel?.id)loadVehicleReport([{id:sel.id}]).then(([data])=>{if(active)setReport(data)}).catch(e=>{if(active)setReportError(e.message)});return()=>{active=false}},[sel?.id])
   useBackHandler(() => setSel(null), !!sel)
 
@@ -79,7 +81,7 @@ export default function MobileFlota({ focusContext, onCreateNovedad }) {
         <p>Dominio: {vehicle.dominio || 'Sin registrar'} · Año: {vehicle.anio || 'Sin registrar'} · Combustible: {vehicle.combustible || 'Sin registrar'}</p>
         {reportError && <p role="alert">No se pudo cargar toda la ficha: {reportError}</p>}
         {!report && !reportError && <p>Cargando historial y documentación…</p>}
-        {report && <><button className="btn-primary" onClick={async()=>{try {const data=await loadVehicleReport([sel]);downloadVehicleReportPdf(data,data[0].vehicle.sede_nombre)}catch(e){setReportError(e.message)}}}>Informe PDF completo</button><FlotaHistorial report={report}/><h3>Documentación</h3>{report.documentation.map(d=><p key={d.codigo}>{d.titulo}: {d.fecha_vencimiento && d.fecha_vencimiento < hoy() ? 'Vencido por fecha' : d.estado || 'Sin cargar'} · {fleetDate(d.fecha_vencimiento)}</p>)}<h3>Preventivos</h3>{report.plans.map(p=><p key={p.id}>{p.nombre} · {p.activo===false?'Inactivo':p.estado} · {fleetDate(p.proxima_fecha)} · {p.descripcion}</p>)}<p>{vehicle.notas_tecnico}</p></>}
+        {report && <><VehicleReportOptions value={reportOptions} onChange={setReportOptions}/><button className="btn-primary" onClick={async()=>{try {if(reportOptions.from && reportOptions.to && reportOptions.from > reportOptions.to)throw new Error('La fecha Desde no puede ser posterior a Hasta.');const data=await loadVehicleReport([sel]);downloadVehicleReportPdf(data,data[0].vehicle.sede_nombre,reportOptions)}catch(e){setReportError(e.message)}}}>Informe PDF completo</button><FlotaHistorial report={report}/><h3>Documentación</h3>{report.documentation.map(d=><p key={d.codigo}>{d.titulo}: {d.fecha_vencimiento && d.fecha_vencimiento < hoy() ? 'Vencido por fecha' : d.estado || 'Sin cargar'} · {fleetDate(d.fecha_vencimiento)}</p>)}<h3>Preventivos</h3>{report.plans.map(p=><p key={p.id}>{p.nombre} · {p.activo===false?'Inactivo':p.estado} · {fleetDate(p.proxima_fecha)} · {p.descripcion}</p>)}<p>{vehicle.notas_tecnico}</p></>}
         {onCreateNovedad && sel.sede_id && <button className="btn-primary w-full" style={{ marginBottom:12, minHeight:44 }} onClick={() => onCreateNovedad({ type:'vehiculo', id:sel.id, label:sel.nombre, sedeId:sel.sede_id, sedeLabel:sel.sede_nombre, returnModule:'flota' })}>+ Crear novedad del vehículo</button>}
         <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '0.85rem 1rem', marginBottom: '0.75rem' }}>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', margin: '0 0 8px' }}>VENCIMIENTOS</p>

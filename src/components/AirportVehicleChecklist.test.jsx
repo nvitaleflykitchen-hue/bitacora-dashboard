@@ -8,7 +8,7 @@ vi.mock('../lib/airportChecklistApi',()=>api)
 vi.mock('../lib/auth',()=>({useAuth:()=>({perfil:{id:'operator',nombre:'Responsable real'}})}))
 const vehicle={...AIRPORT_VEHICLES[0],nombre:'Hyundai - JDN 192',sede_id:21,sede_nombre:'Aeropuerto Córdoba',estado:'en_reparacion'}
 beforeEach(()=>{cleanup();vi.clearAllMocks();api.loadAirportVehicles.mockResolvedValue([vehicle]);api.loadAirportHistory.mockResolvedValue([]);api.uploadAirportPhoto.mockResolvedValue();api.saveAirportChecklist.mockImplementation(async(id,asset,form)=>({...form,id,activo_id:asset,fecha:'2026-11-16',creado_por:'operator',responsable:'Responsable real',resultado:'sin_novedades'}))})
-async function fill(){await screen.findByRole('heading',{name:'JDN192'});fireEvent.change(screen.getByLabelText('Turno'),{target:{value:'mañana'}});fireEvent.change(screen.getByLabelText('Kilometraje'),{target:{value:'100'}});fireEvent.change(screen.getByLabelText('Combustible'),{target:{value:'1/2'}});for(const item of AIRPORT_ITEMS)fireEvent.click(within(screen.getByRole('group',{name:item.label})).getByRole('button',{name:'OK'}))}
+async function fill(){await screen.findByRole('heading',{name:'JDN192'});fireEvent.change(screen.getByLabelText('Kilometraje'),{target:{value:'100'}});fireEvent.change(screen.getByLabelText('Combustible'),{target:{value:'1/2'}});for(const item of AIRPORT_ITEMS)fireEvent.click(within(screen.getByRole('group',{name:item.label})).getByRole('button',{name:'OK'}))}
 it('permite guardar en reparación y exige responder sin preseleccionar OK',async()=>{
   render(<AirportVehicleChecklist activoId={vehicle.id}/>)
   await screen.findByRole('heading',{name:'JDN192'})
@@ -37,3 +37,21 @@ it('reintenta fotos sin volver a guardar el control',async()=>{
 })
 
 vi.mock('./ChecklistFindings',()=>({useChecklistFindings:(_v,answer)=>({choose:(item,value)=>answer(item,value,null),panel:null})}))
+
+it('precarga kilómetros del último control y conserva el valor editado',async()=>{
+ api.loadAirportHistory.mockResolvedValue([{id:'old',fecha:'2026-11-01',km:600001,respuestas:{},responsable:'Operador'}])
+ render(<AirportVehicleChecklist activoId={vehicle.id}/>)
+ await waitFor(()=>expect(screen.getByLabelText('Kilometraje')).toHaveValue(600001))
+ fireEvent.change(screen.getByLabelText('Kilometraje'),{target:{value:'600005'}})
+ fireEvent.change(screen.getByLabelText('Combustible'),{target:{value:'1/2'}})
+ expect(screen.getByLabelText('Kilometraje')).toHaveValue(600005)
+})
+it('no pisa los kilómetros ingresados si el historial llega después',async()=>{
+ let resolve;api.loadAirportHistory.mockImplementation(()=>new Promise(r=>{resolve=r}))
+ render(<AirportVehicleChecklist activoId={vehicle.id}/>)
+ await screen.findByRole('heading',{name:'JDN192'})
+ fireEvent.change(screen.getByLabelText('Kilometraje'),{target:{value:'600007'}})
+ resolve([{id:'old',fecha:'2026-11-01',km:600001,respuestas:{}}])
+ await waitFor(()=>expect(screen.queryByText('Cargando historial…')).not.toBeInTheDocument())
+ expect(screen.getByLabelText('Kilometraje')).toHaveValue(600007)
+})

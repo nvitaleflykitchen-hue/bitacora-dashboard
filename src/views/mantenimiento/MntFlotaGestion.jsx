@@ -1,3 +1,4 @@
+import VehicleReportOptions, {defaultReportOptions} from '../../components/VehicleReportOptions'
 import { vehicleIdentity, fleetToday } from '../../lib/flotaModel'
 import { saveFleetVehicle } from '../../lib/flotaVehicleSave'
 import FlotaHistorial from '../../components/FlotaHistorial'
@@ -34,20 +35,22 @@ const estaVencido   = f => !!f && f < hoy()
 const proximoVencer = f => { if (!f) return false; const d = (new Date(f)-new Date())/86400000; return d>=0 && d<=30 }
 const docColor = f => estaVencido(f) ? '#FF2A2A' : proximoVencer(f) ? '#F59E0B' : f ? '#39FF14' : 'var(--text-dim)'
 
-function ReportModal({ vehicles, sedes, initialSiteId, onClose }) {
-  const [siteId, setSiteId] = useState(String(initialSiteId || ''))
-  const [selected, setSelected] = useState([])
+function ReportModal({ vehicles, sedes, initialSiteId, initialVehicle, onClose }) {
+  const [siteId, setSiteId] = useState(String(initialVehicle?.sede_id || initialSiteId || ''))
+  const [selected, setSelected] = useState(initialVehicle ? [initialVehicle.id] : [])
+  const [options,setOptions] = useState(defaultReportOptions)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const siteVehicles = vehicles.filter(v => String(v.sede_id) === siteId)
   const chooseSite = id => { setSiteId(id); setSelected([]); setError('') }
   const toggle = id => setSelected(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids,id])
   const generate = async () => {
+    if(options.from && options.to && options.from > options.to){setError('La fecha Desde no puede ser posterior a Hasta.');return}
     setBusy(true); setError('')
     try {
       const chosen = siteVehicles.filter(v => selected.includes(v.id))
       const data = await loadVehicleReport(chosen)
-      downloadVehicleReportPdf(data, sedes.find(s => String(s.id) === siteId)?.nombre || chosen[0]?.sede_nombre)
+      downloadVehicleReportPdf(data, sedes.find(s => String(s.id) === siteId)?.nombre || chosen[0]?.sede_nombre, options)
     } catch (e) { setError(`No se pudo generar el informe: ${e.message}`) }
     finally { setBusy(false) }
   }
@@ -60,6 +63,7 @@ function ReportModal({ vehicles, sedes, initialSiteId, onClose }) {
         <option value="">Seleccionar sede</option>
         {sedes.filter(s => vehicles.some(v => String(v.sede_id) === String(s.id))).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
       </select>
+      <VehicleReportOptions value={options} onChange={setOptions}/>
       {siteId && <>
         <div style={{ display:'flex', gap:8, alignItems:'center', justifyContent:'space-between', margin:'1rem 0 .5rem' }}>
           <span>{selected.length} de {siteVehicles.length} vehículos seleccionados</span>
@@ -312,8 +316,6 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
   const [busqueda, setBusqueda] = useState('')
   const [soloVenc, setSoloVenc] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
-  const [reportVehicle, setReportVehicle] = useState(null)
-  const [reportError, setReportError] = useState('')
 
   useEffect(() => { if (Array.isArray(allowedSedeIds) && !allowedSedeIds.length) { setSedes([]); return }; getSedes(allowedSedeIds).then(setSedes) }, [allowedSedeIds])
 
@@ -333,12 +335,7 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
     if (target) setModal(target)
   }, [focusId, loading, allVehicles])
 
-  const downloadSingle = async vehicle => {
-    setReportVehicle(vehicle.id); setReportError('')
-    try { downloadVehicleReportPdf(await loadVehicleReport([vehicle]), vehicle.sede_nombre) }
-    catch (e) { setModal(null); setReportError(`No se pudo generar el informe: ${e.message}`) }
-    finally { setReportVehicle(null) }
-  }
+  const downloadSingle = vehicle => { setModal(null); setReportOpen(vehicle) }
 
   const conVencido = v => DOCS.some(d => estaVencido(v[d.key]))
   const conProximo = v => DOCS.some(d => proximoVencer(v[d.key])) && !conVencido(v)
@@ -369,7 +366,6 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
           )}
         </div>
       </PageHeader>
-      {reportError && <p role="alert" style={{ color:'#FF5050' }}>{reportError}</p>}
 
       {/* KPIs */}
       <div style={{ display:'flex', gap:'0.6rem', marginBottom:'1rem', flexWrap:'wrap' }}>
@@ -456,8 +452,7 @@ export default function MntFlotaGestion({ focusId, onCreateNovedad }) {
           onReport={downloadSingle}
         />
       )}
-      {reportVehicle && <span role="status" style={{ position:'fixed', bottom:20, right:20, background:'var(--surface)', padding:12, zIndex:200 }}>Generando informe...</span>}
-      {reportOpen && <ReportModal vehicles={allVehicles} sedes={sedes} initialSiteId={sedeId} onClose={()=>setReportOpen(false)} />}
+      {reportOpen && <ReportModal vehicles={allVehicles} sedes={sedes} initialSiteId={sedeId} initialVehicle={typeof reportOpen === 'object' ? reportOpen : null} onClose={()=>setReportOpen(false)} />}
     </div>
   )
 }

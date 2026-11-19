@@ -4,13 +4,13 @@ import { render, screen, fireEvent, within, waitFor, cleanup } from '@testing-li
 import { GeneralFlotaChecklist } from './FlotaChecklist'
 import { GENERAL_VEHICLE_ITEMS, generalChecklistError } from '../../lib/generalVehicleChecklist'
 import { AIRPORT_VEHICLES } from '../../lib/airportChecklist'
-const mock = vi.hoisted(()=>({assets:vi.fn(),insert:vi.fn(),ticket:vi.fn(),warn:vi.fn(),rol:'admin'}))
+const mock = vi.hoisted(()=>({assets:vi.fn(),insert:vi.fn(),ticket:vi.fn(),warn:vi.fn(),rol:'admin',visits:[]}))
 vi.mock('../../lib/queries',()=>({getActivos:mock.assets,createTicket:mock.ticket}))
 vi.mock('../../lib/auth',()=>({useAuth:()=>({perfil:{id:'person',nombre:'Responsable'},rol:mock.rol,allowedSedeIds:null,can:()=>mock.rol==='admin'})}))
 vi.mock('../../lib/feedback',()=>({toast:{ok:vi.fn(),warn:mock.warn}}))
 vi.mock('../../components/AirportVehicleChecklist',()=>({default:()=>null}))
-vi.mock('../../lib/supabase',()=>({supabase:{schema:()=>({from:()=>({insert:mock.insert})}),from:()=>{const q={select:()=>q,eq:()=>q,in:()=>q,like:()=>q,order:()=>q,limit:async()=>({data:[]})};return q}}}))
-beforeEach(()=>{cleanup();vi.stubGlobal('React',React);vi.clearAllMocks();mock.rol='admin';mock.assets.mockResolvedValue([{id:'ordinary',nombre:'Camioneta',estado:'en_reparacion',sede_id:21}, {...AIRPORT_VEHICLES[0],nombre:'Camión aeropuerto'}, {id:'off',nombre:'Baja',estado:'baja'}]);mock.insert.mockResolvedValue({error:null});mock.ticket.mockResolvedValue({})})
+vi.mock('../../lib/supabase',()=>({supabase:{schema:()=>({from:()=>({insert:mock.insert})}),from:()=>{const q={select:()=>q,eq:()=>q,in:()=>q,like:()=>q,order:()=>q,limit:async()=>({data:mock.visits})};return q}}}))
+beforeEach(()=>{cleanup();vi.stubGlobal('React',React);vi.clearAllMocks();mock.rol='admin';mock.visits=[];mock.assets.mockResolvedValue([{id:'ordinary',nombre:'Camioneta',estado:'en_reparacion',sede_id:21}, {...AIRPORT_VEHICLES[0],nombre:'Camión aeropuerto'}, {id:'off',nombre:'Baja',estado:'baja'}]);mock.insert.mockResolvedValue({error:null});mock.ticket.mockResolvedValue({})})
 async function select(){await screen.findByRole('option',{name:/Camioneta/});fireEvent.change(screen.getByLabelText('Vehículo'),{target:{value:'ordinary'}})}
 function fill(){for(const item of GENERAL_VEHICLE_ITEMS)fireEvent.click(within(screen.getByRole('group',{name:item.label})).getByRole('button',{name:item.optional?'No aplica':'Conforme',exact:true}))}
 it('excluye aeroportuarios y bajas, exige diez respuestas y guarda reparación con autor de sesión',async()=>{
@@ -31,3 +31,12 @@ it('no permite registrar un QR de una unidad que no devolvió la consulta autori
 })
 
 vi.mock('../../components/ChecklistFindings',()=>({useChecklistFindings:(_v,answer)=>({choose:(item,value)=>answer(item,value,null),panel:null})}))
+
+it('precarga el último kilometraje del vehículo y permite mantenerlo',async()=>{
+ mock.visits=[{id:1,activo_id:'ordinary',fecha:'2026-11-17',observacion:'CHECKLIST_VEHICULO::'+JSON.stringify({activo_id:'ordinary',km:600001,respuestas:{}})}]
+ render(<GeneralFlotaChecklist activoId="ordinary"/>)
+ await waitFor(()=>expect(screen.getByLabelText('Kilometraje')).toHaveValue(600001))
+ fill();fireEvent.click(screen.getByRole('button',{name:'Guardar checklist'}))
+ await waitFor(()=>expect(mock.insert).toHaveBeenCalled())
+ expect(JSON.parse(mock.insert.mock.calls[0][0].observacion.split('::')[1]).km).toBe(600001)
+})

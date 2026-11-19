@@ -7,7 +7,7 @@ async function rpc(name,args={}) {
 }
 export const loadAirportVehicles=()=>rpc('aero_checklist_vehiculos')
 export const loadAirportHistory=id=>rpc('aero_checklist_historial',{p_activo:id})
-export const saveAirportChecklist=(id,vehicle,form)=>rpc('aero_checklist_guardar',{p_id:id,p_activo:vehicle,p_turno:form.turno,p_km:Number(form.km),p_combustible:form.combustible,p_respuestas:form.respuestas,p_observaciones:form.observaciones.trim()})
+export const saveAirportChecklist=(id,vehicle,form)=>rpc('aero_checklist_guardar',{p_id:id,p_activo:vehicle,p_turno:null,p_km:Number(form.km),p_combustible:form.combustible,p_respuestas:form.respuestas,p_observaciones:form.observaciones.trim()})
 export async function uploadAirportPhoto(userId,checkId,file) {
   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024) throw Error('Usá fotos JPG, PNG o WebP de hasta 10 MB.')
   const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type]

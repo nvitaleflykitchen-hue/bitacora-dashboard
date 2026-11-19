@@ -706,3 +706,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - **Verificación:** recorrido de App desde la URL real `?scan=activo&id=...`; seis pruebas de integración cubren las cuatro unidades, login/cambio obligatorio de clave y conservación de la ficha pública de otros activos.
 - **Corrección:** las cuatro unidades ingresan por AuthProvider y su checklist; el escáner interno usa esa misma URL antes de aplicar el permiso de activos generales. Se conservan los QR impresos y la validación de sede de las RPC.
 - **Recomendación:** probar siempre la ruta desde App, no solamente el componente de formulario.
+
+
+## Checklist aeroportuario: formulario anterior y límite por turno (resuelto 2026-11-18)
+- Severidad: media, bloqueo operativo de cargas repetidas.
+- Verificación: en la app abierta el formulario anterior no incluía el modal por punto y deshabilitaba Guardar al existir vehículo/fecha/turno. La base confirmaba la misma restricción UNIQUE y la validación RPC.
+- Resolución: se elimina el turno para nuevas cargas, se conserva el historial y se registra la hora de servidor; permanece la idempotencia por ID de envío. Actualizar las sesiones abiertas para cargar el formulario nuevo. Modal por punto en portal y explicación NA sin ticket.
+- Validación: prueba RPC con rol operario, 100 controles conformes con igual km + NC + NA + reintento idempotente, transacción ROLLBACK; cantidad y hash de los dos controles reales sin cambios. Pruebas integradas de formulario completo sin sustituir el manejador de observaciones.

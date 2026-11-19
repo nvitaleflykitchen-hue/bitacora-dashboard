@@ -12,7 +12,7 @@ describe('Checklist gran porte',()=>{
     expect(validateAirportChecklist(valid())).toBeNull()
     for(const km of ['',-1,1.5,Infinity,'abc'])expect(validateAirportChecklist({...valid(),km})).toBeTruthy()
     expect(validateAirportChecklist({...valid(),respuestas:{}})).toBeTruthy()
-    expect(validateAirportChecklist({...valid(),turno:''})).toBeTruthy()
+    expect(validateAirportChecklist({...valid(),turno:''})).toBeNull()
   })
   it('exige detalle de NC y justificación NA solo donde corresponde',()=>{
     const form=valid();form.respuestas.luces='nc'
