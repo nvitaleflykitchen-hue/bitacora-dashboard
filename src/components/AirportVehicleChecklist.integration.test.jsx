@@ -46,12 +46,12 @@ it('permite corregir Crítico a OK sin conservar una NC en el control ni cerrar 
  expect(api.saveAirportChecklist.mock.calls[0][2]).toMatchObject({respuestas:{luces:'ok'},observaciones:''})
  expect(tickets.updateTicket).not.toHaveBeenCalled()
 })
-it('justifica No aplica por punto y guarda sin crear ticket',async()=>{
+it('No aplica se marca directamente y guarda sin observación ni ticket',async()=>{
  render(<AirportVehicleChecklist activoId={vehicle.id}/>);await fill()
  fireEvent.click(within(screen.getByRole('group',{name:'Rampa'})).getByRole('button',{name:'NA',exact:true}))
- fireEvent.change(screen.getByRole('textbox',{name:'Observación del punto'}),{target:{value:'La unidad no tiene rampa'}})
- fireEvent.click(screen.getByRole('button',{name:'Confirmar justificación'}));await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+ expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+ expect(within(screen.getByRole('group',{name:'Rampa'})).getByRole('button',{name:'NA',exact:true})).toHaveAttribute('aria-pressed','true')
  fireEvent.click(screen.getByRole('button',{name:'Guardar control'}));await screen.findByRole('heading',{name:'Control guardado'})
  expect(tickets.createTicket).not.toHaveBeenCalled()
- expect(api.saveAirportChecklist.mock.calls[0][2].observaciones).toContain('La unidad no tiene rampa')
+ expect(api.saveAirportChecklist.mock.calls[0][2]).toMatchObject({respuestas:{rampa:'na'},observaciones:''})
 })

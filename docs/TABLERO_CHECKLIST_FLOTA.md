@@ -16,6 +16,6 @@ Validación con mocks: creación inmediata, observación obligatoria, prioridad,
 ## Actualización 2026-11-18: carga y PDF
 - Gran porte permite múltiples controles diarios sin turno. Hora de carga del servidor y nueva identificación por cada control; reintentos conservan el ID.
 - Última lectura de checklist precargada, editable; un historial que llega tarde no sobrescribe edición manual. Se admite kilometraje igual.
-- NC/Crítico abre modal por punto y crea o actualiza ticket al confirmar. NA pide justificación y no crea ticket. Cambiar a OK elimina la observación del punto del control en preparación, pero no cierra un ticket ya registrado.
+- NC/Crítico abre modal por punto y crea o actualiza ticket al confirmar. NA se marca directamente, sin justificación ni ticket (ajuste 2026-11-19). Cambiar a OK elimina la observación del punto del control en preparación, pero no cierra un ticket ya registrado.
 - Informes individuales, por sede y mobile: fechas para los checklists, resumen por defecto, detalle opcional de novedades en dos columnas. La documentación y demás secciones no se filtran por esas fechas.
 - Base: migración 20261118204009_checklist_sin_turnos.sql aplicada a mixyhfdlzjarvszinytk. Sin cambios de permisos, RLS ni datos históricos.
