@@ -17,3 +17,5 @@
 .airport-error{padding:12px;border:1px solid #e75c52;border-radius:6px}.airport-nc{color:var(--warning,#e8a444)}.airport-ok{color:var(--phosphor)}
 .airport-photos{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.airport-photos img{width:120px;height:120px;object-fit:cover;border-radius:6px}
 @media(max-width:480px){.airport-checklist{padding:14px}.airport-checklist h1{font-size:1.2rem}.airport-item strong{font-size:.85rem}.airport-fields{grid-template-columns:1fr}.airport-item{gap:8px}}
+
+.airport-item{flex-wrap:wrap}.airport-item>small{flex-basis:100%;color:var(--text-dim)}.airport-answer.critico{background:#8c1720;color:white}

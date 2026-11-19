@@ -1,3 +1,6 @@
+import {checklistDateTime} from './checklistReading'
+import {AIRPORT_ITEMS} from './airportChecklist'
+import {GENERAL_VEHICLE_ITEMS} from './generalVehicleChecklist'
 import { jsPDF } from 'jspdf'
 import { fleetDate, fleetDateTime, fleetToday, closedTicket, interventionDate, interventionKind } from './flotaModel'
 
@@ -11,7 +14,8 @@ export function vehicleReportFilename(items, siteName) {
   return `informe_flota_${slug(name)}_${fleetToday()}.pdf`
 }
 
-export function createVehicleReportPdf(items, siteName) {
+export function createVehicleReportPdf(items, siteName, options = {}) {
+  if (options.from && options.to && options.from > options.to) throw new Error('Rango de fechas inválido.')
   if (!items.length) throw new Error('No hay vehículos seleccionados.')
   const pdf = new jsPDF({ unit:'mm', format:'a4' })
   const width = pdf.internal.pageSize.getWidth()
@@ -142,8 +146,48 @@ export function createVehicleReportPdf(items, siteName) {
     news.forEach(n => entry(`${date(n.fecha_reporte || n.created_at)} · ${value(n.tipo)} · ${value(n.estado)}`,[n.descripcion,`Reportó: ${value(n.reportante)}`]))
 
     section('Checklists de vehículo')
-    empty(checks,'Sin controles registrados.')
-    checks.forEach(c => entry(`${date(c.fecha)} · ${value(({sin_novedades:'Sin novedades',con_novedades:'Con novedades'})[c.estado] || c.estado)} · ${value(c.conductor || c.visitante)}`,[...(c.turno ? [`Turno: ${c.turno} | Combustible: ${value(c.combustible)}`] : []),`KM: ${value(c.km)}  |  Observaciones: ${value(c.observaciones)}`, ...Object.entries(c.respuestas || {}).map(([key,answer]) => `${key}: ${value(answer)}`)]))
+    const periodChecks = checks.filter(c => {
+      const d = /^\d{4}-\d{2}-\d{2}$/.test(c.fecha || '') ? c.fecha : c.fecha ? new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Cordoba'}).format(new Date(c.fecha)) : ''
+      return (!options.from || d >= options.from) && (!options.to || d <= options.to)
+    })
+    const hasIssue = answer => ['nc','observado','critico'].includes(String(answer).toLowerCase())
+    const withNews = periodChecks.filter(c => Object.values(c.respuestas || {}).some(hasIssue) || String(c.observaciones || '').trim())
+    line(`Período: ${options.from ? date(options.from) : 'Desde el inicio'} a ${options.to ? date(options.to) : 'la actualidad'}`)
+    line(`Controles: ${periodChecks.length} | Con desvíos u observaciones: ${withNews.length} | Sin novedades: ${periodChecks.length-withNews.length}`)
+    if (!options.includeChecklistDetails) line('Detalle de checklists no incluido.',{muted:true})
+    else if (!withNews.length) line('Sin novedades para detallar en el período.',{muted:true})
+    else {
+      line('Detalle de novedades · Se omiten puntos OK y No aplica.',{muted:true})
+      const gap=8, cw=(width-2*margin-gap)/2, bottom=height-20, lineHeight=4.2
+      const cards=withNews.map(c=>{
+        const labels=Object.fromEntries((c.resultado ? AIRPORT_ITEMS : GENERAL_VEHICLE_ITEMS).map(i=>[i.id,i.label]))
+        const paragraphs=[
+          [ `${checklistDateTime(c.creado_at || c.fecha)} · ${value(c.conductor || c.visitante)}`,true ],
+          [ `Kilometraje: ${value(c.km)}`,false ],
+          ...Object.entries(c.respuestas || {}).filter(([,answer])=>hasIssue(answer)).map(([key,answer])=>[`${labels[key] || key}: ${answer==='critico'?'Crítico':'No conforme'}`,false]),
+          ...(String(c.observaciones || '').trim()?[[c.observaciones,false]]:[]),
+        ]
+        return paragraphs.flatMap(([text,bold])=>{
+          pdf.setFont('helvetica',bold?'bold':'normal');pdf.setFontSize(8.5)
+          return pdf.splitTextToSize(text,cw).map(text=>({text,bold}))
+        })
+      })
+      for(let i=0;i<cards.length;i+=2){
+        const pair=cards.slice(i,i+2), total=Math.max(...pair.map(c=>c.length))
+        if(total*lineHeight+4<=bottom-18 && y+total*lineHeight+4>bottom){pdf.addPage();y=18}
+        let offset=0
+        while(offset<total){
+          if(y+lineHeight>bottom){pdf.addPage();y=18}
+          const count=Math.min(total-offset,Math.floor((bottom-y)/lineHeight))
+          pair.forEach((card,col)=>card.slice(offset,offset+count).forEach(({text,bold},row)=>{
+            pdf.setFont('helvetica',bold?'bold':'normal');pdf.setFontSize(8.5);pdf.setTextColor(bold?35:80)
+            pdf.text(text,margin+col*(cw+gap),y+row*lineHeight)
+          }))
+          offset+=count;y+=count*lineHeight
+        }
+        y+=5
+      }
+    }
 
     section('Matafuegos asignados')
     empty(extinguishers,'Sin matafuegos asociados directamente al vehículo.')
@@ -159,6 +203,6 @@ export function createVehicleReportPdf(items, siteName) {
   return pdf
 }
 
-export function downloadVehicleReportPdf(items, siteName) {
-  createVehicleReportPdf(items,siteName).save(vehicleReportFilename(items,siteName))
+export function downloadVehicleReportPdf(items, siteName, options = {}) {
+  createVehicleReportPdf(items,siteName,options).save(vehicleReportFilename(items,siteName))
 }

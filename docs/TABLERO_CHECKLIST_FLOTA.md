@@ -11,3 +11,11 @@ Flota general guarda `observaciones_puntos` con texto y ticket_id, además del r
 Limitación: la reutilización de tickets es una consulta seguida de escritura, no una transacción de servidor. Dos operadores simultáneos podrían crear duplicados o sobrescribir la última ampliación del diagnóstico. Una RPC transaccional requiere revisión y autorización del SQL de permisos. No se alteraron RLS/GRANT; persisten las políticas amplias de tickets documentadas.
 
 Validación con mocks: creación inmediata, observación obligatoria, prioridad, reutilización, error sin aceptar respuesta, filtrado de sede, conteo de unidades únicas y regresión QR/gran porte. Sin controles o tickets ficticios en producción.
+
+
+## Actualización 2026-11-18: carga y PDF
+- Gran porte permite múltiples controles diarios sin turno. Hora de carga del servidor y nueva identificación por cada control; reintentos conservan el ID.
+- Última lectura de checklist precargada, editable; un historial que llega tarde no sobrescribe edición manual. Se admite kilometraje igual.
+- NC/Crítico abre modal por punto y crea o actualiza ticket al confirmar. NA pide justificación y no crea ticket. Cambiar a OK elimina la observación del punto del control en preparación, pero no cierra un ticket ya registrado.
+- Informes individuales, por sede y mobile: fechas para los checklists, resumen por defecto, detalle opcional de novedades en dos columnas. La documentación y demás secciones no se filtran por esas fechas.
+- Base: migración 20261118204009_checklist_sin_turnos.sql aplicada a mixyhfdlzjarvszinytk. Sin cambios de permisos, RLS ni datos históricos.

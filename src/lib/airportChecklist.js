@@ -28,7 +28,6 @@ export const AIRPORT_SHIFTS = ['mañana','tarde','noche']
 export const AIRPORT_FUEL = ['completo','3/4','1/2','1/4','reserva']
 export const airportToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Cordoba',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 export function validateAirportChecklist(form) {
-  if (!AIRPORT_SHIFTS.includes(form.turno)) return 'Seleccioná el turno.'
   if (form.km === '' || !Number.isSafeInteger(Number(form.km)) || Number(form.km)<0 || Number(form.km)>2147483647) return 'Ingresá un kilometraje entero válido.'
   if (!AIRPORT_FUEL.includes(form.combustible)) return 'Seleccioná el nivel de combustible.'
   if (AIRPORT_ITEMS.some(i=>!(i.allowNa?['ok','nc','na']:['ok','nc']).includes(form.respuestas?.[i.id]))) return 'Respondé todos los puntos del control.'

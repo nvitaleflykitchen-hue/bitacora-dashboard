@@ -1,5 +1,6 @@
+import {checklistDateTime} from '../lib/checklistReading'
 import React from 'react'
-import { fleetDate, fleetDateTime, interventionDate, interventionKind } from '../lib/flotaModel'
+import { fleetDateTime, fleetDate, interventionDate, interventionKind } from '../lib/flotaModel'
 export default function FlotaHistorial({ report }) {
   if(!report) return null
   return <section style={{marginTop:20}}>
@@ -7,7 +8,7 @@ export default function FlotaHistorial({ report }) {
     <p>Última lectura registrada: {report.reading.km == null ? 'Sin registrar' : `${Number(report.reading.km).toLocaleString('es-AR')} km`} · {fleetDate(report.reading.fecha)} · {report.reading.fuente}. No certifica el odómetro actual.</p>
     {report.warnings.map(w=><p key={w} role="note" style={{color:'#f59e0b',marginTop:8}}>{w}</p>)}
     <p style={{marginTop:12}}>{report.tickets.length} registros vinculados, todos los estados.</p>
-    {(report.checks||[]).filter(c=>c.version===1&&c.turno&&c.resultado).map(c=><details key={c.id} className="glass p-3 mt-2"><summary>Control gran porte · {fleetDate(c.fecha)} · {c.turno} · {c.resultado==='con_novedades'?'Con novedades':'Sin novedades'}</summary><p>{c.responsable} · Km {c.km} · Combustible {c.combustible}</p><p>{c.observaciones||'Sin novedades informadas.'}</p></details>)}
+    {(report.checks||[]).filter(c=>c.resultado).map(c=><details key={c.id} className="glass p-3 mt-2"><summary>Control gran porte · {checklistDateTime(c.creado_at || c.fecha)} · {c.resultado==='con_novedades'?'Con novedades':'Sin novedades'}</summary><p>{c.responsable} · Km {c.km} · Combustible {c.combustible}</p><p>{c.observaciones||'Sin novedades informadas.'}</p></details>)}
     {report.tickets.map(t=><details key={t.id} className="glass p-3 mt-2">
       <summary>#{t.numero} · {fleetDate(interventionDate(t))} · {interventionKind(t)} · {t.estado}</summary>
       <p>Incorporado: {fleetDateTime(t.created_at)} · Tipo: {t.tipo}</p>

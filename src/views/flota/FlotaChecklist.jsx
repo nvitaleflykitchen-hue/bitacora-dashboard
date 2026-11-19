@@ -1,5 +1,6 @@
+import { previousChecklistReading } from '../../lib/checklistReading'
 import { useChecklistFindings } from '../../components/ChecklistFindings'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Car, CheckCircle2, ClipboardCheck, RefreshCw, Save, Ticket } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
 import { getActivos } from '../../lib/queries'
@@ -142,6 +143,10 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
 
   useEffect(() => { load() }, [allowedSedeIds, activoId])
 
+  const kmEdited = useRef(false)
+  useEffect(() => {
+    if (!kmEdited.current) setForm(f => ({...f, km:previousChecklistReading(visitas.filter(v => v.activo_id === f.activo_id))}))
+  }, [visitas, form.activo_id])
   const selected = vehiculos.find(v => String(v.id) === String(form.activo_id)) || null
   const findings=useChecklistFindings(selected,(item,value,detail)=>setForm(f=>({...f,respuestas:{...f.respuestas,[item.id]:value},observaciones_puntos:{...f.observaciones_puntos,[item.id]:detail},observaciones:detail?[f.observaciones,`${item.label}: ${detail.texto} (ticket ${detail.ticket_id})`].filter(Boolean).join('\n'):f.observaciones})))
   const estado = overallStatus(form.respuestas)
@@ -203,6 +208,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
       if (visitaError) throw visitaError
 
       toast.ok('Checklist guardado. Los tickets de cada desvío quedaron registrados al confirmar sus observaciones.')
+      kmEdited.current = false
       setForm({
         activo_id:activoId || '',
         conductor: perfil?.nombre || '',
@@ -254,7 +260,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
           <div className="general-checklist-fields">
             <div>
               <label style={LBL}>Vehículo *</label>
-              <select aria-label="Vehículo" style={INPUT} value={form.activo_id} onChange={e => setForm(f => ({ ...f, activo_id:e.target.value, respuestas:buildEmptyItems(), observaciones:'', km:'' }))} disabled={!canManage || !!activoId}>
+              <select aria-label="Vehículo" style={INPUT} value={form.activo_id} onChange={e => { kmEdited.current=false; setForm(f => ({ ...f, activo_id:e.target.value, respuestas:buildEmptyItems(), observaciones:'', km:'' })) }} disabled={!canManage || !!activoId}>
                 <option value="">— Seleccionar vehículo —</option>
                 {vehiculos.map(v => <option key={v.id} value={v.id}>{v.nombre}{vehicleIdentity(v).dominio ? ` · ${vehicleIdentity(v).dominio}` : ''}{v.sede_nombre || v.sede ? ` · ${v.sede_nombre || v.sede}` : ''}</option>)}
               </select>
@@ -265,7 +271,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
             </div>
             <div>
               <label style={LBL}>Km</label>
-              <input style={INPUT} aria-label="Kilometraje" type="number" min="0" step="1" value={form.km} onChange={e => setForm(f => ({ ...f, km:e.target.value }))} disabled={!canManage} placeholder="0" />
+              <input style={INPUT} aria-label="Kilometraje" type="number" min="0" step="1" value={form.km} onChange={e => { kmEdited.current=true; setForm(f => ({ ...f, km:e.target.value })) }} disabled={!canManage} placeholder="Sin lectura anterior" /><small>Último kilometraje precargado. Editá solo lo que cambió; puede ser el mismo.</small>
             </div>
           </div>
 
@@ -318,7 +324,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
             ) : (
               <div style={{ display:'grid', gap:6, maxHeight:260, overflowY:'auto' }}>
                 {pendientes.map(v => (
-                  <button key={v.id} onClick={() => canManage && setForm(f => ({ ...f, activo_id:v.id, respuestas:buildEmptyItems(), observaciones:'', km:'' }))} style={{ textAlign:'left', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.18)', color:'var(--text)', borderRadius:3, padding:'0.55rem 0.7rem', cursor:canManage ? 'pointer' : 'default' }}>
+                  <button key={v.id} onClick={() => { if(canManage) { kmEdited.current=false; setForm(f => ({ ...f, activo_id:v.id, respuestas:buildEmptyItems(), observaciones:'', km:'' })) } }} style={{ textAlign:'left', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.18)', color:'var(--text)', borderRadius:3, padding:'0.55rem 0.7rem', cursor:canManage ? 'pointer' : 'default' }}>
                     <strong style={{ display:'block', fontSize:'0.75rem' }}><Car size={12} style={{ verticalAlign:'middle', marginRight:5 }}/>{v.nombre}</strong>
                     <span style={{ color:'var(--text-dim)', fontSize:'0.63rem' }}>{v.sede_nombre || v.sede || 'Sin sede'} · Último: {fmtFechaHora(latestByVehicle.get(v.id)?.row?.fecha)}</span>
                   </button>
