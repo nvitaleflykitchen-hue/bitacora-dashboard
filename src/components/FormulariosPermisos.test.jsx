@@ -43,3 +43,21 @@ it('keeps the draft and reports storage failure without claiming generation',asy
  expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo guardar el PDF')
  expect(api.transitionForm).not.toHaveBeenCalled();expect(screen.getByLabelText('Tareas a desarrollar')).toBeInTheDocument()
 })
+it('offers corporate responsables and supports entirely manual participants and responsible',async()=>{
+ const anexo={...template,tipo:'anexo_e'}
+ api.loadFormContext.mockResolvedValue({personas:[],responsables:[{id:'corp',nombre:'Nicolás',apellido:'Vitale',aeroportuario:{}}],sedes:[{id:1,nombre:'Aeropuerto',acciones:['ver','crear','editar','generar']}],plantillas:[anexo],admin:false})
+ render(<FormulariosPermisos/>);fireEvent.click(await screen.findByRole('button',{name:/Permiso de prueba/}))
+ expect(screen.getByRole('option',{name:/Vitale, Nicolás/})).toBeInTheDocument()
+ fireEvent.click(screen.getByRole('button',{name:'Agregar persona manual'}))
+ fireEvent.change(screen.getByLabelText('Nombre/s'),{target:{value:'Emanuel'}})
+ fireEvent.change(screen.getByLabelText('Apellido/s'),{target:{value:'Calderón'}})
+ fireEvent.change(screen.getByLabelText('Responsable del acompañamiento'),{target:{value:'manual'}})
+ fireEvent.change(screen.getAllByLabelText('Nombre/s')[1],{target:{value:'Pablo'}})
+ fireEvent.change(screen.getAllByLabelText('Apellido/s')[1],{target:{value:'Fernandez'}})
+ fireEvent.click(screen.getByRole('button',{name:'Guardar borrador'}))
+ await waitFor(()=>expect(api.saveForm).toHaveBeenCalled())
+ const payload=api.saveForm.mock.calls[0][0]
+ expect(payload.persona_ids).toEqual([])
+ expect(payload.variables.personas_manuales[0]).toMatchObject({nombre:'Emanuel',apellido:'Calderón'})
+ expect(payload.variables.responsable_manual).toMatchObject({nombre:'Pablo',apellido:'Fernandez'})
+})
