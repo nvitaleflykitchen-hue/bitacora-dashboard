@@ -29,7 +29,7 @@ export default function ComedorPublico({ token }) {
     {error && <p className="comedor-error" role="alert">{error}</p>}
     {site && <>
       <section className="comedor-card"><h2>Contactanos</h2><div className="comedor-contacts">
-        {['coordinacion','gerencia'].map(key=><div key={key}><strong>{key==='gerencia'?'Gerencia':'Coordinación'}</strong><p>{site[key].nombre}</p><a href={`https://wa.me/${site[key].telefono}?text=${encodeURIComponent('Consulta sobre '+site.nombre)}`} target="_blank" rel="noreferrer">WhatsApp</a> <a href={`tel:+${site[key].telefono}`}>Llamar</a></div>)}
+        {site.contactos.map(c=><div key={c.telefono}><strong>{c.nombre}</strong><p>{c.rol}</p><a href={`https://wa.me/${c.telefono}?text=${encodeURIComponent("Consulta sobre "+site.nombre)}`} target="_blank" rel="noreferrer">WhatsApp</a> <a href={`tel:+${c.telefono}`}>Llamar</a></div>)}
       </div></section>
       <section className="comedor-card">{receipt ? <div role="status"><h2>Novedad recibida</h2><p>Tu número de referencia es <strong>{receipt.codigo}</strong>.</p><p>Gracias. El equipo revisará tu reporte.</p><button onClick={()=>{setReceipt(null);setDetails({});requestId.current=crypto.randomUUID()}}>Enviar otra novedad</button></div> : <form onSubmit={submit}>
         <h2>Contanos qué pasó</h2><p>No necesitás una cuenta. Podés incluir varios temas en un mismo reporte.</p>
