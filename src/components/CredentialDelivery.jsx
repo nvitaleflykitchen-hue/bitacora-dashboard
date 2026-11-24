@@ -53,8 +53,10 @@ export default function CredentialDelivery() {
         setProgress(`${i+1}/${manifest.people.length}: ${p.nombre}`)
         const record = { batch_id:manifest.batch_id, key_id:manifest.public_key.n, persona_id:p.persona_id, nombre:p.nombre, email:p.auth_email || p.email, sedes:(p.sedes || []).map(s=>s.nombre), sede_ids:p.sede_ids, rol:p.action === 'create' ? 'operario' : p.rol }
         try {
-          const current = await supabase.schema('bitacora').rpc('get_persona_for_user_enable',{p_persona_id:p.persona_id}).single()
-          if (current.error || !current.data?.activo) throw new Error('Persona inactiva o no disponible.')
+          const current = await supabase.schema('equipo').from('personas')
+            .select('id,activo,fecha_baja,duplicado_de,perfil_id,email,sede_ids').eq('id',p.persona_id).single()
+          if (current.error) throw new Error('No se pudo consultar la ficha de personal. Revisá la sesión administrativa y volvé a intentar.')
+          if (!current.data?.activo || current.data.fecha_baja || current.data.duplicado_de) throw new Error('Persona inactiva o no disponible.')
           if (p.action === 'create' && (current.data.perfil_id || current.data.email?.trim().toLowerCase() !== p.email.trim().toLowerCase())) throw new Error('La ficha cambió desde el relevamiento. Revisar antes de continuar.')
           if (JSON.stringify([...(current.data.sede_ids || [])].sort()) !== JSON.stringify([...(p.sede_ids || [])].sort())) throw new Error('Las sedes cambiaron desde el relevamiento.')
           if (p.action === 'create') {
@@ -85,7 +87,10 @@ export default function CredentialDelivery() {
           persist({...record,status:'error',error:e.message})
         }
       }
-      setProgress('Preparación finalizada. Descargá la entrega cifrada para verificarla e incorporarla al visor.')
+      const completed = rows.filter(r => r.batch_id === manifest.batch_id && ['creado','restablecido'].includes(r.status)).length
+      setProgress(completed === 0
+        ? 'No se preparó ninguna credencial. Revisá los errores antes de volver a intentar.'
+        : `Preparación finalizada: ${completed} credenciales listas para verificar e incorporar al visor. ${manifest.people.length - completed} pendientes.`)
     } catch (e) { setError(e.message) }
     finally { busy.current=false; setRunning(false) }
   }
@@ -98,7 +103,7 @@ export default function CredentialDelivery() {
       {manifest && <p>{manifest.people.length} personas preparadas · relevamiento {new Date(manifest.audited_at).toLocaleString('es-AR')}</p>}
       <div style={{display:'flex',gap:12,marginTop:12,flexWrap:'wrap'}}>
         <button className="btn-primary" disabled={!manifest || running} onClick={run}>{running?'Preparando…':'Preparar cuentas y claves'}</button>
-        <button className="btn-ghost" disabled={!results.length || running} onClick={download}>Descargar entrega cifrada</button>
+        <button className="btn-ghost" disabled={!results.some(r=>['creado','restablecido'].includes(r.status)) || running} onClick={download}>Descargar entrega cifrada</button>
       </div>
       <p role="status">{progress}</p>
       {error && <p role="alert">{error}</p>}
