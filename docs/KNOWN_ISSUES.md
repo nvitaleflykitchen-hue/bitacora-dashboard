@@ -713,3 +713,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: en la app abierta el formulario anterior no incluía el modal por punto y deshabilitaba Guardar al existir vehículo/fecha/turno. La base confirmaba la misma restricción UNIQUE y la validación RPC.
 - Resolución: se elimina el turno para nuevas cargas, se conserva el historial y se registra la hora de servidor; permanece la idempotencia por ID de envío. Actualizar las sesiones abiertas para cargar el formulario nuevo. Modal por punto en portal y explicación NA sin ticket.
 - Validación: prueba RPC con rol operario, 100 controles conformes con igual km + NC + NA + reintento idempotente, transacción ROLLBACK; cantidad y hash de los dos controles reales sin cambios. Pruebas integradas de formulario completo sin sustituir el manejador de observaciones.
+
+
+### Entrega de credenciales: consulta de prevalidación rechazada (corregido 2026-11-23)
+- Severidad: alta funcional; impedía todas las altas y restablecimientos del lote.
+- Verificación: `has_function_privilege` confirma que `get_persona_for_user_enable` solo permite ejecución a service_role, mientras el componente la invocaba como authenticated. El error se mostraba incorrectamente como persona inactiva.
+- Corrección: consultar los campos mínimos de `equipo.personas` con la sesión administrativa y sus políticas existentes. Las funciones administrativas conservan su validación del servidor. No se cambian GRANT ni RLS. Separar errores de consulta de bajas reales y no anunciar éxito ni habilitar entrega cuando no hay credenciales preparadas.
