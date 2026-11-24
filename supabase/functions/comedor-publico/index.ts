@@ -3,7 +3,7 @@ const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':
 const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers})
 const uuid=(v:unknown)=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 const text=(v:unknown,max:number,required=false)=>typeof v==='string' && v.length<=max && (!required || v.trim().length>0)
-const contact=(v:any)=>v && text(v.nombre,100,true) && typeof v.telefono==='string' && /^[1-9][0-9]{9,14}$/.test(v.telefono)
+const contact=(v:any)=>v && text(v.nombre,100,true) && text(v.rol,120,true) && typeof v.telefono==='string' && /^[1-9][0-9]{9,14}$/.test(v.telefono)
 Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers})
   if(req.method!=='POST')return reply({error:'Método no permitido'},405)
@@ -12,17 +12,17 @@ Deno.serve(async req=>{
     const b=JSON.parse(raw), secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const admin=createClient(Deno.env.get('SUPABASE_URL')!,secret,{auth:{persistSession:false,autoRefreshToken:false}}), db=admin.schema('bitacora')
     if(['config','save','reports'].includes(b.action)){
-      const {data:user,error}=await admin.auth.getUser((req.headers.get('authorization')||'').replace(/^Bearer /i,''))
-      if(error||!user.user)return reply({error:'Sesión requerida'},401)
+      const {data:user,error:authError}=await admin.auth.getUser((req.headers.get('authorization')||'').replace(/^Bearer /i,''))
+      if(authError||!user.user)return reply({error:'Sesión requerida'},401)
       const {data:profile}=await db.from('perfiles').select('rol,activo').eq('id',user.user.id).single()
       if(!profile?.activo||profile.rol!=='admin')return reply({error:'Solo administración'},403)
       if(!Number.isInteger(b.sede_id)||b.sede_id<1)return reply({error:'Sede inválida'},400)
       if(b.action==='save'){
-        if(!contact(b.coordinacion)||!contact(b.gerencia)||typeof b.activo!=='boolean')return reply({error:'Completá ambos contactos con teléfono internacional, solo números.'},400)
-        const clean=(c:any)=>({nombre:c.nombre.trim(),telefono:c.telefono})
+        if(!contact(b.coordinacion)||(!Array.isArray(b.gerencia)||b.gerencia.length!==2||!b.gerencia.every(contact))||typeof b.activo!=='boolean')return reply({error:'Completá los tres contactos con teléfono internacional, solo números.'},400)
+        const clean=(c:any)=>({nombre:c.nombre.trim(),rol:c.rol.trim(),telefono:c.telefono})
         const {data:existing,error:lookupError}=await db.from('comedor_qr').select('token').eq('sede_id',b.sede_id).maybeSingle()
         if(lookupError)throw lookupError
-        const values={activo:b.activo,coordinacion:clean(b.coordinacion),gerencia:clean(b.gerencia),updated_at:new Date().toISOString()}
+        const values={activo:b.activo,coordinacion:clean(b.coordinacion),gerencia:b.gerencia.map(clean),updated_at:new Date().toISOString()}
         const write=existing?db.from('comedor_qr').update(values).eq('sede_id',b.sede_id):db.from('comedor_qr').insert({...values,sede_id:b.sede_id})
         const {data,error}=await write.select('sede_id,token,activo,coordinacion,gerencia').single()
         if(error)throw error;return reply(data)
@@ -40,7 +40,7 @@ Deno.serve(async req=>{
     if(error)throw error
     const {data:sede}=qr?await db.from('sedes').select('nombre').eq('id',qr.sede_id).eq('activa',true).maybeSingle():{data:null}
     if(!qr||!sede)return reply({error:'QR no disponible'},404)
-    if(b.action==='info')return reply({nombre:sede.nombre,coordinacion:qr.coordinacion,gerencia:qr.gerencia})
+    if(b.action==='info')return reply({nombre:sede.nombre,contactos:[qr.coordinacion,...qr.gerencia]})
     if(!uuid(b.request_id)||!text(b.nombre,100,true)||!text(b.empresa,120)||!text(b.contacto,160)||!Array.isArray(b.items)||!b.items.length||b.items.length>8||new Set(b.items.map((i:any)=>i.tema)).size!==b.items.length||b.items.some((i:any)=>!i||!/^[a-h]$/.test(i.tema)||!text(i.detalle,2000,true)||i.detalle.trim().length<5))return reply({error:'Revisá el nombre y los detalles de cada tema.'},400)
     const ip=req.headers.get('x-forwarded-for')?.split(',')[0].trim()||'unknown'
     const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(secret+':'+ip))
@@ -50,3 +50,4 @@ Deno.serve(async req=>{
     return reply({codigo:`COM-${String(numero).padStart(6,'0')}`})
   }catch{return reply({error:'El canal no está disponible en este momento. Intentá nuevamente.'},500)}
 })
+
