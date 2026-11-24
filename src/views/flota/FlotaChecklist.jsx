@@ -1,3 +1,4 @@
+import { verifiedChecklistAuthor } from '../../lib/checklistAuthor'
 import { previousChecklistReading } from '../../lib/checklistReading'
 import { useChecklistFindings } from '../../components/ChecklistFindings'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -175,6 +176,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
     setSaving(true)
     setErr(null)
     try {
+      const author = await verifiedChecklistAuthor(perfil)
       const payload = {
         version: 2,
         plantilla: 'control_diario_general',
@@ -186,12 +188,13 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
         activo_nombre: selected.nombre,
         sede_id: selected.sede_id || null,
         sede: selected.sede_nombre || selected.sede || null,
-        conductor: perfil?.nombre || perfil?.email || null,
+        conductor: author.nombre,
         km: form.km !== '' ? Number(form.km) : null,
         observaciones: form.observaciones.trim() || null,
         respuestas: form.respuestas,
         observaciones_puntos: form.observaciones_puntos || {},
-        creado_por: perfil?.nombre || perfil?.email || null,
+        creado_por: author.nombre,
+        autor_id: author.id,
         created_at: new Date().toISOString(),
       }
 
@@ -203,7 +206,7 @@ export function GeneralFlotaChecklist({ onBack, activoId = null } = {}) {
           tipo_visita: 'inspeccion',
           visitante: payload.conductor,
           observacion: CHECKLIST_PREFIX + JSON.stringify(payload),
-          created_by: perfil?.id || null,
+          created_by: author.id,
         })
       if (visitaError) throw visitaError
 

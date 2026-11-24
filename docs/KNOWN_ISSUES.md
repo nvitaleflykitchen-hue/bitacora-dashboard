@@ -719,3 +719,10 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Severidad: alta funcional; impedía todas las altas y restablecimientos del lote.
 - Verificación: `has_function_privilege` confirma que `get_persona_for_user_enable` solo permite ejecución a service_role, mientras el componente la invocaba como authenticated. El error se mostraba incorrectamente como persona inactiva.
 - Corrección: consultar los campos mínimos de `equipo.personas` con la sesión administrativa y sus políticas existentes. Las funciones administrativas conservan su validación del servidor. No se cambian GRANT ni RLS. Separar errores de consulta de bajas reales y no anunciar éxito ni habilitar entrega cuando no hay credenciales preparadas.
+
+
+### Autor de checklist y cambio de sesión (2026-11-24; corregido en código)
+- Severidad: alta, integridad de autoría.
+- Verificación: prueba con dos cuentas y respuesta de perfil anterior demorada. `loadPerfil` publicaba resultados sin validar si la hidratación seguía vigente; el guardado de flota general tomaba nombre e ID del perfil en memoria. El control runId existía solamente en error/finalización.
+- Corrección: invalidar consultas al cambiar sesión, descartar respuestas tardías o de otra identidad, limpiar el perfil anterior y verificar el usuario y su perfil actual antes de guardar un checklist general. El flujo aeroportuario ya determina el autor mediante RPC en el servidor. No se modificaron permisos de base.
+- Limitación: esto demuestra una condición de carrera posible; los registros históricos consultados no permiten identificar por sí solos a la persona física que los completó. No reasignar autorías sin evidencia.

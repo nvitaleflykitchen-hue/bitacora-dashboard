@@ -5,6 +5,7 @@ import { GeneralFlotaChecklist } from './FlotaChecklist'
 import { GENERAL_VEHICLE_ITEMS, generalChecklistError } from '../../lib/generalVehicleChecklist'
 import { AIRPORT_VEHICLES } from '../../lib/airportChecklist'
 const mock = vi.hoisted(()=>({assets:vi.fn(),insert:vi.fn(),ticket:vi.fn(),warn:vi.fn(),rol:'admin',visits:[]}))
+vi.mock('../../lib/checklistAuthor',()=>({verifiedChecklistAuthor:vi.fn(async p=>({id:p.id,nombre:p.nombre}))}))
 vi.mock('../../lib/queries',()=>({getActivos:mock.assets,createTicket:mock.ticket}))
 vi.mock('../../lib/auth',()=>({useAuth:()=>({perfil:{id:'person',nombre:'Responsable'},rol:mock.rol,allowedSedeIds:null,can:()=>mock.rol==='admin'})}))
 vi.mock('../../lib/feedback',()=>({toast:{ok:vi.fn(),warn:mock.warn}}))

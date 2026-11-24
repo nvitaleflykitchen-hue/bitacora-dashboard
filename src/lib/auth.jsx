@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const loadPerfil = async (authUser) => {
+  const loadPerfil = async (authUser, isCurrent = () => true) => {
     if (!authUser) {
       setPerfil(null)
       setAllowedSedeIds(null)
@@ -81,7 +81,9 @@ export function AuthProvider({ children }) {
       if(cached){data=JSON.parse(cached);error=null}else throw loadError
     }
 
+    if (!isCurrent()) return null
     if (error) throw error
+    if (data && data.id !== authUser.id) throw new Error('La sesión cambió. Volvé a ingresar para verificar tu usuario.')
     if (!data) {
       const { data: nuevo, error: insertError } = await withTimeout(
         db()
@@ -144,6 +146,8 @@ export function AuthProvider({ children }) {
       data = { ...data, kiosk_sites: [], kiosk_sede_ids: [] }
     }
     } else { data = { ...data, compras_permisos: [], mantenimiento_permisos: [], kiosk_sites: [], kiosk_sede_ids: [] } }
+    if (!isCurrent()) return null
+    if (data.id !== authUser.id) throw new Error('El perfil no coincide con la sesión actual.')
     localStorage.setItem(offlinePerfilKey(authUser.id),JSON.stringify(data))
 
     // Only update perfil state when data actually changed to avoid cascading re-renders
@@ -176,6 +180,7 @@ export function AuthProvider({ children }) {
           .eq('activa', true),
         'Carga de sedes del grupo',
       )
+      if (!isCurrent()) return null
       if (sedesError) throw sedesError
       setAllowedSedeIds((sedes || []).map(s => s.id))
       setAccessBlocked(!(sedes || []).length)
@@ -194,19 +199,27 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false
     let runId = 0
+    let authEventId = 0
 
     const hydrate = async (authUser, source) => {
       const currentRun = ++runId
       setAuthError(null)
       setUser(authUser ?? null)
+      if (perfilRef.current?.id !== authUser?.id) {
+        perfilRef.current = null
+        setPerfil(null)
+        setAllowedSedeIds([])
+        setLoading(true)
+      }
 
       try {
-        const perfilCargado = await loadPerfil(authUser)
+        const perfilCargado = await loadPerfil(authUser, () => !cancelled && currentRun === runId)
         if (perfilCargado?.activo) registrarAcceso(authUser)
       } catch (err) {
         console.error(`[auth] ${source} falló`, err)
         if (cancelled || currentRun !== runId) return
         setAuthError(err?.message || 'No se pudo iniciar la sesión.')
+        perfilRef.current = null
         setPerfil(null)
         setAllowedSedeIds(null)
         setAccessBlocked(false)
@@ -219,10 +232,11 @@ export function AuthProvider({ children }) {
       try {
         const { data: { session }, error } = await withTimeout(supabase.auth.getSession(), 'Lectura de sesión')
         if (error) throw error
-        if (!cancelled) await hydrate(session?.user ?? null, 'bootstrap')
+        if (!cancelled && authEventId === 0) await hydrate(session?.user ?? null, 'bootstrap')
       } catch (err) {
         console.error('[auth] bootstrap falló', err)
-        if (cancelled) return
+        if (cancelled || authEventId !== 0) return
+        perfilRef.current = null
         setUser(null)
         setPerfil(null)
         setAllowedSedeIds(null)
@@ -238,9 +252,17 @@ export function AuthProvider({ children }) {
       // Supabase advierte no hacer trabajo async pesado dentro de este callback.
       // Diferimos la hidratación del perfil para evitar bloqueos intermitentes al iniciar.
       if (event === 'INITIAL_SESSION') return
+      const eventId = ++authEventId
+      ++runId // Invalidar de inmediato consultas de la cuenta anterior.
+      if (perfilRef.current?.id !== session?.user?.id) {
+        perfilRef.current = null
+        setPerfil(null)
+        setAllowedSedeIds([])
+        setLoading(true)
+      }
       setUser(session?.user ?? null)
       window.setTimeout(() => {
-        if (!cancelled) hydrate(session?.user ?? null, `auth:${event}`)
+        if (!cancelled && eventId === authEventId) hydrate(session?.user ?? null, `auth:${event}`)
       }, 0)
     })
 
@@ -261,6 +283,7 @@ export function AuthProvider({ children }) {
     setAuthError(null)
     await supabase.auth.signOut()
     setUser(null)
+    perfilRef.current = null
     setPerfil(null)
     setAllowedSedeIds(null)
     setAccessBlocked(false)
