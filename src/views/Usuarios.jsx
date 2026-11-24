@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { RefreshCw, Check, X as XIcon, UserPlus, Mail, Trash2, KeyRound, ShoppingCart, Wrench, ContactRound, Search, MapPin } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
+import CredentialDelivery from '../components/CredentialDelivery'
 import { confirmar, toast } from '../lib/feedback'
 import { mensajeError } from '../lib/errores'
 import SkeletonTable from '../components/SkeletonTable'
@@ -654,6 +655,7 @@ export default function Usuarios() {
           </button>
         </div>
       </PageHeader>
+      <CredentialDelivery />
 
       {!loading && (
         <div className="grid grid-cols-3 gap-3">
