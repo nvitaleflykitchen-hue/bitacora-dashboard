@@ -1,3 +1,4 @@
+import ComedorQrAdmin from '../components/ComedorQrAdmin'
 import RegistroVehiculos from '../components/RegistroVehiculos'
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../lib/auth'
@@ -524,6 +525,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
 
               <div style={{ marginBottom:14 }}>
                 <TelefonosUtilesSede sedeId={sede.id} />
+                <ComedorQrAdmin key={sede.id} sede={sede} />
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns: capas.length > 0 ? 'minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1.5fr)', gap:10 }}>

@@ -55,6 +55,7 @@ const MntFlotaGestion = lazy(() => import('./views/mantenimiento/MntFlotaGestion
 const SedeResponsables = lazy(() => import('./views/SedeResponsables'))
 const Requerimientos = lazy(() => import('./views/Requerimientos'))
 const QRActivoView = lazy(() => import('./views/mantenimiento/QRActivoView'))
+const ComedorPublico = lazy(() => import('./views/ComedorPublico'))
 const PublicAssetQrView = lazy(() => import('./views/mantenimiento/PublicAssetQrView'))
 const AuditoriaView = lazy(() => import('./views/mantenimiento/AuditoriaView'))
 const AccesosAppReport = lazy(() => import('./views/AccesosAppReport'))
@@ -374,6 +375,8 @@ function AppInner() {
 
 export default function App() {
   const publicParams = new URLSearchParams(window.location.search)
+  const comedorToken = publicParams.get('comedor')
+  if (comedorToken) return <Suspense fallback={<LoadingScreen/>}><ComedorPublico token={comedorToken}/></Suspense>
   const paseToken = publicParams.get('pase')
   const credencialToken = publicParams.get('credencial')
   const eppEntregaToken = publicParams.get('eppEntrega')
