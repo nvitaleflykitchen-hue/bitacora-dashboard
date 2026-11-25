@@ -24,6 +24,7 @@ function perfilEqual(a, b) {
   return a.id === b.id
     && a.rol === b.rol
     && a.activo === b.activo
+    && a.must_change_password === b.must_change_password
     && a.grupo_id === b.grupo_id
     && a.nombre === b.nombre
     && a.email === b.email

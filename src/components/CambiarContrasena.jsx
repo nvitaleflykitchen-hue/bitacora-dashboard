@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase, db } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 
 export default function CambiarContrasena() {
@@ -13,19 +13,14 @@ export default function CambiarContrasena() {
     e.preventDefault()
     setError('')
 
-    if (nueva.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
+    if (nueva.length < 12 || nueva.length > 128) return setError('La contraseña debe tener entre 12 y 128 caracteres.')
     if (nueva === '123456') return setError('No podés usar la contraseña temporal. Elegí una nueva.')
     if (nueva !== confirma) return setError('Las contraseñas no coinciden.')
 
     setLoading(true)
     try {
-      const { error: authErr } = await supabase.auth.updateUser({ password: nueva })
-      if (authErr) throw authErr
-
-      const { error: profileError } = perfil?.rol === 'seguridad'
-        ? await supabase.rpc('seguridad_operar', { p_accion: 'clave_actualizada' })
-        : await db().from('perfiles').update({ must_change_password: false }).eq('id', user.id)
-      if (profileError) throw profileError
+      const {data,error:changeError}=await supabase.functions.invoke('cambiar-clave-obligatoria',{body:{password:nueva}})
+      if(changeError || !data?.success) throw new Error(data?.error || 'No se pudo completar el cambio. Reintentá o consultá a administración.')
 
       // Recargar para que auth.jsx actualice el perfil
       window.location.reload()
@@ -65,7 +60,7 @@ export default function CambiarContrasena() {
               type="password"
               value={nueva}
               onChange={e => setNueva(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Entre 12 y 128 caracteres"
               autoFocus
               required
               style={{

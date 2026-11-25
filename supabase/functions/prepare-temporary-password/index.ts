@@ -28,14 +28,16 @@ Deno.serve(async req => {
       const linked = await profiles.rpc('link_persona_to_profile',{p_persona_id:persona_id,p_perfil_id:user_id})
       if (linked.error || !linked.data) return response({error:'No se pudo vincular el legajo'},409)
     }
-    const flag = await profiles.from('perfiles').update({must_change_password:true}).eq('id',user_id).select('id').single()
+    const flag = await profiles.from('perfiles').update({must_change_password:true,updated_at:new Date().toISOString()}).eq('id',user_id).select('id').single()
     if (flag.error || !flag.data) return response({error:'No se pudo exigir el cambio de clave'},409)
     // Auth Admin API is the only password writer. Never log request bodies.
     const changed = await admin.auth.admin.updateUserById(user_id,{password})
     if (changed.error) {
-      await profiles.from('perfiles').update({must_change_password:profile.must_change_password}).eq('id',user_id)
+      // Keep the requirement on failure: never reopen access after an ambiguous reset.
       return response({error:'Auth no pudo restablecer la clave'},400)
     }
+    const confirmed = await profiles.from('perfiles').update({must_change_password:true,updated_at:new Date().toISOString()}).eq('id',user_id).select('id').single()
+    if (confirmed.error || !confirmed.data) return response({error:'La clave cambió, pero la obligación de cambio requiere revisión administrativa'},409)
     return response({success:true,user_id})
   } catch {
     return response({error:'No se completó el restablecimiento'},400)
