@@ -2,6 +2,7 @@ import React from 'react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { comedorApi, comedorUrl, TEMAS_COMEDOR } from '../lib/comedorQr'
+import {loadComedorContacts,comedorDefaults,matchingContact,contactValue} from '../lib/comedorContactOptions'
 
 const blank={nombre:'',rol:'',telefono:''}
 const empty={activo:false,coordinacion:{...blank},gerencia:[{...blank},{...blank}]}
@@ -9,14 +10,18 @@ export default function ComedorQrAdmin({ sede }) {
   const {perfil}=useAuth()
   const [open,setOpen]=useState(false), [config,setConfig]=useState(empty), [reports,setReports]=useState([])
   const [error,setError]=useState(''), [busy,setBusy]=useState(false), [saved,setSaved]=useState(false)
+  const [options,setOptions]=useState([]),[loaded,setLoaded]=useState(false)
   useEffect(()=>{setOpen(false);setConfig(empty);setReports([]);setError('');setSaved(false)},[sede.id])
   if(perfil?.rol!=='admin')return null
   async function load(){
     setOpen(true);setBusy(true);setError('')
-    try{const [c,r]=await Promise.all([comedorApi({action:'config',sede_id:sede.id}),comedorApi({action:'reports',sede_id:sede.id})]);setConfig(c.config||empty);setSaved(!!c.config);setReports(r.items)}catch(e){setError(e.message)}finally{setBusy(false)}
+    setLoaded(false)
+    try{const [c,r,contacts]=await Promise.all([comedorApi({action:'config',sede_id:sede.id}),comedorApi({action:'reports',sede_id:sede.id}),loadComedorContacts(sede.id)]);setOptions(contacts);setConfig(c.config||comedorDefaults(contacts,sede));setSaved(!!c.config);setReports(r.items);setLoaded(true)}catch(e){setError(e.message)}finally{setBusy(false)}
   }
   async function save(e){
-    e.preventDefault();setBusy(true);setError('')
+    e.preventDefault();if(!loaded)return
+    if([config.coordinacion,...config.gerencia].some(c=>!c.nombre||!c.rol||! /^[1-9][0-9]{9,14}$/.test(c.telefono))){setError('Elegí los tres contactos con cargo y teléfono internacional completos en Equipo.');return}
+    setBusy(true);setError('')
     try{setConfig(await comedorApi({action:'save',sede_id:sede.id,activo:config.activo,coordinacion:config.coordinacion,gerencia:config.gerencia}));setSaved(true)}catch(e){setError(e.message)}finally{setBusy(false)}
   }
   async function print(){
@@ -38,10 +43,24 @@ export default function ComedorQrAdmin({ sede }) {
     {open && <>
       <p>El QR abre un formulario sin cuenta. Solo se publican el nombre del comedor y estos tres contactos. Las novedades se consultan aquí.</p>
       {error && <p role="alert">{error}</p>}
-      <form onSubmit={save}><fieldset disabled={busy} style={{border:0,padding:0}}>
-        {[config.coordinacion,...config.gerencia].map((c,index)=><div key={index} style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:12}}>
-          {['nombre','rol','telefono'].map(field=><label key={field}>{field==='telefono'?'Teléfono con país (solo números)':field==='rol'?'Rol público':'Nombre'}<input required maxLength={field==='telefono'?15:120} pattern={field==='telefono'?'[1-9][0-9]{9,14}':undefined} value={c[field]} onChange={e=>{setSaved(false);setConfig(old=>index===0?{...old,coordinacion:{...old.coordinacion,[field]:e.target.value}}:{...old,gerencia:old.gerencia.map((g,i)=>i===index-1?{...g,[field]:e.target.value}:g)})}}/></label>)}
+      <form onSubmit={save}><fieldset disabled={busy||!loaded} style={{border:0,padding:0}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:16,margin:'16px 0'}}>
+        {[config.coordinacion,...config.gerencia].map((c,index)=><div key={index} style={{padding:16,border:'1px solid var(--border)',borderRadius:8,minWidth:0}}>
+          <label style={{display:'block',marginBottom:8}} htmlFor={`comedor-contact-${sede.id}-${index}`}>{['Coordinación · Nicolás','Gerencia','Responsable del servicio'][index]}</label>
+          <select id={`comedor-contact-${sede.id}-${index}`} className="input-dark" style={{width:'100%'}} value={matchingContact(options,c)|| (c.nombre?'actual':'')} onChange={e=>{
+            const value=contactValue(options.find(o=>o.id===e.target.value));setSaved(false)
+            setConfig(old=>index===0?{...old,coordinacion:value}:{...old,gerencia:old.gerencia.map((g,i)=>i===index-1?value:g)})
+          }} required>
+            <option value="">Seleccionar contacto</option>
+            {c.nombre&&!matchingContact(options,c)&&<option value="actual">{c.nombre} · contacto guardado</option>}
+            {options.map(o=><option key={o.id} value={o.id}>{o.nombre}{o.assigned?' · responsable asignado':''}{!o.telefono?' · sin teléfono':''}</option>)}
+          </select>
+          <p style={{margin:'12px 0 4px',overflowWrap:'anywhere'}}>{c.rol||'Sin cargo cargado'}</p>
+          <p style={{margin:0}}>{c.telefono||'Sin teléfono cargado'}</p>
         </div>)}
+        </div>
+        <p>Los datos se toman de Equipo y de los responsables asignados a la sede. Se publican al guardar.</p>
+        <button type="button" className="btn-ghost" style={{marginBottom:12}} onClick={()=>{const defaults=comedorDefaults(options,sede);setConfig(old=>({...old,coordinacion:defaults.coordinacion,gerencia:defaults.gerencia}));setSaved(false)}}>Usar Nicolás, Gerencia y responsable por defecto</button>
         <label><input type="checkbox" checked={config.activo} onChange={e=>{setSaved(false);setConfig(c=>({...c,activo:e.target.checked}))}}/> Habilitar acceso público de este comedor</label>
         <div style={{display:'flex',gap:12,marginTop:12,flexWrap:'wrap'}}><button className="btn-primary" type="submit">Guardar contactos y estado</button>
           <button type="button" className="btn-ghost" onClick={print} disabled={!saved||!config.activo||!config.token}>Imprimir cartel QR · A4</button>

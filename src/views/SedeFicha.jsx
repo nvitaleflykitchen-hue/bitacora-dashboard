@@ -59,7 +59,7 @@ function KpiCard({ label, val, sub, color, onClick }) {
   )
 }
 
-const EMPTY_FORM = { nombre:'', tipo:'Comedor', convenio_cct:'', direccion:'', telefono:'', responsable:'', contacto_nombre:'', descripcion:'', lat:'', lng:'', activa:true, kiosk_enabled:false, grupo_id:null, dias_operacion:[1,2,3,4,5,6,0] }
+const EMPTY_FORM = { nombre:'', tipo:'Comedor', convenio_cct:'', direccion:'', telefono:'', email:'', responsable:'', contacto_nombre:'', descripcion:'', lat:'', lng:'', activa:true, kiosk_enabled:false, grupo_id:null, dias_operacion:[1,2,3,4,5,6,0] }
 
 function SedeModal({ sede, personal = [], onClose, onSaved }) {
   const [form, setForm] = useState(sede ? {
@@ -68,6 +68,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
     convenio_cct: sede.convenio_cct || '',
     direccion: sede.direccion || '',
     telefono: sede.telefono || personal[0]?.telefono || '',
+    email: sede.email || '',
     responsable: sede.responsable || (personal.find(p=>p.rol==='Admin')||personal[0])?.nombre || '',
     contacto_nombre: sede.contacto_nombre || '',
     descripcion: sede.descripcion || '',
@@ -92,6 +93,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
 
   async function save() {
     if (!form.nombre.trim()) { setError('El nombre es obligatorio'); return }
+    if(form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())){setError('Ingresá un correo de sede válido.');return}
     setSaving(true); setError(null)
     try {
       let grupoId = form.grupo_id
@@ -109,6 +111,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
         convenio_cct: form.convenio_cct || null,
         direccion: form.direccion.trim() || null,
         telefono: form.telefono.trim() || null,
+        email: form.email.trim() || null,
         responsable: form.responsable.trim() || null,
         contacto_nombre: form.contacto_nombre.trim() || null,
         descripcion: form.descripcion.trim() || null,
@@ -230,6 +233,7 @@ function SedeModal({ sede, personal = [], onClose, onSaved }) {
           <div><label style={lbl}>Responsable</label><input style={inp} value={form.responsable} onChange={e=>set('responsable',e.target.value)} placeholder="Ej: Carlos Pérez"/></div>
         </div>
 
+        <div style={{ marginBottom:10 }}><label style={lbl} htmlFor="sede-email">Correo de la sede</label><input id="sede-email" type="email" maxLength={254} style={inp} value={form.email} onChange={e=>set('email',e.target.value)} placeholder="Ej: comedor@empresa.com"/><small style={{color:'var(--text-dim)'}}>Correo de contacto de esta unidad. No modifica cuentas de acceso.</small></div>
         <div style={{ marginBottom:10 }}><label style={lbl}>Contacto en sede</label><input style={inp} value={form.contacto_nombre} onChange={e=>set('contacto_nombre',e.target.value)} placeholder="Ej: Lucía Fernández"/></div>
 
         <div style={{ marginBottom:10 }}><label style={lbl}>Descripción / Notas</label><textarea style={{ ...inp, minHeight:64, resize:'vertical' }} value={form.descripcion} onChange={e=>set('descripcion',e.target.value)} placeholder="Ej: Atiende turno mañana y tarde, capacidad 200 cubiertos"/></div>
@@ -283,7 +287,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
 
   const loadSedes = useCallback(() => {
     let query = supabase.schema('bitacora').from('sedes')
-      .select('id,nombre,tipo,direccion,lat,lng,telefono,contacto_nombre,responsable,descripcion,activa,kiosk_enabled')
+      .select('id,nombre,tipo,direccion,lat,lng,telefono,email,contacto_nombre,responsable,descripcion,activa,kiosk_enabled,convenio_cct,grupo_id,dias_operacion')
       .order('tipo').order('nombre')
     if (allowedSedeIds?.length) query = query.in('id', allowedSedeIds)
     return query
@@ -438,6 +442,7 @@ export default function SedeFicha({ onNavigate, focusId, onCreateNovedad }) {
                 {sede.direccion && <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.5))', display:'flex', alignItems:'center', gap:4 }}><MapPin size={11}/>  {sede.direccion}</span>}
                 {sede.responsable && <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.5))', display:'flex', alignItems:'center', gap:4 }}><User size={11}/> {sede.responsable}</span>}
                 {sede.telefono && <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.5))', display:'flex', alignItems:'center', gap:4 }}><Phone size={11}/> {sede.telefono}</span>}
+                {sede.email && <a href={`mailto:${sede.email}`} style={{fontSize:'0.8rem',color:'var(--text)',overflowWrap:'anywhere'}}>{sede.email}</a>}
                 {!sede.direccion && !sede.responsable && !sede.telefono && (
                   <span style={{ fontSize:'0.8rem', color:'var(--paper-muted, rgba(255,255,255,0.2))', fontStyle:'italic' }}>
                     Sin datos completados —
