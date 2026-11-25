@@ -726,3 +726,9 @@ No se auditó línea por línea cada vista de escritorio/mobile para confirmar q
 - Verificación: prueba con dos cuentas y respuesta de perfil anterior demorada. `loadPerfil` publicaba resultados sin validar si la hidratación seguía vigente; el guardado de flota general tomaba nombre e ID del perfil en memoria. El control runId existía solamente en error/finalización.
 - Corrección: invalidar consultas al cambiar sesión, descartar respuestas tardías o de otra identidad, limpiar el perfil anterior y verificar el usuario y su perfil actual antes de guardar un checklist general. El flujo aeroportuario ya determina el autor mediante RPC en el servidor. No se modificaron permisos de base.
 - Limitación: esto demuestra una condición de carrera posible; los registros históricos consultados no permiten identificar por sí solos a la persona física que los completó. No reasignar autorías sin evidencia.
+
+### Escáner QR sin solicitud de cámara (corregido 2026-11-25)
+- Severidad: media, bloqueo operativo del escaneo en navegadores sin BarcodeDetector.
+- Verificación: AssetQrScannerModal retornaba antes de invocar getUserMedia al no existir BarcodeDetector. Pruebas reproducen solicitud sin ese API, lectura, permiso denegado, reintento y cierre mientras el permiso está pendiente.
+- Corrección: usar BrowserQRCodeReader de la dependencia existente, solicitar cámara y mostrar instrucciones específicas ante bloqueo, cámara ausente u ocupada. Botón para reintentar y limpieza del stream al cerrar.
+- Recomendación: verificar también permisos del sitio y del sistema operativo. La aplicación no puede forzar una nueva autorización si el navegador la bloqueó previamente.
