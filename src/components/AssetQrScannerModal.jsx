@@ -20,77 +20,75 @@ export default function AssetQrScannerModal({
 }) {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
-  const frameRef = useRef(null)
-  const busyRef = useRef(false)
+  const controlsRef = useRef(null)
+  const callbacksRef = useRef({ onScan, parseValue, invalidMessage })
+  callbacksRef.current = { onScan, parseValue, invalidMessage }
+  const [attempt, setAttempt] = useState(0)
+  const [starting, setStarting] = useState(false)
   const [manualValue, setManualValue] = useState('')
   const [status, setStatus] = useState('Preparando la cámara…')
   const [cameraActive, setCameraActive] = useState(false)
 
   const stopCamera = useCallback(() => {
-    if (frameRef.current) cancelAnimationFrame(frameRef.current)
-    frameRef.current = null
+    controlsRef.current?.stop()
+    controlsRef.current = null
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
   }, [])
 
   const deliver = useCallback(raw => {
-    const parsed = parseValue(raw)
+    const parsed = callbacksRef.current.parseValue(raw)
     if (!parsed) {
-      setStatus(invalidMessage)
-      busyRef.current = false
+      setStatus(callbacksRef.current.invalidMessage)
       return false
     }
     stopCamera()
-    onScan(parsed)
+    callbacksRef.current.onScan(parsed)
     return true
-  }, [invalidMessage, onScan, parseValue, stopCamera])
+  }, [stopCamera])
 
   useEffect(() => {
     let disposed = false
+    let completed = false
 
     const start = async () => {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setStatus('Este dispositivo no permite usar la cámara. Ingresá el enlace o código manualmente.')
-        return
-      }
-      if (!('BarcodeDetector' in window)) {
-        setStatus('El lector automático no está disponible en este navegador. Ingresá el enlace o código manualmente.')
-        return
-      }
-
+      setStarting(true)
+      setCameraActive(false)
+      setStatus('Permití el acceso a la cámara cuando lo solicite el navegador…')
       try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('La cámara necesita una conexión HTTPS y un navegador compatible. Abrí Fly Gestión en Chrome, Edge o Safari, o usá el ingreso manual.')
         const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false })
         if (disposed) {
           stream.getTracks().forEach(track => track.stop())
           return
         }
         streamRef.current = stream
-        const video = videoRef.current
-        if (!video) return
-        video.srcObject = stream
-        await video.play()
+        const { BrowserQRCodeReader } = await import('@zxing/browser')
+        if (disposed) { stream.getTracks().forEach(track => track.stop()); return }
+        const reader = new BrowserQRCodeReader()
+        const controls = await reader.decodeFromStream(stream, videoRef.current, (result, error, scanner) => {
+          if (disposed || completed || !result) return
+          if (deliver(result.getText())) {
+            completed = true
+            scanner.stop()
+            setCameraActive(false)
+          }
+        })
+        if (disposed || completed) { controls.stop(); return }
+        controlsRef.current = controls
         setCameraActive(true)
         setStatus(prompt)
-        const detector = new window.BarcodeDetector({ formats:['qr_code'] })
-
-        const detect = async () => {
-          if (disposed || !streamRef.current) return
-          if (!busyRef.current && video.readyState >= 2) {
-            busyRef.current = true
-            try {
-              const codes = await detector.detect(video)
-              if (codes[0]?.rawValue && deliver(codes[0].rawValue)) return
-            } catch {
-              setStatus('No se pudo leer la cámara. Probá con el ingreso manual.')
-            } finally {
-              busyRef.current = false
-            }
-          }
-          frameRef.current = requestAnimationFrame(detect)
-        }
-        frameRef.current = requestAnimationFrame(detect)
-      } catch {
-        setStatus('No se pudo acceder a la cámara. Revisá el permiso o usá el ingreso manual.')
+      } catch (error) {
+        if (disposed) return
+        stopCamera()
+        setCameraActive(false)
+        setStatus(error.name === 'NotAllowedError'
+          ? 'El acceso a la cámara está bloqueado o fue rechazado. En los permisos del sitio habilitá Cámara y revisá también el permiso del navegador en tu dispositivo. Después pulsá Activar / reintentar cámara.'
+          : error.name === 'NotFoundError' ? 'No se encontró una cámara conectada. Conectala y reintentá, o usá el ingreso manual.'
+          : error.name === 'NotReadableError' ? 'La cámara está ocupada o el dispositivo bloquea el acceso. Cerrá otras aplicaciones que la usen y reintentá.'
+          : error.message || 'No se pudo iniciar el lector. Reintentá o usá el ingreso manual.')
+      } finally {
+        if (!disposed) setStarting(false)
       }
     }
 
@@ -99,7 +97,7 @@ export default function AssetQrScannerModal({
       disposed = true
       stopCamera()
     }
-  }, [deliver, prompt, stopCamera])
+  }, [attempt, deliver, prompt, stopCamera])
 
   const submitManual = event => {
     event.preventDefault()
@@ -124,6 +122,7 @@ export default function AssetQrScannerModal({
           <div aria-hidden="true" style={{ position:'absolute', width:'58%', aspectRatio:'1', border:'2px solid var(--phosphor)', borderRadius:8, boxShadow:'0 0 0 999px rgba(0,0,0,.22)' }}/>
         </div>
         <p role="status" style={{ color:'var(--text-dim)', fontSize:'.72rem', lineHeight:1.4, textAlign:'center', margin:'10px 0 14px' }}>{status}</p>
+        {!cameraActive && <button type="button" className="btn-primary" disabled={starting} onClick={()=>setAttempt(value=>value+1)} style={{ marginBottom:14 }}>{starting ? 'Esperando permiso de cámara…' : 'Activar / reintentar cámara'}</button>}
 
         <form onSubmit={submitManual}>
           <label htmlFor="asset-qr-manual" style={{ display:'flex', alignItems:'center', gap:6, color:'var(--text-dim)', fontSize:'.65rem', textTransform:'uppercase', marginBottom:6 }}><Keyboard size={14}/> Alternativa manual</label>
