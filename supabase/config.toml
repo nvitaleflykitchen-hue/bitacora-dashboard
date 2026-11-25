@@ -31,3 +31,8 @@ entrypoint = "./functions/send-quality-email/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/send-priority-notification/index.ts"
+
+[functions.cambiar-clave-obligatoria]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/cambiar-clave-obligatoria/index.ts"
