@@ -2,6 +2,7 @@ import VehicleReportOptions, {defaultReportOptions} from '../../components/Vehic
 import { vehicleIdentity, fleetToday } from '../../lib/flotaModel'
 import { saveFleetVehicle } from '../../lib/flotaVehicleSave'
 import FlotaHistorial from '../../components/FlotaHistorial'
+import VehicleReadingSummary from '../../components/VehicleReadingSummary'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { fmtFecha } from '../../lib/dateUtils'
 import { useAuth } from '../../lib/auth'
@@ -103,6 +104,7 @@ export function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNoved
     let active=true
     getProveedores().then(rows=>{if(active)setProviders(rows)}).catch(e=>{if(active)setErr(e.message)})
     if(!isNew) {
+      setReport(null)
       setLoadingPlanes(true)
       loadVehicleReport([{id:vehiculo.id}]).then(([data])=>{if(active){setReport(data);setForm(data.vehicle);setPlanes(data.plans.filter(p=>p.activo!==false))}}).catch(e=>{if(active)setErr(`No se pudo cargar la ficha completa: ${e.message}`)}).finally(()=>{if(active)setLoadingPlanes(false)})
     }
@@ -164,6 +166,7 @@ export function VehiculoModal({ vehiculo, sedes, onClose, onSaved, onCreateNoved
 
         {!isNew && !editing ? (
           <div>
+            <VehicleReadingSummary report={report} loading={loadingPlanes} error={err}/>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 1.5rem' }}>
               <Field label="Marca / Modelo" value={[current.marca, current.modelo].filter(Boolean).join(' ')} />
               <Field label="Categoría" value={current.categoria} />

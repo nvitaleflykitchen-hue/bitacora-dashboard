@@ -30,7 +30,7 @@ export function vehicleIdentity(v) {
 }
 export function lastReading(v,tickets=[],checks=[]) {
   const candidates = tickets.filter(t=>t.lectura_km!=null && interventionDate(t)).map(t=>({km:t.lectura_km,fecha:interventionDate(t),fuente:`Ticket ${t.numero || t.id}`}))
-  candidates.push(...checks.filter(c=>c.km!=null&&c.fecha).map(c=>({km:c.km,fecha:c.fecha,fuente:'Checklist'})))
+  candidates.push(...checks.filter(c=>c.km!=null && c.km!=='' && Number.isFinite(Number(c.km)) && c.fecha).map(c=>({km:c.km,fecha:c.fecha,fuente:'Checklist',responsable:c.visitante || c.conductor || c.responsable || null})))
   if (v.km_actual!=null && v.km_lectura_fecha) candidates.push({km:v.km_actual,fecha:v.km_lectura_fecha,fuente:'Ficha'})
   candidates.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))
   return candidates[0] || {km:v.km_actual ?? null,fecha:null,fuente:'Ficha sin fecha de lectura'}
