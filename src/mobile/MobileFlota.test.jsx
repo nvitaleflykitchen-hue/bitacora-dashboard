@@ -1,5 +1,5 @@
 import React from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import MobileFlota from './MobileFlota'
 vi.mock('../components/SkeletonTable',()=>({default:()=>null}))
@@ -16,6 +16,7 @@ it('muestra la ficha fresca y los históricos resueltos en móvil',async()=>{
   expect(await screen.findByText('DOBLO AC065RF')).toBeTruthy()
   expect(screen.getByText(/#893.*resuelto/)).toBeTruthy()
   expect(screen.getByText(/SENASA: fechas contradictorias/)).toBeTruthy()
-  expect(screen.getByText(/77.000 km/)).toBeTruthy()
+  expect(within(screen.getByRole('region',{name:'Kilometraje del vehículo'})).getByText('77.000 km')).toBeTruthy()
+  expect(screen.getByText(/Última lectura registrada:.*77.000 km/)).toBeTruthy()
   expect(screen.getByText('Informe PDF completo')).toBeTruthy()
 })
