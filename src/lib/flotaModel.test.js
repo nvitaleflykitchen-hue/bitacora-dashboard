@@ -14,6 +14,13 @@ it('envía sólo los campos modificados y exige fecha al cambiar una lectura',()
   expect(()=>fleetPatch({km_actual:77000},['km_actual'])).toThrow('fecha')
   expect(fleetPatch({anio:''},['anio'])).toEqual({anio:null})
 })
+it('elige el último control del día, conserva cero y su responsable, e ignora lecturas vacías',()=>{
+  expect(lastReading({},[],[
+    {km:120,fecha:'2026-11-26T10:00:00Z',conductor:'Anterior'},
+    {km:0,fecha:'2026-11-26T12:00:00Z',visitante:'Responsable registrado'},
+    {km:'',fecha:'2026-11-26T13:00:00Z'},
+  ])).toEqual({km:0,fecha:'2026-11-26T12:00:00Z',fuente:'Checklist',responsable:'Responsable registrado'})
+})
 it('detecta documentación contradictoria sin alterar estados o fechas',()=>{
   const docs=[{codigo:'habilitacion_senasa',fecha_vencimiento:'2026-12-30'}, {titulo:'ARIEL',estado:'vigente',fecha_vencimiento:'2020-10-01'}]
   const warnings=fleetWarnings({vencimiento_senasa:'2026-12-03'},docs,[{activo:true}])
