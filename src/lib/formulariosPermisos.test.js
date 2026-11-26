@@ -19,4 +19,11 @@ describe('validations',()=>{
   expect(()=>validateForm(vars,['a','b'],'ppa_auto')).toThrow('una persona')
   expect(()=>validateForm(vars,['a','b'],'anexo_e')).not.toThrow()
  })
+ it('accepts manual-only or mixed participants and requires their names',()=>{
+  const manual={...vars,personas_manuales:[{nombre:'Emanuel',apellido:'Calderón'}]}
+  expect(()=>validateForm(manual,[],'ppa_auto')).not.toThrow()
+  expect(()=>validateForm(manual,['registered'],'anexo_e')).not.toThrow()
+  expect(()=>validateForm(manual,['registered'],'ppa_auto')).toThrow('una persona')
+  expect(()=>validateForm({...manual,responsable_manual:{nombre:''}},[],'anexo_e')).toThrow('nombre')
+ })
 })
